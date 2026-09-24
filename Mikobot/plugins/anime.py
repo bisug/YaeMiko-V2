@@ -36,14 +36,14 @@ from pyrogram.types import (
     Message,
 )
 
-from Mikobot import BOT_USERNAME, MESSAGE_DUMP, MONGO_DB_URI, app
+from Mikobot import BOT_USERNAME, MESSAGE_DUMP, MONGO_DB_URI, OWNER_ID, app
 from Mikobot.utils.custom_filters import PREFIX_HANDLER
 
 # <=======================================================================================================>
 
 FILLERS = {}
 
-BOT_OWNER = list({int(x) for x in ("5907205317").split()})
+BOT_OWNER = {OWNER_ID}
 
 _MGCLIENT = AsyncMongoClient(MONGO_DB_URI)
 
@@ -55,8 +55,8 @@ def get_collection(name: str):
     return _DATABASE[name]
 
 
-def _close_db() -> None:
-    _MGCLIENT.close()
+async def _close_db() -> None:
+    await _MGCLIENT.close()
 
 
 GROUPS = get_collection("GROUPS")
@@ -86,7 +86,6 @@ DOWN_PATH = "Mikobot/downloads/"
 AUTH_USERS = get_collection("AUTH_USERS")
 IGNORE = get_collection("IGNORED_USERS")
 PIC_DB = get_collection("PIC_DB")
-GROUPS = get_collection("GROUPS")
 CC = get_collection("CONNECTED_CHANNELS")
 USER_JSON = {}
 USER_WC = {}
@@ -2351,12 +2350,11 @@ async def get_featured_in_lists(
             if kk == "MANGA":
                 out_.append(f"• __{k}__\n")
     total = len(out_)
-    for _ in range(15 * page):
-        out_.pop(0)
-    out_ = "".join(out_[:15])
-    return ([out + out_, total] if len(out_) != 0 else False), result["data"][
-        "Character"
-    ]["image"]["large"]
+    start = 15 * page
+    if start >= total:
+        return False, result["data"]["Character"]["image"]["large"]
+    out_ = "".join(out_[start : start + 15])
+    return [out + out_, total], result["data"]["Character"]["image"]["large"]
 
 
 async def get_additional_info(
@@ -2855,7 +2853,7 @@ Total Volumes Read: `{manga['volumesRead']}`
 Average Score: `{manga['meanScore']}`
 """
     btn = []
-    if not "user" in req:
+    if "user" not in req:
         btn.append(
             [
                 InlineKeyboardButton(
@@ -2956,9 +2954,10 @@ def get_wo(x: int, page: int):
     for i in data:
         out.append(f"{i['index']}. `{i['name']}`\n")
     total = len(out)
-    for _ in range(50 * page):
-        out.pop(0)
-    out_ = "".join(out[:50])
+    start = 50 * page
+    if start >= total:
+        return msg, total
+    out_ = "".join(out[start : start + 50])
     return msg + out_, total
 
 
@@ -4384,7 +4383,7 @@ async def featured_in_btn(client: Client, cq: CallbackQuery, cdata: dict):
     button = []
     totalpg, kek = divmod(total, 15)
     if kek != 0:
-        totalpg + 1
+        totalpg += 1
     if total > 15:
         button.append(
             [
@@ -4435,7 +4434,7 @@ async def featured_in_switch_btn(client: Client, cq: CallbackQuery, cdata: dict)
     [msg, total], pic = result
     totalpg, kek = divmod(total, 15)
     if kek != 0:
-        totalpg + 1
+        totalpg += 1
     button = []
     if total > 15:
         nex = f"{req}_{idm}_{int(reqpg)+1}_{qry}_{pg}_{auth}_{user}"
@@ -4901,7 +4900,7 @@ async def watch_(client: app, cq: CallbackQuery, cdata: dict):
     totalpg, lol = divmod(total, 50)
     button = []
     if lol != 0:
-        totalpg + 1
+        totalpg += 1
     if total > 50:
         if int(req) == 0:
             button.append(
@@ -5029,12 +5028,6 @@ async def filler_btn(client: app, cq: CallbackQuery, cdata: dict):
         msg += str(result.get("ac_ep"))
     await cq.edit_message_text(msg)
 
-
-@app.on_message(
-    filters.command(["fillers", f"fillers{BOT_USERNAME}"], prefixes=PREFIX_HANDLER)
-)
-async def fillers_cmd(client: app, message: Message):
-    await fillers_cmd(client, message)
 
 
 @app.on_message(filters.command("animequotes"))

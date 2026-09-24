@@ -1017,6 +1017,12 @@ if __name__ == "__main__":
         LOGGER.info(err)
     finally:
         try:
+            from Mikobot.plugins.anime import _close_db
+
+            loop.run_until_complete(_close_db())
+        except Exception:
+            LOGGER.exception("Failed to close anime database client")
+        try:
             app.stop()
         except Exception:
             LOGGER.exception("Failed to stop Kurigram client")
