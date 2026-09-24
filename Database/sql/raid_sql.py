@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import Column, String
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class RaidChats(BASE):
@@ -37,7 +37,7 @@ class RaidChats(BASE):
         self.chat_id = chat_id
 
 
-RaidChats.__table__.create(checkfirst=True)
+RaidChats.__table__.create(bind=ENGINE, checkfirst=True)
 INSERTION_LOCK = threading.RLock()
 
 

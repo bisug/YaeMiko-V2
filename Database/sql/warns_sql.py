@@ -27,7 +27,7 @@ import threading
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, distinct, func
 from sqlalchemy.dialects import postgresql
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class Warns(BASE):
@@ -90,9 +90,9 @@ class WarnSettings(BASE):
         return "<{} ʜᴀs {} ᴘᴏssɪʙʟᴇ ᴡᴀʀɴs.>".format(self.chat_id, self.warn_limit)
 
 
-Warns.__table__.create(checkfirst=True)
-WarnFilters.__table__.create(checkfirst=True)
-WarnSettings.__table__.create(checkfirst=True)
+Warns.__table__.create(bind=ENGINE, checkfirst=True)
+WarnFilters.__table__.create(bind=ENGINE, checkfirst=True)
+WarnSettings.__table__.create(bind=ENGINE, checkfirst=True)
 
 WARN_INSERTION_LOCK = threading.RLock()
 WARN_FILTER_INSERTION_LOCK = threading.RLock()

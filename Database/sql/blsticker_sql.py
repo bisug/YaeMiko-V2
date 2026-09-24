@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import BigInteger, Column, String, UnicodeText, distinct, func
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class StickersFilters(BASE):
@@ -67,8 +67,8 @@ class StickerSettings(BASE):
         )
 
 
-StickersFilters.__table__.create(checkfirst=True)
-StickerSettings.__table__.create(checkfirst=True)
+StickersFilters.__table__.create(bind=ENGINE, checkfirst=True)
+StickerSettings.__table__.create(bind=ENGINE, checkfirst=True)
 
 STICKERS_FILTER_INSERTION_LOCK = threading.RLock()
 STICKSET_FILTER_INSERTION_LOCK = threading.RLock()

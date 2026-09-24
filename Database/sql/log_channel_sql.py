@@ -27,7 +27,7 @@ import typing
 
 from sqlalchemy import BigInteger, Boolean, Column, String, distinct, func
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class GroupLogs(BASE):
@@ -92,8 +92,8 @@ class LogChannelSettings(BASE):
         return self.log_action
 
 
-GroupLogs.__table__.create(checkfirst=True)
-LogChannelSettings.__table__.create(checkfirst=True)
+GroupLogs.__table__.create(bind=ENGINE, checkfirst=True)
+LogChannelSettings.__table__.create(bind=ENGINE, checkfirst=True)
 
 LOGS_INSERTION_LOCK = threading.RLock()
 LOG_SETTING_LOCK = threading.RLock()

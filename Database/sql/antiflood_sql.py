@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import BigInteger, Column, String, UnicodeText
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 DEF_COUNT = 1
 DEF_LIMIT = 0
@@ -62,8 +62,8 @@ class FloodSettings(BASE):
         return "<{} ᴡɪʟʟ ᴇxᴇᴄᴜᴛɪɴɢ {} ғᴏʀ ғʟᴏᴏᴅ.>".format(self.chat_id, self.flood_type)
 
 
-FloodControl.__table__.create(checkfirst=True)
-FloodSettings.__table__.create(checkfirst=True)
+FloodControl.__table__.create(bind=ENGINE, checkfirst=True)
+FloodSettings.__table__.create(bind=ENGINE, checkfirst=True)
 
 INSERTION_FLOOD_LOCK = threading.RLock()
 INSERTION_FLOOD_SETTINGS_LOCK = threading.RLock()

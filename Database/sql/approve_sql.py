@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import BigInteger, Column, String
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class Approvals(BASE):
@@ -42,7 +42,7 @@ class Approvals(BASE):
         return "<ᴀᴘᴘʀᴏᴠᴇ %s>" % self.user_id
 
 
-Approvals.__table__.create(checkfirst=True)
+Approvals.__table__.create(bind=ENGINE, checkfirst=True)
 
 APPROVE_INSERTION_LOCK = threading.RLock()
 

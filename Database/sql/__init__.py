@@ -8,8 +8,13 @@ if DB_URI and DB_URI.startswith("postgres://"):
     DB_URI = DB_URI.replace("postgres://", "postgresql://", 1)
 
 
+ENGINE = None
+
+
 def start() -> scoped_session:
+    global ENGINE
     engine = create_engine(DB_URI, client_encoding="utf8")
+    ENGINE = engine
     log.info("[PostgreSQL] Connecting to database......")
     BASE.metadata.create_all(engine)
     return scoped_session(sessionmaker(bind=engine, autoflush=False))

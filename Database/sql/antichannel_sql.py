@@ -27,7 +27,7 @@ import threading
 from sqlalchemy import Boolean, Column
 from sqlalchemy.sql.sqltypes import String
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class AntiChannelSettings(BASE):
@@ -44,7 +44,7 @@ class AntiChannelSettings(BASE):
         return "<ᴀɴᴛɪғʟᴏᴏᴅ sᴇᴛᴛɪɴɢ {} ({})>".format(self.chat_id, self.setting)
 
 
-AntiChannelSettings.__table__.create(checkfirst=True)
+AntiChannelSettings.__table__.create(bind=ENGINE, checkfirst=True)
 ANTICHANNEL_SETTING_LOCK = threading.RLock()
 
 

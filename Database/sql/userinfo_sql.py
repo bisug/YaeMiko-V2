@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import BigInteger, Column, UnicodeText
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class UserInfo(BASE):
@@ -55,8 +55,8 @@ class UserBio(BASE):
         return "<ᴜsᴇʀ ɪɴғᴏ %d>" % self.user_id
 
 
-UserInfo.__table__.create(checkfirst=True)
-UserBio.__table__.create(checkfirst=True)
+UserInfo.__table__.create(bind=ENGINE, checkfirst=True)
+UserBio.__table__.create(bind=ENGINE, checkfirst=True)
 
 INSERTION_LOCK = threading.RLock()
 

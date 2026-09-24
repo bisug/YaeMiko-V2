@@ -27,7 +27,7 @@ import threading
 from sqlalchemy import Boolean, Column
 from sqlalchemy.sql.sqltypes import String
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class AntiLinkedChannelSettings(BASE):
@@ -58,10 +58,10 @@ class AntiPinChannelSettings(BASE):
         return "<ᴀɴᴛɪᴘɪɴ sᴇᴛᴛɪɴɢ {} ({})>".format(self.chat_id, self.setting)
 
 
-AntiLinkedChannelSettings.__table__.create(checkfirst=True)
+AntiLinkedChannelSettings.__table__.create(bind=ENGINE, checkfirst=True)
 ANTI_LINKED_CHANNEL_SETTING_LOCK = threading.RLock()
 
-AntiPinChannelSettings.__table__.create(checkfirst=True)
+AntiPinChannelSettings.__table__.create(bind=ENGINE, checkfirst=True)
 ANTI_PIN_CHANNEL_SETTING_LOCK = threading.RLock()
 
 

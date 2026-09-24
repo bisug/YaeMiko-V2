@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import Boolean, Column, UnicodeText
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class CleanerBlueTextChatSettings(BASE):
@@ -60,9 +60,9 @@ class CleanerBlueTextGlobal(BASE):
         self.command = command
 
 
-CleanerBlueTextChatSettings.__table__.create(checkfirst=True)
-CleanerBlueTextChat.__table__.create(checkfirst=True)
-CleanerBlueTextGlobal.__table__.create(checkfirst=True)
+CleanerBlueTextChatSettings.__table__.create(bind=ENGINE, checkfirst=True)
+CleanerBlueTextChat.__table__.create(bind=ENGINE, checkfirst=True)
+CleanerBlueTextGlobal.__table__.create(bind=ENGINE, checkfirst=True)
 
 CLEANER_CHAT_SETTINGS = threading.RLock()
 CLEANER_CHAT_LOCK = threading.RLock()

@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import Column, String, UnicodeText, distinct, func
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class Disable(BASE):
@@ -42,7 +42,7 @@ class Disable(BASE):
         return "ᴅɪsᴀʙʟᴇᴅ ᴄᴍᴅ {} in {}".format(self.command, self.chat_id)
 
 
-Disable.__table__.create(checkfirst=True)
+Disable.__table__.create(bind=ENGINE, checkfirst=True)
 DISABLE_INSERTION_LOCK = threading.RLock()
 
 DISABLED = {}

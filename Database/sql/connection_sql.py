@@ -28,7 +28,7 @@ from typing import Union
 
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class ChatAccessConnectionSettings(BASE):
@@ -74,9 +74,9 @@ class ConnectionHistory(BASE):
         return "<ᴄᴏɴɴᴇᴄᴛɪᴏɴ ᴜsᴇʀ {} ʜɪsᴛᴏʀʏ {}>".format(self.user_id, self.chat_id)
 
 
-ChatAccessConnectionSettings.__table__.create(checkfirst=True)
-Connection.__table__.create(checkfirst=True)
-ConnectionHistory.__table__.create(checkfirst=True)
+ChatAccessConnectionSettings.__table__.create(bind=ENGINE, checkfirst=True)
+Connection.__table__.create(bind=ENGINE, checkfirst=True)
+ConnectionHistory.__table__.create(bind=ENGINE, checkfirst=True)
 
 CHAT_ACCESS_LOCK = threading.RLock()
 CONNECTION_INSERTION_LOCK = threading.RLock()

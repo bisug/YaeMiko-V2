@@ -27,7 +27,7 @@ import threading
 
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, distinct, func
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 from Mikobot.plugins.helper_funcs.msg_types import Types
 
 
@@ -69,8 +69,8 @@ class Buttons(BASE):
         self.same_line = same_line
 
 
-Notes.__table__.create(checkfirst=True)
-Buttons.__table__.create(checkfirst=True)
+Notes.__table__.create(bind=ENGINE, checkfirst=True)
+Buttons.__table__.create(bind=ENGINE, checkfirst=True)
 
 NOTES_INSERTION_LOCK = threading.RLock()
 BUTTONS_INSERTION_LOCK = threading.RLock()

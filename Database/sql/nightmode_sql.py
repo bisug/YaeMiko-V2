@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class Nightmode(BASE):
@@ -11,7 +11,7 @@ class Nightmode(BASE):
         self.chat_id = chat_id
 
 
-Nightmode.__table__.create(checkfirst=True)
+Nightmode.__table__.create(bind=ENGINE, checkfirst=True)
 
 
 def add_nightmode(chat_id: str):

@@ -2,7 +2,7 @@ import threading
 
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class GloballyBannedUsers(BASE):
@@ -36,8 +36,8 @@ class GbanSettings(BASE):
         return "<Gban setting {} ({})>".format(self.chat_id, self.setting)
 
 
-GloballyBannedUsers.__table__.create(checkfirst=True)
-GbanSettings.__table__.create(checkfirst=True)
+GloballyBannedUsers.__table__.create(bind=ENGINE, checkfirst=True)
+GbanSettings.__table__.create(bind=ENGINE, checkfirst=True)
 
 GBANNED_USERS_LOCK = threading.RLock()
 GBAN_SETTING_LOCK = threading.RLock()

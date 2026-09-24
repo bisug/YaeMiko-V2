@@ -4,7 +4,7 @@ import threading
 from sqlalchemy import BigInteger, Boolean, Column, Integer, String, UnicodeText
 from telegram.error import BadRequest, Forbidden
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 from Mikobot import dispatcher
 
 
@@ -89,11 +89,11 @@ class FedSubs(BASE):
 # BansF.__table__.drop()
 # FedSubs.__table__.drop()
 
-Federations.__table__.create(checkfirst=True)
-ChatF.__table__.create(checkfirst=True)
-BansF.__table__.create(checkfirst=True)
-FedsUserSettings.__table__.create(checkfirst=True)
-FedSubs.__table__.create(checkfirst=True)
+Federations.__table__.create(bind=ENGINE, checkfirst=True)
+ChatF.__table__.create(bind=ENGINE, checkfirst=True)
+BansF.__table__.create(bind=ENGINE, checkfirst=True)
+FedsUserSettings.__table__.create(bind=ENGINE, checkfirst=True)
+FedSubs.__table__.create(bind=ENGINE, checkfirst=True)
 
 FEDS_LOCK = threading.RLock()
 CHAT_FEDS_LOCK = threading.RLock()

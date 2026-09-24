@@ -27,7 +27,7 @@ from typing import Union
 
 from sqlalchemy import BigInteger, Boolean, Column, String
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class ReportingUserSettings(BASE):
@@ -54,8 +54,8 @@ class ReportingChatSettings(BASE):
         return "<ᴄʜᴀᴛ ʀᴇᴘᴏʀᴛ sᴇᴛᴛɪɴɢs ({})>".format(self.chat_id)
 
 
-ReportingUserSettings.__table__.create(checkfirst=True)
-ReportingChatSettings.__table__.create(checkfirst=True)
+ReportingUserSettings.__table__.create(bind=ENGINE, checkfirst=True)
+ReportingChatSettings.__table__.create(bind=ENGINE, checkfirst=True)
 
 CHAT_LOCK = threading.RLock()
 USER_LOCK = threading.RLock()

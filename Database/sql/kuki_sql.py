@@ -2,7 +2,7 @@ import threading
 
 from sqlalchemy import Column, String
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class KukiChats(BASE):
@@ -13,7 +13,7 @@ class KukiChats(BASE):
         self.chat_id = chat_id
 
 
-KukiChats.__table__.create(checkfirst=True)
+KukiChats.__table__.create(bind=ENGINE, checkfirst=True)
 INSERTION_LOCK = threading.RLock()
 
 

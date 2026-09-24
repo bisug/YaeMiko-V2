@@ -28,7 +28,7 @@ from typing import Union
 
 from sqlalchemy import BigInteger, Boolean, Column, Integer, String, UnicodeText
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 from Mikobot.plugins.helper_funcs.msg_types import Types
 
 DEFAULT_WELCOME = "ʜᴇʏ {first}, ʜᴏᴡ ᴀʀᴇ ʏᴏᴜ?"
@@ -154,13 +154,13 @@ class RaidMode(BASE):
         # self.permanent = permanent
 
 
-Welcome.__table__.create(checkfirst=True)
-WelcomeButtons.__table__.create(checkfirst=True)
-GoodbyeButtons.__table__.create(checkfirst=True)
-WelcomeMute.__table__.create(checkfirst=True)
-WelcomeMuteUsers.__table__.create(checkfirst=True)
-CleanServiceSetting.__table__.create(checkfirst=True)
-RaidMode.__table__.create(checkfirst=True)
+Welcome.__table__.create(bind=ENGINE, checkfirst=True)
+WelcomeButtons.__table__.create(bind=ENGINE, checkfirst=True)
+GoodbyeButtons.__table__.create(bind=ENGINE, checkfirst=True)
+WelcomeMute.__table__.create(bind=ENGINE, checkfirst=True)
+WelcomeMuteUsers.__table__.create(bind=ENGINE, checkfirst=True)
+CleanServiceSetting.__table__.create(bind=ENGINE, checkfirst=True)
+RaidMode.__table__.create(bind=ENGINE, checkfirst=True)
 
 INSERTION_LOCK = threading.RLock()
 WELC_BTN_LOCK = threading.RLock()

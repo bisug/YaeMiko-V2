@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import BigInteger, Boolean, Column, DateTime, UnicodeText
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class AFK(BASE):
@@ -24,7 +24,7 @@ class AFK(BASE):
         return "afk_status for {}".format(self.user_id)
 
 
-AFK.__table__.create(checkfirst=True)
+AFK.__table__.create(bind=ENGINE, checkfirst=True)
 INSERTION_LOCK = threading.RLock()
 
 AFK_USERS = {}

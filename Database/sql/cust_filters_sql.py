@@ -2,7 +2,7 @@ import threading
 
 from sqlalchemy import Boolean, Column, Integer, String, UnicodeText, distinct, func
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 from Mikobot.plugins.helper_funcs.msg_types import Types
 
 
@@ -116,8 +116,8 @@ class Buttons(BASE):
         self.same_line = same_line
 
 
-CustomFilters.__table__.create(checkfirst=True)
-Buttons.__table__.create(checkfirst=True)
+CustomFilters.__table__.create(bind=ENGINE, checkfirst=True)
+Buttons.__table__.create(bind=ENGINE, checkfirst=True)
 
 CUST_FILT_LOCK = threading.RLock()
 BUTTON_LOCK = threading.RLock()

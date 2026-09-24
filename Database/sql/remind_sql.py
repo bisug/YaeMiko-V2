@@ -28,7 +28,7 @@ import time
 from sqlalchemy import Column, Integer, String, UnicodeText
 from sqlalchemy.sql.sqltypes import BigInteger
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class Reminds(BASE):
@@ -50,7 +50,7 @@ class Reminds(BASE):
 
 
 # Reminds.__table__.drop()
-Reminds.__table__.create(checkfirst=True)
+Reminds.__table__.create(bind=ENGINE, checkfirst=True)
 
 INSERTION_LOCK = threading.RLock()
 

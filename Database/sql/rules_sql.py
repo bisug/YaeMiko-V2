@@ -2,7 +2,7 @@ import threading
 
 from sqlalchemy import Column, String, UnicodeText, distinct, func
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class Rules(BASE):
@@ -17,7 +17,7 @@ class Rules(BASE):
         return "<Chat {} rules: {}>".format(self.chat_id, self.rules)
 
 
-Rules.__table__.create(checkfirst=True)
+Rules.__table__.create(bind=ENGINE, checkfirst=True)
 
 INSERTION_LOCK = threading.RLock()
 

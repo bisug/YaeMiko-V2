@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import Column, String, UnicodeText
 
-from Database.sql import BASE, SESSION
+from Database.sql import BASE, ENGINE, SESSION
 
 
 class BlacklistUsers(BASE):
@@ -39,7 +39,7 @@ class BlacklistUsers(BASE):
         self.reason = reason
 
 
-BlacklistUsers.__table__.create(checkfirst=True)
+BlacklistUsers.__table__.create(bind=ENGINE, checkfirst=True)
 
 BLACKLIST_LOCK = threading.RLock()
 BLACKLIST_USERS = set()
