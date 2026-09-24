@@ -208,6 +208,52 @@ async def sticker_set(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 
 @connection_status
+@check_admin(permission="can_delete_messages", is_both=True)
+async def clear_reactions(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    message = update.effective_message
+    if not message.reply_to_message:
+        return await message.reply_text("Reply to a message to clear all reactions.")
+    try:
+        await context.bot.delete_all_message_reactions(
+            update.effective_chat.id, message.reply_to_message.message_id
+        )
+    except TelegramError as error:
+        await _reply_error(update, error)
+        return
+    await message.reply_text("All reactions were removed.")
+
+
+@connection_status
+@check_admin(permission="can_delete_messages", is_both=True)
+async def delete_reaction(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    message = update.effective_message
+    if not message.reply_to_message:
+        return await message.reply_text(
+            "Reply to a message and optionally provide a user ID to remove their reaction."
+        )
+    if len(context.args) > 1:
+        return await message.reply_text("Usage: /deletereaction [user_id]")
+    user_id = None
+    if context.args:
+        try:
+            user_id = _user_id(context.args[0])
+        except ValueError as error:
+            await _reply_error(update, error)
+            return
+    try:
+        await context.bot.delete_message_reaction(
+            update.effective_chat.id,
+            message.reply_to_message.message_id,
+            user_id=user_id,
+        )
+    except TelegramError as error:
+        await _reply_error(update, error)
+        return
+    target = f" for user `{user_id}`" if user_id is not None else ""
+    await message.reply_text(f"Reaction removed{target}.")
+
+
+@connection_status
 @check_admin(permission="can_manage_topics", is_both=True)
 async def member_tag(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) not in {1, 2}:
@@ -233,6 +279,9 @@ COMMANDS = {
     "menubutton": menu_button,
     "stickerset": sticker_set,
     "membertag": member_tag,
+    "clearreactions": clear_reactions,
+    "deleteallreactions": clear_reactions,
+    "deletereaction": delete_reaction,
 }
 for command, callback in COMMANDS.items():
     function(CommandHandler(command, callback, block=False))
@@ -249,6 +298,8 @@ __help__ = """
 » /menubutton commands|default|webapp &lt;url&gt; — menu button
 » /stickerset set &lt;name&gt;|delete — chat sticker set
 » /membertag &lt;user_id&gt; [tag|remove] — member tag
+» /clearreactions or /deleteallreactions — remove all reactions from a replied message
+» /deletereaction [user_id] — remove a user reaction from a replied message
 """
 
 __mod_name__ = "CHAT ADMIN"
