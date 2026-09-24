@@ -1,11 +1,11 @@
-from async_pymongo import AsyncClient
+from pymongo import AsyncMongoClient
 
 from Mikobot import DB_NAME, MONGO_DB_URI
 
 
 class UsersData:
     def __init__(self, uri, database_name):
-        self._client = AsyncClient(uri)
+        self._client = AsyncMongoClient(uri)
         self.db = self._client[database_name]
         self.col = self.db["userlist"]
         self.grp = self.db["groups"]

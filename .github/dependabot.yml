@@ -14,5 +14,3 @@ updates:
   labels:
     - "dependencies"
   open-pull-requests-limit: 50
-  ignore:
-    - dependency-name: "sqlalchemy"

@@ -18,8 +18,7 @@ from uuid import uuid4
 import requests
 import urllib3
 from bs4 import BeautifulSoup
-from motor.core import AgnosticClient, AgnosticCollection, AgnosticDatabase
-from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import AsyncMongoClient
 from pyrogram import Client, filters
 from pyrogram.enums import ChatMemberStatus, ChatType
 from pyrogram.errors import (
@@ -46,12 +45,12 @@ FILLERS = {}
 
 BOT_OWNER = list({int(x) for x in ("5907205317").split()})
 
-_MGCLIENT: AgnosticClient = AsyncIOMotorClient(MONGO_DB_URI)
+_MGCLIENT = AsyncMongoClient(MONGO_DB_URI)
 
-_DATABASE: AgnosticDatabase = _MGCLIENT["MikobotAnime"]
+_DATABASE = _MGCLIENT["MikobotAnime"]
 
 
-def get_collection(name: str) -> AgnosticCollection:
+def get_collection(name: str):
     """Create or Get Collection from your database"""
     return _DATABASE[name]
 
