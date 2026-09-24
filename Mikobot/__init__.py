@@ -19,6 +19,8 @@ from random import choice
 import telegram
 import telegram.ext as tg
 from pyrogram import Client, errors
+
+from pyrogram import Client, errors
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, ApplicationBuilder
@@ -68,7 +70,8 @@ class RedactingFormatter(logging.Formatter):
 
 def _configure_logging():
     formatter = RedactingFormatter(
-        "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+        "%(asctime)s | %(levelname)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
     handlers = [logging.StreamHandler()]
     try:
@@ -94,11 +97,6 @@ def _configure_logging():
 
 _configure_logging()
 LOGGER = logging.getLogger(__name__)
-
-# <================================================= LOGGER =======================================================>
-# Configure logging once in this module; all application modules use LOGGER.
-LOGGER = logging.getLogger(__name__)
-# <=======================================================================================================>
 
 # <================================================ SYS =======================================================>
 # Check Python version

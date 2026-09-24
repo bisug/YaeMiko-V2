@@ -18,9 +18,13 @@ from platform import python_version
 from random import choice
 
 import psutil
+from pyrogram import Client, errors
+from pyrogram.handlers import RawUpdateHandler
+
 import pyrogram
 import telegram
 import telethon
+from telethon import events
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Update
 from telegram.constants import ParseMode
 from telegram.error import (
@@ -37,9 +41,9 @@ from telegram.ext import (
     CommandHandler,
     ContextTypes,
     MessageHandler,
+    TypeHandler,
     filters,
 )
-from telegram.helpers import escape_markdown
 
 from Infamous.karma import *
 from Mikobot import (
@@ -65,6 +69,46 @@ PYTHON_VERSION = python_version()
 PTB_VERSION = telegram.__version__
 KURIGRAM_VERSION = pyrogram.__version__
 TELETHON_VERSION = telethon.__version__
+
+
+
+def _activity_summary(update: Update) -> str:
+    user = update.effective_user
+    chat = update.effective_chat
+    user_id = user.id if user else None
+    chat_id = chat.id if chat else None
+    if update.callback_query:
+        return f"callback user={user_id} chat={chat_id}"
+    if update.inline_query:
+        return f"inline_query user={user_id}"
+    if update.chosen_inline_result:
+        return f"inline_result user={user_id}"
+    if update.edited_message:
+        return f"edited_message user={user_id} chat={chat_id}"
+    if update.channel_post:
+        return f"channel_post chat={chat_id}"
+    if update.message:
+        command = update.message.text.split(maxsplit=1)[0] if update.message.text else "message"
+        return f"message user={user_id} chat={chat_id} command={command[:32]}"
+    return "update"
+
+
+async def log_activity(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LOGGER.info("Activity: %s", _activity_summary(update))
+
+
+
+
+
+
+async def log_kurigram_activity(_, update, update_type):
+    LOGGER.info("Kurigram activity: type=%s", update_type)
+
+
+async def log_telethon_activity(_, event):
+    user = getattr(event, "sender_id", None)
+    chat_id = getattr(event, "chat_id", None)
+    LOGGER.info("Telethon activity: event=%s user=%s chat=%s", type(event).__name__, user, chat_id)
 
 
 # <============================================== FUNCTIONS =========================================================>
@@ -847,6 +891,8 @@ async def migrate_chats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # <=================================================== MAIN ====================================================>
 def main():
     function(CommandHandler("start", start))
+    dispatcher.add_handler(TypeHandler(Update, log_activity), group=-100)
+
 
     function(CommandHandler("help", extra_command_handlered))
     function(CallbackQueryHandler(help_button, pattern=r"help_.*"))
@@ -876,6 +922,9 @@ def main():
     )
 
     dispatcher.add_error_handler(error_callback)
+    dispatcher.add_handler(TypeHandler(Update, log_activity), group=-100)
+    app.add_handler(RawUpdateHandler(log_kurigram_activity))
+    tbot.add_event_handler(log_telethon_activity, events.NewMessage())
 
     LOGGER.info("Mikobot is starting >> Using long polling.")
     dispatcher.run_polling(drop_pending_updates=True)
