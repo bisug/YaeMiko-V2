@@ -1,8 +1,10 @@
 # <============================================== IMPORTS =========================================================>
 import base64
 import os
+import tempfile
 from random import choice
 
+import aiohttp
 from aiohttp import ContentTypeError
 from PIL import Image
 from telethon.tl import types
@@ -17,6 +19,10 @@ from Mikobot.events import register
 # <================================================ CLASS & FUNCTION =======================================================>
 class Quotly:
     _API = "https://bot.lyo.su/quote/generate"
+    _COLORS = (
+        "#1b1429", "#2b1b3d", "#123456", "#0f2027", "#42275a",
+        "#2c3e50", "#3a1c71", "#4b1248", "#1f4037", "#16222a",
+    )
     _entities = {
         types.MessageEntityPhone: "phone_number",
         types.MessageEntityMention: "mention",
@@ -125,18 +131,17 @@ class Quotly:
     async def create_quotly(
         self,
         event,
-        url="https://quote-api.example.com/generate",
-        reply={},
+        url=None,
+        reply=None,
         bg=None,
         sender=None,
         OQAPI=True,
-        file_name="quote.webp",
+        file_name=None,
     ):
         if not isinstance(event, list):
             event = [event]
-        if OQAPI:
-            url = Quotly._API
-        bg = bg or "#1b1429"
+        url = url or self._API
+        bg = bg or self._COLORS[0]
         content = {
             "type": "quote",
             "format": "webp",
@@ -159,9 +164,9 @@ class Quotly:
             raise er
 
         if request.get("ok"):
-            with open(file_name, "wb") as file:
-                image = base64.decodebytes(request["result"]["image"].encode("utf-8"))
-                file.write(image)
+            with tempfile.NamedTemporaryFile(suffix=".webp", delete=False) as file:
+                file_name = file.name
+                file.write(base64.b64decode(request["result"]["image"]))
             return file_name
         raise Exception(str(request))
 
@@ -183,22 +188,15 @@ async def async_searcher(
     *args,
     **kwargs
 ):
-    try:
-        import aiohttp
-    except ImportError:
-        raise DependencyMissingError(
-            "'aiohttp' is not installed!\nThis function requires aiohttp to be installed."
-        )
-
     async with aiohttp.ClientSession(headers=headers) as client:
-        data = await (
-            client.post(url, json=json, data=data, ssl=ssl, *args, **kwargs)
-            if post
-            else client.get(url, params=params, ssl=ssl, *args, **kwargs)
-        )
-        return await (
-            data.json() if re_json else data.read() if re_content else data.text()
-        )
+        request = client.post(url, json=json, data=data, ssl=ssl, *args, **kwargs) if post else client.get(url, params=params, ssl=ssl, *args, **kwargs)
+        response = await request
+        response.raise_for_status()
+        if re_json:
+            return await response.json()
+        if re_content:
+            return await response.read()
+        return await response.text()
 
 
 @register(pattern="^/q(?: |$)(.*)")
@@ -258,17 +256,17 @@ async def quott_(event):
             match = match[0]
 
     if match == "random":
-        match = choice(all_col)
+        match = choice(Quotly._COLORS)
 
     try:
-        file = await quotly.create_quotly(
-            reply_, bg=match, reply=replied_to, sender=user
-        )
-    except Exception as er:
-        return await msg.edit(str(er))
-
-    message = await reply.reply("", file=file)
-    os.remove(file)
+        file = await quotly.create_quotly(reply_, bg=match, reply=replied_to, sender=user)
+        message = await reply.reply("", file=file)
+    except (aiohttp.ClientError, OSError, KeyError, TypeError, ValueError) as error:
+        await msg.edit(f"Quote generation failed: {error}")
+        return
+    finally:
+        if 'file' in locals() and os.path.exists(file):
+            os.remove(file)
     await msg.delete()
     return message
 
