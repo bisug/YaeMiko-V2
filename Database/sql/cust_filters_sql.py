@@ -3,6 +3,7 @@ import threading
 from sqlalchemy import Boolean, Column, Integer, String, UnicodeText, distinct, func
 
 from Database.sql import BASE, ENGINE, SESSION
+from Mikobot import LOGGER
 from Mikobot.plugins.helper_funcs.msg_types import Types
 
 
@@ -359,7 +360,7 @@ def __migrate_filters():
             else:
                 file_type = Types.TEXT
 
-            print(str(x.chat_id), x.keyword, x.reply, file_type.value)
+            LOGGER.info("Migrating filter for chat %s", x.chat_id)
             if file_type == Types.TEXT:
                 filt = CustomFilters(
                     str(x.chat_id), x.keyword, x.reply, file_type.value, None

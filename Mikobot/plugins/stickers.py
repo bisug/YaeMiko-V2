@@ -29,7 +29,7 @@ from pyrogram.types import InlineKeyboardMarkup
 from pyrogram.types import InlineKeyboardMarkup as IKM
 from pyrogram.types import Message
 
-from Mikobot import MESSAGE_DUMP, app
+from Mikobot import LOGGER, MESSAGE_DUMP, app
 from Mikobot.state import state
 from Mikobot.utils.custom_filters import PREFIX_HANDLER
 from Mikobot.utils.localization import use_chat_lang
@@ -100,9 +100,10 @@ async def _vidstick(_, message):
     if replied and replied.animation:
         file_id = replied.animation.file_id
         new_file = await _.download_media(file_id, file_name="video.mp4")
-        print(new_file)
-        await _.send_video(chat_id, video=open(new_file, "rb"))
-        os.remove(new_file)
+        try:
+            await _.send_video(chat_id, video=open(new_file, "rb"))
+        finally:
+            os.remove(new_file)
     else:
         await message.reply_text("Please reply to a gif for me to get it's video.")
 

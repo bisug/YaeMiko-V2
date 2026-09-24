@@ -7,7 +7,7 @@ from pyrogram.enums import ChatMembersFilter
 from pyrogram.errors.exceptions.forbidden_403 import ChatWriteForbidden
 from pyrogram.types import Message
 
-from Mikobot import DRAGONS, app
+from Mikobot import DRAGONS, LOGGER, app
 
 # <=======================================================================================================>
 
@@ -50,8 +50,7 @@ async def authorised(func, subFunc2, client, message, *args, **kwargs):
             await message.reply_text(str(e.MESSAGE))
         except AttributeError:
             await message.reply_text(str(e))
-        e = err()
-        print(str(e))
+        LOGGER.exception("Permission handler failed")
     return subFunc2
 
 

@@ -398,31 +398,20 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # for test purposes
 async def error_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     error = context.error
-    try:
-        raise error
-    except Forbidden:
-        print("no nono1")
-        print(error)
-        # remove update.message.chat_id from conversation list
-    except BadRequest:
-        print("no nono2")
-        print("BadRequest caught")
-        print(error)
-
-        # handle malformed requests - read more below!
-    except TimedOut:
-        print("no nono3")
-        # handle slow connection problems
-    except NetworkError:
-        print("no nono4")
-        # handle other connection problems
-    except ChatMigrated as err:
-        print("no nono5")
-        print(err)
-        # the chat_id of a group has changed, use e.new_chat_id instead
-    except TelegramError:
-        print(error)
-        # handle all other telegram related errors
+    if isinstance(error, Forbidden):
+        LOGGER.warning("Forbidden while handling update: %s", error)
+    elif isinstance(error, BadRequest):
+        LOGGER.warning("Bad Telegram request while handling update: %s", error)
+    elif isinstance(error, TimedOut):
+        LOGGER.warning("Telegram request timed out while handling update")
+    elif isinstance(error, NetworkError):
+        LOGGER.warning("Telegram network error while handling update: %s", error)
+    elif isinstance(error, ChatMigrated):
+        LOGGER.info("Telegram chat migrated: %s", error)
+    elif isinstance(error, TelegramError):
+        LOGGER.warning("Telegram error while handling update: %s", error)
+    elif error is not None:
+        LOGGER.error("Unhandled update error", exc_info=error)
 
 
 async def help_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -432,7 +421,7 @@ async def help_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     next_match = re.match(r"help_next\((.+?)\)", query.data)
     back_match = re.match(r"help_back", query.data)
 
-    print(query.message.chat.id)
+    LOGGER.debug("Help callback received in chat %s", query.message.chat.id)
 
     try:
         if mod_match:

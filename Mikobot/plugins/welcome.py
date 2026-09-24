@@ -172,8 +172,8 @@ async def member_has_joined(client, member: ChatMemberUpdated):
                 caption=f"**𝗛𝗲𝘆❗️{mention}, 𝗪𝗲𝗹𝗰𝗼𝗺𝗲 𝗧𝗼 {member.chat.title} 𝗚𝗿𝗼𝘂𝗽.**\n\n**𝗜𝗗 : {user_id}**\n**𝗗𝗔𝗧𝗘 𝗝𝗢𝗜𝗡𝗘𝗗 : {joined_date}**",
                 reply_markup=inline_keyboard,  # Add the inline keyboard
             )
-        except Exception as e:
-            print(e)
+        except Exception:
+            LOGGER.exception("Unable to create the welcome image for user %s", user_id)
         try:
             os.remove(f"downloads/welcome_{user_id}.png")
             os.remove(f"downloads/pp{user_id}.png")

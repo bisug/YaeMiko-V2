@@ -6,7 +6,7 @@
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
 
-from Mikobot import function
+from Mikobot import LOGGER, function
 from Mikobot.state import state
 
 # <=======================================================================================================>
@@ -52,7 +52,7 @@ async def instadl_command_handler(update: Update, context: ContextTypes.DEFAULT_
             )
 
     except Exception as e:
-        print(e)
+        LOGGER.exception("Instagram download request failed")
         await update.message.reply_text(
             "An error occurred while processing the request."
         )

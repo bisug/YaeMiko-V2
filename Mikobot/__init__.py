@@ -6,6 +6,8 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
 import json
+import logging.handlers
+
 import logging
 import os
 import sys
@@ -50,25 +52,49 @@ StartTime = time.time()
 loop = asyncio.get_event_loop()
 # <=======================================================================================================>
 
-# <================================================= LOGGER ======================================================>
-# Initialize the logger
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-    handlers=[logging.FileHandler("Logs.txt"), logging.StreamHandler()],
-    level=logging.INFO,
-)
-# Set the log levels for specific libraries
-logging.getLogger("apscheduler").setLevel(logging.ERROR)
-logging.getLogger("telethon").setLevel(logging.ERROR)
-logging.getLogger("pyrogram").setLevel(logging.ERROR)
-logging.getLogger("pyrate_limiter").setLevel(logging.ERROR)
+# <================================================== LOGGER =======================================================>
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+if LOG_LEVEL not in {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"}:
+    LOG_LEVEL = "INFO"
 
-# HTTPX logs complete Telegram API URLs at INFO, including the bot token.
-# Keep transport diagnostics available without emitting routine request URLs.
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("httpcore").setLevel(logging.WARNING)
+class RedactingFormatter(logging.Formatter):
+    _token_pattern = re.compile(r"\bbot\d+:[A-Za-z0-9_-]{20,}\b")
 
-# Define the logger for this module
+    def format(self, record):
+        return self._token_pattern.sub("bot<redacted>", super().format(record))
+
+
+def _configure_logging():
+    formatter = RedactingFormatter(
+        "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+    )
+    handlers = [logging.StreamHandler()]
+    try:
+        handlers.insert(0, logging.handlers.RotatingFileHandler(
+            "Logs.txt", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+        ))
+    except OSError:
+        # Container filesystems may expose stdout but not a writable log file.
+        pass
+    for handler in handlers:
+        handler.setFormatter(formatter)
+    logging.basicConfig(
+        level=LOG_LEVEL,
+        handlers=handlers,
+        force=True,
+    )
+    for name in ("apscheduler", "telethon", "pyrogram", "pyrate_limiter"):
+        logging.getLogger(name).setLevel(logging.ERROR)
+    # HTTPX logs complete Telegram API URLs at INFO, including the bot token.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+
+_configure_logging()
+LOGGER = logging.getLogger(__name__)
+
+# <================================================= LOGGER =======================================================>
+# Configure logging once in this module; all application modules use LOGGER.
 LOGGER = logging.getLogger(__name__)
 # <=======================================================================================================>
 
@@ -242,11 +268,11 @@ async def send_booting_message():
             caption=ALIVE_MSG,
             parse_mode=ParseMode.MARKDOWN,
         )
-    except Exception as e:
+    except Exception:
         LOGGER.warning(
-            "[ERROR] - Bot isn't able to send a message to the support_chat!"
+            "Unable to send the startup message to the configured support chat",
+            exc_info=True,
         )
-        print(e)
 
 
 # <=======================================================================================================>
@@ -266,7 +292,7 @@ tbot = TelegramClient("Yaebot", API_ID, API_HASH)
 
 # <=============================================== GETTING BOT INFO ========================================================>
 # Get bot information
-print("[INFO]: Getting Bot Info...")
+LOGGER.info("Getting bot information")
 BOT_ID = dispatcher.bot.id
 BOT_NAME = dispatcher.bot.first_name
 BOT_USERNAME = dispatcher.bot.username

@@ -661,18 +661,14 @@ async def take_screen_shot(
     video_file: str, duration: int, path: str = ""
 ) -> Optional[str]:
     """take a screenshot"""
-    print(
-        "[[[Extracting a frame from %s ||| Video duration => %s]]]",
-        video_file,
-        duration,
-    )
+    log.debug("Extracting a frame from %s at %s seconds", video_file, duration)
     thumb_image_path = path or os.path.join(DOWN_PATH, f"{basename(video_file)}.jpg")
     command = (
         f"ffmpeg -ss {duration} " + f'-i "{video_file}" -vframes 1 "{thumb_image_path}"'
     )
     err = (await runcmd(command))[1]
     if err:
-        print(err)
+        log.warning("ffmpeg returned an error while extracting a frame: %s", err)
     return thumb_image_path if os.path.exists(thumb_image_path) else None
 
 

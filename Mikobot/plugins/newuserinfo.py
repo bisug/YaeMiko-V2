@@ -5,7 +5,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFont
 from pyrogram import filters
 from pyrogram.enums import ParseMode
 
-from Mikobot import DEMONS, DEV_USERS, DRAGONS, OWNER_ID, TIGERS, WOLVES, app
+from Mikobot import DEMONS, DEV_USERS, DRAGONS, LOGGER, OWNER_ID, TIGERS, WOLVES, app
 
 
 async def circle(pfp, size=(900, 900)):
@@ -28,8 +28,8 @@ async def download_and_process_pfp(user):
         if pic:
             pfp = Image.open(pic).convert("RGBA")
             return await circle(pfp, size=(900, 900))
-    except Exception as e:
-        print(e)
+    except Exception:
+        LOGGER.exception("User info operation failed")
     finally:
         if "pic" in locals() and pic:
             os.remove(pic)
@@ -77,8 +77,8 @@ async def userinfopic(
         userinfo = f"downloads/userinfo_{user.id}.png"
         background.save(userinfo)
 
-    except Exception as e:
-        print(e)
+    except Exception:
+        LOGGER.exception("User info operation failed")
         userinfo = None
 
     return userinfo
@@ -157,5 +157,5 @@ async def userinfo_command(client, message):
             )
             os.remove(image_path)
 
-    except Exception as e:
-        print(e)
+    except Exception:
+        LOGGER.exception("User info operation failed")
