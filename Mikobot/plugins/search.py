@@ -1,167 +1,151 @@
 # SOURCE https://github.com/Team-ProjectCodeX
 # CREATED BY https://t.me/O_okarma
-# API BY https://www.github.com/SOME-1HING
 # PROVIDED BY https://t.me/ProjectCodeX
 
-# <============================================== IMPORTS =========================================================>
-import json
+import html
 import random
 
+from httpx import HTTPError
 from pyrogram import Client, filters
 from pyrogram.types import InputMediaPhoto, Message
 
 from Mikobot import app
 from Mikobot.state import state
 
-# <=======================================================================================================>
+OPENVERSE_IMAGES_URL = "https://api.openverse.org/v1/images/"
+DUCKDUCKGO_URL = "https://api.duckduckgo.com/"
+HACKER_NEWS_URL = "https://hn.algolia.com/api/v1/search"
+MAX_RESULTS = 7
 
-BINGSEARCH_URL = "https://sugoi-api.vercel.app/search"
-NEWS_URL = "https://sugoi-api.vercel.app/news?keyword={}"
+
+def _query(message: Message) -> str:
+    return " ".join(message.command[1:]).strip()
 
 
-# <================================================ FUNCTION =======================================================>
+async def _get_json(url: str, params: dict):
+    response = await state.get(url, params=params)
+    response.raise_for_status()
+    return response.json()
+
+
+def _safe_text(value, limit: int = 300) -> str:
+    return html.unescape(str(value or "")).replace("\n", " ").strip()[:limit]
+
+
+async def _send_images(message: Message, query: str) -> None:
+    status = await message.reply_text("🔎 Searching open image sources…")
+    try:
+        data = await _get_json(
+            OPENVERSE_IMAGES_URL,
+            {"q": query, "page_size": MAX_RESULTS, "mature": "false"},
+        )
+        results = data.get("results", []) if isinstance(data, dict) else []
+        images = []
+        credits = []
+        for result in results:
+            if not isinstance(result, dict):
+                continue
+            image_url = result.get("url")
+            if not isinstance(image_url, str) or not image_url:
+                continue
+            images.append(InputMediaPhoto(media=image_url))
+            creator = _safe_text(result.get("creator"), 80)
+            license_name = _safe_text(result.get("license"), 30)
+            source = _safe_text(result.get("source"), 60)
+            license_url = _safe_text(result.get("license_url"), 200)
+            credits.append(
+                f"• {creator or 'Unknown creator'} — {license_name or 'license unavailable'}"
+                f"{f' ({license_url})' if license_url else ''}{f' via {source}' if source else ''}"
+            )
+            if len(images) == MAX_RESULTS:
+                break
+        if not images:
+            await status.edit_text("No openly licensed images found.")
+            return
+        await message.reply_media_group(media=images)
+        await status.delete()
+        await message.reply_text(
+            "Images: Openverse\n" + "\n".join(credits),
+            disable_web_page_preview=True,
+        )
+    except (HTTPError, ValueError, TypeError, KeyError, AttributeError):
+        await status.edit_text("Image search failed. Please try again later.")
+
+
+
+
+
+@app.on_message(filters.command(["googleimg", "bingimg"]))
+async def image_search(client: Client, message: Message):
+    query = _query(message)
+    if not query:
+        await message.reply_text("Provide a query to search!")
+        return
+    await _send_images(message, query)
+
+
 @app.on_message(filters.command("news"))
 async def news(_, message: Message):
-    keyword = (
-        message.text.split(" ", 1)[1].strip() if len(message.text.split()) > 1 else ""
-    )
-    url = NEWS_URL.format(keyword)
-
+    query = _query(message)
+    if not query:
+        await message.reply_text("Provide a keyword to search for.")
+        return
     try:
-        response = await state.get(url)  # Assuming state is an asynchronous function
-        news_data = response.json()
-
-        if "error" in news_data:
-            error_message = news_data["error"]
-            await message.reply_text(f"Error: {error_message}")
-        else:
-            if len(news_data) > 0:
-                news_item = random.choice(news_data)
-
-                title = news_item["title"]
-                excerpt = news_item["excerpt"]
-                source = news_item["source"]
-                relative_time = news_item["relative_time"]
-                news_url = news_item["url"]
-
-                message_text = f"𝗧𝗜𝗧𝗟𝗘: {title}\n𝗦𝗢𝗨𝗥𝗖𝗘: {source}\n𝗧𝗜𝗠𝗘: {relative_time}\n𝗘𝗫𝗖𝗘𝗥𝗣𝗧: {excerpt}\n𝗨𝗥𝗟: {news_url}"
-                await message.reply_text(message_text)
-            else:
-                await message.reply_text("No news found.")
-
-    except Exception as e:  # Replace with specific exception type if possible
-        await message.reply_text(f"Error: {str(e)}")
-
-
-@app.on_message(filters.command("bingsearch"))
-async def bing_search(client: Client, message: Message):
-    try:
-        if len(message.command) == 1:
-            await message.reply_text("Please provide a keyword to search.")
+        data = await _get_json(
+            HACKER_NEWS_URL,
+            {"query": query, "tags": "story", "hitsPerPage": MAX_RESULTS},
+        )
+        hits = data.get("hits", []) if isinstance(data, dict) else []
+        if not hits:
+            await message.reply_text("No news found.")
             return
-
-        keyword = " ".join(
-            message.command[1:]
-        )  # Assuming the keyword is passed as arguments
-        params = {"keyword": keyword}
-
-        response = await state.get(
-            BINGSEARCH_URL, params=params
-        )  # Use the state.get method
-
-        if response.status_code == 200:
-            results = response.json()
-            if not results:
-                await message.reply_text("No results found.")
-            else:
-                message_text = ""
-                for result in results[:7]:
-                    title = result.get("title", "")
-                    link = result.get("link", "")
-                    message_text += f"{title}\n{link}\n\n"
-                await message.reply_text(message_text.strip())
-        else:
-            await message.reply_text("Sorry, something went wrong with the search.")
-    except Exception as e:
-        await message.reply_text(f"An error occurred: {str(e)}")
+        item = random.choice(hits)
+        title = _safe_text(item.get("title"), 250)
+        url = _safe_text(item.get("url") or item.get("story_url"), 500)
+        author = _safe_text(item.get("author"), 80)
+        await message.reply_text(
+            f"📰 <b>{title}</b>\n\n"
+            f"Author: {author or 'Unknown'}\n"
+            f"Points: {item.get('points', 0)} | Comments: {item.get('num_comments', 0)}\n"
+            f"URL: {url or 'https://news.ycombinator.com/item?id=' + str(item.get('objectID', ''))}\n\n"
+            "News source: Hacker News Algolia API"
+        )
+    except (HTTPError, ValueError, TypeError, KeyError, AttributeError):
+        await message.reply_text("News search failed. Please try again later.")
 
 
-# Command handler for the '/bingimg' command
-@app.on_message(filters.command("bingimg"))
-async def bingimg_search(client: Client, message: Message):
+@app.on_message(filters.command(["bingsearch", "duckduckgo"]))
+async def web_search(client: Client, message: Message):
+    query = _query(message)
+    if not query:
+        await message.reply_text("Please provide a keyword to search.")
+        return
     try:
-        text = message.text.split(None, 1)[
-            1
-        ]  # Extract the query from command arguments
-    except IndexError:
-        return await message.reply_text(
-            "Provide me a query to search!"
-        )  # Return error if no query is provided
-
-    search_message = await message.reply_text("🔎")  # Display searching message
-
-    # Send request to Bing image search API using state function
-    bingimg_url = "https://sugoi-api.vercel.app/bingimg?keyword=" + text
-    resp = await state.get(bingimg_url)
-    images = json.loads(resp.text)  # Parse the response JSON into a list of image URLs
-
-    media = []
-    count = 0
-    for img in images:
-        if count == 7:
-            break
-
-        # Create InputMediaPhoto object for each image URL
-        media.append(InputMediaPhoto(media=img))
-        count += 1
-
-    # Send the media group as a reply to the user
-    await message.reply_media_group(media=media)
-
-    # Delete the searching message and the original command message
-    await search_message.delete()
-    await message.delete()
-
-
-# Command handler for the '/googleimg' command
-@app.on_message(filters.command("googleimg"))
-async def googleimg_search(client: Client, message: Message):
-    try:
-        text = message.text.split(None, 1)[
-            1
-        ]  # Extract the query from command arguments
-    except IndexError:
-        return await message.reply_text(
-            "Provide me a query to search!"
-        )  # Return error if no query is provided
-
-    search_message = await message.reply_text("💭")  # Display searching message
-
-    # Send request to Google image search API using state function
-    googleimg_url = "https://sugoi-api.vercel.app/googleimg?keyword=" + text
-    resp = await state.get(googleimg_url)
-    images = json.loads(resp.text)  # Parse the response JSON into a list of image URLs
-
-    media = []
-    count = 0
-    for img in images:
-        if count == 7:
-            break
-
-        # Create InputMediaPhoto object for each image URL
-        media.append(InputMediaPhoto(media=img))
-        count += 1
-
-    # Send the media group as a reply to the user
-    await message.reply_media_group(media=media)
-
-    # Delete the searching message and the original command message
-    await search_message.delete()
-    await message.delete()
-
-
-# <=======================================================================================================>
-
+        data = await _get_json(
+            DUCKDUCKGO_URL,
+            {"q": query, "format": "json", "no_html": 1, "skip_disambig": 1},
+        )
+        sections = []
+        abstract = _safe_text(data.get("AbstractText"), 700)
+        if abstract:
+            sections.append(abstract)
+        for topic in data.get("RelatedTopics", [])[:MAX_RESULTS]:
+            if not isinstance(topic, dict):
+                continue
+            text = _safe_text(topic.get("Text"), 300)
+            url = _safe_text(topic.get("FirstURL"), 500)
+            if text and url:
+                sections.append(f"{text}\n{url}")
+            if len(sections) >= MAX_RESULTS:
+                break
+        if not sections:
+            await message.reply_text("No instant answer found.")
+            return
+        await message.reply_text(
+            "\n\n".join(sections) + "\n\nSearch source: DuckDuckGo Instant Answer API"
+        )
+    except (HTTPError, ValueError, TypeError, KeyError, AttributeError):
+        await message.reply_text("Search failed. Please try again later.")
 
 # <=================================================== HELP ====================================================>
 __mod_name__ = "SEARCH"
@@ -171,15 +155,10 @@ __help__ = """
 
 ➠ *Available commands:*
 
-» /googleimg <search query>: It retrieves and displays images obtained through a Google image search.
+» /googleimg <query> or /bingimg <query>: Search openly licensed images via Openverse.
 
-» /bingimg <search query>: It retrieves and displays images obtained through a Bing image search.
+» /news <query>: Search technology news via Hacker News.
 
-» /news <search query> : search news.
-
-» /bingsearch <search query> : get search result with links.
-
-➠ *Example:*
-➠ `/bingsearch app`: return search results.
+» /bingsearch <query> or /duckduckgo <query>: Search quick answers via DuckDuckGo.
 """
 # <================================================ END =======================================================>

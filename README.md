@@ -83,6 +83,10 @@ python3 -m Mikobot         # 8. Run the Bot
 + [lostb053](https://github.com/lostb053) > Anime
 + [TheHamkerCat](https://github.com/TheHamkerCat) > Python-Arq
 + [ProjectCodeX](https://github.com/Team-ProjectCodeX) > Modules
++ [Openverse](https://openverse.org/) for openly licensed image search
++ [Hacker News Algolia API](https://hn.algolia.com/api) for technology news search
++ [DuckDuckGo Instant Answer API](https://duckduckgo.com/duckduckgo-help-pages/results/duckduckgo-instant-answer-api) for quick web answers
++ [Wikimedia Commons API](https://commons.wikimedia.org/wiki/Commons:Commons_API) for public media and attribution data
 
 Others in the commit history and files. If anything is missing, feel free to  [![gmail](https://img.shields.io/badge/mail-Here-red?style=for-the-badge&logo=gmail)](mailto:makandu2054@gmail.com)  or submit a pull request.
 
