@@ -1,11 +1,13 @@
 # <============================================== IMPORTS =========================================================>
-from os import remove
+import asyncio
+import os
+import tempfile
 
+from opennsfw_onnx import NSFWClassifier
 from pyrogram import filters
 
 from Database.mongodb.toggle_mongo import is_nsfw_on, nsfw_off, nsfw_on
 from Mikobot import BOT_USERNAME, DRAGONS, app
-from Mikobot.state import arq
 from Mikobot.utils.can_restrict import can_restrict
 from Mikobot.utils.errors import capture_err
 
@@ -13,13 +15,30 @@ from Mikobot.utils.errors import capture_err
 
 
 # <================================================ FUNCTION =======================================================>
+classifier = NSFWClassifier()
+NSFW_THRESHOLD = 0.75
+MAX_FILE_SIZE = 3 * 1024 * 1024
+
+
+async def _scan(file_path: str):
+    return await asyncio.to_thread(classifier.classify, file_path)
+
+
+def _safe_remove(path):
+    try:
+        if path and os.path.exists(path):
+            os.remove(path)
+    except OSError:
+        pass
+
+
 async def get_file_id_from_message(message):
     file_id = None
     if message.document:
-        if int(message.document.file_size) > 3145728:
+        if int(message.document.file_size) > MAX_FILE_SIZE:
             return
-        mime_type = message.document.mime_type
-        if mime_type not in ("image/png", "image/jpeg"):
+        mime_type = message.document.mime_type or ""
+        if not mime_type.startswith("image/"):
             return
         file_id = message.document.file_id
 
@@ -43,6 +62,11 @@ async def get_file_id_from_message(message):
         if not message.video.thumbs:
             return
         file_id = message.video.thumbs[0].file_id
+
+    if message.video_note:
+        if not message.video_note.thumbs:
+            return
+        file_id = message.video_note.thumbs[0].file_id
     return file_id
 
 
@@ -53,6 +77,7 @@ async def get_file_id_from_message(message):
         | filters.sticker
         | filters.animation
         | filters.video
+        | filters.VIDEO_NOTE
     )
     & ~filters.private,
     group=8,
@@ -66,19 +91,20 @@ async def detect_nsfw(_, message):
     file_id = await get_file_id_from_message(message)
     if not file_id:
         return
-    file = await _.download_media(file_id)
+    with tempfile.NamedTemporaryFile(suffix=".media", delete=False) as temp:
+        file = temp.name
+    file = await _.download_media(file_id, file_name=file)
     try:
-        results = await arq.nsfw_scan(file=file)
-    except Exception:
+        result = await _scan(file)
+    except Exception as error:
+        await message.reply_text(f"NSFW scan failed: {error}")
         return
-    if not results.ok:
+    finally:
+        if file and os.path.exists(file):
+            os.remove(file)
+    if result.nsfw < NSFW_THRESHOLD:
         return
-    results = results.result
-    remove(file)
-    nsfw = results.is_nsfw
     if message.from_user.id in DRAGONS:
-        return
-    if not nsfw:
         return
     try:
         await message.delete()
@@ -89,11 +115,8 @@ async def detect_nsfw(_, message):
 **🔞 NSFW Image Detected & Deleted Successfully!**
 
 **✪ User:** {message.from_user.mention} [`{message.from_user.id}`]
-**✪ Safe:** `{results.neutral} %`
-**✪ Porn:** `{results.porn} %`
-**✪ Adult:** `{results.sexy} %`
-**✪ Hentai:** `{results.hentai} %`
-**✪ Drawings:** `{results.drawings} %`
+**✪ Safe:** `{result.sfw:.2%}`
+**✪ NSFW score:** `{result.nsfw:.2%}`
 """
     )
 
@@ -113,6 +136,7 @@ async def nsfw_scan_command(_, message):
         and not reply.sticker
         and not reply.animation
         and not reply.video
+        and not reply.video_note
     ):
         await message.reply_text(
             "Reply to an image/document/sticker/animation to scan it."
@@ -122,24 +146,20 @@ async def nsfw_scan_command(_, message):
     file_id = await get_file_id_from_message(reply)
     if not file_id:
         return await m.edit("Something wrong happened.")
-    file = await _.download_media(file_id)
+    with tempfile.NamedTemporaryFile(suffix=".media", delete=False) as temp:
+        file = temp.name
+    file = await _.download_media(file_id, file_name=file)
     try:
-        results = await arq.nsfw_scan(file=file)
-    except Exception:
-        return
-    remove(file)
-    if not results.ok:
-        return await m.edit(results.result)
-    results = results.result
+        result = await _scan(file)
+    except Exception as error:
+        return await m.edit(f"NSFW scan failed: {error}")
+    finally:
+        if file and os.path.exists(file):
+            os.remove(file)
     await m.edit(
-        f"""
-**➢ Neutral:** `{results.neutral} %`
-**➢ Porn:** `{results.porn} %`
-**➢ Hentai:** `{results.hentai} %`
-**➢ Sexy:** `{results.sexy} %`
-**➢ Drawings:** `{results.drawings} %`
-**➢ NSFW:** `{results.is_nsfw}`
-"""
+        f"**➢ Safe:** `{result.sfw:.2%}`\n"
+        f"**➢ NSFW:** `{result.nsfw:.2%}`\n"
+        f"**➢ Flagged:** `{result.nsfw >= NSFW_THRESHOLD}`"
     )
 
 
