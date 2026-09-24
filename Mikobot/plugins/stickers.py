@@ -5,8 +5,9 @@ import shutil
 import tempfile
 import textwrap
 
+import emoji
 from PIL import Image, ImageDraw, ImageFont
-from pyrogram import Client, emoji, enums, filters
+from pyrogram import Client, enums, filters
 from pyrogram.errors import BadRequest, PeerIdInvalid, StickersetInvalid
 from pyrogram.file_id import FileId
 from pyrogram.raw.functions.messages import GetStickerSet, SendMedia
@@ -36,9 +37,9 @@ from Mikobot.utils.localization import use_chat_lang
 
 def get_emoji_regex():
     e_list = [
-        getattr(emoji, e).encode("unicode-escape").decode("ASCII")
-        for e in dir(emoji)
-        if not e.startswith("_")
+        value.encode("unicode-escape").decode("ASCII")
+        for value in emoji.EMOJI_DATA
+        if value and not value.startswith("*")
     ]
     # to avoid re.error excluding char that start with '*'
     e_sort = sorted([x for x in e_list if not x.startswith("*")], reverse=True)
