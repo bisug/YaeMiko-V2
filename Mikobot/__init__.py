@@ -23,6 +23,27 @@ from telethon.sessions import MemorySession, StringSession
 
 # <=======================================================================================================>
 
+
+def _load_local_env():
+    env_file = os.path.join(os.path.dirname(__file__), "..", ".env")
+    try:
+        with open(env_file, encoding="utf-8") as file:
+            for line in file:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip("\\\"'")
+                if key and key not in os.environ:
+                    os.environ[key] = value
+    except FileNotFoundError:
+        pass
+
+
+_load_local_env()
+
+
 # <================================================= NECESSARY ======================================================>
 StartTime = time.time()
 
