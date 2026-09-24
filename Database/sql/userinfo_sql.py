@@ -62,7 +62,7 @@ INSERTION_LOCK = threading.RLock()
 
 
 def get_user_me_info(user_id):
-    userinfo = SESSION.query(UserInfo).get(user_id)
+    userinfo = SESSION.get(UserInfo, user_id)
     SESSION.close()
     if userinfo:
         return userinfo.info
@@ -71,7 +71,7 @@ def get_user_me_info(user_id):
 
 def set_user_me_info(user_id, info):
     with INSERTION_LOCK:
-        userinfo = SESSION.query(UserInfo).get(user_id)
+        userinfo = SESSION.get(UserInfo, user_id)
         if userinfo:
             userinfo.info = info
         else:
@@ -81,7 +81,7 @@ def set_user_me_info(user_id, info):
 
 
 def get_user_bio(user_id):
-    userbio = SESSION.query(UserBio).get(user_id)
+    userbio = SESSION.get(UserBio, user_id)
     SESSION.close()
     if userbio:
         return userbio.bio
@@ -90,7 +90,7 @@ def get_user_bio(user_id):
 
 def set_user_bio(user_id, bio):
     with INSERTION_LOCK:
-        userbio = SESSION.query(UserBio).get(user_id)
+        userbio = SESSION.get(UserBio, user_id)
         if userbio:
             userbio.bio = bio
         else:

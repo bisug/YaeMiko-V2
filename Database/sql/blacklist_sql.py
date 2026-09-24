@@ -92,7 +92,7 @@ def add_to_blacklist(chat_id, trigger):
 
 def rm_from_blacklist(chat_id, trigger):
     with BLACKLIST_FILTER_INSERTION_LOCK:
-        blacklist_filt = SESSION.query(BlackListFilters).get((str(chat_id), trigger))
+        blacklist_filt = SESSION.get(BlackListFilters, (str(chat_id), trigger))
         if blacklist_filt:
             if trigger in CHAT_BLACKLISTS.get(str(chat_id), set()):  # sanity check
                 CHAT_BLACKLISTS.get(str(chat_id), set()).remove(trigger)
@@ -146,7 +146,7 @@ def set_blacklist_strength(chat_id, blacklist_type, value):
     # 7 = tmute
     with BLACKLIST_SETTINGS_INSERTION_LOCK:
         global CHAT_SETTINGS_BLACKLISTS
-        curr_setting = SESSION.query(BlacklistSettings).get(str(chat_id))
+        curr_setting = SESSION.get(BlacklistSettings, str(chat_id))
         if not curr_setting:
             curr_setting = BlacklistSettings(
                 chat_id,

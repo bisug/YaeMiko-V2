@@ -21,7 +21,7 @@ def add_nightmode(chat_id: str):
 
 
 def rmnightmode(chat_id: str):
-    rmnightmoddy = SESSION.query(Nightmode).get(str(chat_id))
+    rmnightmoddy = SESSION.get(Nightmode, str(chat_id))
     if rmnightmoddy:
         SESSION.delete(rmnightmoddy)
         SESSION.commit()
@@ -35,7 +35,7 @@ def get_all_chat_id():
 
 def is_nightmode_indb(chat_id: str):
     try:
-        s__ = SESSION.query(Nightmode).get(str(chat_id))
+        s__ = SESSION.get(Nightmode, str(chat_id))
         if s__:
             return str(s__.chat_id)
     finally:

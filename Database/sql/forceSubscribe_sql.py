@@ -30,7 +30,7 @@ def fs_settings(chat_id):
 
 
 def add_channel(chat_id, channel):
-    adder = SESSION.query(forceSubscribe).get(chat_id)
+    adder = SESSION.get(forceSubscribe, chat_id)
     if adder:
         adder.channel = channel
     else:
@@ -40,7 +40,7 @@ def add_channel(chat_id, channel):
 
 
 def disapprove(chat_id):
-    rem = SESSION.query(forceSubscribe).get(chat_id)
+    rem = SESSION.get(forceSubscribe, chat_id)
     if rem:
         SESSION.delete(rem)
         SESSION.commit()

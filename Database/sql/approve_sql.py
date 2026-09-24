@@ -56,14 +56,14 @@ def approve(chat_id, user_id):
 
 def is_approved(chat_id, user_id):
     try:
-        return SESSION.query(Approvals).get((str(chat_id), user_id))
+        return SESSION.get(Approvals, (str(chat_id), user_id))
     finally:
         SESSION.close()
 
 
 def disapprove(chat_id, user_id):
     with APPROVE_INSERTION_LOCK:
-        disapprove_user = SESSION.query(Approvals).get((str(chat_id), user_id))
+        disapprove_user = SESSION.get(Approvals, (str(chat_id), user_id))
         if disapprove_user:
             SESSION.delete(disapprove_user)
             SESSION.commit()

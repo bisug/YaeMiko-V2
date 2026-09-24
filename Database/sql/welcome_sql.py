@@ -172,7 +172,7 @@ RAID_LOCK = threading.RLock()
 
 def welcome_mutes(chat_id):
     try:
-        welcomemutes = SESSION.query(WelcomeMute).get(str(chat_id))
+        welcomemutes = SESSION.get(WelcomeMute, str(chat_id))
         if welcomemutes:
             return welcomemutes.welcomemutes
         return False
@@ -182,7 +182,7 @@ def welcome_mutes(chat_id):
 
 def set_welcome_mutes(chat_id, welcomemutes):
     with WM_LOCK:
-        prev = SESSION.query(WelcomeMute).get((str(chat_id)))
+        prev = SESSION.get(WelcomeMute, (str(chat_id)))
         if prev:
             SESSION.delete(prev)
         welcome_m = WelcomeMute(str(chat_id), welcomemutes)
@@ -192,7 +192,7 @@ def set_welcome_mutes(chat_id, welcomemutes):
 
 def set_human_checks(user_id, chat_id):
     with INSERTION_LOCK:
-        human_check = SESSION.query(WelcomeMuteUsers).get((user_id, str(chat_id)))
+        human_check = SESSION.get(WelcomeMuteUsers, (user_id, str(chat_id)))
         if not human_check:
             human_check = WelcomeMuteUsers(user_id, str(chat_id), True)
 
@@ -207,7 +207,7 @@ def set_human_checks(user_id, chat_id):
 
 def get_human_checks(user_id, chat_id):
     try:
-        human_check = SESSION.query(WelcomeMuteUsers).get((user_id, str(chat_id)))
+        human_check = SESSION.get(WelcomeMuteUsers, (user_id, str(chat_id)))
         if not human_check:
             return None
         human_check = human_check.human_check
@@ -217,7 +217,7 @@ def get_human_checks(user_id, chat_id):
 
 
 def get_welc_mutes_pref(chat_id):
-    welcomemutes = SESSION.query(WelcomeMute).get(str(chat_id))
+    welcomemutes = SESSION.get(WelcomeMute, str(chat_id))
     SESSION.close()
 
     if welcomemutes:
@@ -227,7 +227,7 @@ def get_welc_mutes_pref(chat_id):
 
 
 def get_welc_pref(chat_id):
-    welc = SESSION.query(Welcome).get(str(chat_id))
+    welc = SESSION.get(Welcome, str(chat_id))
     SESSION.close()
     if welc:
         return (
@@ -243,7 +243,7 @@ def get_welc_pref(chat_id):
 
 
 def get_gdbye_pref(chat_id):
-    welc = SESSION.query(Welcome).get(str(chat_id))
+    welc = SESSION.get(Welcome, str(chat_id))
     SESSION.close()
     if welc:
         return welc.should_goodbye, welc.custom_leave, welc.leave_type
@@ -254,7 +254,7 @@ def get_gdbye_pref(chat_id):
 
 def set_clean_welcome(chat_id, clean_welcome):
     with INSERTION_LOCK:
-        curr = SESSION.query(Welcome).get(str(chat_id))
+        curr = SESSION.get(Welcome, str(chat_id))
         if not curr:
             curr = Welcome(str(chat_id))
 
@@ -265,7 +265,7 @@ def set_clean_welcome(chat_id, clean_welcome):
 
 
 def get_clean_pref(chat_id):
-    welc = SESSION.query(Welcome).get(str(chat_id))
+    welc = SESSION.get(Welcome, str(chat_id))
     SESSION.close()
 
     if welc:
@@ -276,7 +276,7 @@ def get_clean_pref(chat_id):
 
 def set_welc_preference(chat_id, should_welcome):
     with INSERTION_LOCK:
-        curr = SESSION.query(Welcome).get(str(chat_id))
+        curr = SESSION.get(Welcome, str(chat_id))
         if not curr:
             curr = Welcome(str(chat_id), should_welcome=should_welcome)
         else:
@@ -288,7 +288,7 @@ def set_welc_preference(chat_id, should_welcome):
 
 def set_gdbye_preference(chat_id, should_goodbye):
     with INSERTION_LOCK:
-        curr = SESSION.query(Welcome).get(str(chat_id))
+        curr = SESSION.get(Welcome, str(chat_id))
         if not curr:
             curr = Welcome(str(chat_id), should_goodbye=should_goodbye)
         else:
@@ -305,7 +305,7 @@ def set_custom_welcome(
         buttons = []
 
     with INSERTION_LOCK:
-        welcome_settings = SESSION.query(Welcome).get(str(chat_id))
+        welcome_settings = SESSION.get(Welcome, str(chat_id))
         if not welcome_settings:
             welcome_settings = Welcome(str(chat_id), True)
 
@@ -337,7 +337,7 @@ def set_custom_welcome(
 
 
 def get_custom_welcome(chat_id):
-    welcome_settings = SESSION.query(Welcome).get(str(chat_id))
+    welcome_settings = SESSION.get(Welcome, str(chat_id))
     ret = DEFAULT_WELCOME
     if welcome_settings and welcome_settings.custom_welcome:
         ret = welcome_settings.custom_welcome
@@ -351,7 +351,7 @@ def set_custom_gdbye(chat_id, custom_goodbye, goodbye_type, buttons=None):
         buttons = []
 
     with INSERTION_LOCK:
-        welcome_settings = SESSION.query(Welcome).get(str(chat_id))
+        welcome_settings = SESSION.get(Welcome, str(chat_id))
         if not welcome_settings:
             welcome_settings = Welcome(str(chat_id), True)
 
@@ -382,7 +382,7 @@ def set_custom_gdbye(chat_id, custom_goodbye, goodbye_type, buttons=None):
 
 
 def get_custom_gdbye(chat_id):
-    welcome_settings = SESSION.query(Welcome).get(str(chat_id))
+    welcome_settings = SESSION.get(Welcome, str(chat_id))
     ret = DEFAULT_GOODBYE
     if welcome_settings and welcome_settings.custom_leave:
         ret = welcome_settings.custom_leave
@@ -417,7 +417,7 @@ def get_gdbye_buttons(chat_id):
 
 def clean_service(chat_id: Union[str, int]) -> bool:
     try:
-        chat_setting = SESSION.query(CleanServiceSetting).get(str(chat_id))
+        chat_setting = SESSION.get(CleanServiceSetting, str(chat_id))
         if chat_setting:
             return chat_setting.clean_service
         return False
@@ -427,7 +427,7 @@ def clean_service(chat_id: Union[str, int]) -> bool:
 
 def set_clean_service(chat_id: Union[int, str], setting: bool):
     with CS_LOCK:
-        chat_setting = SESSION.query(CleanServiceSetting).get(str(chat_id))
+        chat_setting = SESSION.get(CleanServiceSetting, str(chat_id))
         if not chat_setting:
             chat_setting = CleanServiceSetting(chat_id)
 
@@ -438,7 +438,7 @@ def set_clean_service(chat_id: Union[int, str], setting: bool):
 
 def migrate_chat(old_chat_id, new_chat_id):
     with INSERTION_LOCK:
-        chat = SESSION.query(Welcome).get(str(old_chat_id))
+        chat = SESSION.get(Welcome, str(old_chat_id))
         if chat:
             chat.chat_id = str(new_chat_id)
 
@@ -465,7 +465,7 @@ def migrate_chat(old_chat_id, new_chat_id):
 
 def getRaidStatus(chat_id):
     try:
-        if stat := SESSION.query(RaidMode).get(str(chat_id)):
+        if stat := SESSION.get(RaidMode, str(chat_id)):
             return stat.status, stat.time, stat.acttime
         return False, 21600, 3600  # default
     finally:
@@ -474,7 +474,7 @@ def getRaidStatus(chat_id):
 
 def setRaidStatus(chat_id, status, time=21600, acttime=3600):
     with RAID_LOCK:
-        if prevObj := SESSION.query(RaidMode).get(str(chat_id)):
+        if prevObj := SESSION.get(RaidMode, str(chat_id)):
             SESSION.delete(prevObj)
         newObj = RaidMode(str(chat_id), status, time, acttime)
         SESSION.add(newObj)
@@ -484,7 +484,7 @@ def setRaidStatus(chat_id, status, time=21600, acttime=3600):
 def toggleRaidStatus(chat_id):
     newObj = True
     with RAID_LOCK:
-        prevObj = SESSION.query(RaidMode).get(str(chat_id))
+        prevObj = SESSION.get(RaidMode, str(chat_id))
         if prevObj:
             newObj = not prevObj.status
         stat = RaidMode(

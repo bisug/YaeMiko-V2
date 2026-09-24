@@ -252,7 +252,7 @@ def del_fed(fed_id):
         FEDERATION_BYNAME.pop(fed_name)
         if FEDERATION_CHATS_BYID.get(fed_id):
             for x in FEDERATION_CHATS_BYID[fed_id]:
-                delchats = SESSION.query(ChatF).get(str(x))
+                delchats = SESSION.get(ChatF, str(x))
                 if delchats:
                     SESSION.delete(delchats)
                     SESSION.commit()
@@ -262,7 +262,7 @@ def del_fed(fed_id):
         getall = FEDERATION_BANNED_USERID.get(fed_id)
         if getall:
             for x in getall:
-                banlist = SESSION.query(BansF).get((fed_id, str(x)))
+                banlist = SESSION.get(BansF, (fed_id, str(x)))
                 if banlist:
                     SESSION.delete(banlist)
                     SESSION.commit()
@@ -274,7 +274,7 @@ def del_fed(fed_id):
         getall = MYFEDS_SUBSCRIBER.get(fed_id)
         if getall:
             for x in getall:
-                getsubs = SESSION.query(FedSubs).get((fed_id, str(x)))
+                getsubs = SESSION.get(FedSubs, (fed_id, str(x)))
                 if getsubs:
                     SESSION.delete(getsubs)
                     SESSION.commit()
@@ -283,7 +283,7 @@ def del_fed(fed_id):
         if MYFEDS_SUBSCRIBER.get(fed_id):
             MYFEDS_SUBSCRIBER.pop(fed_id)
         # Delete from database
-        curr = SESSION.query(Federations).get(fed_id)
+        curr = SESSION.get(Federations, fed_id)
         if curr:
             SESSION.delete(curr)
             SESSION.commit()
@@ -293,7 +293,7 @@ def del_fed(fed_id):
 def rename_fed(fed_id, owner_id, newname):
     with FEDS_LOCK:
         global FEDERATION_BYFEDID, FEDERATION_BYOWNER, FEDERATION_BYNAME
-        fed = SESSION.query(Federations).get(fed_id)
+        fed = SESSION.get(Federations, fed_id)
         if not fed:
             return False
         fed.fed_name = newname
@@ -680,7 +680,7 @@ def user_feds_report(user_id: int) -> bool:
 def set_feds_setting(user_id: int, setting: bool):
     with FEDS_SETTINGS_LOCK:
         global FEDERATION_NOTIFICATION
-        user_setting = SESSION.query(FedsUserSettings).get(user_id)
+        user_setting = SESSION.get(FedsUserSettings, user_id)
         if not user_setting:
             user_setting = FedsUserSettings(user_id)
 
@@ -764,7 +764,7 @@ def subs_fed(fed_id, my_fed):
 
 def unsubs_fed(fed_id, my_fed):
     with FEDS_SUBSCRIBER_LOCK:
-        getsubs = SESSION.query(FedSubs).get((fed_id, my_fed))
+        getsubs = SESSION.get(FedSubs, (fed_id, my_fed))
         if getsubs:
             if my_fed in FEDS_SUBSCRIBER.get(fed_id, set()):  # sanity check
                 FEDS_SUBSCRIBER.get(fed_id, set()).remove(my_fed)
@@ -912,7 +912,7 @@ def __load_feds_subscriber():
             try:
                 MYFEDS_SUBSCRIBER[x.fed_subs] += [x.fed_id]
             except KeyError:
-                getsubs = SESSION.query(FedSubs).get((x.fed_id, x.fed_subs))
+                getsubs = SESSION.get(FedSubs, (x.fed_id, x.fed_subs))
                 if getsubs:
                     SESSION.delete(getsubs)
                     SESSION.commit()

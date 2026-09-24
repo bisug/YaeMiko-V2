@@ -108,7 +108,7 @@ RESTR_LOCK = threading.RLock()
 
 
 def init_permissions(chat_id, reset=False):
-    curr_perm = SESSION.query(Permissions).get(str(chat_id))
+    curr_perm = SESSION.get(Permissions, str(chat_id))
     if reset:
         SESSION.delete(curr_perm)
         SESSION.flush()
@@ -119,7 +119,7 @@ def init_permissions(chat_id, reset=False):
 
 
 def init_restrictions(chat_id, reset=False):
-    curr_restr = SESSION.query(Restrictions).get(str(chat_id))
+    curr_restr = SESSION.get(Restrictions, str(chat_id))
     if reset:
         SESSION.delete(curr_restr)
         SESSION.flush()
@@ -131,7 +131,7 @@ def init_restrictions(chat_id, reset=False):
 
 def update_lock(chat_id, lock_type, locked):
     with PERM_LOCK:
-        curr_perm = SESSION.query(Permissions).get(str(chat_id))
+        curr_perm = SESSION.get(Permissions, str(chat_id))
         if not curr_perm:
             curr_perm = init_permissions(chat_id)
 
@@ -176,7 +176,7 @@ def update_lock(chat_id, lock_type, locked):
 
 def update_restriction(chat_id, restr_type, locked):
     with RESTR_LOCK:
-        curr_restr = SESSION.query(Restrictions).get(str(chat_id))
+        curr_restr = SESSION.get(Restrictions, str(chat_id))
         if not curr_restr:
             curr_restr = init_restrictions(chat_id)
 
@@ -198,7 +198,7 @@ def update_restriction(chat_id, restr_type, locked):
 
 
 def is_locked(chat_id, lock_type):
-    curr_perm = SESSION.query(Permissions).get(str(chat_id))
+    curr_perm = SESSION.get(Permissions, str(chat_id))
     SESSION.close()
 
     if not curr_perm:
@@ -241,7 +241,7 @@ def is_locked(chat_id, lock_type):
 
 
 def is_restr_locked(chat_id, lock_type):
-    curr_restr = SESSION.query(Restrictions).get(str(chat_id))
+    curr_restr = SESSION.get(Restrictions, str(chat_id))
     SESSION.close()
 
     if not curr_restr:
@@ -266,27 +266,27 @@ def is_restr_locked(chat_id, lock_type):
 
 def get_locks(chat_id):
     try:
-        return SESSION.query(Permissions).get(str(chat_id))
+        return SESSION.get(Permissions, str(chat_id))
     finally:
         SESSION.close()
 
 
 def get_restr(chat_id):
     try:
-        return SESSION.query(Restrictions).get(str(chat_id))
+        return SESSION.get(Restrictions, str(chat_id))
     finally:
         SESSION.close()
 
 
 def migrate_chat(old_chat_id, new_chat_id):
     with PERM_LOCK:
-        perms = SESSION.query(Permissions).get(str(old_chat_id))
+        perms = SESSION.get(Permissions, str(old_chat_id))
         if perms:
             perms.chat_id = str(new_chat_id)
         SESSION.commit()
 
     with RESTR_LOCK:
-        rest = SESSION.query(Restrictions).get(str(old_chat_id))
+        rest = SESSION.get(Restrictions, str(old_chat_id))
         if rest:
             rest.chat_id = str(new_chat_id)
         SESSION.commit()

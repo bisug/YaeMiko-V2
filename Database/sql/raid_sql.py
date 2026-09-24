@@ -43,7 +43,7 @@ INSERTION_LOCK = threading.RLock()
 
 def is_raid(chat_id):
     try:
-        chat = SESSION.query(RaidChats).get(str(chat_id))
+        chat = SESSION.get(RaidChats, str(chat_id))
         return bool(chat)
     finally:
         SESSION.close()
@@ -51,7 +51,7 @@ def is_raid(chat_id):
 
 def set_raid(chat_id):
     with INSERTION_LOCK:
-        raidchat = SESSION.query(RaidChats).get(str(chat_id))
+        raidchat = SESSION.get(RaidChats, str(chat_id))
         if not raidchat:
             raidchat = RaidChats(str(chat_id))
         SESSION.add(raidchat)
@@ -60,7 +60,7 @@ def set_raid(chat_id):
 
 def rem_raid(chat_id):
     with INSERTION_LOCK:
-        raidchat = SESSION.query(RaidChats).get(str(chat_id))
+        raidchat = SESSION.get(RaidChats, str(chat_id))
         if raidchat:
             SESSION.delete(raidchat)
         SESSION.commit()

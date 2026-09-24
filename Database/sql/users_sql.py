@@ -109,7 +109,7 @@ def ensure_bot_in_db():
 
 def update_user(user_id, username, chat_id=None, chat_name=None):
     with INSERTION_LOCK:
-        user = SESSION.query(Users).get(user_id)
+        user = SESSION.get(Users, user_id)
         if not user:
             user = Users(user_id, username)
             SESSION.add(user)
@@ -121,7 +121,7 @@ def update_user(user_id, username, chat_id=None, chat_name=None):
             SESSION.commit()
             return
 
-        chat = SESSION.query(Chats).get(str(chat_id))
+        chat = SESSION.get(Chats, str(chat_id))
         if not chat:
             chat = Chats(str(chat_id), chat_name)
             SESSION.add(chat)
@@ -155,7 +155,7 @@ def get_userid_by_name(username):
 
 def get_name_by_userid(user_id):
     try:
-        return SESSION.query(Users).get(Users.user_id == int(user_id)).first()
+        return SESSION.get(Users, Users.user_id == int(user_id)).first()
     finally:
         SESSION.close()
 
@@ -216,7 +216,7 @@ def num_users():
 
 def migrate_chat(old_chat_id, new_chat_id):
     with INSERTION_LOCK:
-        chat = SESSION.query(Chats).get(str(old_chat_id))
+        chat = SESSION.get(Chats, str(old_chat_id))
         if chat:
             chat.chat_id = str(new_chat_id)
         SESSION.commit()
@@ -236,7 +236,7 @@ ensure_bot_in_db()
 
 def del_user(user_id):
     with INSERTION_LOCK:
-        curr = SESSION.query(Users).get(user_id)
+        curr = SESSION.get(Users, user_id)
         if curr:
             SESSION.delete(curr)
             SESSION.commit()
@@ -250,7 +250,7 @@ def del_user(user_id):
 
 def rem_chat(chat_id):
     with INSERTION_LOCK:
-        chat = SESSION.query(Chats).get(str(chat_id))
+        chat = SESSION.get(Chats, str(chat_id))
         if chat:
             SESSION.delete(chat)
             SESSION.commit()

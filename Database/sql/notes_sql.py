@@ -81,7 +81,7 @@ def add_note_to_db(chat_id, note_name, note_data, msgtype, buttons=None, file=No
         buttons = []
 
     with NOTES_INSERTION_LOCK:
-        prev = SESSION.query(Notes).get((str(chat_id), note_name))
+        prev = SESSION.get(Notes, (str(chat_id), note_name))
         if prev:
             with BUTTONS_INSERTION_LOCK:
                 prev_buttons = (

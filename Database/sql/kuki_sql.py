@@ -19,7 +19,7 @@ INSERTION_LOCK = threading.RLock()
 
 def is_kuki(chat_id):
     try:
-        chat = SESSION.query(KukiChats).get(str(chat_id))
+        chat = SESSION.get(KukiChats, str(chat_id))
         return bool(chat)
     finally:
         SESSION.close()
@@ -27,7 +27,7 @@ def is_kuki(chat_id):
 
 def set_kuki(chat_id):
     with INSERTION_LOCK:
-        kukichat = SESSION.query(KukiChats).get(str(chat_id))
+        kukichat = SESSION.get(KukiChats, str(chat_id))
         if not kukichat:
             kukichat = KukiChats(str(chat_id))
         SESSION.add(kukichat)
@@ -36,7 +36,7 @@ def set_kuki(chat_id):
 
 def rem_kuki(chat_id):
     with INSERTION_LOCK:
-        kukichat = SESSION.query(KukiChats).get(str(chat_id))
+        kukichat = SESSION.get(KukiChats, str(chat_id))
         if kukichat:
             SESSION.delete(kukichat)
         SESSION.commit()

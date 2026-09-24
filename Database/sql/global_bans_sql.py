@@ -47,7 +47,7 @@ GBANSTAT_LIST = set()
 
 def gban_user(user_id, name, reason=None):
     with GBANNED_USERS_LOCK:
-        user = SESSION.query(GloballyBannedUsers).get(user_id)
+        user = SESSION.get(GloballyBannedUsers, user_id)
         if not user:
             user = GloballyBannedUsers(user_id, name, reason)
         else:
@@ -61,7 +61,7 @@ def gban_user(user_id, name, reason=None):
 
 def update_gban_reason(user_id, name, reason=None):
     with GBANNED_USERS_LOCK:
-        user = SESSION.query(GloballyBannedUsers).get(user_id)
+        user = SESSION.get(GloballyBannedUsers, user_id)
         if not user:
             return None
         old_reason = user.reason
@@ -75,7 +75,7 @@ def update_gban_reason(user_id, name, reason=None):
 
 def ungban_user(user_id):
     with GBANNED_USERS_LOCK:
-        user = SESSION.query(GloballyBannedUsers).get(user_id)
+        user = SESSION.get(GloballyBannedUsers, user_id)
         if user:
             SESSION.delete(user)
 
@@ -89,7 +89,7 @@ def is_user_gbanned(user_id):
 
 def get_gbanned_user(user_id):
     try:
-        return SESSION.query(GloballyBannedUsers).get(user_id)
+        return SESSION.get(GloballyBannedUsers, user_id)
     finally:
         SESSION.close()
 
@@ -103,7 +103,7 @@ def get_gban_list():
 
 def enable_gbans(chat_id):
     with GBAN_SETTING_LOCK:
-        chat = SESSION.query(GbanSettings).get(str(chat_id))
+        chat = SESSION.get(GbanSettings, str(chat_id))
         if not chat:
             chat = GbanSettings(chat_id, True)
 
@@ -116,7 +116,7 @@ def enable_gbans(chat_id):
 
 def disable_gbans(chat_id):
     with GBAN_SETTING_LOCK:
-        chat = SESSION.query(GbanSettings).get(str(chat_id))
+        chat = SESSION.get(GbanSettings, str(chat_id))
         if not chat:
             chat = GbanSettings(chat_id, False)
 
@@ -154,7 +154,7 @@ def __load_gban_stat_list():
 
 def migrate_chat(old_chat_id, new_chat_id):
     with GBAN_SETTING_LOCK:
-        chat = SESSION.query(GbanSettings).get(str(old_chat_id))
+        chat = SESSION.get(GbanSettings, str(old_chat_id))
         if chat:
             chat.chat_id = new_chat_id
             SESSION.add(chat)

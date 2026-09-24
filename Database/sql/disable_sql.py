@@ -50,7 +50,7 @@ DISABLED = {}
 
 def disable_command(chat_id, disable):
     with DISABLE_INSERTION_LOCK:
-        disabled = SESSION.query(Disable).get((str(chat_id), disable))
+        disabled = SESSION.get(Disable, (str(chat_id), disable))
 
         if not disabled:
             DISABLED.setdefault(str(chat_id), set()).add(disable)
@@ -66,7 +66,7 @@ def disable_command(chat_id, disable):
 
 def enable_command(chat_id, enable):
     with DISABLE_INSERTION_LOCK:
-        disabled = SESSION.query(Disable).get((str(chat_id), enable))
+        disabled = SESSION.get(Disable, (str(chat_id), enable))
 
         if disabled:
             if enable in DISABLED.get(str(chat_id)):  # sanity check

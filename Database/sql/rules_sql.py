@@ -24,7 +24,7 @@ INSERTION_LOCK = threading.RLock()
 
 def set_rules(chat_id, rules_text):
     with INSERTION_LOCK:
-        rules = SESSION.query(Rules).get(str(chat_id))
+        rules = SESSION.get(Rules, str(chat_id))
         if not rules:
             rules = Rules(str(chat_id))
         rules.rules = rules_text
@@ -34,7 +34,7 @@ def set_rules(chat_id, rules_text):
 
 
 def get_rules(chat_id):
-    rules = SESSION.query(Rules).get(str(chat_id))
+    rules = SESSION.get(Rules, str(chat_id))
     ret = ""
     if rules:
         ret = rules.rules
@@ -52,7 +52,7 @@ def num_chats():
 
 def migrate_chat(old_chat_id, new_chat_id):
     with INSERTION_LOCK:
-        chat = SESSION.query(Rules).get(str(old_chat_id))
+        chat = SESSION.get(Rules, str(old_chat_id))
         if chat:
             chat.chat_id = str(new_chat_id)
         SESSION.commit()

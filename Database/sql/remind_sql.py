@@ -59,7 +59,7 @@ REMINDERS = {}
 
 def set_remind(chat_id, time_sec, remind_message, user_id):
     with INSERTION_LOCK:
-        reminds = SESSION.query(Reminds).get((str(chat_id), time_sec))
+        reminds = SESSION.get(Reminds, (str(chat_id), time_sec))
         if not reminds:
             reminds = Reminds(chat_id, time_sec)
         reminds.remind_message = remind_message
@@ -75,7 +75,7 @@ def set_remind(chat_id, time_sec, remind_message, user_id):
 
 def rem_remind(chat_id, time_sec, remind_message, user_id):
     with INSERTION_LOCK:
-        reminds = SESSION.query(Reminds).get((str(chat_id), time_sec))
+        reminds = SESSION.get(Reminds, (str(chat_id), time_sec))
         if reminds:
             SESSION.delete(reminds)
             SESSION.commit()

@@ -103,7 +103,7 @@ WARN_FILTERS = {}
 
 def warn_user(user_id, chat_id, reason=None):
     with WARN_INSERTION_LOCK:
-        warned_user = SESSION.query(Warns).get((user_id, str(chat_id)))
+        warned_user = SESSION.get(Warns, (user_id, str(chat_id)))
         if not warned_user:
             warned_user = Warns(user_id, str(chat_id))
 
@@ -125,7 +125,7 @@ def warn_user(user_id, chat_id, reason=None):
 def remove_warn(user_id, chat_id):
     with WARN_INSERTION_LOCK:
         removed = False
-        warned_user = SESSION.query(Warns).get((user_id, str(chat_id)))
+        warned_user = SESSION.get(Warns, (user_id, str(chat_id)))
 
         if warned_user and warned_user.num_warns > 0:
             warned_user.num_warns -= 1
@@ -140,7 +140,7 @@ def remove_warn(user_id, chat_id):
 
 def reset_warns(user_id, chat_id):
     with WARN_INSERTION_LOCK:
-        warned_user = SESSION.query(Warns).get((user_id, str(chat_id)))
+        warned_user = SESSION.get(Warns, (user_id, str(chat_id)))
         if warned_user:
             warned_user.num_warns = 0
             warned_user.reasons = []
@@ -152,7 +152,7 @@ def reset_warns(user_id, chat_id):
 
 def get_warns(user_id, chat_id):
     try:
-        user = SESSION.query(Warns).get((user_id, str(chat_id)))
+        user = SESSION.get(Warns, (user_id, str(chat_id)))
         if not user:
             return None
         reasons = user.reasons
@@ -178,7 +178,7 @@ def add_warn_filter(chat_id, keyword, reply):
 
 def remove_warn_filter(chat_id, keyword):
     with WARN_FILTER_INSERTION_LOCK:
-        warn_filt = SESSION.query(WarnFilters).get((str(chat_id), keyword))
+        warn_filt = SESSION.get(WarnFilters, (str(chat_id), keyword))
         if warn_filt:
             if keyword in WARN_FILTERS.get(str(chat_id), []):  # sanity check
                 WARN_FILTERS.get(str(chat_id), []).remove(keyword)
@@ -205,14 +205,14 @@ def get_chat_warn_filters(chat_id):
 
 def get_warn_filter(chat_id, keyword):
     try:
-        return SESSION.query(WarnFilters).get((str(chat_id), keyword))
+        return SESSION.get(WarnFilters, (str(chat_id), keyword))
     finally:
         SESSION.close()
 
 
 def set_warn_limit(chat_id, warn_limit):
     with WARN_SETTINGS_LOCK:
-        curr_setting = SESSION.query(WarnSettings).get(str(chat_id))
+        curr_setting = SESSION.get(WarnSettings, str(chat_id))
         if not curr_setting:
             curr_setting = WarnSettings(chat_id, warn_limit=warn_limit)
 
@@ -224,7 +224,7 @@ def set_warn_limit(chat_id, warn_limit):
 
 def set_warn_strength(chat_id, soft_warn):
     with WARN_SETTINGS_LOCK:
-        curr_setting = SESSION.query(WarnSettings).get(str(chat_id))
+        curr_setting = SESSION.get(WarnSettings, str(chat_id))
         if not curr_setting:
             curr_setting = WarnSettings(chat_id, soft_warn=soft_warn)
 
@@ -236,7 +236,7 @@ def set_warn_strength(chat_id, soft_warn):
 
 def get_warn_setting(chat_id):
     try:
-        setting = SESSION.query(WarnSettings).get(str(chat_id))
+        setting = SESSION.get(WarnSettings, str(chat_id))
         if setting:
             return setting.warn_limit, setting.soft_warn
         return 3, False

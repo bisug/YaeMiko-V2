@@ -50,7 +50,7 @@ ANTICHANNEL_SETTING_LOCK = threading.RLock()
 
 def enable_antichannel(chat_id: int):
     with ANTICHANNEL_SETTING_LOCK:
-        chat = SESSION.query(AntiChannelSettings).get(str(chat_id))
+        chat = SESSION.get(AntiChannelSettings, str(chat_id))
         if not chat:
             chat = AntiChannelSettings(str(chat_id), True)
 
@@ -61,7 +61,7 @@ def enable_antichannel(chat_id: int):
 
 def disable_antichannel(chat_id: int):
     with ANTICHANNEL_SETTING_LOCK:
-        chat = SESSION.query(AntiChannelSettings).get(str(chat_id))
+        chat = SESSION.get(AntiChannelSettings, str(chat_id))
         if not chat:
             chat = AntiChannelSettings(str(chat_id), False)
 
@@ -72,7 +72,7 @@ def disable_antichannel(chat_id: int):
 
 def antichannel_status(chat_id: int) -> bool:
     with ANTICHANNEL_SETTING_LOCK:
-        d = SESSION.query(AntiChannelSettings).get(str(chat_id))
+        d = SESSION.get(AntiChannelSettings, str(chat_id))
         if not d:
             return False
         return d.setting
@@ -80,7 +80,7 @@ def antichannel_status(chat_id: int) -> bool:
 
 def migrate_chat(old_chat_id, new_chat_id):
     with ANTICHANNEL_SETTING_LOCK:
-        chat = SESSION.query(AntiChannelSettings).get(str(old_chat_id))
+        chat = SESSION.get(AntiChannelSettings, str(old_chat_id))
         if chat:
             chat.chat_id = new_chat_id
             SESSION.add(chat)

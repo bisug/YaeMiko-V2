@@ -47,7 +47,7 @@ BLACKLIST_USERS = set()
 
 def blacklist_user(user_id, reason=None):
     with BLACKLIST_LOCK:
-        user = SESSION.query(BlacklistUsers).get(str(user_id))
+        user = SESSION.get(BlacklistUsers, str(user_id))
         if not user:
             user = BlacklistUsers(str(user_id), reason)
         else:
@@ -60,7 +60,7 @@ def blacklist_user(user_id, reason=None):
 
 def unblacklist_user(user_id):
     with BLACKLIST_LOCK:
-        user = SESSION.query(BlacklistUsers).get(str(user_id))
+        user = SESSION.get(BlacklistUsers, str(user_id))
         if user:
             SESSION.delete(user)
 
@@ -69,7 +69,7 @@ def unblacklist_user(user_id):
 
 
 def get_reason(user_id):
-    user = SESSION.query(BlacklistUsers).get(str(user_id))
+    user = SESSION.get(BlacklistUsers, str(user_id))
     rep = user.reason if user else ""
     SESSION.close()
     return rep
