@@ -1,3 +1,24 @@
+# Test and AI-generated files
+tests/
+test/
+spec/
+specs/
+test_*.py
+*_test.py
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+.ai/
+.aicodex/
+.claude/
+.cursor/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+*.prompt.md
+*.prompt.txt
+
 # Session files , logs
 Mikobot/*.session
 Mikobot/*.session-journal
