@@ -21,9 +21,6 @@ import telegram.ext as tg
 from pyrogram import Client, errors
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
-from telegram.ext import Application, ApplicationBuilder
-from telethon import TelegramClient, events
-from telethon.sessions import MemorySession, StringSession
 
 # <=======================================================================================================>
 
@@ -86,7 +83,7 @@ def _configure_logging():
         handlers=handlers,
         force=True,
     )
-    for name in ("apscheduler", "telethon", "pyrogram", "pyrate_limiter"):
+    for name in ("apscheduler", "pyrogram", "pyrate_limiter"):
         logging.getLogger(name).setLevel(logging.ERROR)
     # HTTPX logs complete Telegram API URLs at INFO, including the bot token.
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -283,9 +280,8 @@ loop.run_until_complete(
 # <=======================================================================================================>
 
 # <=============================================== CLIENT SETUP ========================================================>
-# Create the Mikobot and TelegramClient instances
+# Create the Kurigram client instance
 app = Client("Mikobot", api_id=API_ID, api_hash=API_HASH, bot_token=TOKEN)
-tbot = TelegramClient("Yaebot", API_ID, API_HASH)
 # <=======================================================================================================>
 
 # <=============================================== GETTING BOT INFO ========================================================>

@@ -5,10 +5,11 @@
 
 # <============================================== IMPORTS =========================================================>
 import nekos
-from telethon import events
 
 from Database.mongodb.toggle_mongo import is_nekomode_on, nekomode_off, nekomode_on
-from Mikobot import tbot
+from pyrogram import filters
+
+from Mikobot import app
 from Mikobot.state import state  # Import the state function
 
 # <=======================================================================================================>
@@ -51,9 +52,9 @@ allowed_commands = [
 
 
 # <================================================ FUNCTION =======================================================>
-@tbot.on(events.NewMessage(pattern="/wallpaper"))
-async def wallpaper(event):
-    chat_id = event.chat_id
+@app.on_message(filters.regex(r"^/wallpaper(?:@\S+)?$"), group=1)
+async def wallpaper(_, event):
+    chat_id = event.chat.id
     nekomode_status = await is_nekomode_on(chat_id)
     if nekomode_status:
         target = "wallpaper"
@@ -63,26 +64,26 @@ async def wallpaper(event):
         await event.reply(file=img_url)
 
 
-@tbot.on(events.NewMessage(pattern="/nekomode on"))
-async def enable_nekomode(event):
-    chat_id = event.chat_id
+@app.on_message(filters.regex(r"^/nekomode on(?:@\S+)?$"), group=1)
+async def enable_nekomode(_, event):
+    chat_id = event.chat.id
     await nekomode_on(chat_id)
     await event.reply("Nekomode has been enabled.")
 
 
-@tbot.on(events.NewMessage(pattern="/nekomode off"))
-async def disable_nekomode(event):
-    chat_id = event.chat_id
+@app.on_message(filters.regex(r"^/nekomode off(?:@\S+)?$"), group=1)
+async def disable_nekomode(_, event):
+    chat_id = event.chat.id
     await nekomode_off(chat_id)
     await event.reply("Nekomode has been disabled.")
 
 
-@tbot.on(events.NewMessage(pattern=r"/(?:{})".format("|".join(allowed_commands))))
-async def nekomode_commands(event):
-    chat_id = event.chat_id
+@app.on_message(filters.regex(r"^/(?:{})(?:@\S+)?$".format("|".join(allowed_commands))), group=1)
+async def nekomode_commands(_, event):
+    chat_id = event.chat.id
     nekomode_status = await is_nekomode_on(chat_id)
     if nekomode_status:
-        target = event.raw_text[1:].lower()  # Remove the slash before the command
+        target = event.text.split()[0].split("@", 1)[0][1:].lower()  # Remove the slash before the command
         if target in allowed_commands:
             url = f"{url_sfw}{target}"
 
@@ -91,7 +92,7 @@ async def nekomode_commands(event):
             animation_url = result["url"]
 
             # Send animation
-            await event.respond(file=animation_url)
+            await event.reply_animation(animation_url)
 
 
 __help__ = """

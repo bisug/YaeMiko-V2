@@ -23,8 +23,6 @@ from pyrogram.handlers import RawUpdateHandler
 
 import pyrogram
 import telegram
-import telethon
-from telethon import events
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Update
 from telegram.constants import ParseMode
 from telegram.error import (
@@ -52,12 +50,12 @@ from Mikobot import (
     OWNER_ID,
     SUPPORT_CHAT,
     TOKEN,
+
     StartTime,
     app,
     dispatcher,
     function,
     loop,
-    tbot,
 )
 from Mikobot.plugins import ALL_MODULES
 from Mikobot.plugins.helper_funcs.chat_status import is_user_admin
@@ -68,7 +66,6 @@ from Mikobot.plugins.helper_funcs.misc import paginate_modules
 PYTHON_VERSION = python_version()
 PTB_VERSION = telegram.__version__
 KURIGRAM_VERSION = pyrogram.__version__
-TELETHON_VERSION = telethon.__version__
 
 
 
@@ -103,12 +100,6 @@ async def log_activity(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def log_kurigram_activity(_, update, users, chats):
     LOGGER.info("Kurigram activity: update=%s", type(update).__name__)
-
-
-async def log_telethon_activity(event):
-    user = getattr(event, "sender_id", None)
-    chat_id = getattr(event, "chat_id", None)
-    LOGGER.info("Telethon activity: event=%s user=%s chat=%s", type(event).__name__, user, chat_id)
 
 
 # <============================================== FUNCTIONS =========================================================>
@@ -536,7 +527,6 @@ DISK ➼ {disk}%
 PYTHON ➼ {PYTHON_VERSION}
 
 PTB ➼ {PTB_VERSION}
-TELETHON ➼ {TELETHON_VERSION}
 KURIGRAM ➼ {KURIGRAM_VERSION}
 """
         await query.answer(text=text, show_alert=True)
@@ -922,7 +912,6 @@ def main():
     dispatcher.add_error_handler(error_callback)
     dispatcher.add_handler(TypeHandler(Update, log_activity), group=-100)
     app.add_handler(RawUpdateHandler(log_kurigram_activity))
-    tbot.add_event_handler(log_telethon_activity)
 
     LOGGER.info("Mikobot is starting >> Using long polling.")
     dispatcher.run_polling(drop_pending_updates=True)
@@ -931,7 +920,6 @@ def main():
 if __name__ == "__main__":
     try:
         LOGGER.info("Successfully loaded modules: " + str(ALL_MODULES))
-        tbot.start(bot_token=TOKEN)
         app.start()
         main()
     except KeyboardInterrupt:
@@ -950,11 +938,6 @@ if __name__ == "__main__":
             app.stop()
         except Exception:
             LOGGER.exception("Failed to stop Kurigram client")
-        try:
-            if tbot.is_connected():
-                tbot.disconnect()
-        except Exception:
-            LOGGER.exception("Failed to disconnect Telethon client")
         try:
             from Mikobot.state import state
 

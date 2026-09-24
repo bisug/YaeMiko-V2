@@ -7,10 +7,15 @@ from random import choice
 import aiohttp
 from aiohttp import ContentTypeError
 from PIL import Image
-from telethon.tl import types
-from telethon.utils import get_display_name, get_peer_id
+from pyrogram import types
 
-from Mikobot import DEV_USERS
+
+def get_display_name(user):
+    if user is None:
+        return None
+    return " ".join(part for part in (user.first_name, user.last_name) if part) or None
+
+from Mikobot import DEV_USERS, app
 from Mikobot.events import register
 
 # <=======================================================================================================>
@@ -59,9 +64,9 @@ class Quotly:
 
         reply = (
             {
-                "name": get_display_name(reply.sender) or "Deleted Account",
-                "text": reply.raw_text,
-                "chatId": reply.chat_id,
+                "name": get_display_name(reply.from_user) or "Deleted Account",
+                "text": reply.text,
+                "chatId": reply.chat.id,
             }
             if reply
             else {}
@@ -71,19 +76,19 @@ class Quotly:
         name, last_name = None, None
 
         if sender and sender.id not in DEV_USERS:
-            id_ = get_peer_id(sender)
+            id_ = sender.id
             name = get_display_name(sender)
         elif not is_fwd:
-            id_ = event.sender_id
-            sender = await event.get_sender()
+            id_ = event.from_user.id if event.from_user else None
+            sender = event.from_user
             name = get_display_name(sender)
         else:
             id_, sender = None, None
             name = is_fwd.from_name
             if is_fwd.from_id:
-                id_ = get_peer_id(is_fwd.from_id)
+                id_ = is_fwd.from_id
                 try:
-                    sender = await event.client.get_entity(id_)
+                    sender = await app.get_users(id_)
                     name = get_display_name(sender)
                 except ValueError:
                     pass
@@ -117,7 +122,7 @@ class Quotly:
                 "name": name or "Unknown",
                 "type": type_,
             },
-            "text": event.raw_text,
+            "text": event.text,
             "replyMessage": reply,
         }
 
@@ -201,12 +206,12 @@ async def async_searcher(
 
 @register(pattern="^/q(?: |$)(.*)")
 async def quott_(event):
-    match = event.pattern_match.group(1).strip()
-    if not event.is_reply:
+    match = (event.command[1] if len(event.command) > 1 else "").strip()
+    if not event.reply_to_message:
         return await event.reply("Please reply to a message.")
 
     msg = await event.reply("Creating quote, please wait.")
-    reply = await event.get_reply_message()
+    reply = event.reply_to_message
     replied_to, reply_ = None, None
 
     if match:
@@ -215,22 +220,14 @@ async def quott_(event):
             spli_[0].isdigit() and int(spli_[0]) in range(1, 21)
         ):
             if spli_[0].isdigit():
-                if not event.client.is_bot:
-                    reply_ = await event.client.get_messages(
-                        event.chat_id,
-                        min_id=event.reply_to_msg_id - 1,
-                        reverse=True,
-                        limit=int(spli_[0]),
-                    )
-                else:
-                    id_ = reply.id
-                    reply_ = []
-                    for msg_ in range(id_, id_ + int(spli_[0])):
-                        msh = await event.client.get_messages(event.chat_id, ids=msg_)
-                        if msh:
-                            reply_.append(msh)
+                reply_ = await app.get_messages(
+                    event.chat.id,
+                    message_ids=range(reply.id - int(spli_[0]) + 1, reply.id + 1),
+                )
+                if not isinstance(reply_, list):
+                    reply_ = [reply_]
             else:
-                replied_to = await reply.get_reply_message()
+                replied_to = reply.reply_to_message
             try:
                 match = spli_[1]
             except IndexError:
@@ -247,8 +244,7 @@ async def quott_(event):
     if match:
         if match[0].startswith("@") or match[0].isdigit():
             try:
-                match_ = await event.client.parse_id(match[0])
-                user = await event.client.get_entity(match_)
+                user = await app.get_users(match[0].lstrip("@"))
             except ValueError:
                 pass
             match = match[1] if len(match) == 2 else None
@@ -260,7 +256,7 @@ async def quott_(event):
 
     try:
         file = await quotly.create_quotly(reply_, bg=match, reply=replied_to, sender=user)
-        message = await reply.reply("", file=file)
+        message = await event.reply_photo(file)
     except (aiohttp.ClientError, OSError, KeyError, TypeError, ValueError) as error:
         await msg.edit(f"Quote generation failed: {error}")
         return

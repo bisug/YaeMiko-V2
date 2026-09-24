@@ -1,172 +1,119 @@
-# <============================================== IMPORTS =========================================================>
-from telethon import Button, events, types
-from telethon.errors import ChatAdminRequiredError, UserNotParticipantError
-from telethon.tl.functions.channels import GetParticipantRequest
+from pyrogram import filters
+from pyrogram.enums import ChatType
+
+from pyrogram.enums import ChatMemberStatus
+from pyrogram.errors import ChatAdminRequired, UserNotParticipant
+from pyrogram.types import ChatPermissions, InlineKeyboardButton, InlineKeyboardMarkup
+
+from pyrogram.types import ChatPermissions, InlineKeyboardButton, InlineKeyboardMarkup
 
 from Database.mongodb import fsub_db as db
-from Mikobot import BOT_ID
-from Mikobot import DRAGONS as DEVS
-from Mikobot import OWNER_ID, tbot
+from Mikobot import BOT_ID, DRAGONS as DEVS, OWNER_ID, app
 from Mikobot.events import register
 
-# <=======================================================================================================>
-
-# Constants
-F_SUBSCRIBE_COMMAND = "/(fsub|Fsub|forcesubscribe|Forcesub|forcesub|Forcesubscribe)"
-FORCESUBSCRIBE_ON = ["on", "yes", "y"]
-FORCESUBSCRIBE_OFF = ["off", "no", "n"]
+F_SUBSCRIBE_COMMAND = r"/(fsub|Fsub|forcesubscribe|Forcesub|forcesub|Forcesubscribe)"
+FORCESUBSCRIBE_ON = {"on", "yes", "y"}
+FORCESUBSCRIBE_OFF = {"off", "no", "n"}
 
 
-# <================================================ FUNCTION =======================================================>
-def fsk_ck(**args):
-    def decorator(func):
-        tbot.add_event_handler(func, events.CallbackQuery(**args))
-        return func
 
-    return decorator
-
-
-# Helper functions
 async def is_admin(chat_id, user_id):
     try:
-        p = await tbot(GetParticipantRequest(chat_id, user_id))
-    except UserNotParticipantError:
+        member = await app.get_chat_member(chat_id, user_id)
+    except UserNotParticipant:
         return False
-    return isinstance(
-        p.participant, (types.ChannelParticipantAdmin, types.ChannelParticipantCreator)
-    )
+    return member.status in {ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR}
 
 
 async def participant_check(channel, user_id):
     try:
-        await tbot(GetParticipantRequest(channel, int(user_id)))
+        await app.get_chat_member(channel, int(user_id))
         return True
-    except UserNotParticipantError:
+    except (UserNotParticipant, ChatAdminRequired):
         return False
     except Exception:
         return False
 
 
-# Main command function
-@register(pattern=f"^{F_SUBSCRIBE_COMMAND} ?(.*)")
-async def force_subscribe(event):
-    """Handle the force subscribe command."""
-    if event.is_private:
+@register(pattern=rf"^{F_SUBSCRIBE_COMMAND} ?(.*)")
+async def force_subscribe(message):
+    if message.chat.type == ChatType.PRIVATE:
         return
-
-    if event.is_group:
-        perm = await event.client.get_permissions(event.chat_id, event.sender_id)
-        if not perm.is_admin:
-            return await event.reply("You need to be an admin to do this.")
-
-        if not perm.is_creator:
-            return await event.reply(
-                "❗ Group creator required\nYou have to be the group creator to do that."
-            )
-
-    try:
-        channel = event.text.split(None, 1)[1]
-    except IndexError:
-        channel = None
-
+    if message.chat.type in {ChatType.GROUP, ChatType.SUPERGROUP}:
+        member = await app.get_chat_member(message.chat.id, message.from_user.id)
+        if member.status not in {ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR}:
+            return await message.reply("You need to be an admin to do this.")
+        if member.status != ChatMemberStatus.OWNER:
+            return await message.reply("❗ Group creator required\nYou have to be the group creator to do that.")
+    parts = message.text.split(None, 1)
+    channel = parts[1] if len(parts) > 1 else None
     if not channel:
-        chat_db = db.fs_settings(event.chat_id)
+        chat_db = db.fs_settings(message.chat.id)
         if not chat_db:
-            await event.reply("Force subscribe is disabled in this chat.")
+            await message.reply("Force subscribe is disabled in this chat.")
         else:
-            await event.reply(
-                f"Force subscribe is currently enabled. Users are forced to join @{chat_db.channel} to speak here."
-            )
-    elif channel.lower() in FORCESUBSCRIBE_ON:
-        await event.reply("Please specify the channel username.")
-    elif channel.lower() in FORCESUBSCRIBE_OFF:
-        await event.reply("**Force subscribe is disabled successfully.**")
-        db.disapprove(event.chat_id)
-    else:
-        try:
-            channel_entity = await event.client.get_entity(channel)
-        except:
-            return await event.reply("Invalid channel username provided.")
-
-        channel = channel_entity.username
-        try:
-            if not channel_entity.broadcast:
-                return await event.reply("That's not a valid channel.")
-        except:
-            return await event.reply("That's not a valid channel.")
-
-        if not await participant_check(channel, BOT_ID):
-            return await event.reply(
-                f"**Not an admin in the channel**\nI am not an admin in the [channel](https://t.me/{channel}). Add me as an admin to enable force subscribe.",
-                link_preview=False,
-            )
-
-        db.add_channel(event.chat_id, str(channel))
-        await event.reply(f"Force subscribe is enabled to @{channel}.")
-
-
-# Event handler for new messages
-@tbot.on(events.NewMessage())
-async def force_subscribe_new_message(e):
-    """Handle new messages for force subscribe."""
-    if not db.fs_settings(e.chat_id):
+            await message.reply(f"Force subscribe is currently enabled. Users are forced to join @{chat_db.channel} to speak here.")
         return
-
-    if e.is_private or not e.from_id or e.sender_id in DEVS or e.sender_id == OWNER_ID:
-        return
-
-    if not e.chat.admin_rights or not e.chat.admin_rights.ban_users:
-        return
-
+    if channel.lower() in FORCESUBSCRIBE_ON:
+        return await message.reply("Please specify the channel username.")
+    if channel.lower() in FORCESUBSCRIBE_OFF:
+        db.disapprove(message.chat.id)
+        return await message.reply("**Force subscribe is disabled successfully.**")
     try:
-        channel = db.fs_settings(e.chat_id)["channel"]
-        check = await participant_check(channel, e.sender_id)
-    except (ChatAdminRequiredError, UserNotParticipantError):
+        channel_entity = await app.get_chat(channel)
+    except Exception:
+        return await message.reply("Invalid channel username provided.")
+    username = getattr(channel_entity, "username", None)
+    if not username or channel_entity.type != ChatType.CHANNEL:
+        return await message.reply("That's not a valid channel.")
+    if not await participant_check(username, BOT_ID):
+        return await message.reply(f"**Not an admin in the channel**\nI am not an admin in the [channel](https://t.me/{username}). Add me as an admin to enable force subscribe.")
+    db.add_channel(message.chat.id, str(username))
+    await message.reply(f"Force subscribe is enabled to @{username}.")
+
+
+@app.on_message(filters.group & filters.incoming)
+async def force_subscribe_new_message(message):
+    if not db.fs_settings(message.chat.id):
         return
-
-    if not check:
-        buttons = [
-            Button.url("Join Channel", f"t.me/{channel}"),
-            Button.inline("Unmute Me", data=f"fs_{e.sender_id}"),
-        ]
-
-        txt = f'<b><a href="tg://user?id={e.sender_id}">{e.sender.first_name}</a></b>, you have <b>not subscribed</b> to our <b><a href="t.me/{channel}">channel</a></b> yet. Please <b><a href="t.me/{channel}">join</a></b> and press the button below to unmute yourself.'
-        await e.reply(txt, buttons=buttons, parse_mode="html", link_preview=False)
-        await e.client.edit_permissions(e.chat_id, e.sender_id, send_messages=False)
-
-
-# Inline query handler
-@fsk_ck(pattern=r"fs(\_(.*))")
-async def unmute_force_subscribe(event):
-    """Handle inline query for unmuting force subscribe."""
-    user_id = int(((event.pattern_match.group(1)).decode()).split("_", 1)[1])
-
-    if not event.sender_id == user_id:
-        return await event.answer("This is not meant for you.", alert=True)
-
-    channel = db.fs_settings(event.chat_id)["channel"]
-    try:
-        check = await participant_check(channel, user_id)
-    except ChatAdminRequiredError:
-        check = False
+    if not message.from_user or message.from_user.id in DEVS or message.from_user.id == OWNER_ID:
         return
-
-    if not check:
-        return await event.answer(
-            "You have to join the channel first, to get unmuted!", alert=True
-        )
-
     try:
-        await event.client.edit_permissions(event.chat_id, user_id, send_messages=True)
-    except ChatAdminRequiredError:
-        pass
+        member = await app.get_chat_member(message.chat.id, message.from_user.id)
+        bot = await app.get_chat_member(message.chat.id, (await app.get_me()).id)
+        if not getattr(bot.privileges, "can_restrict_members", False):
+            return
+    except Exception:
+        return
+    channel = db.fs_settings(message.chat.id)["channel"]
+    if await participant_check(channel, message.from_user.id):
+        return
+    name = message.from_user.first_name.replace("<", "&lt;").replace(">", "&gt;")
+    markup = InlineKeyboardMarkup([[
+        InlineKeyboardButton("Join Channel", url=f"https://t.me/{channel}"),
+        InlineKeyboardButton("Unmute Me", callback_data=f"fs_{message.from_user.id}"),
+    ]])
+    await message.reply(
+        f'<b><a href="tg://user?id={message.from_user.id}">{name}</a></b>, you have <b>not subscribed</b> to our <b><a href="https://t.me/{channel}">channel</a></b> yet. Please join and press the button below to unmute yourself.',
+        reply_markup=markup,
+    )
+    await app.restrict_chat_member(message.chat.id, message.from_user.id, ChatPermissions(can_send_messages=False))
 
-    await event.delete()
+
+@app.on_callback_query(filters.regex(r"^fs_(\d+)$"))
+async def unmute_force_subscribe(client, callback):
+    user_id = int(callback.matches[0].group(1))
+    if callback.from_user.id != user_id:
+        return await callback.answer("This is not meant for you.", alert=True)
+    channel = db.fs_settings(callback.message.chat.id)["channel"]
+    if not await participant_check(channel, user_id):
+        return await callback.answer("You have to join the channel first, to get unmuted!", alert=True)
+    await app.restrict_chat_member(callback.message.chat.id, user_id, ChatPermissions(can_send_messages=True))
+    await callback.answer("You are unmuted.")
+    await callback.message.delete()
 
 
-# <=================================================== HELP ====================================================>
-
-
+__mod_name__ = "F-SUB"
 __help__ = r"""
 ➠ *Dazai has the capability to hush members who haven't yet subscribed to your channel until they decide to hit that subscribe button.*
 ➠ *When activated, I'll silence those who are not subscribed and provide them with an option to unmute. Once they click the button, I'll lift the mute.*
@@ -185,5 +132,4 @@ __help__ = r"""
 
 ➠ *If you disable fsub, you'll need to set it up again for it to take effect. Utilize /fsub channel\_username.*
 """
-__mod_name__ = "F-SUB"
 # <================================================ END =======================================================>

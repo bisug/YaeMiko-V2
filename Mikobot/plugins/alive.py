@@ -8,7 +8,6 @@ from sys import version_info
 
 import pyrogram
 import telegram
-import telethon
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardMarkup, Message
 
@@ -23,7 +22,6 @@ from Mikobot import BOT_NAME, app
 async def alive(_, message: Message):
     library_versions = {
         "PTB": telegram.__version__,
-        "TELETHON": telethon.__version__,
         "KURIGRAM": pyrogram.__version__,
     }
 

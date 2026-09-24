@@ -1,67 +1,73 @@
 # <============================================== IMPORTS =========================================================>
-from telethon import events
+from pyrogram import filters
+from pyrogram.handlers import (
+    CallbackQueryHandler,
+    ChatMemberUpdatedHandler,
+    InlineQueryHandler,
+    MessageHandler,
+)
 
-from Mikobot import tbot
+from Mikobot import app
+def _with_client(callback):
+    async def handler(client, event):
+        return await callback(event)
+
+    return handler
+
+
+
 
 
 # <============================================== FUNCTIONS =========================================================>
 def register(**args):
-    """Registers a new message."""
+    """Registers a Kurigram message handler."""
     pattern = args.get("pattern")
-
-    r_pattern = r"^[/!]"
-
-    if pattern is not None:
-        if not pattern.startswith("(?i)"):
-            pattern = f"(?i){pattern}"
-        args["pattern"] = pattern.replace("^/", r_pattern, 1)
+    group = args.get("group", 0)
 
     def decorator(func):
-        tbot.add_event_handler(func, events.NewMessage(**args))
+        handler_filter = filters.regex(pattern) if pattern else filters.all
+        app.add_handler(
+            MessageHandler(handler_filter, _with_client(func)),
+            group=group,
+        )
         return func
 
     return decorator
 
 
 def chataction(**args):
-    """Registers chat actions."""
-
     def decorator(func):
-        tbot.add_event_handler(func, events.ChatAction(**args))
+        app.add_handler(ChatMemberUpdatedHandler(_with_client(func)))
         return func
 
     return decorator
 
 
 def userupdate(**args):
-    """Registers user updates."""
-
     def decorator(func):
-        tbot.add_event_handler(func, events.UserUpdate(**args))
+        app.add_handler(ChatMemberUpdatedHandler(_with_client(func)))
         return func
 
     return decorator
 
 
 def inlinequery(**args):
-    """Registers inline query."""
     pattern = args.get("pattern")
 
-    if pattern is not None and not pattern.startswith("(?i)"):
-        args["pattern"] = f"(?i){pattern}"
-
     def decorator(func):
-        tbot.add_event_handler(func, events.InlineQuery(**args))
+        handler_filter = filters.regex(pattern) if pattern else filters.all
+        app.add_handler(InlineQueryHandler(_with_client(func), handler_filter))
         return func
 
     return decorator
 
 
 def callbackquery(**args):
-    """Registers inline query."""
+    pattern = args.get("pattern")
 
     def decorator(func):
-        tbot.add_event_handler(func, events.CallbackQuery(**args))
+        handler_filter = filters.regex(pattern) if pattern else filters.all
+        app.add_handler(CallbackQueryHandler(_with_client(func), handler_filter))
         return func
 
     return decorator
