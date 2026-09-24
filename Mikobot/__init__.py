@@ -19,8 +19,6 @@ from random import choice
 import telegram
 import telegram.ext as tg
 from pyrogram import Client, errors
-
-from pyrogram import Client, errors
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, ApplicationBuilder

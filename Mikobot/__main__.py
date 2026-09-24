@@ -101,11 +101,11 @@ async def log_activity(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-async def log_kurigram_activity(_, update, update_type):
-    LOGGER.info("Kurigram activity: type=%s", update_type)
+async def log_kurigram_activity(_, update, users, chats):
+    LOGGER.info("Kurigram activity: update=%s", type(update).__name__)
 
 
-async def log_telethon_activity(_, event):
+async def log_telethon_activity(event):
     user = getattr(event, "sender_id", None)
     chat_id = getattr(event, "chat_id", None)
     LOGGER.info("Telethon activity: event=%s user=%s chat=%s", type(event).__name__, user, chat_id)
@@ -891,8 +891,6 @@ async def migrate_chats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # <=================================================== MAIN ====================================================>
 def main():
     function(CommandHandler("start", start))
-    dispatcher.add_handler(TypeHandler(Update, log_activity), group=-100)
-
 
     function(CommandHandler("help", extra_command_handlered))
     function(CallbackQueryHandler(help_button, pattern=r"help_.*"))
@@ -924,7 +922,7 @@ def main():
     dispatcher.add_error_handler(error_callback)
     dispatcher.add_handler(TypeHandler(Update, log_activity), group=-100)
     app.add_handler(RawUpdateHandler(log_kurigram_activity))
-    tbot.add_event_handler(log_telethon_activity, events.NewMessage())
+    tbot.add_event_handler(log_telethon_activity)
 
     LOGGER.info("Mikobot is starting >> Using long polling.")
     dispatcher.run_polling(drop_pending_updates=True)
