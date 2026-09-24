@@ -11,10 +11,10 @@ def register(**args):
 
     r_pattern = r"^[/!]"
 
-    if pattern is not None and not pattern.startswith("(?i)"):
-        args["pattern"] = f"(?i){pattern}"
-
-    args["pattern"] = pattern.replace("^/", r_pattern, 1)
+    if pattern is not None:
+        if not pattern.startswith("(?i)"):
+            pattern = f"(?i){pattern}"
+        args["pattern"] = pattern.replace("^/", r_pattern, 1)
 
     def decorator(func):
         tbot.add_event_handler(func, events.NewMessage(**args))

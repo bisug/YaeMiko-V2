@@ -49,21 +49,19 @@ async def add_disaster_level(update: Update, level: str, context) -> str:
     with open(ELEVATED_USERS_FILE, "r") as infile:
         data = json.load(infile)
 
-    disaster_list = getattr(DISASTER_LEVELS, level)
+    disaster_list = data[DISASTER_LEVELS[level]]
     if user_id in disaster_list:
         await message.reply_text(f"This user is already a {level} Disaster.")
         return ""
 
     for disaster_level, disaster_users in DISASTER_LEVELS.items():
-        if user_id in disaster_users:
+        if user_id in data[disaster_users]:
             rt += f"Requested HA to promote this {disaster_level} to {level}."
             data[disaster_users].remove(user_id)
-            setattr(DISASTER_LEVELS, disaster_level, disaster_users)
 
     data[DISASTER_LEVELS[level]].append(user_id)
-    setattr(DISASTER_LEVELS, level, user_id)
 
-    await update_effective_message.reply_text(
+    await message.reply_text(
         rt
         + f"\nSuccessfully set Disaster level of {user_member.first_name} to {level}!"
     )

@@ -24,6 +24,7 @@ async def instadl_command_handler(update: Update, context: ContextTypes.DEFAULT_
         return
 
     link = context.args[0]
+    downloading_sticker = None
     try:
         downloading_sticker = await update.message.reply_sticker(DOWNLOADING_STICKER_ID)
 
@@ -57,7 +58,11 @@ async def instadl_command_handler(update: Update, context: ContextTypes.DEFAULT_
         )
 
     finally:
-        await downloading_sticker.delete()
+        if downloading_sticker is not None:
+            try:
+                await downloading_sticker.delete()
+            except Exception:
+                pass
 
 
 function(

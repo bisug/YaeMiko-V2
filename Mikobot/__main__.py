@@ -173,10 +173,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 match = re.match("stngs_(.*)", args[0].lower())
                 chat = await dispatcher.bot.get_chat(match.group(1))
 
-                if is_user_admin(chat, update.effective_user.id):
-                    send_settings(match.group(1), update.effective_user.id, False)
+                if await is_user_admin(chat, update.effective_user.id):
+                    await send_settings(match.group(1), update.effective_user.id, False)
                 else:
-                    send_settings(match.group(1), update.effective_user.id, True)
+                    await send_settings(match.group(1), update.effective_user.id, True)
 
             elif args[0][1:].isdigit() and "rules" in IMPORTED:
                 await IMPORTED["rules"].send_rules(update, args[0], from_pm=True)
@@ -803,7 +803,7 @@ async def get_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ONLY send settings in PM
     if chat.type != chat.PRIVATE:
-        if is_user_admin(chat, user.id):
+        if await is_user_admin(chat, user.id):
             text = "Click here to get this chat's settings, as well as yours."
             await msg.reply_text(
                 text,
