@@ -1,5 +1,6 @@
 import html
 import os
+from functools import partial
 from urllib.parse import quote
 
 from httpx import HTTPError
@@ -151,13 +152,9 @@ async def _show_menu(update: Update, sport: str) -> None:
         await query.message.edit_text("TheSportsDB returned incomplete league data.")
 
 
-async def get_sport_matches(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not update.effective_message or not context.args:
-        sport = context.command[0].lower() if context.command else ""
-        if sport in SPORTS:
-            await _show_leagues(update, sport)
+async def get_sport_matches(update: Update, context: ContextTypes.DEFAULT_TYPE, sport: str) -> None:
+    if not update.effective_message:
         return
-    sport = context.command[0].lower()
     if len(context.args) == 1 and context.args[0].isdigit():
         await _send_league_message(update.effective_message, sport, context.args[0])
     else:
@@ -178,8 +175,8 @@ async def sport_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await query.answer("Invalid selection.", show_alert=True)
 
 
-function(CommandHandler("cricket", get_sport_matches))
-function(CommandHandler("football", get_sport_matches))
+function(CommandHandler("cricket", partial(get_sport_matches, sport="cricket")))
+function(CommandHandler("football", partial(get_sport_matches, sport="football")))
 function(CallbackQueryHandler(sport_callback, pattern=r"^sport_(?:league|menu):", block=False))
 
 __help__ = """

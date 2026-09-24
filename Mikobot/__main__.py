@@ -1,3 +1,8 @@
+async def error_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    error = context.error
+    LOGGER.error("Exception while handling update: %s", error, exc_info=error)
+    if isinstance(error, TelegramError):
+        LOGGER.warning("Telegram error while handling update: %s", error)
 # https://github.com/Infamous-Hydra/YaeMiko
 # https://github.com/Team-ProjectCodeX
 
