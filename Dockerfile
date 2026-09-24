@@ -1,12 +1,20 @@
 FROM python:3.14.7
 
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
+
 WORKDIR /root/Mikobot
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN python -m pip install --upgrade pip setuptools \
+    && python -m pip install -r requirements.txt
 
 COPY . .
 
-RUN apt-get install -y ffmpeg python3-pip curl
-RUN pip3 install --upgrade pip setuptools
-
-RUN pip install -U -r requirements.txt
-
-CMD python3 -m Mikobot
+CMD ["python", "-m", "Mikobot"]
