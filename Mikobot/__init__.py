@@ -45,11 +45,31 @@ def _load_local_env():
 _load_local_env()
 
 
+
+def _load_elevated_users():
+    path = os.path.join(os.path.dirname(__file__), "elevated_users.json")
+    try:
+        with open(path, encoding="utf-8") as file:
+            return json.load(file)
+    except (OSError, ValueError):
+        LOGGER.exception("Unable to load elevated users from %s", path)
+        return {}
+
+
+
+
 # <================================================= NECESSARY ======================================================>
 StartTime = time.time()
 
-loop = asyncio.get_event_loop()
-# <=======================================================================================================>
+
+
+def _create_event_loop():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    return loop
+
+
+loop = _create_event_loop()
 
 # <================================================== LOGGER =======================================================>
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -221,6 +241,15 @@ else:
 # <======================================================================================================>
 
 # <================================================= SETS =====================================================>
+CONFIG_SUDOS = set(DRAGONS)
+CONFIG_DEMONS = set(DEMONS)
+CONFIG_WOLVES = set(WOLVES)
+CONFIG_TIGERS = set(TIGERS)
+ELEVATED_USERS = _load_elevated_users()
+DRAGONS.update(int(user_id) for user_id in ELEVATED_USERS.get("sudos", []))
+DEMONS.update(int(user_id) for user_id in ELEVATED_USERS.get("supports", []))
+WOLVES.update(int(user_id) for user_id in ELEVATED_USERS.get("whitelists", []))
+TIGERS.update(int(user_id) for user_id in ELEVATED_USERS.get("tigers", []))
 # Add OWNER_ID to the DRAGONS and DEV_USERS sets
 DRAGONS.add(OWNER_ID)
 DEV_USERS.add(OWNER_ID)
@@ -274,9 +303,8 @@ async def send_booting_message():
 
 
 # <================================================= EXTBOT ======================================================>
-loop.run_until_complete(
-    asyncio.gather(dispatcher.bot.initialize(), send_booting_message())
-)
+loop.run_until_complete(dispatcher.bot.initialize())
+loop.run_until_complete(send_booting_message())
 # <=======================================================================================================>
 
 # <=============================================== CLIENT SETUP ========================================================>

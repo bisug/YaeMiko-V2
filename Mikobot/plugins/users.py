@@ -15,6 +15,7 @@ from telegram.helpers import escape_markdown
 import Database.sql.users_sql as sql
 from Database.sql.users_sql import get_all_users
 from Mikobot import DEV_USERS, LOGGER, OWNER_ID, app, dispatcher, function
+from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.plugins.helper_funcs.string_handling import escape_markdown_v2
 
 # <=======================================================================================================>
@@ -24,21 +25,37 @@ CHAT_GROUP = 5
 DEV_AND_MORE = DEV_USERS.append(int(OWNER_ID))
 
 
+BROADCAST_TARGETS = {"-all", "-group", "-user"}
+
+
+def parse_broadcast_request(text: str, has_reply: bool = False):
+    parts = text.split()
+    command = parts[0].split("@", 1)[0].lower() if parts else ""
+    if command not in {"/gcast", "!gcast", "$gcast"}:
+        return set(), None
+
+    args = parts[1:]
+    targets = set(BROADCAST_TARGETS).intersection(args)
+    if "-all" in targets:
+        targets.update({"-group", "-user"})
+    if not targets:
+        return set(), None
+
+    content_indexes = {
+        index for index, arg in enumerate(args) if arg not in BROADCAST_TARGETS
+    }
+    content = " ".join(args[index] for index in sorted(content_indexes)).strip()
+    if not has_reply and not content:
+        return targets, None
+    return targets, content or None
+
+
+
 # <================================================ FUNCTION =======================================================>
-# get_arg function to retrieve an argument from a message
-def get_arg(message):
-    args = message.text.split(" ")
-    if len(args) > 1:
-        return args[1]
-    else:
-        return None
-
-
 # Broadcast Function
 @app.on_message(fil.command("gcast"))
 async def broadcast_cmd(client: Client, message: Message):
     user_id = message.from_user.id
-    texttt = message.text.split(" ")
 
     if user_id not in [OWNER_ID] + DEV_USERS:
         await message.reply_text(
@@ -46,12 +63,19 @@ async def broadcast_cmd(client: Client, message: Message):
         )
         return
 
-    if len(texttt) < 2:
+    targets, content = parse_broadcast_request(
+        message.text, has_reply=message.reply_to_message is not None
+    )
+    if not targets:
         return await message.reply_text(
-            "<b>GLOBALCASTING COMMANDS</b>\n-user : broadcasting all user's DM\n-group : broadcasting all groups\n-all : broadcasting both\nEx: /gcast -all"
+            "<b>GLOBALCASTING COMMANDS</b>\n"
+            "-user : broadcast to users\n"
+            "-group : broadcast to groups\n"
+            "-all : broadcast to users and groups\n"
+            "Ex: <code>/gcast -all message</code> or reply with "
+            "<code>/gcast -all</code>"
         )
-
-    if message.reply_to_message is None and not get_arg(message):
+    if content is None:
         return await message.reply_text(
             "<b>Please provide a message or reply to a message</b>"
         )
@@ -65,44 +89,30 @@ async def broadcast_cmd(client: Client, message: Message):
     chats = sql.get_all_chats() or []
     users = get_all_users()
 
-    if "-all" in texttt:
-        texttt.append("-user")
-        texttt.append("-group")
-
-    if "-user" in texttt:
+    if "-user" in targets:
         for chat in users:
-            if message.reply_to_message:
-                msg = message.reply_to_message
-            else:
-                msg = get_arg(message)
             try:
                 if message.reply_to_message:
-                    aa = await msg.copy(chat.user_id)
+                    await message.reply_to_message.copy(chat.user_id)
                 else:
-                    aa = await client.send_message(chat.user_id, msg)
-
+                    await client.send_message(chat.user_id, content)
                 usersss += 1
-                await asyncio.sleep(0.3)
             except Exception:
+                LOGGER.exception("Failed to broadcast to user %s", chat.user_id)
                 uerror += 1
-                await asyncio.sleep(0.3)
-    if "-group" in texttt:
+            await asyncio.sleep(0.3)
+    if "-group" in targets:
         for chat in chats:
-            if message.reply_to_message:
-                msg = message.reply_to_message
-            else:
-                msg = get_arg(message)
             try:
                 if message.reply_to_message:
-                    aa = await msg.copy(chat.chat_id)
+                    await message.reply_to_message.copy(chat.chat_id)
                 else:
-                    aa = await client.send_message(chat.chat_id, msg)
-
+                    await client.send_message(chat.chat_id, content)
                 chatttt += 1
-                await asyncio.sleep(0.3)
             except Exception:
+                LOGGER.exception("Failed to broadcast to chat %s", chat.chat_id)
                 cerror += 1
-                await asyncio.sleep(0.3)
+            await asyncio.sleep(0.3)
 
     await tex.edit_text(
         f"<b>Message Successfully Sent</b> \nTotal Users: <code>{usersss}</code> \nFailed Users: <code>{uerror}</code> \nTotal GroupChats: <code>{chatttt}</code> \nFailed GroupChats: <code>{cerror}</code>"
@@ -204,6 +214,7 @@ async def log_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         sql.update_user(msg.from_user.id, msg.from_user.username)
 
 
+@check_admin(only_dev=True)
 async def chats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     all_chats = sql.get_all_chats() or []
     chatfile = "List of chats.\n0. Chat Name | Chat ID | Members Count\n"

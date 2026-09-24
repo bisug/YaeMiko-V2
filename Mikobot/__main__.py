@@ -914,13 +914,13 @@ def main():
     app.add_handler(RawUpdateHandler(log_kurigram_activity))
 
     LOGGER.info("Mikobot is starting >> Using long polling.")
-    dispatcher.run_polling(drop_pending_updates=True)
+    dispatcher.run_polling(drop_pending_updates=False, close_loop=False)
 
 
 if __name__ == "__main__":
     try:
         LOGGER.info("Successfully loaded modules: " + str(ALL_MODULES))
-        app.start()
+        loop.run_until_complete(app.start())
         main()
     except KeyboardInterrupt:
         pass
@@ -935,7 +935,7 @@ if __name__ == "__main__":
         except Exception:
             LOGGER.exception("Failed to close anime database client")
         try:
-            app.stop()
+            loop.run_until_complete(app.stop())
         except Exception:
             LOGGER.exception("Failed to stop Kurigram client")
         try:

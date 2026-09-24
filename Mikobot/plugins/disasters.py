@@ -1,8 +1,11 @@
+import asyncio
 import html
 import json
 import os
+import tempfile
 from typing import Optional
 
+import Mikobot
 from telegram import Update
 from telegram.ext import CommandHandler
 
@@ -14,11 +17,12 @@ from Mikobot.plugins.log_channel import gloggable
 ELEVATED_USERS_FILE = os.path.join(os.getcwd(), "Mikobot/elevated_users.json")
 
 DISASTER_LEVELS = {
-    "Dragon": "DRAGONS",
-    "Demon": "DEMONS",
-    "Wolf": "WOLVES",
-    "Tiger": "TIGERS",
+    "Dragon": "sudos",
+    "Demon": "supports",
+    "Wolf": "whitelists",
+    "Tiger": "tigers",
 }
+ELEVATED_USERS_LOCK = asyncio.Lock()
 
 
 async def check_user_id(user_id: int) -> Optional[str]:
@@ -27,17 +31,53 @@ async def check_user_id(user_id: int) -> Optional[str]:
     return None
 
 
-async def update_elevated_users(data):
-    temporary = f"{ELEVATED_USERS_FILE}.{os.getpid()}.tmp"
+def update_elevated_users(data):
+    directory = os.path.dirname(ELEVATED_USERS_FILE)
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        dir=directory,
+        prefix=".elevated_users.",
+        delete=False,
+    ) as outfile:
+        temporary = outfile.name
+        json.dump(data, outfile, indent=4)
+        outfile.flush()
+        os.fsync(outfile.fileno())
     try:
-        with open(temporary, "w", encoding="utf-8") as outfile:
-            json.dump(data, outfile, indent=4)
-            outfile.flush()
-            os.fsync(outfile.fileno())
         os.replace(temporary, ELEVATED_USERS_FILE)
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
+
+
+def apply_elevated_users(data):
+    Mikobot.DRAGONS[:] = sorted(
+        set(Mikobot.DEV_USERS)
+        | set(Mikobot.CONFIG_SUDOS)
+        | {int(user_id) for user_id in data["sudos"]}
+    )
+    Mikobot.DEMONS[:] = sorted(
+        set(Mikobot.CONFIG_DEMONS)
+        | {int(user_id) for user_id in data["supports"]}
+    )
+    Mikobot.WOLVES[:] = sorted(
+        set(Mikobot.CONFIG_WOLVES)
+        | {int(user_id) for user_id in data["whitelists"]}
+    )
+    Mikobot.TIGERS[:] = sorted(
+        set(Mikobot.CONFIG_TIGERS)
+        | {int(user_id) for user_id in data["tigers"]}
+    )
+    Mikobot.SUPPORT_STAFF[:] = list(
+        dict.fromkeys(
+            [int(Mikobot.OWNER_ID)]
+            + Mikobot.DRAGONS
+            + Mikobot.WOLVES
+            + Mikobot.DEMONS
+            + Mikobot.DEV_USERS
+        )
+    )
 
 
 async def add_disaster_level(update: Update, level: str, context) -> str:
@@ -46,28 +86,30 @@ async def add_disaster_level(update: Update, level: str, context) -> str:
     chat = update.effective_chat
     bot, args = context.bot, context.args
     user_id = await extract_user(message, context, args)
-    user_member = await bot.get_chat(user_id)
-    rt = ""
-
     reply = await check_user_id(user_id)
     if reply:
         await message.reply_text(reply)
         return ""
+    user_member = await bot.get_chat(user_id)
+    rt = ""
 
-    with open(ELEVATED_USERS_FILE, "r") as infile:
-        data = json.load(infile)
+    async with ELEVATED_USERS_LOCK:
+        with open(ELEVATED_USERS_FILE, "r") as infile:
+            data = json.load(infile)
 
-    disaster_list = data[DISASTER_LEVELS[level]]
-    if user_id in disaster_list:
-        await message.reply_text(f"This user is already a {level} Disaster.")
-        return ""
+        target_key = DISASTER_LEVELS[level]
+        if user_id in data[target_key]:
+            await message.reply_text(f"This user is already a {level} Disaster.")
+            return ""
 
-    for disaster_level, disaster_users in DISASTER_LEVELS.items():
-        if user_id in data[disaster_users]:
-            rt += f"Requested HA to promote this {disaster_level} to {level}."
-            data[disaster_users].remove(user_id)
+        for disaster_level, disaster_users in DISASTER_LEVELS.items():
+            if user_id in data[disaster_users]:
+                rt += f"Requested HA to promote this {disaster_level} to {level}."
+                data[disaster_users].remove(user_id)
 
-    data[DISASTER_LEVELS[level]].append(user_id)
+        data[target_key].append(user_id)
+        update_elevated_users(data)
+        apply_elevated_users(data)
 
     await message.reply_text(
         rt
@@ -84,8 +126,6 @@ async def add_disaster_level(update: Update, level: str, context) -> str:
         log_message = f"<b>{html.escape(chat.title)}:</b>\n" + log_message
 
     await update.effective_message.reply_text(log_message)
-
-    await update_elevated_users(data)
 
 
 @dev_plus

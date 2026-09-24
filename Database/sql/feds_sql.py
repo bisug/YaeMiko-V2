@@ -2,10 +2,11 @@ import ast
 import threading
 
 from sqlalchemy import BigInteger, Boolean, Column, Integer, String, UnicodeText
+from sqlalchemy.orm import Session
 from telegram.error import BadRequest, Forbidden
 
 from Database.sql import BASE, ENGINE, SESSION
-from Mikobot import dispatcher
+from Mikobot import OWNER_ID, dispatcher
 
 
 class Federations(BASE):
@@ -236,57 +237,56 @@ def new_fed(owner_id, fed_name, fed_id):
         return fed
 
 
-def del_fed(fed_id):
+def del_fed(fed_id, user_id):
     with FEDS_LOCK:
         global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME, FEDERATION_CHATS, FEDERATION_CHATS_BYID, FEDERATION_BANNED_USERID, FEDERATION_BANNED_FULL
-        getcache = FEDERATION_BYFEDID.get(fed_id)
-        if getcache is None:
+        fed_id = str(fed_id)
+        session = Session(ENGINE)
+        try:
+            curr = session.get(Federations, fed_id)
+            if not curr:
+                return False
+            if int(curr.owner_id) != int(user_id) and int(user_id) != int(OWNER_ID):
+                return False
+
+            owner_id = str(curr.owner_id)
+            fed_name = curr.fed_name
+            chat_ids = [
+                str(chat.chat_id)
+                for chat in session.query(ChatF)
+                .filter(ChatF.fed_id == fed_id)
+                .all()
+            ]
+
+            session.query(ChatF).filter(ChatF.fed_id == fed_id).delete(
+                synchronize_session=False
+            )
+            session.query(BansF).filter(BansF.fed_id == fed_id).delete(
+                synchronize_session=False
+            )
+            session.query(FedSubs).filter(FedSubs.fed_id == fed_id).delete(
+                synchronize_session=False
+            )
+            session.delete(curr)
+            session.commit()
+        except Exception:
+            session.rollback()
             return False
-        # Variables
-        getfed = FEDERATION_BYFEDID.get(fed_id)
-        owner_id = getfed["owner"]
-        fed_name = getfed["fname"]
-        # Delete from cache
-        FEDERATION_BYOWNER.pop(owner_id)
-        FEDERATION_BYFEDID.pop(fed_id)
-        FEDERATION_BYNAME.pop(fed_name)
-        if FEDERATION_CHATS_BYID.get(fed_id):
-            for x in FEDERATION_CHATS_BYID[fed_id]:
-                delchats = SESSION.get(ChatF, str(x))
-                if delchats:
-                    SESSION.delete(delchats)
-                    SESSION.commit()
-                FEDERATION_CHATS.pop(x)
-            FEDERATION_CHATS_BYID.pop(fed_id)
-        # Delete fedban users
-        getall = FEDERATION_BANNED_USERID.get(fed_id)
-        if getall:
-            for x in getall:
-                banlist = SESSION.get(BansF, (fed_id, str(x)))
-                if banlist:
-                    SESSION.delete(banlist)
-                    SESSION.commit()
-        if FEDERATION_BANNED_USERID.get(fed_id):
-            FEDERATION_BANNED_USERID.pop(fed_id)
-        if FEDERATION_BANNED_FULL.get(fed_id):
-            FEDERATION_BANNED_FULL.pop(fed_id)
-        # Delete fedsubs
-        getall = MYFEDS_SUBSCRIBER.get(fed_id)
-        if getall:
-            for x in getall:
-                getsubs = SESSION.get(FedSubs, (fed_id, str(x)))
-                if getsubs:
-                    SESSION.delete(getsubs)
-                    SESSION.commit()
-        if FEDS_SUBSCRIBER.get(fed_id):
-            FEDS_SUBSCRIBER.pop(fed_id)
-        if MYFEDS_SUBSCRIBER.get(fed_id):
-            MYFEDS_SUBSCRIBER.pop(fed_id)
-        # Delete from database
-        curr = SESSION.get(Federations, fed_id)
-        if curr:
-            SESSION.delete(curr)
-            SESSION.commit()
+        finally:
+            session.close()
+
+        FEDERATION_BYOWNER.pop(owner_id, None)
+        FEDERATION_BYFEDID.pop(fed_id, None)
+        cached_fed = FEDERATION_BYNAME.get(fed_name)
+        if cached_fed and str(cached_fed.get("fid")) == fed_id:
+            FEDERATION_BYNAME.pop(fed_name, None)
+        for chat_id in chat_ids:
+            FEDERATION_CHATS.pop(str(chat_id), None)
+        FEDERATION_CHATS_BYID.pop(fed_id, None)
+        FEDERATION_BANNED_USERID.pop(fed_id, None)
+        FEDERATION_BANNED_FULL.pop(fed_id, None)
+        FEDS_SUBSCRIBER.pop(fed_id, None)
+        MYFEDS_SUBSCRIBER.pop(fed_id, None)
         return True
 
 

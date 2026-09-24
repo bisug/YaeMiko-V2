@@ -13,11 +13,9 @@ from pyrogram.errors import (
 from pyrogram.types import Message
 
 from Database.mongodb.afk_db import is_cleanmode_on
-from Mikobot import LOGGER
+from Mikobot import LOGGER, loop
 
 BANNED = {}
-
-loop = asyncio.get_event_loop()
 
 cleanmode = {}
 

@@ -161,7 +161,7 @@ async def del_fed(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [
                     InlineKeyboardButton(
                         text="⚠️ Delete Federation ⚠️",
-                        callback_data="rmfed_{}".format(fed_id),
+                        callback_data="rmfed_{}:{}".format(fed_id, user.id),
                     ),
                 ],
                 [InlineKeyboardButton(text="Cancel", callback_data="rmfed_cancel")],
@@ -1879,23 +1879,43 @@ async def fed_import_bans(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def del_fed_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    userid = query.message.chat.id
-    fed_id = query.data.split("_")[1]
-
-    if fed_id == "cancel":
+    if query.data == "rmfed_cancel":
         await query.message.edit_text("Federation deletion cancelled")
         return
 
+    try:
+        fed_id, requested_by = query.data.removeprefix("rmfed_").split(":", 1)
+        requested_by = int(requested_by)
+    except ValueError:
+        await query.answer("This deletion request is invalid.", show_alert=True)
+        return
+
+    if query.message.chat.type != "private" or query.from_user.id != requested_by:
+        await query.answer("This deletion request belongs to another user.", show_alert=True)
+        return
+
     getfed = sql.get_fed_info(fed_id)
-    if getfed:
-        delete = sql.del_fed(fed_id)
-        if delete:
-            await query.message.edit_text(
-                "You have removed your Federation! Now all the Groups that are connected with `{}` do not have a Federation.".format(
-                    getfed["fname"],
-                ),
-                parse_mode=ParseMode.MARKDOWN,
-            )
+    if not getfed:
+        await query.answer("This federation no longer exists.", show_alert=True)
+        return
+    if not is_user_fed_owner(fed_id, query.from_user.id):
+        await query.answer(
+            "Only the current federation owner can delete it.", show_alert=True
+        )
+        return
+
+    if sql.del_fed(fed_id, query.from_user.id):
+        await query.answer("Federation deleted.", show_alert=True)
+        await query.message.edit_text(
+            "You have removed your Federation! Now all the Groups that are connected with `{}` do not have a Federation.".format(
+                getfed["fname"],
+            ),
+            parse_mode=ParseMode.MARKDOWN,
+        )
+    else:
+        await query.answer(
+            "Federation deletion failed; no data was removed.", show_alert=True
+        )
 
 
 async def fed_stat_user(update: Update, context: ContextTypes.DEFAULT_TYPE):

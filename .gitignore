@@ -1,10 +1,4 @@
-# Test and AI-generated files
-tests/
-test/
-spec/
-specs/
-test_*.py
-*_test.py
+# AI-generated files
 *.test.js
 *.test.ts
 *.spec.js
