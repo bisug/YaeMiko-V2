@@ -15,6 +15,7 @@ from telegram.helpers import escape_markdown
 import Database.sql.users_sql as sql
 from Database.sql.users_sql import get_all_users
 from Mikobot import DEV_USERS, LOGGER, OWNER_ID, app, dispatcher, function
+from Mikobot.plugins.helper_funcs.string_handling import escape_markdown_v2
 
 # <=======================================================================================================>
 
@@ -161,7 +162,7 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 try:
                     await context.bot.sendMessage(
                         int(chat.chat_id),
-                        escape_markdown(to_send[1], 2),
+                        escape_markdown_v2(to_send[1]),
                         parse_mode=ParseMode.MARKDOWN_V2,
                         link_preview_options=LinkPreviewOptions(is_disabled=True),
                     )
@@ -173,7 +174,7 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 try:
                     await context.bot.sendMessage(
                         int(user.user_id),
-                        escape_markdown(to_send[1], 2),
+                        escape_markdown_v2(to_send[1]),
                         parse_mode=ParseMode.MARKDOWN_V2,
                         link_preview_options=LinkPreviewOptions(is_disabled=True),
                     )

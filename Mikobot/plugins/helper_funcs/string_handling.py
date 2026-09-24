@@ -1,4 +1,6 @@
 
+
+
 import html
 
 # <============================================== IMPORTS =========================================================>
@@ -9,6 +11,12 @@ from typing import Dict, List
 from emoji import unicode_codes
 from telegram import MessageEntity
 from telegram.helpers import escape_markdown
+
+def escape_markdown_v2(text: str, entity_type: str = None) -> str:
+    """Escape Telegram MarkdownV2 text while preserving supported entities."""
+    return escape_markdown(text, version=2, entity_type=entity_type)
+
+
 
 # <=======================================================================================================>
 
