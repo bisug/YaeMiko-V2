@@ -112,6 +112,26 @@
          "description": "Bot token obtained from @BotFather on Telegram.",
          "required": true,
          "value": ""
+      },
+      "GEMINI_API_KEY": {
+         "description": "Optional Google AI Studio key used by /askai and /palm.",
+         "required": false,
+         "value": ""
+      },
+      "GEMINI_MODEL": {
+         "description": "Optional Gemini model ID.",
+         "required": false,
+         "value": "gemini-2.5-flash-lite"
+      },
+      "LOGGER": {
+         "description": "Enable file logging.",
+         "required": false,
+         "value": "True"
+      },
+      "TEMP_DOWNLOAD_DIRECTORY": {
+         "description": "Temporary media download directory.",
+         "required": false,
+         "value": "./"
       }
    }
 }
