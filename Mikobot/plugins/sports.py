@@ -1,174 +1,196 @@
-# SOURCE https://github.com/Team-ProjectCodeX
-# CREATED BY https://t.me/O_okarma
-# API BY https://www.github.com/SOME-1HING
-# PROVIDED BY https://t.me/ProjectCodeX
+import html
+import os
+from urllib.parse import quote
 
-# <============================================== IMPORTS =========================================================>
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Update
-from telegram.constants import ParseMode
+from httpx import HTTPError
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update
 from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
 
 from Mikobot import function
 from Mikobot.state import state
 
-# <=======================================================================================================>
-
-# API URLs
-CRICKET_API_URL = "https://sugoi-api.vercel.app/cricket"
-FOOTBALL_API_URL = "https://sugoi-api.vercel.app/football"
-
-
-# Define the MatchManager class as provided in your code
-class MatchManager:
-    def __init__(self, api_url):
-        self.api_url = api_url
-        self.matches = []
-        self.match_count = 0
-
-    async def fetch_matches(self):
-        response = await state.get(self.api_url)
-        self.matches = response.json()
-
-    def get_next_matches(self, count):
-        next_matches = self.matches[self.match_count : self.match_count + count]
-        self.match_count += count
-        return next_matches
-
-    def reset_matches(self):
-        self.matches = []
-        self.match_count = 0
+SPORTDB_KEY = os.getenv("SPORTDB_API_KEY", "123")
+SPORTDB_URL = f"https://www.thesportsdb.com/api/v1/json/{SPORTDB_KEY}"
+SPORTS = {"cricket": "Cricket", "football": "Soccer"}
+MAX_LEAGUES = 10
 
 
-# <================================================ FUNCTION =======================================================>
-async def get_match_text(match, sport):
-    match_text = f"{'🏏' if sport == 'cricket' else '⚽️'} **{match['title']}**\n\n"
-    match_text += f"🗓 *Date:* {match['date']}\n"
-    match_text += f"🏆 *Team 1:* {match['team1']}\n"
-    match_text += f"🏆 *Team 2:* {match['team2']}\n"
-    match_text += f"🏟️ *Venue:* {match['venue']}"
-    return match_text
+async def _get_json(path: str) -> dict:
+    response = await state.get(f"{SPORTDB_URL}/{path}")
+    response.raise_for_status()
+    data = response.json()
+    return data if isinstance(data, dict) else {}
 
 
-def create_inline_keyboard(sport):
-    inline_keyboard = [
+async def get_leagues(sport: str) -> list[dict]:
+    data = await _get_json(f"search_all_leagues.php?s={quote(SPORTS[sport])}")
+    leagues = data.get("countries") or []
+    return [item for item in leagues if item.get("idLeague")][:MAX_LEAGUES]
+
+
+async def get_matches(league_id: str) -> list[dict]:
+    data = await _get_json(f"eventsnextleague.php?id={quote(str(league_id))}")
+    return [item for item in (data.get("events") or []) if isinstance(item, dict)]
+
+
+def _escape(value: object, limit: int = 300) -> str:
+    return html.escape(str(value or "").replace("\n", " ").strip(), quote=False)[:limit]
+
+
+def _format_match(match: dict, sport: str) -> str:
+    icon = "🏏" if sport == "cricket" else "⚽"
+    event = match.get("strEvent") or match.get("strEventAlternate") or "Match"
+    date = match.get("strTimestamp") or match.get("dateEvent") or "Unknown"
+    teams = match.get("strHomeTeam", "")
+    away = match.get("strAwayTeam", "")
+    teams_line = f"{_escape(teams)} vs {_escape(away)}" if teams and away else ""
+    venue = _escape(match.get("strVenue"), 120)
+    league = _escape(match.get("strLeague"), 120)
+    lines = [
+        f"{icon} <b>{_escape(event, 180)}</b>",
+        f"🗓 <b>Date:</b> {_escape(date, 80)}",
+    ]
+    if teams_line:
+        lines.append(f"🏆 <b>Teams:</b> {teams_line}")
+    if venue and venue.lower() != "unknown":
+        lines.append(f"🏟 <b>Venue:</b> {venue}")
+    if league:
+        lines.append(f"🏆 <b>Competition:</b> {league}")
+    return "\n".join(lines)
+
+
+def _league_keyboard(sport: str, leagues: list[dict]) -> InlineKeyboardMarkup:
+    rows = [
         [
             InlineKeyboardButton(
-                f"Next {sport.capitalize()} Match ➡️",
-                callback_data=f"next_{sport}_match",
+                _escape(item.get("strLeague"), 35),
+                callback_data=f"sport_league:{sport}:{item['idLeague']}",
             )
         ]
+        for item in leagues
     ]
-    return InlineKeyboardMarkup(inline_keyboard)
+    return InlineKeyboardMarkup(rows)
 
 
-cricket_manager = MatchManager(CRICKET_API_URL)
-football_manager = MatchManager(FOOTBALL_API_URL)
-
-
-# Define a command handler for the /cricket command
-async def get_cricket_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def _show_leagues(update: Update, sport: str) -> None:
+    message = update.effective_message
     try:
-        cricket_manager.reset_matches()
-        await cricket_manager.fetch_matches()
-
-        if not cricket_manager.matches:
-            await update.message.reply_text("No cricket matches found.")
+        leagues = await get_leagues(sport)
+        if not leagues:
+            await message.reply_text(f"No {sport} leagues are currently available.")
             return
-
-        next_matches = cricket_manager.get_next_matches(1)
-        match = next_matches[0]
-
-        match_text = await get_match_text(match, "cricket")
-        reply_markup = create_inline_keyboard("cricket")
-
-        await update.message.reply_text(
-            match_text, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN
+        await message.reply_text(
+            f"Select a {sport} league:",
+            reply_markup=_league_keyboard(sport, leagues),
         )
+    except HTTPError:
+        await message.reply_text("TheSportsDB is unavailable. Please try again later.")
+    except (ValueError, TypeError, KeyError):
+        await message.reply_text("TheSportsDB returned incomplete league data.")
 
-    except Exception as e:
-        await update.message.reply_text(f"An error occurred: {str(e)}")
 
-
-# Define a command handler for the /football command
-async def get_football_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def _send_league_message(message, sport: str, league_id: str) -> None:
     try:
-        football_manager.reset_matches()
-        await football_manager.fetch_matches()
-
-        if not football_manager.matches:
-            await update.message.reply_text("No football matches found.")
+        matches = await get_matches(league_id)
+        if not matches:
+            await message.reply_text(f"No upcoming {sport} matches found.")
             return
-
-        next_matches = football_manager.get_next_matches(1)
-        match = next_matches[0]
-
-        match_text = await get_match_text(match, "football")
-        reply_markup = create_inline_keyboard("football")
-
-        await update.message.reply_text(
-            match_text, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN
+        text = "\n\n".join(_format_match(match, sport) for match in matches[:10])
+        await message.reply_text(
+            text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("⬅️ Leagues", callback_data=f"sport_menu:{sport}")]]
+            ),
         )
+    except HTTPError:
+        await message.reply_text("TheSportsDB is unavailable. Please try again later.")
+    except (ValueError, TypeError, KeyError):
+        await message.reply_text("TheSportsDB returned incomplete match data.")
 
-    except Exception as e:
-        await update.message.reply_text(f"An error occurred: {str(e)}")
 
 
-# Define a callback query handler for showing the next match
-async def show_next_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def _send_league(update: Update, sport: str, league_id: str) -> None:
+    query = update.callback_query
+    await query.answer()
     try:
-        query = update.callback_query
-        sport = query.data.split("_")[1]
-        manager = cricket_manager if sport == "cricket" else football_manager
-
-        if not manager.matches:
-            await query.answer(f"No more {sport} matches available.")
+        matches = await get_matches(league_id)
+        if not matches:
+            await query.message.edit_text(f"No upcoming {sport} matches found.")
             return
-
-        next_matches = manager.get_next_matches(3)
-
-        if not next_matches:
-            await query.answer(f"No more {sport} matches available.")
-            return
-
-        match_text = ""
-        for match in next_matches:
-            match_text += await get_match_text(match, sport) + "\n\n"
-
-        reply_markup = create_inline_keyboard(sport)
-
+        text = "\n\n".join(_format_match(match, sport) for match in matches[:10])
         await query.message.edit_text(
-            match_text,
-            reply_markup=reply_markup,
-            parse_mode=ParseMode.MARKDOWN,
-            link_preview_options=LinkPreviewOptions(is_disabled=True),
+            text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("⬅️ Leagues", callback_data=f"sport_menu:{sport}")]]
+            ),
         )
-        await query.answer()
-
-    except Exception as e:
-        await query.message.reply_text(f"An error occurred: {str(e)}")
-
-
-# <=======================================================================================================>
+    except HTTPError:
+        await query.message.edit_text("TheSportsDB is unavailable. Please try again later.")
+    except (ValueError, TypeError, KeyError):
+        await query.message.edit_text("TheSportsDB returned incomplete match data.")
 
 
-# <================================================ HANDLER =======================================================>
-# Add command handlers to the dispatcher
-function(CommandHandler("cricket", get_cricket_matches))
-function(CommandHandler("football", get_football_matches))
-function(
-    CallbackQueryHandler(show_next_match, pattern=r"^next_(cricket|football)_match$")
-)
+async def _show_menu(update: Update, sport: str) -> None:
+    query = update.callback_query
+    await query.answer()
+    try:
+        leagues = await get_leagues(sport)
+        if not leagues:
+            await query.message.edit_text(f"No {sport} leagues are currently available.")
+            return
+        await query.message.edit_text(
+            f"Select a {sport} league:",
+            reply_markup=_league_keyboard(sport, leagues),
+        )
+    except HTTPError:
+        await query.message.edit_text("TheSportsDB is unavailable. Please try again later.")
+    except (ValueError, TypeError, KeyError):
+        await query.message.edit_text("TheSportsDB returned incomplete league data.")
 
-# <================================================= HELP ======================================================>
+
+async def get_sport_matches(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not update.effective_message or not context.args:
+        sport = context.command[0].lower() if context.command else ""
+        if sport in SPORTS:
+            await _show_leagues(update, sport)
+        return
+    sport = context.command[0].lower()
+    if len(context.args) == 1 and context.args[0].isdigit():
+        await _send_league_message(update.effective_message, sport, context.args[0])
+    else:
+        await _show_leagues(update, sport)
+
+
+async def sport_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    if not query or not query.data.startswith("sport_"):
+        return
+    parts = query.data.split(":")
+    try:
+        if parts[1] == "menu":
+            await _show_menu(update, parts[2])
+        else:
+            await _send_league(update, parts[1], parts[2])
+    except (IndexError, ValueError):
+        await query.answer("Invalid selection.", show_alert=True)
+
+
+function(CommandHandler("cricket", get_sport_matches))
+function(CommandHandler("football", get_sport_matches))
+function(CallbackQueryHandler(sport_callback, pattern=r"^sport_(?:league|menu):", block=False))
+
 __help__ = """
-🏅 *Match 𝗦chedule*
+🏅 <b>Sports schedules</b>
 
-➠ *Commands*:
+➠ <b>Commands:</b>
+» /cricket — list cricket leagues
+» /football — list football leagues
+» /cricket &lt;league ID&gt; — show upcoming cricket matches
+» /football &lt;league ID&gt; — show upcoming football matches
 
-» /cricket: use this command to get information about the next cricket match.
-
-» /football: use this command to get information about the next football match.
+Data: TheSportsDB
 """
 
 __mod_name__ = "SPORTS"
-# <================================================== END =====================================================>
