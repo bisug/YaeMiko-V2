@@ -1,7 +1,7 @@
 # <============================================== IMPORTS =========================================================>
 import html
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from io import BytesIO
 
 from telegram import ChatMemberAdministrator, Update
@@ -146,7 +146,7 @@ async def gban(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     start_time = time.time()
     datetime_fmt = "%Y-%m-%dT%H:%M"
-    current_time = datetime.utcnow().strftime(datetime_fmt)
+    current_time = datetime.now(timezone.utc).strftime(datetime_fmt)
 
     if chat.type != "private":
         chat_origin = "<b>{} ({})</b>\n".format(html.escape(chat.title), chat.id)
@@ -287,7 +287,7 @@ async def ungban(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     start_time = time.time()
     datetime_fmt = "%Y-%m-%dT%H:%M"
-    current_time = datetime.utcnow().strftime(datetime_fmt)
+    current_time = datetime.now(timezone.utc).strftime(datetime_fmt)
 
     if chat.type != "private":
         chat_origin = f"<b>{html.escape(chat.title)} ({chat.id})</b>\n"

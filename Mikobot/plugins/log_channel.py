@@ -1,5 +1,5 @@
 # <============================================== IMPORTS =========================================================>
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 
 from telegram import LinkPreviewOptions
@@ -43,7 +43,7 @@ if is_module_loaded(FILENAME):
 
             if result and isinstance(result, str):
                 datetime_fmt = "%H:%M - %d-%m-%Y"
-                result += f"\nEvent stamp: {datetime.utcnow().strftime(datetime_fmt)}"
+                result += f"\nEvent stamp: {datetime.now(timezone.utc).strftime(datetime_fmt)}"
 
                 if chat.is_forum and chat.username:
                     result += f"\nLink: https://t.me/{chat.username}/{message.message_thread_id}/{message.message_id}"
@@ -71,7 +71,7 @@ if is_module_loaded(FILENAME):
 
             if result:
                 datetime_fmt = "%H:%M - %d-%m-%Y"
-                result += f"\nEvent stamp: {datetime.utcnow().strftime(datetime_fmt)}"
+                result += f"\nEvent stamp: {datetime.now(timezone.utc).strftime(datetime_fmt)}"
                 if chat.is_forum and chat.username:
                     result += f"\nLink: https://t.me/{chat.username}/{message.message_thread_id}/{message.message_id}"
                 elif message.chat.type == chat.SUPERGROUP and message.chat.username:

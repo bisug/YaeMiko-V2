@@ -72,12 +72,12 @@ VERIFIED_USER_WAITLIST = {}
 
 # <================================================ TEMPLATE WELCOME FUNCTION =======================================================>
 async def circle(pfp, size=(259, 259)):
-    pfp = pfp.resize(size, Image.ANTIALIAS).convert("RGBA")
+    pfp = pfp.resize(size, Image.Resampling.LANCZOS).convert("RGBA")
     bigsize = (pfp.size[0] * 3, pfp.size[1] * 3)
     mask = Image.new("L", bigsize, 0)
     draw = ImageDraw.Draw(mask)
     draw.ellipse((0, 0) + bigsize, fill=255)
-    mask = mask.resize(pfp.size, Image.ANTIALIAS)
+    mask = mask.resize(pfp.size, Image.Resampling.LANCZOS)
     mask = ImageChops.darker(mask, pfp.split()[-1])
     pfp.putalpha(mask)
     return pfp
@@ -89,7 +89,8 @@ async def draw_multiple_line_text(image, text, font, text_start_height):
     y_text = text_start_height
     lines = textwrap.wrap(text, width=50)
     for line in lines:
-        line_width, line_height = font.getsize(line)
+        bbox = font.getbbox(line)
+        line_width, line_height = bbox[2] - bbox[0], bbox[3] - bbox[1]
         draw.text(
             ((image_width - line_width) // 2, y_text), line, font=font, fill="black"
         )
@@ -100,7 +101,7 @@ async def welcomepic(pic, user, chat, user_id):
     user = unidecode.unidecode(user)
     background = Image.open("Extra/bgg.jpg")
     background = background.resize(
-        (background.size[0], background.size[1]), Image.ANTIALIAS
+        (background.size[0], background.size[1]), Image.Resampling.LANCZOS
     )
     pfp = Image.open(pic).convert("RGBA")
     pfp = await circle(pfp, size=(259, 259))
@@ -108,7 +109,8 @@ async def welcomepic(pic, user, chat, user_id):
     pfp_y = (background.size[1] - pfp.size[1]) // 2 + 38
     draw = ImageDraw.Draw(background)
     font = ImageFont.truetype("Extra/Calistoga-Regular.ttf", 42)
-    text_width, text_height = draw.textsize(f"{user} [{user_id}]", font=font)
+    bbox = draw.textbbox((0, 0), f"{user} [{user_id}]", font=font)
+    text_width, text_height = bbox[2] - bbox[0], bbox[3] - bbox[1]
     text_x = 20
     text_y = background.height - text_height - 20 - 25
     draw.text((text_x, text_y), f"{user} [{user_id}]", font=font, fill="white")

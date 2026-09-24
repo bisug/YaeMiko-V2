@@ -8,6 +8,7 @@ import random
 from httpx import HTTPError
 from pyrogram import Client, filters
 from pyrogram.types import InputMediaPhoto, Message
+from telegram import LinkPreviewOptions
 
 from Mikobot import app
 from Mikobot.state import state
@@ -66,7 +67,7 @@ async def _send_images(message: Message, query: str) -> None:
         await status.delete()
         await message.reply_text(
             "Images: Openverse\n" + "\n".join(credits),
-            disable_web_page_preview=True,
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     except (HTTPError, ValueError, TypeError, KeyError, AttributeError):
         await status.edit_text("Image search failed. Please try again later.")

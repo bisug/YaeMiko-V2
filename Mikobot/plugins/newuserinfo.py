@@ -9,12 +9,12 @@ from Mikobot import DEMONS, DEV_USERS, DRAGONS, OWNER_ID, TIGERS, WOLVES, app
 
 
 async def circle(pfp, size=(900, 900)):
-    pfp = pfp.resize(size, Image.ANTIALIAS).convert("RGBA")
+    pfp = pfp.resize(size, Image.Resampling.LANCZOS).convert("RGBA")
     bigsize = (pfp.size[0] * 3, pfp.size[1] * 3)
     mask = Image.new("L", bigsize, 0)
     draw = ImageDraw.Draw(mask)
     draw.ellipse((0, 0) + bigsize, fill=255)
-    mask = mask.resize(pfp.size, Image.ANTIALIAS)
+    mask = mask.resize(pfp.size, Image.Resampling.LANCZOS)
     mask = ImageChops.darker(mask, pfp.split()[-1])
     pfp.putalpha(mask)
     return pfp
@@ -51,7 +51,7 @@ async def userinfopic(
     # Load the background image
     background = Image.open("Extra/user.jpg")
     background = background.resize(
-        (background.size[0], background.size[1]), Image.ANTIALIAS
+        (background.size[0], background.size[1]), Image.Resampling.LANCZOS
     )
 
     draw = ImageDraw.Draw(background)
@@ -68,8 +68,8 @@ async def userinfopic(
             pfp = await circle(pfp, size=pfp_size)
             background.paste(pfp, (pfp_x, pfp_y), pfp)
 
-        user_text_width, user_text_height = draw.textsize(user_name, font=font)
-        user_id_text_width, user_id_text_height = draw.textsize(str(user.id), font=font)
+        user_bbox = draw.textbbox((0, 0), user_name, font=font)
+        user_id_bbox = draw.textbbox((0, 0), str(user.id), font=font)
 
         draw.text((user_x, user_y), user_name, font=font, fill="white")
         draw.text((user_id_x, user_id_y), str(user.id), font=font, fill="white")
