@@ -53,7 +53,7 @@ LOCK_TYPES = {
     "forwardchannel": "forwardchannel",
     "forwardbot": "forwardbot",
     # "invitelink": ,
-    "videonote": filters.video_note,
+    "videonote": filters.VIDEO_NOTE,
     "emojicustom": filters.Entity(MessageEntity.CUSTOM_EMOJI)
     | filters.CaptionEntity(MessageEntity.CUSTOM_EMOJI),
     "stickerpremium": filters.Sticker.PREMIUM,
