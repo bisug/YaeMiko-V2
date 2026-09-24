@@ -2,6 +2,7 @@
 import asyncio
 import os
 import tempfile
+from pathlib import Path
 
 from opennsfw_onnx import NSFWClassifier
 from pyrogram import filters
@@ -32,42 +33,58 @@ def _safe_remove(path):
         pass
 
 
-async def get_file_id_from_message(message):
-    file_id = None
+def get_media_from_message(message):
     if message.document:
         if int(message.document.file_size) > MAX_FILE_SIZE:
-            return
-        mime_type = message.document.mime_type or ""
-        if not mime_type.startswith("image/"):
-            return
-        file_id = message.document.file_id
-
+            return None, None
+        if not (message.document.mime_type or "").startswith("image/"):
+            return None, None
+        return message.document.file_id, "image"
     if message.sticker:
         if message.sticker.is_animated:
-            if not message.sticker.thumbs:
-                return
-            file_id = message.sticker.thumbs[0].file_id
-        else:
-            file_id = message.sticker.file_id
-
+            return (
+                (message.sticker.thumbs[0].file_id, "image")
+                if message.sticker.thumbs
+                else (None, None)
+            )
+        return message.sticker.file_id, "image"
     if message.photo:
-        file_id = message.photo.file_id
-
+        return message.photo.file_id, "image"
     if message.animation:
-        if not message.animation.thumbs:
-            return
-        file_id = message.animation.thumbs[0].file_id
-
+        return message.animation.file_id, "video"
     if message.video:
-        if not message.video.thumbs:
-            return
-        file_id = message.video.thumbs[0].file_id
-
+        return message.video.file_id, "video"
     if message.video_note:
-        if not message.video_note.thumbs:
-            return
-        file_id = message.video_note.thumbs[0].file_id
-    return file_id
+        return message.video_note.file_id, "video"
+    return None, None
+
+
+async def prepare_scan_file(client, message, temp_dir):
+    file_id, media_type = get_media_from_message(message)
+    if not file_id:
+        return None
+    source = Path(temp_dir) / "source.media"
+    downloaded = await client.download_media(file_id, file_name=str(source))
+    if not downloaded:
+        return None
+    if media_type == "image":
+        return str(downloaded)
+    output = Path(temp_dir) / "frame.png"
+    process = await asyncio.create_subprocess_exec(
+        "ffmpeg", "-v", "error", "-i", str(downloaded), "-frames:v", "1",
+        "-f", "image2", str(output), stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    try:
+        await asyncio.wait_for(process.communicate(), timeout=20)
+    except asyncio.TimeoutError:
+        process.kill()
+        await process.wait()
+        return None
+
+    if process.returncode != 0 or not output.exists():
+        return None
+    return str(output)
 
 
 @app.on_message(
@@ -88,20 +105,17 @@ async def detect_nsfw(_, message):
         return
     if not message.from_user:
         return
-    file_id = await get_file_id_from_message(message)
-    if not file_id:
+    if not get_media_from_message(message)[0]:
         return
-    with tempfile.NamedTemporaryFile(suffix=".media", delete=False) as temp:
-        file = temp.name
-    file = await _.download_media(file_id, file_name=file)
-    try:
-        result = await _scan(file)
-    except Exception as error:
-        await message.reply_text(f"NSFW scan failed: {error}")
-        return
-    finally:
-        if file and os.path.exists(file):
-            os.remove(file)
+    with tempfile.TemporaryDirectory(prefix="yae-nsfw-") as temp_dir:
+        file = await prepare_scan_file(_, message, temp_dir)
+        if not file:
+            return
+        try:
+            result = await _scan(file)
+        except Exception as error:
+            await message.reply_text(f"NSFW scan failed: {error}")
+            return
     if result.nsfw < NSFW_THRESHOLD:
         return
     if message.from_user.id in DRAGONS:
@@ -143,19 +157,16 @@ async def nsfw_scan_command(_, message):
         )
         return
     m = await message.reply_text("Scanning")
-    file_id = await get_file_id_from_message(reply)
-    if not file_id:
+    if not get_media_from_message(reply)[0]:
         return await m.edit("Something wrong happened.")
-    with tempfile.NamedTemporaryFile(suffix=".media", delete=False) as temp:
-        file = temp.name
-    file = await _.download_media(file_id, file_name=file)
-    try:
-        result = await _scan(file)
-    except Exception as error:
-        return await m.edit(f"NSFW scan failed: {error}")
-    finally:
-        if file and os.path.exists(file):
-            os.remove(file)
+    with tempfile.TemporaryDirectory(prefix="yae-nsfw-") as temp_dir:
+        file = await prepare_scan_file(_, reply, temp_dir)
+        if not file:
+            return await m.edit("The media could not be converted for scanning.")
+        try:
+            result = await _scan(file)
+        except Exception as error:
+            return await m.edit(f"NSFW scan failed: {error}")
     await m.edit(
         f"**➢ Safe:** `{result.sfw:.2%}`\n"
         f"**➢ NSFW:** `{result.nsfw:.2%}`\n"
