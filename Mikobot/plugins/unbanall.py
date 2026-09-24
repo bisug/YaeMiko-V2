@@ -15,10 +15,8 @@ from telethon.tl.types import (
 )
 
 from Mikobot import LOGGER, tbot
-from Mikobot.events import register
 
-sudo = 5978107653
-CMD_HELP = "/ !"
+from Mikobot.events import register
 
 
 # ================================================

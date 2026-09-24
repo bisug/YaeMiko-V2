@@ -11,7 +11,7 @@ from telegram.error import BadRequest
 from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, filters
 from telegram.helpers import mention_html
 
-from Mikobot import DEV_USERS, DRAGONS, LOGGER, OWNER_ID, function
+from Mikobot import BAN_STICKER, DEV_USERS, DRAGONS, LOGGER, OWNER_ID, function
 from Mikobot.plugins.disable import DisableAbleCommandHandler
 from Mikobot.plugins.helper_funcs.chat_status import (
     can_delete,
@@ -26,11 +26,10 @@ from Mikobot.plugins.helper_funcs.misc import mention_username
 from Mikobot.plugins.helper_funcs.string_handling import extract_time
 from Mikobot.plugins.log_channel import gloggable, loggable
 
-BAN_STICKER = "CAACAgUAAxkBAAEGWC5lloYv1tiI3-KPguoH5YX-RveWugACoQ4AAi4b2FQGdUhawbi91DQE"
-
-
-@connection_status
+__mod_name__ = "BAN"
 @loggable
+
+
 @check_admin(permission="can_restrict_members", is_both=True)
 async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     chat = update.effective_chat

@@ -26,7 +26,7 @@ class Config(object):
 
     # <================================================ REQUIRED ======================================================>
     # Telegram API configuration
-    API_ID = int(os.environ.get("API_ID", "204"))
+    API_ID = int(os.environ.get("API_ID", "0"))
     API_HASH = os.environ.get("API_HASH", "")
 
     # Database configuration (PostgreSQL)
@@ -52,7 +52,7 @@ class Config(object):
     GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
 
     # Owner's Telegram user ID (Must be an integer)
-    OWNER_ID = int(os.environ.get("OWNER_ID", "5907205317"))
+    OWNER_ID = int(os.environ.get("OWNER_ID", "0"))
     # <=======================================================================================================>
 
     # <================================================ OPTIONAL ======================================================>
@@ -80,7 +80,7 @@ class Config(object):
 
     # Global ban settings
     STRICT_GBAN = os.environ.get("STRICT_GBAN", "True") == "True"
-    BAN_STICKER = os.environ.get("BAN_STICKER", "CAACAgUAAxkBAAEGWC5lloYv1tiI3-KPguoH5YX-RveWugACoQ4AAi4b2FQGdUhawbi91DQE")
+    BAN_STICKER = os.environ.get("BAN_STICKER", "")
 
     # Temporary download directory
     TEMP_DOWNLOAD_DIRECTORY = os.environ.get("TEMP_DOWNLOAD_DIRECTORY", "./")

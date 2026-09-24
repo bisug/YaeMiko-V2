@@ -2,6 +2,7 @@
 import asyncio
 import html
 import json
+import os
 import re
 from typing import Optional
 
@@ -123,7 +124,14 @@ async def chatbot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         Message = message.text
         await bot.send_chat_action(chat_id, action="typing")
         kukiurl = requests.get(
-            f"http://api.brainshop.ai/get?bid=176809&key=lbMN8CXTGzhn1NKG&uid=[user]&msg={Message}"
+            "http://api.brainshop.ai/get",
+            params={
+                "bid": os.environ.get("BRAINSHOP_BID", ""),
+                "key": os.environ.get("BRAINSHOP_KEY", ""),
+                "uid": "[user]",
+                "msg": Message,
+            },
+            timeout=10,
         )
 
         Kuki = json.loads(kukiurl.text)
