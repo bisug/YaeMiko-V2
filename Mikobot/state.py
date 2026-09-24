@@ -1,7 +1,5 @@
-from aiohttp import ClientSession
 from httpx import AsyncClient, Timeout
 
-session = ClientSession()
 state = AsyncClient(
     http2=True,
     verify=False,

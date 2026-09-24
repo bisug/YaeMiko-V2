@@ -915,6 +915,12 @@ if __name__ == "__main__":
         except Exception:
             LOGGER.exception("Failed to disconnect Telethon client")
         try:
+            from Mikobot.state import state
+
+            loop.run_until_complete(state.aclose())
+        except Exception:
+            LOGGER.exception("Failed to close HTTP client")
+        try:
             if loop.is_running():
                 loop.stop()
         finally:
