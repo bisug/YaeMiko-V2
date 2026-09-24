@@ -77,7 +77,7 @@ async def get_file_id_from_message(message):
         | filters.sticker
         | filters.animation
         | filters.video
-        | filters.VIDEO_NOTE
+        | filters.video_note
     )
     & ~filters.private,
     group=8,
