@@ -26,7 +26,7 @@ async def blackliststicker(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = await connected(bot, update, chat, user.id, need_admin=False)
     if conn:
         chat_id = conn
-        chat_obj = await dispatcher.bot.getChat(conn)
+        chat_obj = await dispatcher.bot.get_chat(conn)
         chat_name = chat_obj.title
     else:
         if chat.type == "private":
@@ -78,7 +78,7 @@ async def add_blackliststicker(update: Update, context: ContextTypes.DEFAULT_TYP
     conn = await connected(bot, update, chat, user.id)
     if conn:
         chat_id = conn
-        chat_obj = await dispatcher.bot.getChat(conn)
+        chat_obj = await dispatcher.bot.get_chat(conn)
         chat_name = chat_obj.title
     else:
         chat_id = update.effective_chat.id
@@ -176,7 +176,7 @@ async def unblackliststicker(update: Update, context: ContextTypes.DEFAULT_TYPE)
     conn = await connected(bot, update, chat, user.id)
     if conn:
         chat_id = conn
-        chat_obj = await dispatcher.bot.getChat(conn)
+        chat_obj = await dispatcher.bot.get_chat(conn)
         chat_name = chat_obj.title
     else:
         chat_id = update.effective_chat.id
@@ -279,9 +279,9 @@ async def blacklist_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bot, args = context.bot, context.args
     conn = await connected(bot, update, chat, user.id, need_admin=True)
     if conn:
-        chat = await dispatcher.bot.getChat(conn)
+        chat = await dispatcher.bot.get_chat(conn)
         chat_id = conn
-        chat_obj = await dispatcher.bot.getChat(conn)
+        chat_obj = await dispatcher.bot.get_chat(conn)
         chat_name = chat_obj.title
     else:
         if update.effective_message.chat.type == "private":

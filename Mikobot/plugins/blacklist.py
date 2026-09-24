@@ -33,7 +33,7 @@ async def blacklist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = await connected(context.bot, update, chat, user.id, need_admin=False)
     if conn:
         chat_id = conn
-        chat_obj = await dispatcher.bot.getChat(conn)
+        chat_obj = await dispatcher.bot.get_chat(conn)
         chat_name = chat_obj.title
     else:
         if chat.type == "private":
@@ -80,7 +80,7 @@ async def add_blacklist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = await connected(context.bot, update, chat, user.id)
     if conn:
         chat_id = conn
-        chat_obj = await dispatcher.bot.getChat(conn)
+        chat_obj = await dispatcher.bot.get_chat(conn)
         chat_name = chat_obj.title
     else:
         chat_id = update.effective_chat.id
@@ -135,7 +135,7 @@ async def unblacklist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = await connected(context.bot, update, chat, user.id)
     if conn:
         chat_id = conn
-        chat_obj = await dispatcher.bot.getChat(conn)
+        chat_obj = await dispatcher.bot.get_chat(conn)
         chat_name = chat_obj.title
     else:
         chat_id = update.effective_chat.id
@@ -216,9 +216,9 @@ async def blacklist_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     conn = await connected(context.bot, update, chat, user.id, need_admin=True)
     if conn:
-        chat = await dispatcher.bot.getChat(conn)
+        chat = await dispatcher.bot.get_chat(conn)
         chat_id = conn
-        chat_obj = await dispatcher.bot.getChat(conn)
+        chat_obj = await dispatcher.bot.get_chat(conn)
         chat_name = chat_obj.title
     else:
         if update.effective_message.chat.type == "private":

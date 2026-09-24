@@ -209,7 +209,7 @@ async def chats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     P = 1
     for chat in all_chats:
         try:
-            curr_chat = await context.bot.getChat(chat.chat_id)
+            curr_chat = await context.bot.get_chat(chat.chat_id)
             await curr_chat.get_member(context.bot.id)
             chat_members = await curr_chat.get_member_count(context.bot.id)
             chatfile += "{}. {} | {} | {}\n".format(

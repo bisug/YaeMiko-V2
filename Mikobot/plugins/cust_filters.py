@@ -90,7 +90,7 @@ async def list_handlers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = await connected(context.bot, update, chat, user.id, need_admin=False)
     if not conn is False:
         chat_id = conn
-        chat_obj = await dispatcher.bot.getChat(conn)
+        chat_obj = await dispatcher.bot.get_chat(conn)
         chat_name = chat_obj.title
         filter_list = "*Filter in {}:*\n"
     else:
@@ -144,7 +144,7 @@ async def filters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = await connected(context.bot, update, chat, user.id)
     if not conn is False:
         chat_id = conn
-        chat_obj = await dispatcher.bot.getChat(conn)
+        chat_obj = await dispatcher.bot.get_chat(conn)
         chat_name = chat_obj.title
     else:
         chat_id = update.effective_chat.id
@@ -298,7 +298,7 @@ async def stop_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = await connected(context.bot, update, chat, user.id)
     if not conn is False:
         chat_id = conn
-        chat_obj = await dispatcher.bot.getChat(conn)
+        chat_obj = await dispatcher.bot.get_chat(conn)
         chat_name = chat_obj.title
     else:
         chat_id = update.effective_chat.id

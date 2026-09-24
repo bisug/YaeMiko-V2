@@ -191,7 +191,7 @@ async def lock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             # Connection check
             conn = await connected(context.bot, update, chat, user.id, need_admin=True)
             if conn:
-                chat = await dispatcher.bot.getChat(conn)
+                chat = await dispatcher.bot.get_chat(conn)
                 chat_id = conn
                 chat_name = chat.title
                 text = "Locked {} for non-admins in {}!".format(ltype, chat_name)
@@ -224,7 +224,7 @@ async def lock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             # Connection check
             conn = await connected(context.bot, update, chat, user.id, need_admin=True)
             if conn:
-                chat = await dispatcher.bot.getChat(conn)
+                chat = await dispatcher.bot.get_chat(conn)
                 chat_id = conn
                 chat_name = chat.title
                 text = "Locked {} for all non-admins in {}!".format(
@@ -243,7 +243,7 @@ async def lock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                 chat_name = update.effective_message.chat.title
                 text = "Locked {} for all non-admins!".format(ltype)
 
-            chat_obj = await context.bot.getChat(chat_id)
+            chat_obj = await context.bot.get_chat(chat_id)
             current_permission = chat_obj.permissions
             await context.bot.set_chat_permissions(
                 chat_id=chat_id,
@@ -313,7 +313,7 @@ async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             # Connection check
             conn = await connected(context.bot, update, chat, user.id, need_admin=True)
             if conn:
-                chat = await dispatcher.bot.getChat(conn)
+                chat = await dispatcher.bot.get_chat(conn)
                 chat_id = conn
                 chat_name = chat.title
                 text = "Unlocked {} for everyone in {}!".format(ltype, chat_name)
@@ -345,7 +345,7 @@ async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             # Connection check
             conn = await connected(context.bot, update, chat, user.id, need_admin=True)
             if conn:
-                chat = await dispatcher.bot.getChat(conn)
+                chat = await dispatcher.bot.get_chat(conn)
                 chat_id = conn
                 chat_name = chat.title
                 text = "Unlocked {} for everyone in {}!".format(ltype, chat_name)
@@ -376,7 +376,7 @@ async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                 )
                 return
 
-            chat_obj = await context.bot.getChat(chat_id)
+            chat_obj = await context.bot.get_chat(chat_id)
             current_permission = chat_obj.permissions
             await context.bot.set_chat_permissions(
                 chat_id=chat_id,
@@ -612,7 +612,7 @@ async def list_locks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Connection check
     conn = await connected(context.bot, update, chat, user.id, need_admin=True)
     if conn:
-        chat = await dispatcher.bot.getChat(conn)
+        chat = await dispatcher.bot.get_chat(conn)
         chat_name = chat.title
     else:
         if update.effective_message.chat.type == "private":

@@ -754,7 +754,7 @@ async def fed_ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except BadRequest as excp:
                 if excp.message in FBAN_ERRORS:
                     try:
-                        await dispatcher.bot.getChat(fedschat)
+                        await dispatcher.bot.get_chat(fedschat)
                     except Forbidden:
                         sql.chat_leave_fed(fedschat)
                         LOGGER.info(
@@ -795,7 +795,7 @@ async def fed_ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     except BadRequest as excp:
                         if excp.message in FBAN_ERRORS:
                             try:
-                                await dispatcher.bot.getChat(fedschat)
+                                await dispatcher.bot.get_chat(fedschat)
                             except Forbidden:
                                 targetfed_id = sql.get_fed_id(fedschat)
                                 sql.unsubs_fed(fed_id, targetfed_id)
@@ -949,7 +949,7 @@ async def fed_ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     except BadRequest as excp:
                         if excp.message in FBAN_ERRORS:
                             try:
-                                await dispatcher.bot.getChat(fedschat)
+                                await dispatcher.bot.get_chat(fedschat)
                             except Forbidden:
                                 targetfed_id = sql.get_fed_id(fedschat)
                                 sql.unsubs_fed(fed_id, targetfed_id)
@@ -1141,7 +1141,7 @@ async def unfban(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except BadRequest as excp:
                     if excp.message in FBAN_ERRORS:
                         try:
-                            await dispatcher.bot.getChat(fedschat)
+                            await dispatcher.bot.get_chat(fedschat)
                         except Forbidden:
                             targetfed_id = sql.get_fed_id(fedschat)
                             sql.unsubs_fed(fed_id, targetfed_id)
@@ -1332,7 +1332,7 @@ async def fed_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             except TelegramError:
                 try:
-                    await dispatcher.bot.getChat(chat)
+                    await dispatcher.bot.get_chat(chat)
                 except Forbidden:
                     failed += 1
                     sql.chat_leave_fed(chat)
@@ -1611,7 +1611,7 @@ async def fed_chats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = "<b>New chat joined the federation {}:</b>\n".format(info["fname"])
     for chats in getlist:
         try:
-            chat_obj = await dispatcher.bot.getChat(chats)
+            chat_obj = await dispatcher.bot.get_chat(chats)
             chat_name = chat_obj.title
         except Forbidden:
             sql.chat_leave_fed(chats)

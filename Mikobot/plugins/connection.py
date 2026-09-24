@@ -74,8 +74,8 @@ async def connection_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = await connected(context.bot, update, chat, user.id, need_admin=True)
 
     if conn:
-        chat = await dispatcher.bot.getChat(conn)
-        chat_obj = await dispatcher.bot.getChat(conn)
+        chat = await dispatcher.bot.get_chat(conn)
+        chat_obj = await dispatcher.bot.get_chat(conn)
         chat_name = chat_obj.title
     else:
         if update.effective_message.chat.type != "private":
@@ -107,7 +107,7 @@ async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except ValueError:
                 try:
                     connect_chat = str(args[0])
-                    get_chat = await context.bot.getChat(connect_chat)
+                    get_chat = await context.bot.get_chat(connect_chat)
                     connect_chat = get_chat.id
                     getstatusadmin = await context.bot.get_chat_member(
                         connect_chat,
@@ -133,7 +133,7 @@ async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     conn = await connected(
                         context.bot, update, chat, user.id, need_admin=False
                     )
-                    conn_chat = await dispatcher.bot.getChat(conn)
+                    conn_chat = await dispatcher.bot.get_chat(conn)
                     chat_name = conn_chat.title
                     await send_message(
                         update.effective_message,
@@ -167,7 +167,7 @@ async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 buttons = []
             conn = await connected(context.bot, update, chat, user.id, need_admin=False)
             if conn:
-                connectedchat = await dispatcher.bot.getChat(conn)
+                connectedchat = await dispatcher.bot.get_chat(conn)
                 text = "You are currently connected to *{}* (`{}`)".format(
                     connectedchat.title,
                     conn,
@@ -237,7 +237,7 @@ async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat.id,
             )
             if connection_status:
-                chat_obj = await dispatcher.bot.getChat(chat.id)
+                chat_obj = await dispatcher.bot.get_chat(chat.id)
                 chat_name = chat_obj.title
                 await send_message(
                     update.effective_message,
@@ -376,7 +376,7 @@ async def connect_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 conn = await connected(
                     context.bot, update, chat, user.id, need_admin=False
                 )
-                conn_chat = await dispatcher.bot.getChat(conn)
+                conn_chat = await dispatcher.bot.get_chat(conn)
                 chat_name = conn_chat.title
                 await query.message.edit_text(
                     "Successfully connected to *{}*. Use `/helpconnect` to check available commands.".format(

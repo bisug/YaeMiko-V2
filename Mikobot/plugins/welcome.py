@@ -1148,7 +1148,7 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ),
         )
         try:
-            await bot.deleteMessage(chat.id, message.message_id)
+            await bot.delete_message(chat.id, message.message_id)
         except:
             pass
         if member_dict["should_welc"]:

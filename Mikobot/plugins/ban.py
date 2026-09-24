@@ -470,7 +470,7 @@ async def selfunban(context: ContextTypes.DEFAULT_TYPE, update: Update) -> str:
         await message.reply_text("Give a valid chat ID.")
         return
 
-    chat = await bot.getChat(chat_id)
+    chat = await bot.get_chat(chat_id)
 
     try:
         member = await chat.get_member(user.id)

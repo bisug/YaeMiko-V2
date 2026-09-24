@@ -181,7 +181,7 @@ async def gban(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
     else:
-        send_to_list(bot, DRAGONS, log_message, html=True)
+        await send_to_list(bot, DRAGONS, log_message, html=True)
 
     sql.gban_user(user_id, user_chat.username or user_chat.first_name, reason)
 
@@ -211,7 +211,7 @@ async def gban(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         parse_mode=ParseMode.HTML,
                     )
                 else:
-                    send_to_list(
+                    await send_to_list(
                         bot,
                         DRAGONS,
                         f"Could not gban due to: {excp.message}",
@@ -227,7 +227,7 @@ async def gban(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.HTML,
         )
     else:
-        send_to_list(
+        await send_to_list(
             bot,
             DRAGONS,
             f"Gban complete! (User banned in <code>{gbanned_chats}</code> chats)",
@@ -315,7 +315,7 @@ async def ungban(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 + "\n\nFormatting has been disabled due to an unexpected error.",
             )
     else:
-        send_to_list(bot, DRAGONS, log_message, html=True)
+        await send_to_list(bot, DRAGONS, log_message, html=True)
 
     chats = get_user_com_chats(user_id)
     ungbanned_chats = 0
@@ -361,7 +361,7 @@ async def ungban(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.HTML,
         )
     else:
-        send_to_list(bot, DRAGONS, "un-gban complete!")
+        await send_to_list(bot, DRAGONS, "un-gban complete!")
 
     end_time = time.time()
     ungban_time = round((end_time - start_time), 2)

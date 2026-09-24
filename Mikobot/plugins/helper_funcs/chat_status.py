@@ -216,7 +216,7 @@ async def is_user_admin(chat: Chat, user_id: int, member: ChatMember = None) -> 
                 # so query bot api again and return user status
                 # while saving it in cache for future usage...
                 try:
-                    chat_admins = await dispatcher.bot.getChatAdministrators(chat.id)
+                    chat_admins = await dispatcher.bot.get_chat_administrators(chat.id)
                 except Forbidden:
                     return False
                 admin_list = [x.user.id for x in chat_admins]
@@ -390,7 +390,7 @@ def connection_status(func):
         )
 
         if conn:
-            chat = await dispatcher.bot.getChat(conn)
+            chat = await dispatcher.bot.get_chat(conn)
             update.__setattr__("_effective_chat", chat)
             return await func(update, context, *args, **kwargs)
         else:

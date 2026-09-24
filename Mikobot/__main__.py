@@ -171,7 +171,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 IMPORTED["exᴛʀᴀs"].markdown_help_sender(update)
             elif args[0].lower().startswith("stngs_"):
                 match = re.match("stngs_(.*)", args[0].lower())
-                chat = await dispatcher.bot.getChat(match.group(1))
+                chat = await dispatcher.bot.get_chat(match.group(1))
 
                 if is_user_admin(chat, update.effective_user.id):
                     send_settings(match.group(1), update.effective_user.id, False)
@@ -898,7 +898,7 @@ async def settings_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
         # ensure no spinny white circle
-        bot.answer_callback_query(query.id)
+        await bot.answer_callback_query(query.id)
         await query.message.delete()
     except BadRequest as excp:
         if excp.message not in [

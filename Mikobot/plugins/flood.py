@@ -151,7 +151,7 @@ async def set_flood(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = await connected(context.bot, update, chat, user.id, need_admin=True)
     if conn:
         chat_id = conn
-        chat_obj = await dispatcher.bot.getChat(conn)
+        chat_obj = await dispatcher.bot.get_chat(conn)
         chat_name = chat_obj.title
     else:
         if update.effective_message.chat.type == "private":
@@ -248,7 +248,7 @@ async def flood(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = await connected(context.bot, update, chat, user.id, need_admin=False)
     if conn:
         chat_id = conn
-        chat_obj = await dispatcher.bot.getChat(conn)
+        chat_obj = await dispatcher.bot.get_chat(conn)
         chat_name = chat_obj.title
     else:
         if update.effective_message.chat.type == "private":
@@ -293,9 +293,9 @@ async def set_flood_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     conn = await connected(context.bot, update, chat, user.id, need_admin=True)
     if conn:
-        chat = await dispatcher.bot.getChat(conn)
+        chat = await dispatcher.bot.get_chat(conn)
         chat_id = conn
-        chat_obj = await dispatcher.bot.getChat(conn)
+        chat_obj = await dispatcher.bot.get_chat(conn)
         chat_name = chat_obj.title
     else:
         if update.effective_message.chat.type == "private":
