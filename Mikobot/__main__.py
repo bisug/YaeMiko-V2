@@ -1016,6 +1016,15 @@ if __name__ == "__main__":
         LOGGER.info(err)
     finally:
         try:
+            app.stop()
+        except Exception:
+            LOGGER.exception("Failed to stop Kurigram client")
+        try:
+            if tbot.is_connected():
+                tbot.disconnect()
+        except Exception:
+            LOGGER.exception("Failed to disconnect Telethon client")
+        try:
             if loop.is_running():
                 loop.stop()
         finally:
