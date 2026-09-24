@@ -1,22 +1,8 @@
-import codecs
-import pickle
 from typing import List
 
 from Database.mongodb.db import dbname
 
 blacklist_filtersdb = dbname.blacklistFilters
-
-
-def obj_to_str(obj):
-    if not obj:
-        return False
-    string = codecs.encode(pickle.dumps(obj), "base64").decode()
-    return string
-
-
-def str_to_obj(string: str):
-    obj = pickle.loads(codecs.decode(string.encode(), "base64"))
-    return obj
 
 
 async def get_blacklisted_words(chat_id: int) -> List[str]:

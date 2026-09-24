@@ -37,6 +37,7 @@ from pyrogram.types import (
 )
 
 from Mikobot import BOT_USERNAME, MESSAGE_DUMP, MONGO_DB_URI, OWNER_ID, app
+from Mikobot.state import state
 from Mikobot.utils.custom_filters import PREFIX_HANDLER
 
 # <=======================================================================================================>
@@ -696,9 +697,11 @@ async def return_json_senpai(
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
-    return requests.post(
-        url, json={"query": query, "variables": vars_}, headers=headers
-    ).json()
+    response = await state.post(
+        url, json={"query": query, "variables": vars_}, headers=headers, timeout=20
+    )
+    response.raise_for_status()
+    return response.json()
 
 
 def cflag(country):
@@ -1136,7 +1139,7 @@ class google_translator:
             with requests.Session() as s:
                 s.proxies = self.proxies
                 r = s.send(
-                    request=response.prepare(), verify=False, timeout=self.timeout
+                    request=response.prepare(), verify=True, timeout=self.timeout
                 )
             for line in r.iter_lines(chunk_size=1024):
                 decoded_line = line.decode("utf-8")
@@ -1213,7 +1216,7 @@ class google_translator:
             with requests.Session() as s:
                 s.proxies = self.proxies
                 r = s.send(
-                    request=response.prepare(), verify=False, timeout=self.timeout
+                    request=response.prepare(), verify=True, timeout=self.timeout
                 )
 
             for line in r.iter_lines(chunk_size=1024):
@@ -2740,8 +2743,8 @@ async def get_manga(qdb, page, auth: bool = False, user: int = None, cid: int = 
     finals_ += f"{bl}**{text[0]}:** `{source}`\n"
     finals_ += user_data
     if os.environ.get("PREFERRED_LANGUAGE"):
-        description = tr.translate(
-            description, lang_tgt=os.environ.get("PREFERRED_LANGUAGE")
+        description = await asyncio.to_thread(
+            tr.translate, description, lang_tgt=os.environ.get("PREFERRED_LANGUAGE")
         )
     findesc = "" if description == "" else f"`{description}`"
     finals_ += f"\n**{text[12]}**: {findesc}\n\n{description_s}"
@@ -2922,7 +2925,9 @@ async def get_scheduled(x: int = 9):
     base_url = "https://api.jikan.moe/v4/schedules/"
     day = str(day_(x if x != 9 else datetime.now().weekday())).lower()
     out = f"Scheduled animes for {day.capitalize()}\n\n"
-    data = requests.get(base_url + day).json()
+    response = await state.get(base_url + day, timeout=20)
+    response.raise_for_status()
+    data = response.json()
     sched_ls = data["data"]
     for i in sched_ls:
         try:
@@ -2938,8 +2943,10 @@ async def get_scheduled(x: int = 9):
 #### chiaki part ####
 
 
-def get_wols(x: str):
-    data = requests.get(f"https://chiaki.vercel.app/search2?query={x}").json()
+async def get_wols(x: str):
+    response = await state.get("https://chiaki.vercel.app/search2", params={"query": x}, timeout=20)
+    response.raise_for_status()
+    data = response.json()
     ls = []
     for i in data:
         sls = [data[i], i]
@@ -2947,8 +2954,10 @@ def get_wols(x: str):
     return ls
 
 
-def get_wo(x: int, page: int):
-    data = requests.get(f"https://chiaki.vercel.app/get2?group_id={x}").json()
+async def get_wo(x: int, page: int):
+    response = await state.get("https://chiaki.vercel.app/get2", params={"group_id": x}, timeout=20)
+    response.raise_for_status()
+    data = response.json()
     msg = "Watch order for the given query is:\n\n"
     out = []
     for i in data:
@@ -2966,8 +2975,10 @@ def get_wo(x: int, page: int):
 ##### Anime Fillers Part #####
 
 
-def search_filler(query):
-    html = requests.get("https://www.animefillerlist.com/shows").text
+async def search_filler(query):
+    response = await state.get("https://www.animefillerlist.com/shows", timeout=20)
+    response.raise_for_status()
+    html = response.text
     soup = BeautifulSoup(html, "html.parser")
     div = soup.findAll("div", attrs={"class": "Group"})
     index = {}
@@ -2985,9 +2996,10 @@ def search_filler(query):
     return ret
 
 
-def parse_filler(filler_id):
-    url = "https://www.animefillerlist.com/shows/" + filler_id
-    html = requests.get(url).text
+async def parse_filler(filler_id):
+    response = await state.get(f"https://www.animefillerlist.com/shows/{filler_id}", timeout=20)
+    response.raise_for_status()
+    html = response.text
     soup = BeautifulSoup(html, "html.parser")
     div = soup.find("div", attrs={"id": "Condensed"})
     all_ep = div.find_all("span", attrs={"class": "Episodes"})
@@ -4875,7 +4887,7 @@ async def get_watch_order(client: Client, message: Message, mdata: dict):
         user = mdata["from_user"]["id"]
     except KeyError:
         user = mdata["sender_chat"]["id"]
-    data = get_wols(x[1])
+    data = await get_wols(x[1])
     msg = f"Found related animes for the query {x[1]}"
     buttons = []
     if data == []:
@@ -4896,7 +4908,7 @@ async def get_watch_order(client: Client, message: Message, mdata: dict):
 @check_user
 async def watch_(client: app, cq: CallbackQuery, cdata: dict):
     kek, id_, qry, req, user = cdata["data"].split("_")
-    msg, total = get_wo(int(id_), int(req))
+    msg, total = await get_wo(int(id_), int(req))
     totalpg, lol = divmod(total, 50)
     button = []
     if lol != 0:
@@ -4941,7 +4953,7 @@ async def watch_(client: app, cq: CallbackQuery, cdata: dict):
 @check_user
 async def wls(client: app, cq: CallbackQuery, cdata: dict):
     kek, qry, user = cdata["data"].split("_")
-    data = get_wols(qry)
+    data = await get_wols(qry)
     msg = f"Found related animes for the query {qry}"
     buttons = []
     for i in data:
@@ -4980,14 +4992,14 @@ async def fillers_cmd(client: app, message: Message, mdata: dict):
             """Give some anime name to search fillers for
 example: /fillers Detective Conan"""
         )
-    k = search_filler(qry[1])
+    k = await search_filler(qry[1])
     if k == {}:
         await message.reply_text("No fillers found for the given anime...")
         return
     button = []
     list_ = list(k.keys())
     if len(list_) == 1:
-        result = parse_filler(k.get(list_[0]))
+        result = await parse_filler(k.get(list_[0]))
         msg = ""
         msg += f"Fillers for anime `{list_[0]}`\n\nManga Canon episodes:\n"
         msg += str(result.get("total_ep"))
@@ -5014,7 +5026,7 @@ example: /fillers Detective Conan"""
 @check_user
 async def filler_btn(client: app, cq: CallbackQuery, cdata: dict):
     kek, req, user = cdata["data"].split("_")
-    result = parse_filler((FILLERS.get(req))[0])
+    result = await parse_filler((FILLERS.get(req))[0])
     msg = ""
     msg += f"**Fillers for anime** `{(FILLERS.get(req))[1]}`"
     msg += "\n\n**Manga Canon episodes:**\n"

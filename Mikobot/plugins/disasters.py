@@ -28,8 +28,16 @@ async def check_user_id(user_id: int) -> Optional[str]:
 
 
 async def update_elevated_users(data):
-    with open(ELEVATED_USERS_FILE, "w") as outfile:
-        json.dump(data, outfile, indent=4)
+    temporary = f"{ELEVATED_USERS_FILE}.{os.getpid()}.tmp"
+    try:
+        with open(temporary, "w", encoding="utf-8") as outfile:
+            json.dump(data, outfile, indent=4)
+            outfile.flush()
+            os.fsync(outfile.fileno())
+        os.replace(temporary, ELEVATED_USERS_FILE)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
 
 
 async def add_disaster_level(update: Update, level: str, context) -> str:

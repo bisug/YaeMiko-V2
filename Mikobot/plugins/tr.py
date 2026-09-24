@@ -1,11 +1,11 @@
 # <============================================== IMPORTS =========================================================>
+import asyncio
 import json
 import random
 import re
 from urllib.parse import quote
 
 import requests
-import urllib3
 from emoji import EMOJI_DATA
 from telegram import LinkPreviewOptions
 from telegram import Update
@@ -18,8 +18,6 @@ from Mikobot.plugins.disable import DisableAbleCommandHandler
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 
 # <=======================================================================================================>
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 URLS_SUFFIX = [
     re.search("translate.google.(.*)", url.strip()).group(1)
@@ -114,7 +112,7 @@ class google_translator:
             with requests.Session() as s:
                 s.proxies = self.proxies
                 r = s.send(
-                    request=response.prepare(), verify=False, timeout=self.timeout
+                    request=response.prepare(), verify=True, timeout=self.timeout
                 )
             for line in r.iter_lines(chunk_size=1024):
                 decoded_line = line.decode("utf-8")
@@ -191,7 +189,7 @@ class google_translator:
             with requests.Session() as s:
                 s.proxies = self.proxies
                 r = s.send(
-                    request=response.prepare(), verify=False, timeout=self.timeout
+                    request=response.prepare(), verify=True, timeout=self.timeout
                 )
 
             for line in r.iter_lines(chunk_size=1024):
@@ -299,14 +297,16 @@ async def totranslate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         trl = google_translator()
         if source_lang is None:
-            detection = trl.detect(text)
-            trans_str = trl.translate(text, lang_tgt=dest_lang)
+            detection = await asyncio.to_thread(trl.detect, text)
+            trans_str = await asyncio.to_thread(trl.translate, text, lang_tgt=dest_lang)
             return await message.reply_text(
                 f"📒 *Translated from* `{detection[0]}` to `{dest_lang}`:\n`{trans_str}`",
                 parse_mode=ParseMode.MARKDOWN,
             )
         else:
-            trans_str = trl.translate(text, lang_tgt=dest_lang, lang_src=source_lang)
+            trans_str = await asyncio.to_thread(
+                trl.translate, text, lang_tgt=dest_lang, lang_src=source_lang
+            )
             await message.reply_text(
                 f"📒 *Translated from* `{source_lang}` to `{dest_lang}`:\n`{trans_str}`",
                 parse_mode=ParseMode.MARKDOWN,
