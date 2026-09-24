@@ -12,7 +12,7 @@
 - **Custom Commands:** Create custom commands to automate repetitive tasks
 - **Interactive UI:** A sleek and responsive user interface for an intuitive experience
 - **Fully Asynchronous**
-- **Python 3.11 Support**
+- **Python 3.14 Support**
 - **python-telegram-bot 20+**
 - **Telegram MTProto API Framework for Python**
 - **MongoDB, SQL are used as a database**
