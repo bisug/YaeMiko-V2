@@ -63,6 +63,11 @@ logging.getLogger("telethon").setLevel(logging.ERROR)
 logging.getLogger("pyrogram").setLevel(logging.ERROR)
 logging.getLogger("pyrate_limiter").setLevel(logging.ERROR)
 
+# HTTPX logs complete Telegram API URLs at INFO, including the bot token.
+# Keep transport diagnostics available without emitting routine request URLs.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 # Define the logger for this module
 LOGGER = logging.getLogger(__name__)
 # <=======================================================================================================>
