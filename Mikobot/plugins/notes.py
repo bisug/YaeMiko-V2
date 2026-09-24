@@ -430,7 +430,7 @@ async def list_notes(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.effective_message.reply_text("No notes in this chat!")
         except BadRequest:
             await update.effective_message.reply_text(
-                "No notes in this chat!", quote=False
+                "No notes in this chat!", do_quote=False
             )
 
     elif len(msg) != 0:

@@ -621,7 +621,7 @@ async def adminlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except BadRequest:
         msg = await update.effective_message.reply_text(
-            "Fetching group admins...", quote=False, parse_mode=ParseMode.HTML
+            "Fetching group admins...", do_quote=False, parse_mode=ParseMode.HTML
         )
     administrators = await bot.get_chat_administrators(chat_id)
     administrators_list = list(administrators)  # Convert to a list

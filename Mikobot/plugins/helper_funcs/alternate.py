@@ -15,7 +15,7 @@ async def send_message(message: Message, text, *args, **kwargs):
         return await message.reply_text(text, *args, **kwargs)
     except BadRequest as err:
         if str(err) == "Reply message not found":
-            return await message.reply_text(text, quote=False, *args, **kwargs)
+            return await message.reply_text(text, do_quote=False, *args, **kwargs)
 
 
 def typing_action(func):

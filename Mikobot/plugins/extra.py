@@ -102,7 +102,7 @@ async def close_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def ping(_, m: Message):
     LOGGER.info(f"{m.from_user.id} used ping cmd in {m.chat.id}")
     start = time()
-    replymsg = await m.reply_text(text="Pinging...", quote=True)
+    replymsg = await m.reply_text(text="Pinging...", do_quote=True)
     delta_ping = time() - start
 
     up = strftime("%Hh %Mm %Ss", gmtime(time() - UPTIME))

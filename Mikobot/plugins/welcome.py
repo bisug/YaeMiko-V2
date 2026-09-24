@@ -238,7 +238,7 @@ async def send(update: Update, message, keyboard, backup_message):
                 message,
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=keyboard,
-                quote=False,
+                do_quote=False,
             )
         elif excp.message == "Button_url_invalid":
             try:

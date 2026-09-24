@@ -178,7 +178,7 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             # Do not reply
             if silent:
                 return log
-            await message.reply_text("Banned!", quote=False)
+            await message.reply_text("Banned!", do_quote=False)
             return log
         else:
             LOGGER.warning(update)
@@ -268,7 +268,7 @@ async def temp_ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             # Do not reply
             await message.reply_text(
                 f"Banned! User will be banned for {time_val}.",
-                quote=False,
+                do_quote=False,
             )
             return log
         else:

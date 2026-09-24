@@ -234,7 +234,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await message.reply_text(
             args[1],
-            quote=False,
+            do_quote=False,
             parse_mode="MARKDOWN",
             disable_web_page_preview=True,
         )

@@ -1000,7 +1000,7 @@ def main():
     dispatcher.add_error_handler(error_callback)
 
     LOGGER.info("Mikobot is starting >> Using long polling.")
-    dispatcher.run_polling(timeout=15, drop_pending_updates=True)
+    dispatcher.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":

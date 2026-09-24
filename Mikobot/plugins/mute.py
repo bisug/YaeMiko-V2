@@ -214,7 +214,7 @@ async def temp_mute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     except BadRequest as excp:
         if excp.message == "Reply message not found":
             # Do not reply
-            await message.reply_text(f"Muted for {time_val}!", quote=False)
+            await message.reply_text(f"Muted for {time_val}!", do_quote=False)
             return log
         else:
             LOGGER.warning(update)
