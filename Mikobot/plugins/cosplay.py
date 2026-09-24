@@ -1,3 +1,7 @@
+import httpx
+from urllib.parse import urlparse
+
+
 # SOURCE https://github.com/Team-ProjectCodeX
 # CREATED BY https://t.me/O_okarma
 # API BY https://www.github.com/SOME-1HING
@@ -14,22 +18,41 @@ from Mikobot.state import state
 
 
 # <================================================ FUNCTIONS =====================================================>
-async def get_cosplay_data():
-    cosplay_url = "https://sugoi-api.vercel.app/cosplay"
-    response = await state.get(cosplay_url)
-    return response.json()
+COSPLAY_API_URL = "https://sugoi-api.vercel.app/cosplay"
+REQUEST_TIMEOUT = 15
+
+
+def _valid_image_url(value) -> bool:
+    if not isinstance(value, str):
+        return False
+    parsed = urlparse(value)
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
+async def get_cosplay_data() -> str:
+    response = await state.get(COSPLAY_API_URL, timeout=REQUEST_TIMEOUT)
+    response.raise_for_status()
+    data = response.json()
+    photo_url = data.get("url") if isinstance(data, dict) else None
+    if not _valid_image_url(photo_url):
+        raise ValueError("The cosplay service returned an invalid image URL.")
+    return photo_url
 
 
 async def cosplay(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.effective_message
+    status = await message.reply_text("Fetching a cosplay photo...")
     try:
-        data = await get_cosplay_data()
-        photo_url = data.get("url")  # Corrected key: "url" instead of "cosplay_url"
-        if photo_url:
-            await update.message.reply_photo(photo=photo_url)
-        else:
-            await update.message.reply_text("Could not fetch photo URL.")
-    except state.FetchError:
-        await update.message.reply_text("Unable to fetch data.")
+        photo_url = await get_cosplay_data()
+        await message.reply_photo(photo=photo_url)
+    except (httpx.HTTPError, ValueError, KeyError, TypeError):
+        await status.edit_text("Unable to fetch a cosplay photo right now. Please try again later.")
+        return
+    finally:
+        try:
+            await status.delete()
+        except Exception:
+            pass
 
 
 # <================================================ HANDLER =======================================================>
