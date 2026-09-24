@@ -229,14 +229,14 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if message.reply_to_message:
         await message.reply_to_message.reply_text(
             args[1],
-            parse_mode="MARKDOWN",
+            parse_mode=ParseMode.MARKDOWN,
             link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     else:
         await message.reply_text(
             args[1],
             do_quote=False,
-            parse_mode="MARKDOWN",
+            parse_mode=ParseMode.MARKDOWN,
             link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     await message.delete()
