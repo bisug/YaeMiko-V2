@@ -41,6 +41,8 @@ class Config(object):
 
     # Bot token
     TOKEN = ""  # Get bot token from @BotFather on Telegram
+    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
 
     # Owner's Telegram user ID (Must be an integer)
     OWNER_ID = 5907205317
