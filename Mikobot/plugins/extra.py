@@ -3,7 +3,7 @@ from time import gmtime, strftime, time
 
 from pyrogram import filters
 from pyrogram.types import Message
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Update
 from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
 
 from Mikobot import LOGGER, app, function
@@ -63,7 +63,7 @@ async def _id(client, message):
         "CAACAgIAAx0EdppwYAABAgotZg5rBL4P05Xjmy80p7DdNdneDmUAAnccAALIWZhJPyYLf3FzPHs0BA"
     )
     await message.reply_sticker(sticker=sticker_id)
-    await message.reply_text(text, disable_web_page_preview=True)
+    await message.reply_text(text, link_preview_options=LinkPreviewOptions(is_disabled=True))
 
 
 # Function to handle the "logs" command

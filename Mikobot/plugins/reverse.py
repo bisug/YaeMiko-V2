@@ -3,7 +3,7 @@ import uuid
 from html import escape
 
 import requests
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext, CommandHandler
 
@@ -105,7 +105,7 @@ async def reverse_image_search(update: Update, context: CallbackContext):
     buttons = [[InlineKeyboardButton(STRINGS.OPEN_SEARCH_PAGE, url=search_url)]]
     await message.reply_text(
         text,
-        disable_web_page_preview=True,
+        link_preview_options=LinkPreviewOptions(is_disabled=True),
         reply_markup=InlineKeyboardMarkup(buttons),
         parse_mode=ParseMode.HTML,  # Specify parse_mode as 'HTML' to interpret HTML tags
     )

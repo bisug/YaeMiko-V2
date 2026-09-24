@@ -16,7 +16,7 @@ from pyrogram.types import ChatMemberUpdated
 from pyrogram.types import InlineKeyboardButton as IB
 from pyrogram.types import InlineKeyboardMarkup as IM
 from pyrogram.types import Message
-from telegram import ChatPermissions, InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import ChatPermissions, InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Update
 from telegram.constants import ParseMode
 from telegram.error import BadRequest
 from telegram.ext import (
@@ -817,7 +817,7 @@ async def welcome(update, context: ContextTypes.DEFAULT_TYPE):
                     caption=welcome_m,
                     reply_markup=keyboard,
                     parse_mode=ParseMode.MARKDOWN,
-                    disable_web_page_preview=True,
+                    link_preview_options=LinkPreviewOptions(is_disabled=True),
                 )
 
     elif len(args) >= 1:

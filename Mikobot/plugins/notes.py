@@ -4,7 +4,7 @@ import random
 import re
 from io import BytesIO
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Message, Update
 from telegram.constants import MessageLimit, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import (
@@ -199,7 +199,7 @@ async def get(
                         markdown_to_html(text),
                         reply_to_message_id=reply_id,
                         parse_mode=parseMode,
-                        disable_web_page_preview=True,
+                        link_preview_options=LinkPreviewOptions(is_disabled=True),
                         reply_markup=keyboard,
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
@@ -212,7 +212,7 @@ async def get(
                         caption=markdown_to_html(text),
                         reply_to_message_id=reply_id,
                         parse_mode=parseMode,
-                        disable_web_page_preview=True,
+                        link_preview_options=LinkPreviewOptions(is_disabled=True),
                         reply_markup=keyboard,
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None

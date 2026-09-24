@@ -11,6 +11,7 @@ from telegram import (
     InlineKeyboardMarkup,
     InlineQueryResultArticle,
     InputTextMessageContent,
+    LinkPreviewOptions,
 )
 from telegram.constants import MessageLimit, ParseMode
 from telegram.error import TelegramError
@@ -116,7 +117,7 @@ def article(
     message_text: str = "",
     thumb_url: str = None,
     reply_markup: InlineKeyboardMarkup = None,
-    disable_web_page_preview: bool = False,
+    link_preview_options: LinkPreviewOptions = None,
 ) -> InlineQueryResultArticle:
     return InlineQueryResultArticle(
         id=uuid4(),
@@ -125,7 +126,7 @@ def article(
         thumb_url=thumb_url,
         input_message_content=InputTextMessageContent(
             message_text=message_text,
-            disable_web_page_preview=disable_web_page_preview,
+            link_preview_options=link_preview_options,
         ),
         reply_markup=reply_markup,
     )

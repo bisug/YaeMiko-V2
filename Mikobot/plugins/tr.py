@@ -7,6 +7,7 @@ from urllib.parse import quote
 import requests
 import urllib3
 from emoji import EMOJI_DATA
+from telegram import LinkPreviewOptions
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes, filters
@@ -229,14 +230,14 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await message.reply_to_message.reply_text(
             args[1],
             parse_mode="MARKDOWN",
-            disable_web_page_preview=True,
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     else:
         await message.reply_text(
             args[1],
             do_quote=False,
             parse_mode="MARKDOWN",
-            disable_web_page_preview=True,
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     await message.delete()
 
@@ -318,7 +319,7 @@ async def totranslate(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Or use: `/tr ta` for automatic detection and translating it into Tamil.\n"
             "See [List of Language Codes](https://t.me/Hydra_Updates/80) for a list of language codes.",
             parse_mode="markdown",
-            disable_web_page_preview=True,
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     except ValueError:
         await update.effective_message.reply_text("The intended language is not found!")

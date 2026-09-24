@@ -6,7 +6,7 @@ from typing import Union
 from pyrogram import Client
 from pyrogram import filters as fil
 from pyrogram.types import Message
-from telegram import ChatMemberAdministrator, Update
+from telegram import ChatMemberAdministrator, LinkPreviewOptions, Update
 from telegram.constants import ParseMode
 from telegram.error import BadRequest, Forbidden, TelegramError
 from telegram.ext import CommandHandler, ContextTypes, MessageHandler, filters
@@ -163,7 +163,7 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         int(chat.chat_id),
                         escape_markdown(to_send[1], 2),
                         parse_mode=ParseMode.MARKDOWN_V2,
-                        disable_web_page_preview=True,
+                        link_preview_options=LinkPreviewOptions(is_disabled=True),
                     )
                     await asyncio.sleep(1)
                 except TelegramError:
@@ -175,7 +175,7 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         int(user.user_id),
                         escape_markdown(to_send[1], 2),
                         parse_mode=ParseMode.MARKDOWN_V2,
-                        disable_web_page_preview=True,
+                        link_preview_options=LinkPreviewOptions(is_disabled=True),
                     )
                     await asyncio.sleep(1)
                 except TelegramError:

@@ -1,5 +1,5 @@
 # <============================================== IMPORTS =========================================================>
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Update
 from telegram.constants import ParseMode
 from telegram.error import BadRequest
 from telegram.ext import CommandHandler, ContextTypes, filters
@@ -52,7 +52,7 @@ async def send_rules(update, chat_id, from_pm=False):
             user.id,
             text,
             parse_mode=ParseMode.MARKDOWN,
-            disable_web_page_preview=True,
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     elif from_pm:
         await bot.send_message(

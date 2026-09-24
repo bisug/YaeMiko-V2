@@ -6,7 +6,7 @@
 import random
 import re
 
-from telegram import Update
+from telegram import Update, LinkPreviewOptions
 from telegram.constants import ParseMode
 from telegram.ext import CommandHandler, ContextTypes
 
@@ -40,7 +40,7 @@ async def hyperlink_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         link = args[-1]
         hyperlink = f"[{text}]({link})"
         await update.message.reply_text(
-            text=hyperlink, parse_mode="Markdown", disable_web_page_preview=True
+            text=hyperlink, parse_mode="Markdown", link_preview_options=LinkPreviewOptions(is_disabled=True)
         )
     else:
         match = re.search(r"/hyperlink ([^\s]+) (.+)", update.message.text)
@@ -49,7 +49,7 @@ async def hyperlink_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             link = match.group(2)
             hyperlink = f"[{text}]({link})"
             await update.message.reply_text(
-                text=hyperlink, parse_mode=ParseMode.HTML, disable_web_page_preview=True
+                text=hyperlink, parse_mode=ParseMode.HTML, link_preview_options=LinkPreviewOptions(is_disabled=True)
             )
         else:
             await update.message.reply_text(

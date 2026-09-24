@@ -16,7 +16,7 @@ import psutil
 import pyrogram
 import telegram
 import telethon
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Update
 from telegram.constants import ParseMode
 from telegram.error import (
     BadRequest,
@@ -142,7 +142,7 @@ async def send_help(chat_id, text, keyboard=None):
         chat_id=chat_id,
         text=text,
         parse_mode=ParseMode.MARKDOWN,
-        disable_web_page_preview=True,
+        link_preview_options=LinkPreviewOptions(is_disabled=True),
         reply_markup=keyboard,
     )
 
@@ -196,7 +196,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 PM_START_TEXT,
                 reply_markup=InlineKeyboardMarkup(START_BTN),
                 parse_mode=ParseMode.MARKDOWN,
-                disable_web_page_preview=False,
+                link_preview_options=LinkPreviewOptions(is_disabled=False),
             )
     else:
         await message.reply_photo(
@@ -552,7 +552,7 @@ async def help_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.edit_text(
                 text=text,
                 parse_mode=ParseMode.MARKDOWN,
-                disable_web_page_preview=True,
+                link_preview_options=LinkPreviewOptions(is_disabled=True),
                 reply_markup=InlineKeyboardMarkup(
                     [[InlineKeyboardButton(text="◁", callback_data="help_back")]]
                 ),
@@ -634,7 +634,7 @@ async def gitsource_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await query.edit_message_text(
             message_text,
             parse_mode=ParseMode.MARKDOWN,
-            disable_web_page_preview=False,
+            link_preview_options=LinkPreviewOptions(is_disabled=False),
             reply_markup=reply_markup,
         )
 
@@ -647,7 +647,7 @@ async def repo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id=update.effective_chat.id,
         text=message_text,
         parse_mode=ParseMode.MARKDOWN,
-        disable_web_page_preview=False,
+        link_preview_options=LinkPreviewOptions(is_disabled=False),
     )
 
 
@@ -663,7 +663,7 @@ async def Miko_about_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         await query.message.edit_text(
             text=message_text,
-            disable_web_page_preview=True,
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -690,7 +690,7 @@ async def Miko_about_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         await query.message.edit_text(
             text=message_text,
             parse_mode=ParseMode.MARKDOWN,
-            disable_web_page_preview=True,
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
             reply_markup=InlineKeyboardMarkup(
                 [
                     [
@@ -713,7 +713,7 @@ async def Miko_about_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             PM_START_TEXT.format(escape_markdown(first_name), BOT_NAME),
             reply_markup=InlineKeyboardMarkup(START_BTN),
             parse_mode=ParseMode.MARKDOWN,
-            disable_web_page_preview=True,
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
 
 

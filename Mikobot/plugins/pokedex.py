@@ -4,7 +4,7 @@
 # PROVIDED BY https://t.me/ProjectCodeX
 
 # <============================================== IMPORTS =========================================================>
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Update
 from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
 
 from Mikobot import function
@@ -111,7 +111,7 @@ async def callback_query_handler(update: Update, context: ContextTypes.DEFAULT_T
                         file.write(moves_message)
                     await query.message.reply_text(
                         "The moves exceed 1000 characters. Sending as a file.",
-                        disable_web_page_preview=True,
+                        link_preview_options=LinkPreviewOptions(is_disabled=True),
                     )
                     await query.message.reply_document(document=open("moves.txt", "rb"))
                 else:

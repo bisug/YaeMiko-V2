@@ -4,7 +4,7 @@ import re
 from html import escape
 
 from pyrate_limiter import BucketFullException, Duration, InMemoryBucket, Limiter, Rate
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Update
 from telegram.constants import ChatMemberStatus, MessageLimit, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import (
@@ -453,7 +453,7 @@ async def reply_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         await message.reply_text(
                             markdown_to_html(filtext),
                             parse_mode=ParseMode.HTML,
-                            disable_web_page_preview=True,
+                            link_preview_options=LinkPreviewOptions(is_disabled=True),
                             reply_markup=keyboard,
                         )
                     except BadRequest as excp:
@@ -527,7 +527,7 @@ async def reply_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             chat.id,
                             markdown_to_html(filt.reply),
                             parse_mode=ParseMode.HTML,
-                            disable_web_page_preview=True,
+                            link_preview_options=LinkPreviewOptions(is_disabled=True),
                             reply_markup=keyboard,
                             message_thread_id=(
                                 message.message_thread_id if chat.is_forum else None

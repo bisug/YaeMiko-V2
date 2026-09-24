@@ -2,6 +2,7 @@
 from datetime import datetime
 from functools import wraps
 
+from telegram import LinkPreviewOptions
 from telegram.constants import ChatType
 from telegram.ext import ContextTypes
 
@@ -97,7 +98,7 @@ if is_module_loaded(FILENAME):
                 log_chat_id,
                 result,
                 parse_mode=ParseMode.HTML,
-                disable_web_page_preview=True,
+                link_preview_options=LinkPreviewOptions(is_disabled=True),
             )
         except BadRequest as excp:
             if excp.message == "Chat not found":
