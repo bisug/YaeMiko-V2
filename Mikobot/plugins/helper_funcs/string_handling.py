@@ -1,10 +1,11 @@
+
+import html
+
 # <============================================== IMPORTS =========================================================>
 import re
 import time
 from typing import Dict, List
 
-import bleach
-import markdown2
 from emoji import unicode_codes
 from telegram import MessageEntity
 from telegram.helpers import escape_markdown
@@ -292,20 +293,39 @@ async def extract_time(message, time_val):
         return ""
 
 
-def markdown_to_html(text: str):
-    text = text.replace("*", "**")
-    text = text.replace("`", "```")
-    text = text.replace("~", "~~")
+def markdown_to_html(text: str) -> str:
+    tokens = {}
+    def protect(value: str) -> str:
+        key = f"\x00{len(tokens)}\x00"
+        tokens[key] = value
+        return key
 
-    spoiler_pattern = re.compile(r"\|\|(?=\S)(.+?)(?<=\S)\|\|", re.S)
-    text = spoiler_pattern.sub(r"<tg-spoiler>\1</tg-spoiler>", text)
-
-    _html = markdown2.markdown(text, extras=["strike", "underline"])
-    return bleach.clean(
-        _html,
-        tags=["strong", "em", "a", "code", "pre", "strike", "u", "tg-spoiler"],
-        strip=True,
-    )[:-1]
+    text = re.sub(
+        r"`([^`\n]+)`",
+        lambda match: protect(f"<code>{html.escape(match.group(1))}</code>"),
+        text,
+    )
+    text = re.sub(
+        r"\|\|(?=\S)(.+?)(?<=\S)\|\|",
+        lambda match: protect(f"<tg-spoiler>{html.escape(match.group(1))}</tg-spoiler>"),
+        text,
+        flags=re.S,
+    )
+    text = re.sub(
+        r"\[([^\]]+)\]\((https?://[^\s)]+)\)",
+        lambda match: protect(
+            f'<a href="{html.escape(match.group(2), quote=True)}">{html.escape(match.group(1))}</a>'
+        ),
+        text,
+    )
+    text = html.escape(text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
+    text = re.sub(r"__(.+?)__", r"<u>\1</u>", text)
+    text = re.sub(r"~~(.+?)~~", r"<strike>\1</strike>", text)
+    text = re.sub(r"(?<!\*)\*([^*\n]+)\*(?!\*)", r"<em>\1</em>", text)
+    for key, value in tokens.items():
+        text = text.replace(html.escape(key), value)
+    return text
 
 
 # <================================================ END =======================================================>
