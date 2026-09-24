@@ -103,7 +103,7 @@ async def add_blackliststicker(update: Update, context: ContextTypes.DEFAULT_TYP
                 await send_message(
                     update.effective_message,
                     "Sticker `{}` can not be found!".format(trigger),
-                    parse_mode="markdown",
+                    parse_mode=ParseMode.MARKDOWN,
                 )
 
         if added == 0:
@@ -144,7 +144,7 @@ async def add_blackliststicker(update: Update, context: ContextTypes.DEFAULT_TYP
             await send_message(
                 update.effective_message,
                 "Sticker `{}` can not be found!".format(trigger),
-                parse_mode="markdown",
+                parse_mode=ParseMode.MARKDOWN,
             )
 
         if added == 0:
@@ -320,7 +320,7 @@ async def blacklist_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_message(
                     update.effective_message,
                     teks,
-                    parse_mode="markdown",
+                    parse_mode=ParseMode.MARKDOWN,
                 )
                 return
             settypeblacklist = "temporary banned for {}".format(args[1])
@@ -332,7 +332,7 @@ async def blacklist_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_message(
                     update.effective_message,
                     teks,
-                    parse_mode="markdown",
+                    parse_mode=ParseMode.MARKDOWN,
                 )
                 return
             settypeblacklist = "temporary muted for {}".format(args[1])
@@ -355,7 +355,7 @@ async def blacklist_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_message(
             update.effective_message,
             text,
-            parse_mode="markdown",
+            parse_mode=ParseMode.MARKDOWN,
         )
         return (
             "<b>{}:</b>\n"
@@ -447,7 +447,7 @@ async def del_blackliststicker(update: Update, context: ContextTypes.DEFAULT_TYP
                             mention_markdown(user.id, user.first_name),
                             trigger,
                         ),
-                        parse_mode="markdown",
+                        parse_mode=ParseMode.MARKDOWN,
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -463,7 +463,7 @@ async def del_blackliststicker(update: Update, context: ContextTypes.DEFAULT_TYP
                                 mention_markdown(user.id, user.first_name),
                                 trigger,
                             ),
-                            parse_mode="markdown",
+                            parse_mode=ParseMode.MARKDOWN,
                             message_thread_id=(
                                 message.message_thread_id if chat.is_forum else None
                             ),
@@ -478,7 +478,7 @@ async def del_blackliststicker(update: Update, context: ContextTypes.DEFAULT_TYP
                             mention_markdown(user.id, user.first_name),
                             trigger,
                         ),
-                        parse_mode="markdown",
+                        parse_mode=ParseMode.MARKDOWN,
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -495,7 +495,7 @@ async def del_blackliststicker(update: Update, context: ContextTypes.DEFAULT_TYP
                             value,
                             trigger,
                         ),
-                        parse_mode="markdown",
+                        parse_mode=ParseMode.MARKDOWN,
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -517,7 +517,7 @@ async def del_blackliststicker(update: Update, context: ContextTypes.DEFAULT_TYP
                             value,
                             trigger,
                         ),
-                        parse_mode="markdown",
+                        parse_mode=ParseMode.MARKDOWN,
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),

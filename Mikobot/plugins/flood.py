@@ -3,6 +3,7 @@ import html
 import re
 
 from telegram import ChatPermissions, Update
+from telegram.constants import ParseMode
 from telegram.error import BadRequest
 from telegram.ext import (
     CallbackQueryHandler,
@@ -235,7 +236,7 @@ async def set_flood(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Use `/setflood number` to enable antiflood.\n"
                 "Or use `/setflood off` to disable antiflood."
             ),
-            parse_mode="markdown",
+            parse_mode=ParseMode.MARKDOWN,
         )
     return ""
 
@@ -323,7 +324,7 @@ async def set_flood_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 teks = """It looks like you tried to set time value for antiflood but you didn't specified time; Try, `/setfloodmode tban <timevalue>`.
 Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
                 await send_message(
-                    update.effective_message, teks, parse_mode="markdown"
+                    update.effective_message, teks, parse_mode=ParseMode.MARKDOWN
                 )
                 return
             settypeflood = "tban for {}".format(args[1])
@@ -333,7 +334,7 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
                 teks = """It looks like you tried to set time value for antiflood but you didn't specified time; Try, `/setfloodmode tmute <timevalue>`.
 Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
                 await send_message(
-                    update.effective_message, teks, parse_mode="markdown"
+                    update.effective_message, teks, parse_mode=ParseMode.MARKDOWN
                 )
                 return
             settypeflood = "tmute for {}".format(args[1])

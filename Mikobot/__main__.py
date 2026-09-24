@@ -230,7 +230,7 @@ async def extra_command_handlered(update: Update, context: ContextTypes.DEFAULT_
     await update.message.reply_text(
         "𝙎𝙚𝙡𝙚𝙘𝙩 𝙩𝙝𝙚 [𝙨𝙚𝙘𝙩𝙞𝙤𝙣](https://telegra.ph/file/8c092f4e9d303f9497c83.jpg) 𝙩𝙝𝙖𝙩 𝙮𝙤𝙪 𝙬𝙖𝙣𝙩 𝙩𝙤 𝙤𝙥𝙚𝙣",
         reply_markup=reply_markup,
-        parse_mode="Markdown",
+        parse_mode=ParseMode.MARKDOWN,
     )
 
 
@@ -259,7 +259,7 @@ async def extra_command_callback(update: Update, context: ContextTypes.DEFAULT_T
                     ],
                 ]
             ),
-            parse_mode="Markdown",  # Added this line to explicitly specify Markdown parsing
+            parse_mode=ParseMode.MARKDOWN,  # Added this line to explicitly specify Markdown parsing
         )
 
 
@@ -275,7 +275,7 @@ async def ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🧠 *Here are the options for* [𝗬𝗔𝗘 𝗠𝗜𝗞𝗢](https://telegra.ph/file/ed2d9c3693cacc9b0464e.jpg):",
         reply_markup=reply_markup,
-        parse_mode="Markdown",
+        parse_mode=ParseMode.MARKDOWN,
     )
 
 
@@ -300,7 +300,7 @@ async def ai_command_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
                     ],
                 ]
             ),
-            parse_mode="Markdown",
+            parse_mode=ParseMode.MARKDOWN,
         )
 
 
@@ -328,7 +328,7 @@ async def ai_handler_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
                     ],
                 ],
             ),
-            parse_mode="Markdown",
+            parse_mode=ParseMode.MARKDOWN,
         )
 
 
@@ -444,7 +444,7 @@ async def anime_command_callback(update: Update, context: ContextTypes.DEFAULT_T
                     ],
                 ]
             ),
-            parse_mode="Markdown",  # Added this line to explicitly specify Markdown parsing
+            parse_mode=ParseMode.MARKDOWN,  # Added this line to explicitly specify Markdown parsing
         )
 
 
@@ -469,7 +469,7 @@ async def genshin_command_callback(update: Update, context: ContextTypes.DEFAULT
                     ],
                 ]
             ),
-            parse_mode="Markdown",  # Added this line to explicitly specify Markdown parsing
+            parse_mode=ParseMode.MARKDOWN,  # Added this line to explicitly specify Markdown parsing
         )
 
 
@@ -761,7 +761,7 @@ async def get_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ],
                 ]
             ),
-            parse_mode="Markdown",  # Added this line to explicitly specify Markdown parsing
+            parse_mode=ParseMode.MARKDOWN,  # Added this line to explicitly specify Markdown parsing
         )
         return
 

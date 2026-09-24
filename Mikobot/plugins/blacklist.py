@@ -256,7 +256,7 @@ async def blacklist_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
                 await send_message(
-                    update.effective_message, teks, parse_mode="markdown"
+                    update.effective_message, teks, parse_mode=ParseMode.MARKDOWN
                 )
                 return ""
             restime = await extract_time(msg, args[1])
@@ -264,7 +264,7 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
                 teks = """Invalid time value!
 Example of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
                 await send_message(
-                    update.effective_message, teks, parse_mode="markdown"
+                    update.effective_message, teks, parse_mode=ParseMode.MARKDOWN
                 )
                 return ""
             settypeblacklist = "temporarily ban for {}".format(args[1])
@@ -275,7 +275,7 @@ Example of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."
 
 Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
                 await send_message(
-                    update.effective_message, teks, parse_mode="markdown"
+                    update.effective_message, teks, parse_mode=ParseMode.MARKDOWN
                 )
                 return ""
             restime = await extract_time(msg, args[1])
@@ -283,7 +283,7 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
                 teks = """Invalid time value!
 Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
                 await send_message(
-                    update.effective_message, teks, parse_mode="markdown"
+                    update.effective_message, teks, parse_mode=ParseMode.MARKDOWN
                 )
                 return ""
             settypeblacklist = "temporarily mute for {}".format(args[1])
@@ -301,7 +301,7 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
             )
         else:
             text = "Changed blacklist mode: `{}`!".format(settypeblacklist)
-        await send_message(update.effective_message, text, parse_mode="markdown")
+        await send_message(update.effective_message, text, parse_mode=ParseMode.MARKDOWN)
         return (
             "<b>{}:</b>\n"
             "<b>Admin:</b> {}\n"

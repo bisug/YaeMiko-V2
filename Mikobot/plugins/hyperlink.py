@@ -40,7 +40,7 @@ async def hyperlink_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         link = args[-1]
         hyperlink = f"[{text}]({link})"
         await update.message.reply_text(
-            text=hyperlink, parse_mode="Markdown", link_preview_options=LinkPreviewOptions(is_disabled=True)
+            text=hyperlink, parse_mode=ParseMode.MARKDOWN, link_preview_options=LinkPreviewOptions(is_disabled=True)
         )
     else:
         match = re.search(r"/hyperlink ([^\s]+) (.+)", update.message.text)

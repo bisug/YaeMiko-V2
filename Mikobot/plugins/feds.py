@@ -275,7 +275,7 @@ async def join_fed(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         chat.title,
                         getfed["fname"],
                     ),
-                    parse_mode="markdown",
+                    parse_mode=ParseMode.MARKDOWN,
                     message_thread_id=(
                         message.message_thread_id if chat.is_forum else None
                     ),
@@ -314,7 +314,7 @@ async def leave_fed(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             chat.title,
                             fed_info["fname"],
                         ),
-                        parse_mode="markdown",
+                        parse_mode=ParseMode.MARKDOWN,
                         message_thread_id=(
                             update.effective_message.message_thread_id
                             if chat.is_forum
@@ -1247,7 +1247,7 @@ async def set_frules(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         user.first_name,
                         getfed["fname"],
                     ),
-                    parse_mode="markdown",
+                    parse_mode=ParseMode.MARKDOWN,
                     message_thread_id=(
                         update.effective_message.message_thread_id
                         if chat.is_forum
@@ -1327,7 +1327,7 @@ async def fed_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await bot.sendMessage(
                     chat,
                     title + text,
-                    parse_mode="markdown",
+                    parse_mode=ParseMode.MARKDOWN,
                     message_thread_id=msg.message_thread_id if chat.is_forum else None,
                 )
             except TelegramError:
@@ -1566,12 +1566,12 @@ async def fed_notif(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Reporting Federation has stopped! Every user who is fban / unfban you will not be notified via PM.",
             )
         else:
-            await msg.reply_text("Please enter `on`/`off`", parse_mode="markdown")
+            await msg.reply_text("Please enter `on`/`off`", parse_mode=ParseMode.MARKDOWN)
     else:
         getreport = sql.user_feds_report(user.id)
         await msg.reply_text(
             "Your current Federation report preferences: `{}`".format(getreport),
-            parse_mode="markdown",
+            parse_mode=ParseMode.MARKDOWN,
         )
 
 
@@ -1780,7 +1780,7 @@ async def fed_import_bans(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await bot.send_message(
                         get_fedlog,
                         teks,
-                        parse_mode="markdown",
+                        parse_mode=ParseMode.MARKDOWN,
                         message_thread_id=(
                             update.effective_message.message_thread_id
                             if chat.is_forum
@@ -1864,7 +1864,7 @@ async def fed_import_bans(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await bot.send_message(
                         get_fedlog,
                         teks,
-                        parse_mode="markdown",
+                        parse_mode=ParseMode.MARKDOWN,
                         message_thread_id=(
                             update.effective_message.message_thread_id
                             if chat.is_forum
@@ -1894,7 +1894,7 @@ async def del_fed_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "You have removed your Federation! Now all the Groups that are connected with `{}` do not have a Federation.".format(
                     getfed["fname"],
                 ),
-                parse_mode="markdown",
+                parse_mode=ParseMode.MARKDOWN,
             )
 
 
@@ -1924,7 +1924,7 @@ async def fed_stat_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_message(
                     update.effective_message,
                     "Fed {} not found!".format(fed_id),
-                    parse_mode="markdown",
+                    parse_mode=ParseMode.MARKDOWN,
                 )
                 return
             if user_name == "" or user_name is None:
@@ -1941,7 +1941,7 @@ async def fed_stat_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     fbantime,
                 )
                 await send_message(
-                    update.effective_message, teks, parse_mode="markdown"
+                    update.effective_message, teks, parse_mode=ParseMode.MARKDOWN
                 )
             return
         user_name, fbanlist = sql.get_user_fbanlist(str(user_id))
@@ -1965,7 +1965,7 @@ async def fed_stat_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for x in fbanlist:
                 teks += "- `{}`: {}\n".format(x[0], x[1][:20])
             teks += "\nIf you want to find out more about the reasons for Fedban specifically, use /fbanstat <FedID>"
-            await send_message(update.effective_message, teks, parse_mode="markdown")
+            await send_message(update.effective_message, teks, parse_mode=ParseMode.MARKDOWN)
 
     elif not msg.reply_to_message and not args:
         user_id = msg.from_user.id
@@ -1982,7 +1982,7 @@ async def fed_stat_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for x in fbanlist:
                 teks += "- `{}`: {}\n".format(x[0], x[1][:20])
             teks += "\nIf you want to find out more about the reasons for Fedban specifically, use /fbanstat <FedID>"
-            await send_message(update.effective_message, teks, parse_mode="markdown")
+            await send_message(update.effective_message, teks, parse_mode=ParseMode.MARKDOWN)
 
     else:
         fed_id = args[0]
@@ -2012,7 +2012,7 @@ async def fed_stat_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reason,
                 fbantime,
             ),
-            parse_mode="markdown",
+            parse_mode=ParseMode.MARKDOWN,
         )
 
 
@@ -2051,7 +2051,7 @@ async def set_fed_log(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     fedinfo["fname"],
                     chat.title,
                 ),
-                parse_mode="markdown",
+                parse_mode=ParseMode.MARKDOWN,
             )
     else:
         await send_message(
@@ -2095,7 +2095,7 @@ async def unset_fed_log(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     fedinfo["fname"],
                     chat.title,
                 ),
-                parse_mode="markdown",
+                parse_mode=ParseMode.MARKDOWN,
             )
     else:
         await send_message(
@@ -2146,7 +2146,7 @@ async def subs_feds(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     fedinfo["fname"],
                     getfed["fname"],
                 ),
-                parse_mode="markdown",
+                parse_mode=ParseMode.MARKDOWN,
             )
             get_fedlog = await sql.get_fed_log(args[0])
             if get_fedlog:
@@ -2157,7 +2157,7 @@ async def subs_feds(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             fedinfo["fname"],
                             getfed["fname"],
                         ),
-                        parse_mode="markdown",
+                        parse_mode=ParseMode.MARKDOWN,
                         message_thread_id=(
                             update.effective_message.message_thread_id
                             if chat.is_forum
@@ -2171,7 +2171,7 @@ async def subs_feds(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     fedinfo["fname"],
                     getfed["fname"],
                 ),
-                parse_mode="markdown",
+                parse_mode=ParseMode.MARKDOWN,
             )
     else:
         await send_message(
@@ -2222,7 +2222,7 @@ async def unsubs_feds(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     fedinfo["fname"],
                     getfed["fname"],
                 ),
-                parse_mode="markdown",
+                parse_mode=ParseMode.MARKDOWN,
             )
             get_fedlog = await sql.get_fed_log(args[0])
             if get_fedlog:
@@ -2233,7 +2233,7 @@ async def unsubs_feds(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             fedinfo["fname"],
                             getfed["fname"],
                         ),
-                        parse_mode="markdown",
+                        parse_mode=ParseMode.MARKDOWN,
                         message_thread_id=(
                             update.effective_message.message_thread_id
                             if chat.is_forum
@@ -2247,7 +2247,7 @@ async def unsubs_feds(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     fedinfo["fname"],
                     getfed["fname"],
                 ),
-                parse_mode="markdown",
+                parse_mode=ParseMode.MARKDOWN,
             )
     else:
         await send_message(
@@ -2293,7 +2293,7 @@ async def get_myfedsubs(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Federation `{}` is not subscribing any federation.".format(
                 fedinfo["fname"],
             ),
-            parse_mode="markdown",
+            parse_mode=ParseMode.MARKDOWN,
         )
         return
     else:
@@ -2305,7 +2305,7 @@ async def get_myfedsubs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         listfed += (
             "\nTo get fed info `/fedinfo <fedid>`. To unsubscribe `/unsubfed <fedid>`."
         )
-        await send_message(update.effective_message, listfed, parse_mode="markdown")
+        await send_message(update.effective_message, listfed, parse_mode=ParseMode.MARKDOWN)
 
 
 async def get_myfeds_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2320,7 +2320,7 @@ async def get_myfeds_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text += "- `{}`: *{}*\n".format(f["fed_id"], f["fed"]["fname"])
     else:
         text = "*You are not have any feds!*"
-    await send_message(update.effective_message, text, parse_mode="markdown")
+    await send_message(update.effective_message, text, parse_mode=ParseMode.MARKDOWN)
 
 
 def is_user_fed_admin(fed_id, user_id):

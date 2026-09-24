@@ -420,7 +420,7 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await bot.send_message(
                         EVENT_LOGS,
                         reply,
-                        parse_mode="markdown",
+                        parse_mode=ParseMode.MARKDOWN,
                     )
                 else:
                     await bot.send_message(
@@ -609,7 +609,7 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     caption=res,
                     reply_markup=keyboard,
                     reply_to_message_id=reply,
-                    parse_mode="markdown",
+                    parse_mode=ParseMode.MARKDOWN,
                 )
             else:
                 sent = await send(update, res, keyboard, backup_message)
@@ -1159,7 +1159,7 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     member_dict["cust_content"],
                     caption=member_dict["res"],
                     reply_markup=member_dict["keyboard"],
-                    parse_mode="markdown",
+                    parse_mode=ParseMode.MARKDOWN,
                 )
             else:
                 sent = await send(

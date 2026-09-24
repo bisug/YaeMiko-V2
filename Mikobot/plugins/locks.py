@@ -207,7 +207,7 @@ async def lock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                 chat_name = update.effective_message.chat.title
                 text = "Locked {} for non-admins!".format(ltype)
             sql.update_lock(chat.id, ltype, locked=True)
-            await send_message(update.effective_message, text, parse_mode="markdown")
+            await send_message(update.effective_message, text, parse_mode=ParseMode.MARKDOWN)
 
             return (
                 "<b>{}:</b>"
@@ -275,7 +275,7 @@ async def lock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                 ),
             )
 
-            await send_message(update.effective_message, text, parse_mode="markdown")
+            await send_message(update.effective_message, text, parse_mode=ParseMode.MARKDOWN)
             return (
                 "<b>{}:</b>"
                 "\n#Permission_LOCK"
@@ -329,7 +329,7 @@ async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                 chat_name = update.effective_message.chat.title
                 text = "Unlocked {} for everyone!".format(ltype)
             sql.update_lock(chat.id, ltype, locked=False)
-            await send_message(update.effective_message, text, parse_mode="markdown")
+            await send_message(update.effective_message, text, parse_mode=ParseMode.MARKDOWN)
             return (
                 "<b>{}:</b>"
                 "\n#UNLOCK"
@@ -372,7 +372,7 @@ async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                 await send_message(
                     update.effective_message,
                     "I don't have permission to change group info.",
-                    parse_mode="markdown",
+                    parse_mode=ParseMode.MARKDOWN,
                 )
                 return
 
@@ -386,7 +386,7 @@ async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                 ),
             )
 
-            await send_message(update.effective_message, text, parse_mode="markdown")
+            await send_message(update.effective_message, text, parse_mode=ParseMode.MARKDOWN)
 
             return (
                 "<b>{}:</b>"

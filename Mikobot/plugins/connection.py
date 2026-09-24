@@ -87,7 +87,7 @@ async def connection_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = "You are currently connected to {}.\n".format(chat_name)
     else:
         message = "You are currently not connected in any group.\n"
-    await send_message(update.effective_message, message, parse_mode="markdown")
+    await send_message(update.effective_message, message, parse_mode=ParseMode.MARKDOWN)
 
 
 @typing_action
@@ -219,7 +219,7 @@ async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await send_message(
                 update.effective_message,
                 text,
-                parse_mode="markdown",
+                parse_mode=ParseMode.MARKDOWN,
                 reply_markup=conn_hist,
             )
 
@@ -251,7 +251,7 @@ async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "You are connected to *{}*. \nUse `/helpconnect` to check available commands.".format(
                             chat_name,
                         ),
-                        parse_mode="markdown",
+                        parse_mode=ParseMode.MARKDOWN,
                     )
                 except BadRequest:
                     pass
@@ -347,7 +347,7 @@ async def help_connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     else:
-        await send_message(update.effective_message, CONN_HELP, parse_mode="markdown")
+        await send_message(update.effective_message, CONN_HELP, parse_mode=ParseMode.MARKDOWN)
 
 
 async def connect_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
