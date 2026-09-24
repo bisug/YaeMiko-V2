@@ -1,4 +1,6 @@
 # <============================================== IMPORTS =========================================================>
+from zoneinfo import ZoneInfo
+
 from datetime import datetime, timedelta
 from html import escape
 from re import compile as compile_re
@@ -9,7 +11,7 @@ from pyrogram.types import Message
 
 from Mikobot.utils.parser import escape_markdown
 
-TIME_ZONE = "Asia/Kolkata"
+TIME_ZONE = ZoneInfo("Asia/Kolkata")
 BTN_URL_REGEX = compile_re(r"(\[([^\[]+?)\]\(buttonurl:(?:/{0,2})(.+?)(:same)?\))")
 # <=======================================================================================================>
 

@@ -39,7 +39,8 @@ def get_emoji_regexp():
     if _EMOJI_REGEXP is None:
         emojis = sorted(unicode_codes.EMOJI_DATA, key=len, reverse=True)
         pattern = "(" + "|".join(re.escape(u) for u in emojis) + ")"
-    return re.compile(pattern)
+        _EMOJI_REGEXP = re.compile(pattern)
+    return _EMOJI_REGEXP
 
 
 def _selective_escape(to_parse: str) -> str:

@@ -37,20 +37,26 @@ def split_message(msg: str) -> List[str]:
     if len(msg) < MessageLimit.MAX_TEXT_LENGTH:
         return [msg]
 
-    lines = msg.splitlines(True)
     small_msg = ""
     result = []
+    lines = msg.splitlines(True)
     for line in lines:
+        while len(line) >= MessageLimit.MAX_TEXT_LENGTH:
+            if small_msg:
+                result.append(small_msg)
+                small_msg = ""
+            result.append(line[: MessageLimit.MAX_TEXT_LENGTH])
+            line = line[MessageLimit.MAX_TEXT_LENGTH :]
         if len(small_msg) + len(line) < MessageLimit.MAX_TEXT_LENGTH:
             small_msg += line
-        else:
+        elif small_msg:
             result.append(small_msg)
             small_msg = line
-    else:
-        # Else statement at the end of the for loop, so append the leftover string.
+        else:
+            small_msg = line
+    if small_msg:
         result.append(small_msg)
-
-    return result
+    return result or [""]
 
 
 def paginate_modules(page_n: int, module_dict: Dict, prefix, chat=None) -> List:
