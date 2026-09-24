@@ -167,7 +167,7 @@ async def unmute_force_subscribe(event):
 # <=================================================== HELP ====================================================>
 
 
-__help__ = """
+__help__ = r"""
 ➠ *Dazai has the capability to hush members who haven't yet subscribed to your channel until they decide to hit that subscribe button.*
 ➠ *When activated, I'll silence those who are not subscribed and provide them with an option to unmute. Once they click the button, I'll lift the mute.*
 
