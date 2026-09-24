@@ -264,17 +264,9 @@ async def extra_command_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 
 async def ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [
-            InlineKeyboardButton("AI", callback_data="ai_handler"),
-            InlineKeyboardButton("IMAGEGEN", callback_data="more_aihandlered"),
-        ],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
     await update.message.reply_text(
-        "🧠 *Here are the options for* [𝗬𝗔𝗘 𝗠𝗜𝗞𝗢](https://telegra.ph/file/ed2d9c3693cacc9b0464e.jpg):",
-        reply_markup=reply_markup,
+        "🧠 *AI commands:*\n\n➽ /askai <question>\n➽ /palm <question>\n➽ Miko <question>\n\nPowered by Google Gemini.",
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("AI", callback_data="ai_handler")]]),
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -284,22 +276,8 @@ async def ai_command_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     if query.data == "ai_command_handler":
         await query.answer()
         await query.message.edit_text(
-            "🧠 *Here are the options for* [𝗬𝗔𝗘 𝗠𝗜𝗞𝗢](https://telegra.ph/file/ed2d9c3693cacc9b0464e.jpg):",
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton("AI", callback_data="ai_handler"),
-                        InlineKeyboardButton(
-                            "IMAGEGEN", callback_data="more_aihandlered"
-                        ),
-                    ],
-                    [
-                        InlineKeyboardButton(
-                            "» 𝘽𝘼𝘾𝙆 «", callback_data="extra_command_handler"
-                        ),
-                    ],
-                ]
-            ),
+            "🧠 *AI commands:*\n\n➽ /askai <question>\n➽ /palm <question>\n➽ Miko <question>\n\nPowered by Google Gemini.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("AI", callback_data="ai_handler")], [InlineKeyboardButton("» 𝘽𝘼𝘾𝙆 «", callback_data="extra_command_handler")]]),
             parse_mode=ParseMode.MARKDOWN,
         )
 
@@ -309,100 +287,9 @@ async def ai_handler_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     if query.data == "ai_handler":
         await query.answer()
         await query.message.edit_text(
-            "[𝗔𝗿𝘁𝗶𝗳𝗶𝗰𝗶𝗮𝗹 𝗜𝗻𝘁𝗲𝗹𝗹𝗶𝗴𝗲𝗻𝘁 𝗙𝘂𝗻𝗰𝘁𝗶𝗼𝗻𝘀](https://telegra.ph/file/01a2e0cd1b9d03808c546.jpg):\n\n"
-            "All Commands:\n"
-            "➽ /askgpt <write query>: A chatbot using GPT for responding to user queries.\n\n"
-            "➽ /palm <write prompt>: Performs a Palm search using a chatbot.\n\n"
-            "➽ /upscale <reply to image>: Upscales your image quality.",
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton(
-                            "More Image Gen ➪", callback_data="more_ai_handler"
-                        ),
-                    ],
-                    [
-                        InlineKeyboardButton(
-                            "⇦ BACK", callback_data="ai_command_handler"
-                        ),
-                    ],
-                ],
-            ),
+            "🧠 *AI commands:*\n\n➽ /askai <question>\n➽ /palm <question>\n➽ Miko <question>\n\nPowered by Google Gemini.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⇦ BACK", callback_data="ai_command_handler")]]),
             parse_mode=ParseMode.MARKDOWN,
-        )
-
-
-async def more_ai_handler_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if query.data == "more_ai_handler":
-        await query.answer()
-        await query.message.edit_text(
-            "*Here's more image gen related commands*:\n\n"
-            "Command: /meinamix\n"
-            "  • Description: Generates an image using the meinamix model.\n\n"
-            "Command: /darksushi\n"
-            "  • Description: Generates an image using the darksushi model.\n\n"
-            "Command: /meinahentai\n"
-            "  • Description: Generates an image using the meinahentai model.\n\n"
-            "Command: /darksushimix\n"
-            "  • Description: Generates an image using the darksushimix model.\n\n"
-            "Command: /anylora\n"
-            "  • Description: Generates an image using the anylora model.\n\n"
-            "Command: /cetsumix\n"
-            "  • Description: Generates an image using the cetsumix model.\n\n"
-            "Command: /anything\n"
-            "  • Description: Generates an image using the anything model.\n\n"
-            "Command: /absolute\n"
-            "  • Description: Generates an image using the absolute model.\n\n"
-            "Command: /darkv2\n"
-            "  • Description: Generates an image using the darkv2 model.\n\n"
-            "Command: /creative\n"
-            "  • Description: Generates an image using the creative model.",
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton("⇦ BACK", callback_data="ai_handler"),
-                    ],
-                ],
-            ),
-        )
-
-
-async def more_aihandlered_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if query.data == "more_aihandlered":
-        await query.answer()
-        await query.message.edit_text(
-            "*Here's more image gen related commands*:\n\n"
-            "*Command*: /meinamix\n"
-            "  • Description: Generates an image using the meinamix model.\n\n"
-            "*Command*: /darksushi\n"
-            "  • Description: Generates an image using the darksushi model.\n\n"
-            "*Command*: /meinahentai\n"
-            "  • Description: Generates an image using the meinahentai model.\n\n"
-            "*Command*: /darksushimix\n"
-            "  • Description: Generates an image using the darksushimix model.\n\n"
-            "*Command*: /anylora\n"
-            "  • Description: Generates an image using the anylora model.\n\n"
-            "*Command*: /cetsumix\n"
-            "  • Description: Generates an image using the cetsumix model.\n\n"
-            "*Command*: /anything\n"
-            "  • Description: Generates an image using the anything model.\n\n"
-            "*Command*: /absolute\n"
-            "  • Description: Generates an image using the absolute model.\n\n"
-            "*Command*: /darkv2\n"
-            "  • Description: Generates an image using the darkv2 model.\n\n"
-            "*Command*: /creative\n"
-            "  • Description: Generates an image using the creative model.",
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton(
-                            "⇦ BACK", callback_data="ai_command_handler"
-                        ),
-                    ],
-                ],
-            ),
         )
 
 
@@ -979,13 +866,9 @@ def main():
     function(CallbackQueryHandler(stats_back, pattern=r"insider_"))
     function(MessageHandler(filters.StatusUpdate.MIGRATE, migrate_chats))
     function(CallbackQueryHandler(ai_handler_callback, pattern=r"ai_handler"))
-    function(CallbackQueryHandler(more_ai_handler_callback, pattern=r"more_ai_handler"))
     function(CallbackQueryHandler(ai_command_callback, pattern="ai_command_handler"))
     function(
         CallbackQueryHandler(anime_command_callback, pattern="anime_command_handler")
-    )
-    function(
-        CallbackQueryHandler(more_aihandlered_callback, pattern="more_aihandlered")
     )
     function(
         CallbackQueryHandler(extra_command_callback, pattern="extra_command_handler")

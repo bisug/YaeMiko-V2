@@ -84,6 +84,7 @@ python3 -m Mikobot         # 8. Run the Bot
 + [TheHamkerCat](https://github.com/TheHamkerCat) > Python-Arq
 + [ProjectCodeX](https://github.com/Team-ProjectCodeX) > Modules
 + [Openverse](https://openverse.org/) for openly licensed image search
++ [Google Gemini API](https://ai.google.dev/gemini-api) for AI chat
 + [Hacker News Algolia API](https://hn.algolia.com/api) for technology news search
 + [DuckDuckGo Instant Answer API](https://duckduckgo.com/duckduckgo-help-pages/results/duckduckgo-instant-answer-api) for quick web answers
 + [Wikimedia Commons API](https://commons.wikimedia.org/wiki/Commons:Commons_API) for public media and attribution data
