@@ -24,7 +24,7 @@ async def alive(_, message: Message):
     library_versions = {
         "PTB": telegram.__version__,
         "TELETHON": telethon.__version__,
-        "PYROGRAM": pyrogram.__version__,
+        "KURIGRAM": pyrogram.__version__,
     }
 
     library_versions_text = "\n".join(

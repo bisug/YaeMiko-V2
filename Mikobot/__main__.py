@@ -58,7 +58,7 @@ from Mikobot.plugins.helper_funcs.misc import paginate_modules
 
 PYTHON_VERSION = python_version()
 PTB_VERSION = telegram.__version__
-PYROGRAM_VERSION = pyrogram.__version__
+KURIGRAM_VERSION = pyrogram.__version__
 TELETHON_VERSION = telethon.__version__
 
 
@@ -612,7 +612,7 @@ PYTHON ➼ {PYTHON_VERSION}
 
 PTB ➼ {PTB_VERSION}
 TELETHON ➼ {TELETHON_VERSION}
-PYROGRAM ➼ {PYROGRAM_VERSION}
+KURIGRAM ➼ {KURIGRAM_VERSION}
 """
         await query.answer(text=text, show_alert=True)
 
