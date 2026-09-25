@@ -96,6 +96,19 @@ class CleanmodeCacheTests(unittest.IsolatedAsyncioTestCase):
 
 
 class EnvironmentTests(unittest.TestCase):
+    def test_ptb_application_is_imported(self):
+        source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        self.assertIn(
+            ("telegram.ext", "Application"),
+            {
+                (node.module, alias.name)
+                for node in tree.body
+                if isinstance(node, ast.ImportFrom) and node.module
+                for alias in node.names
+            },
+        )
+
     def test_boolean_values_are_explicit(self):
         env_bool = load_function(
             ROOT / "Mikobot/__init__.py",
