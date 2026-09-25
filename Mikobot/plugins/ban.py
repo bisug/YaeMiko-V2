@@ -1,4 +1,7 @@
 import html
+from uuid import uuid4
+
+
 
 from telegram import (
     ChatMemberAdministrator,
@@ -53,6 +56,11 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             chat_title = message.reply_to_message.sender_chat.title
         except AttributeError:
             chat_title = None
+        action_token = uuid4().hex[:8]
+        context.chat_data[f"anon_ban_{action_token}"] = {
+            "reason": reason,
+            "chat_title": chat_title,
+        }
         await update.effective_message.reply_text(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
@@ -60,7 +68,7 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                     [
                         InlineKeyboardButton(
                             text="Click to prove Admin.",
-                            callback_data=f"bans_{chat.id}=ban={user_id}={reason}={chat_title}",
+                            callback_data=f"bans_{chat.id}=ban={user_id}={action_token}",
                         ),
                     ],
                 ]
@@ -383,6 +391,11 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         except AttributeError:
             chat_title = None
 
+        action_token = uuid4().hex[:8]
+        context.chat_data[f"anon_ban_{action_token}"] = {
+            "reason": reason,
+            "chat_title": chat_title,
+        }
         await message.reply_text(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
@@ -390,7 +403,7 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                     [
                         InlineKeyboardButton(
                             text="Click to prove Admin.",
-                            callback_data=f"bans_{chat.id}=unban={user_id}={reason}={chat_title}",
+                            callback_data=f"bans_{chat.id}=unban={user_id}={action_token}",
                         ),
                     ],
                 ]
@@ -509,28 +522,33 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     admin_user = query.from_user
     member = await chat.get_member(admin_user.id)
 
-    if splitter[1] == "ban":
+    if (
+        (
+            isinstance(member, ChatMemberAdministrator)
+            and member.can_restrict_members
+        )
+        or member.status in {"creator", "owner"}
+        or admin_user.id in DRAGONS
+    ):
+        pass
+    else:
+        await query.answer(
+            "You do not have permission to use this action.",
+            show_alert=True,
+        )
+        return log_message
+
+    action = splitter[1]
+    pending = context.chat_data.pop(f"anon_ban_{splitter[3]}", {})
+
+    if action == "ban":
         # workaround for checking user admin status
         try:
             user_id = int(splitter[2])
         except ValueError:
             user_id = splitter[2]
-        reason = splitter[3]
-        chat_name = splitter[4]
-
-        if not (
-            (
-                member.can_restrict_members
-                if isinstance(member, ChatMemberAdministrator)
-                else None
-            )
-            or member.status == "creator"
-        ) and (admin_user.id not in DRAGONS):
-            await query.answer(
-                "Sorry son, but you're not worthy to wield the banhammer.",
-                show_alert=True,
-            )
-            return log_message
+        reason = pending.get("reason", "")
+        chat_name = pending.get("chat_title")
 
         if user_id == bot.id:
             await message.edit_text("Oh yeah, ban myself, noob!")
@@ -640,7 +658,7 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_id = int(splitter[2])
         except ValueError:
             user_id = splitter[2]
-        reason = splitter[3]
+        reason = pending.get("reason", "")
 
         if isinstance(user_id, str):
             await message.edit_text("I doubt that's a user.")
@@ -652,7 +670,7 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if user_id < 0:
             CHAT_SENDER = True
-            chat_title = splitter[4]
+            chat_title = pending.get("chat_title")
         else:
             CHAT_SENDER = False
 

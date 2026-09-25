@@ -729,5 +729,153 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn("get_chat(user_id)", (ROOT / relative).read_text(encoding="utf-8"))
 
 
+class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_non_admin_cannot_use_anonymous_unban_callback(self):
+        bans_callback = load_function(
+            ROOT / "Mikobot/plugins/ban.py",
+            "bans_callback",
+            {
+                "Update": object,
+                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
+                "ChatMemberAdministrator": type("Administrator", (), {}),
+                "DRAGONS": [],
+                "DEV_USERS": [],
+                "OWNER_ID": 1,
+                "html": __import__("html"),
+                "ParseMode": SimpleNamespace(HTML="HTML"),
+                "mention_html": lambda *args: "",
+                "loggable": lambda function: function,
+                "LOGGER": SimpleNamespace(
+                    warning=lambda *args, **kwargs: None,
+                    exception=lambda *args, **kwargs: None,
+                ),
+                "is_user_ban_protected": lambda *args: asyncio.sleep(0, False),
+                "is_user_in_chat": lambda *args: asyncio.sleep(0, False),
+                "BadRequest": Exception,
+            },
+        )
+        unban_calls = []
+
+        async def answer_query(*args, **kwargs):
+            pass
+
+        class Chat:
+            id = 99
+            type = "group"
+            title = "Chat"
+            is_forum = False
+
+            async def get_member(self, user_id):
+                return SimpleNamespace(status="member", user=SimpleNamespace(id=user_id))
+
+            async def unban_member(self, user_id):
+                unban_calls.append(user_id)
+
+        class Message:
+            async def edit_text(self, *args, **kwargs):
+                pass
+
+        query = SimpleNamespace(
+            data="bans_99=unban=123=token",
+            from_user=SimpleNamespace(id=456),
+            message=Message(),
+            answer=answer_query,
+        )
+        await bans_callback(
+            SimpleNamespace(
+                callback_query=query,
+                effective_chat=Chat(),
+                effective_message=Message(),
+            ),
+            SimpleNamespace(
+                args=[],
+                bot=SimpleNamespace(id=77),
+                chat_data={"anon_ban_token": {}},
+            ),
+        )
+        self.assertEqual(unban_calls, [])
+
+    async def test_numeric_whispers_compare_the_stored_id(self):
+        answers = []
+
+        async def answer_callback_query(*args, **kwargs):
+            answers.append((args, kwargs))
+
+        show_whisper = load_function(
+            ROOT / "Mikobot/plugins/whispers.py",
+            "showWhisper",
+            {
+                "Update": object,
+                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
+                "Whispers": SimpleNamespace(
+                    get_whisper=lambda whisper_id: asyncio.sleep(
+                        0,
+                        {
+                            "user": 1,
+                            "withuser": 2,
+                            "usertype": "id",
+                            "message": "secret",
+                        },
+                    )
+                )
+            },
+        )
+        await show_whisper(
+            SimpleNamespace(
+                callback_query=SimpleNamespace(
+                    id="1",
+                    data="whisper_x",
+                    from_user=SimpleNamespace(id=2, username="alice"),
+                )
+            ),
+            SimpleNamespace(
+                bot=SimpleNamespace(answer_callback_query=answer_callback_query)
+            ),
+        )
+        self.assertEqual(answers[0][0][1], "secret")
+
+    async def test_overlong_inline_whispers_are_answered(self):
+        answers = []
+
+        class InlineQuery:
+            query = "@alice " + "x" * 201
+            from_user = SimpleNamespace(id=1)
+
+            async def answer(self, *args, **kwargs):
+                answers.append((args, kwargs))
+
+        parse_user_message = load_function(
+            ROOT / "Mikobot/plugins/whispers.py", "parse_user_message", {}
+        )
+        mainwhisper = load_function(
+            ROOT / "Mikobot/plugins/whispers.py",
+            "mainwhisper",
+            {
+                "Update": object,
+                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
+                "parse_user_message": parse_user_message,
+            },
+        )
+        await mainwhisper(
+            SimpleNamespace(inline_query=InlineQuery()),
+            SimpleNamespace(bot=SimpleNamespace(answer_inline_query=lambda *args: None)),
+        )
+        self.assertEqual(len(answers), 1)
+
+    def test_ptb_permission_calls_use_supported_fields(self):
+        for relative in (
+            "Mikobot/plugins/flood.py",
+            "Mikobot/plugins/locks.py",
+            "Mikobot/plugins/mute.py",
+            "Mikobot/plugins/welcome.py",
+        ):
+            source = (ROOT / relative).read_text(encoding="utf-8")
+            self.assertNotIn("can_send_media_messages", source, relative)
+            self.assertNotIn("can_send_invite_users", source, relative)
+        self.assertIn('is_silent = splitter[3] == "1"', (ROOT / "Mikobot/plugins/admin.py").read_text(encoding="utf-8"))
+        self.assertIn("context.chat_data.pop", (ROOT / "Mikobot/plugins/ban.py").read_text(encoding="utf-8"))
+        self.assertIn("Contact me in PM to get your current settings.", (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()

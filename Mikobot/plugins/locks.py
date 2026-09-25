@@ -2,7 +2,7 @@ import html
 
 from alphabet_detector import AlphabetDetector
 from telegram import (
-    Chat,
+    ChatFullInfo,
     ChatMemberAdministrator,
     ChatPermissions,
     MessageEntity,
@@ -59,7 +59,12 @@ LOCK_TYPES = {
 LOCK_CHAT_RESTRICTION = {
     "all": {
         "can_send_messages": False,
-        "can_send_media_messages": False,
+        "can_send_audios": False,
+        "can_send_documents": False,
+        "can_send_photos": False,
+        "can_send_videos": False,
+        "can_send_video_notes": False,
+        "can_send_voice_notes": False,
         "can_send_polls": False,
         "can_send_other_messages": False,
         "can_add_web_page_previews": False,
@@ -69,7 +74,14 @@ LOCK_CHAT_RESTRICTION = {
         "can_manage_topics": False,
     },
     "messages": {"can_send_messages": False},
-    "media": {"can_send_media_messages": False},
+    "media": {
+        "can_send_audios": False,
+        "can_send_documents": False,
+        "can_send_photos": False,
+        "can_send_videos": False,
+        "can_send_video_notes": False,
+        "can_send_voice_notes": False,
+    },
     "sticker": {"can_send_other_messages": False},
     "gif": {"can_send_other_messages": False},
     "poll": {"can_send_polls": False},
@@ -84,7 +96,12 @@ LOCK_CHAT_RESTRICTION = {
 UNLOCK_CHAT_RESTRICTION = {
     "all": {
         "can_send_messages": True,
-        "can_send_media_messages": True,
+        "can_send_audios": True,
+        "can_send_documents": True,
+        "can_send_photos": True,
+        "can_send_videos": True,
+        "can_send_video_notes": True,
+        "can_send_voice_notes": True,
         "can_send_polls": True,
         "can_send_other_messages": True,
         "can_add_web_page_previews": True,
@@ -92,7 +109,14 @@ UNLOCK_CHAT_RESTRICTION = {
         "can_manage_topics": True,
     },
     "messages": {"can_send_messages": True},
-    "media": {"can_send_media_messages": True},
+    "media": {
+        "can_send_audios": True,
+        "can_send_documents": True,
+        "can_send_photos": True,
+        "can_send_videos": True,
+        "can_send_video_notes": True,
+        "can_send_voice_notes": True,
+    },
     "sticker": {"can_send_other_messages": True},
     "gif": {"can_send_other_messages": True},
     "poll": {"can_send_polls": True},
@@ -129,7 +153,12 @@ async def restr_members(
                 mem.user,
                 permissions=ChatPermissions(
                     can_send_messages=messages,
-                    can_send_media_messages=media,
+                    can_send_audios=media,
+                    can_send_documents=media,
+                    can_send_photos=media,
+                    can_send_videos=media,
+                    can_send_video_notes=media,
+                    can_send_voice_notes=media,
                     can_send_other_messages=other,
                     can_add_web_page_previews=previews,
                 ),
@@ -155,7 +184,12 @@ async def unrestr_members(
                 mem.user,
                 permissions=ChatPermissions(
                     can_send_messages=messages,
-                    can_send_media_messages=media,
+                    can_send_audios=media,
+                    can_send_documents=media,
+                    can_send_photos=media,
+                    can_send_videos=media,
+                    can_send_video_notes=media,
+                    can_send_voice_notes=media,
                     can_send_other_messages=other,
                     can_add_web_page_previews=previews,
                 ),
@@ -254,7 +288,12 @@ async def lock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                 int(777000),
                 permissions=ChatPermissions(
                     can_send_messages=True,
-                    can_send_media_messages=True,
+                    can_send_audios=True,
+                    can_send_documents=True,
+                    can_send_photos=True,
+                    can_send_videos=True,
+                    can_send_video_notes=True,
+                    can_send_voice_notes=True,
                     can_send_other_messages=True,
                     can_add_web_page_previews=True,
                 ),
@@ -265,7 +304,12 @@ async def lock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                 int(1087968824),
                 permissions=ChatPermissions(
                     can_send_messages=True,
-                    can_send_media_messages=True,
+                    can_send_audios=True,
+                    can_send_documents=True,
+                    can_send_photos=True,
+                    can_send_videos=True,
+                    can_send_video_notes=True,
+                    can_send_voice_notes=True,
                     can_send_other_messages=True,
                     can_add_web_page_previews=True,
                 ),
@@ -584,10 +628,14 @@ async def build_lock_message(chat_id):
             locklist.append("stickeranimated = `{}`".format(locks.stickeranimated))
 
     permissions = await dispatcher.bot.get_chat(chat_id)
-    if isinstance(permissions, Chat):
+    if isinstance(permissions, ChatFullInfo):
         permissions = permissions.permissions
         permslist.append("messages = `{}`".format(permissions.can_send_messages))
-        permslist.append("media = `{}`".format(permissions.can_send_media_messages))
+        media = all(
+            getattr(permissions, f"can_send_{kind}")
+            for kind in ("audios", "documents", "photos", "videos", "video_notes", "voice_notes")
+        )
+        permslist.append("media = `{}`".format(media))
         permslist.append("poll = `{}`".format(permissions.can_send_polls))
         permslist.append("other = `{}`".format(permissions.can_send_other_messages))
         permslist.append(
@@ -641,7 +689,12 @@ async def list_locks(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def get_permission_list(current, new):
     permissions = {
         "can_send_messages": None,
-        "can_send_media_messages": None,
+        "can_send_audios": None,
+        "can_send_documents": None,
+        "can_send_photos": None,
+        "can_send_videos": None,
+        "can_send_video_notes": None,
+        "can_send_voice_notes": None,
         "can_send_polls": None,
         "can_send_other_messages": None,
         "can_add_web_page_previews": None,

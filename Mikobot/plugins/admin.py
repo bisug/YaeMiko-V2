@@ -450,7 +450,7 @@ async def pin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                     [
                         InlineKeyboardButton(
                             text="Click to prove admin.",
-                            callback_data=f"admin_=pin={prev_message.message_id}={is_silent}",
+                            callback_data=f"admin_=pin={prev_message.message_id}={int(is_silent)}",
                         ),
                     ],
                 ],
@@ -961,7 +961,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except:
             return
 
-        is_silent = bool(splitter[3])
+        is_silent = splitter[3] == "1"
         is_group = chat.type != "private" and chat.type != "channel"
 
         if is_group:

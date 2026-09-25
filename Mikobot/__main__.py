@@ -855,7 +855,7 @@ async def get_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ),
             )
         else:
-            await msg.reply_text(text)
+            await msg.reply_text("Contact me in PM to get your current settings.")
 
     else:
         await send_settings(chat.id, user.id, True)

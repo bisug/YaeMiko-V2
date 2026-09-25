@@ -33,20 +33,26 @@ async def mainwhisper(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user, message = parse_user_message(query.query)
     if len(message) > 200:
-        return
+        return await query.answer(
+            [],
+            switch_pm_text="Whisper messages are limited to 200 characters.",
+            switch_pm_parameter="ghelp_whisper",
+        )
 
     usertype = "username" if user.startswith("@") else "id"
 
-    if user.isdigit():
+    display_user = user
+    target_id = int(user) if user.isdigit() else None
+    if target_id is not None:
         try:
-            chat = await context.bot.get_chat(int(user))
-            user = f"@{chat.username}" if chat.username else chat.first_name
+            chat = await context.bot.get_chat(target_id)
+            display_user = f"@{chat.username}" if chat.username else chat.first_name
         except Exception:
             pass
 
     whisperData = {
         "user": query.from_user.id,
-        "withuser": user,
+        "withuser": target_id if target_id is not None else display_user,
         "usertype": usertype,
         "type": "inline",
         "message": message,
@@ -108,7 +114,7 @@ async def showWhisper(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.answer_callback_query(
             callback_query.id, whisper["message"], show_alert=True
         )
-    elif userType == "id" and from_user_id == int(whisper["withuser"]):
+    elif userType == "id" and str(from_user_id) == str(whisper["withuser"]):
         await context.bot.answer_callback_query(
             callback_query.id, whisper["message"], show_alert=True
         )
