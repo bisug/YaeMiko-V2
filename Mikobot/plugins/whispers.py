@@ -1,8 +1,6 @@
 # SOURCE https://github.com/Team-ProjectCodeX
 # CREATED BY https://t.me/O_okarma
 # PROVIDED BY https://t.me/ProjectCodeX
-# ➥ @MIKO_V2BOT ʏᴏᴜʀ ᴍᴇssᴀɢᴇ @ᴜsᴇʀɴᴀᴍᴇ
-# ➥ @MIKO_V2BOT @ᴜsᴇʀɴᴀᴍᴇ ʏᴏᴜʀ ᴍᴇssᴀɢᴇ
 
 # TURN ON INLINE MODE FOR USE.
 
@@ -18,7 +16,7 @@ from telegram import (
 )
 from telegram.ext import CallbackQueryHandler, ContextTypes, InlineQueryHandler
 
-from Mikobot import function
+from Mikobot import BOT_USERNAME, function
 
 from Database.mongodb.whispers import Whispers
 
@@ -147,13 +145,13 @@ function(CallbackQueryHandler(showWhisper, pattern="^whisper_", block=False))
 
 
 # <==================================================== HELP ===================================================>
-__help__ = """
+__help__ = f"""
 ➠ *Whisper inline function for secret chats.*
 
 ➠ *Commands:*
 
-» @MIKO_V2BOT your message @username
-» @MIKO_V2BOT @username your message
+» @{BOT_USERNAME} your message @username
+» @{BOT_USERNAME} @username your message
 """
 
 __mod_name__ = "WHISPER-MSG"

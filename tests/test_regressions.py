@@ -258,6 +258,20 @@ class StartupTests(unittest.TestCase):
             loop.close()
             asyncio.set_event_loop(None)
 
+    def test_startup_fetches_and_displays_bot_identity(self):
+        source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
+        self.assertLess(
+            source.index("dispatcher.bot.initialize()"),
+            source.index("dispatcher.bot.get_me()"),
+        )
+        self.assertIn("BOT_ID = bot_info.id", source)
+        self.assertIn("BOT_NAME = bot_info.first_name", source)
+        self.assertIn("BOT_USERNAME = bot_info.username", source)
+        self.assertIn("escape(BOT_NAME)", source)
+        self.assertIn("escape(BOT_USERNAME)", source)
+        self.assertIn("{BOT_ID}", source)
+
+
 
 
 class FederationDeletionTests(unittest.TestCase):

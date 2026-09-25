@@ -14,6 +14,7 @@ import logging
 import os
 import sys
 import time
+from html import escape
 from random import choice
 
 import telegram
@@ -282,13 +283,6 @@ function = dispatcher.add_handler
 # <=======================================================================================================>
 
 # <================================================ BOOT MESSAGE=======================================================>
-ALIVE_MSG = """
-💫 *MY SYSTEM IS STARTING, PLEASE WAIT FOR SOMETIME TO COMPLETE BOOT!*
-
-
-*IF COMMANDS DON'T WORK CHECK THE LOGS*
-"""
-
 ALIVE_IMG = [
     "https://telegra.ph/file/40b93b46642124605e678.jpg",
     "https://telegra.ph/file/01a2e0cd1b9d03808c546.jpg",
@@ -310,7 +304,7 @@ async def send_booting_message():
             chat_id=SUPPORT_ID,
             photo=str(choice(ALIVE_IMG)),
             caption=ALIVE_MSG,
-            parse_mode=ParseMode.MARKDOWN,
+            parse_mode=ParseMode.HTML,
         )
     except Exception:
         LOGGER.warning(
@@ -324,20 +318,25 @@ async def send_booting_message():
 
 # <================================================= EXTBOT ======================================================>
 loop.run_until_complete(dispatcher.bot.initialize())
-loop.run_until_complete(send_booting_message())
+
+# <=============================================== GETTING BOT INFO ========================================================>
+LOGGER.info("Getting bot information")
+bot_info = loop.run_until_complete(dispatcher.bot.get_me())
+BOT_ID = bot_info.id
+BOT_NAME = bot_info.first_name
+BOT_USERNAME = bot_info.username
+ALIVE_MSG = f"""
+💫 <b>{escape(BOT_NAME)}</b> (<code>@{escape(BOT_USERNAME)}</code>) is starting.
+<b>Bot ID:</b> <code>{BOT_ID}</code>
+
+⏳ <i>Please wait for startup to complete. If commands do not work, check the logs.</i>
+"""
 # <=======================================================================================================>
 
 # <=============================================== CLIENT SETUP ========================================================>
 # Create the Kurigram client instance
 app = Client("Mikobot", api_id=API_ID, api_hash=API_HASH, bot_token=TOKEN)
-# <=======================================================================================================>
-
-# <=============================================== GETTING BOT INFO ========================================================>
-# Get bot information
-LOGGER.info("Getting bot information")
-BOT_ID = dispatcher.bot.id
-BOT_NAME = dispatcher.bot.first_name
-BOT_USERNAME = dispatcher.bot.username
+loop.run_until_complete(send_booting_message())
 # <=======================================================================================================>
 
 # <================================================== CONVERT LISTS =====================================================>

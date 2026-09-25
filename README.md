@@ -92,4 +92,4 @@ python3 -m Mikobot         # 8. Run the Bot
 
 Others in the commit history and files. If anything is missing, feel free to  [![gmail](https://img.shields.io/badge/mail-Here-red?style=for-the-badge&logo=gmail)](mailto:makandu2054@gmail.com)  or submit a pull request.
 
-> Try this bot [@YaeMiko_Roxbot](https://t.me/YaeMiko_Roxbot); it's made with this repository for demonstration purposes.
+> The bot name, username, and ID are fetched from Telegram at startup.
