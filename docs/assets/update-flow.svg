@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 700" width="1280" height="700" role="img" aria-label="YaeMiko update handling flow">
+  <title>YaeMiko update handling flow</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8b949e"/>
+    </marker>
+    <style>
+      .bg { fill: #0d1117; }
+      .panel { fill: #161b22; stroke: #30363d; stroke-width: 1.5; rx: 10; }
+      .title { fill: #e6edf3; font: 600 20px "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .head { fill: #e6edf3; font: 600 14px "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .sub { fill: #8b949e; font: 400 12px "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .edge { stroke: #8b949e; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+      .accent-blue { fill: #1f3b5c; stroke: #58a6ff; stroke-width: 1.5; rx: 10; }
+      .accent-green { fill: #16301f; stroke: #3fb950; stroke-width: 1.5; rx: 10; }
+      .accent-red { fill: #3b1a22; stroke: #f778ba; stroke-width: 1.5; rx: 10; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="700"/>
+  <text class="title" x="48" y="46">Update handling flow</text>
+  <text class="sub" x="48" y="70">From Telegram transport to a permission checked, rate limited, persisted action</text>
+
+  <rect class="accent-blue" x="40" y="110" width="220" height="80"/>
+  <text class="head" x="64" y="142">Transport</text>
+  <text class="sub" x="64" y="164">Poll or MTProto update</text>
+
+  <path class="edge" d="M 260 150 L 300 150"/>
+
+  <rect class="panel" x="300" y="110" width="220" height="80"/>
+  <text class="head" x="324" y="142">Handler match</text>
+  <text class="sub" x="324" y="164">Group order and filters</text>
+
+  <path class="edge" d="M 520 150 L 560 150"/>
+
+  <rect class="panel" x="560" y="110" width="220" height="80"/>
+  <text class="head" x="584" y="142">Permission gate</text>
+  <text class="sub" x="584" y="164">chat_status and rank checks</text>
+
+  <path class="edge" d="M 780 150 L 820 150"/>
+
+  <rect class="panel" x="820" y="110" width="220" height="80"/>
+  <text class="head" x="844" y="142">Rate limiter</text>
+  <text class="sub" x="844" y="164">AIORateLimiter token bucket</text>
+
+  <path class="edge" d="M 1040 150 L 1080 150"/>
+
+  <rect class="panel" x="1080" y="110" width="160" height="80"/>
+  <text class="head" x="1104" y="142">Execution</text>
+  <text class="sub" x="1104" y="164">Plugin action</text>
+
+  <rect class="accent-green" x="40" y="250" width="560" height="90"/>
+  <text class="head" x="64" y="282">Persistence split</text>
+  <text class="sub" x="64" y="304">PostgreSQL holds chat state: warnings, locks, notes, rules, night mode, feds</text>
+  <text class="sub" x="64" y="326">MongoDB holds document data: user profiles, chat metadata, AFK, whispers, karma</text>
+
+  <rect class="panel" x="640" y="250" width="600" height="90"/>
+  <text class="head" x="664" y="282">Context persistence</text>
+  <text class="sub" x="664" y="304">PicklePersistence stores chat_data and user_data in ptb_persistence.pickle</text>
+  <text class="sub" x="664" y="326">State survives restarts on Heroku dyno restarts, callback_data is intentionally not stored</text>
+
+  <rect class="panel" x="40" y="390" width="560" height="110"/>
+  <text class="head" x="64" y="422">Reply construction</text>
+  <text class="sub" x="64" y="444">Inline keyboard buttons are declared with an explicit semantic style</text>
+  <text class="sub" x="64" y="466">PRIMARY for navigation, SUCCESS for confirming or positive actions, DANGER for destructive actions</text>
+  <text class="sub" x="64" y="488">A regression test parses the AST and fails if any inline button is missing a style</text>
+
+  <rect class="panel" x="640" y="390" width="600" height="110"/>
+  <text class="head" x="664" y="422">Error handling</text>
+  <text class="sub" x="664" y="444">error_callback answers the user, then logs the traceback with the bot token redacted</text>
+  <text class="sub" x="664" y="466">Chat migration is intercepted and every module __migrate__ hook is called for the chat ID change</text>
+  <text class="sub" x="664" y="488">Shutdown closes MongoDB, the httpx client, and the event loop in order</text>
+
+  <rect class="accent-red" x="40" y="546" width="1200" height="112"/>
+  <text class="head" x="64" y="578">Operational guards</text>
+  <text class="sub" x="64" y="602">Logging is routed through RedactingFormatter, so any bot token that reaches a log line is replaced with bot&lt;redacted&gt;</text>
+  <text class="sub" x="64" y="624">httpx and httpcore loggers are raised to WARNING because their INFO output contains the full Telegram API URL including the token</text>
+  <text class="sub" x="64" y="646">PostgreSQL uses pool_pre_ping and pool_recycle to survive idle connection drops on managed platforms</text>
+</svg>

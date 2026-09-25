@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 840" width="1280" height="840" role="img" aria-label="YaeMiko dual client architecture">
+  <title>YaeMiko dual client architecture</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8b949e"/>
+    </marker>
+    <style>
+      .bg { fill: #0d1117; }
+      .panel { fill: #161b22; stroke: #30363d; stroke-width: 1.5; rx: 12; }
+      .title { fill: #e6edf3; font: 600 20px "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .head { fill: #e6edf3; font: 600 15px "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .sub { fill: #8b949e; font: 400 12px "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .edge { stroke: #8b949e; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .accent-blue { fill: #1f3b5c; stroke: #58a6ff; stroke-width: 1.5; rx: 12; }
+      .accent-red { fill: #3b1a22; stroke: #f778ba; stroke-width: 1.5; rx: 12; }
+      .accent-green { fill: #16301f; stroke: #3fb950; stroke-width: 1.5; rx: 12; }
+      .accent-purple { fill: #2a1f3d; stroke: #bc8cff; stroke-width: 1.5; rx: 12; }
+      .accent-orange { fill: #3a2716; stroke: #f0883e; stroke-width: 1.5; rx: 12; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="840"/>
+
+  <text class="title" x="48" y="46">YaeMiko runtime architecture</text>
+  <text class="sub" x="48" y="70">Two Telegram clients, one process, PostgreSQL and MongoDB persistence</text>
+
+  <rect class="accent-blue" x="80" y="100" width="480" height="70"/>
+  <text class="head" x="104" y="128">Telegram Bot API</text>
+  <text class="sub" x="104" y="150">Long polling transport used by python-telegram-bot</text>
+
+  <rect class="accent-purple" x="720" y="100" width="480" height="70"/>
+  <text class="head" x="744" y="128">Telegram MTProto</text>
+  <text class="sub" x="744" y="150">MTProto transport used by Kurigram</text>
+
+  <path class="edge" d="M 320 170 L 320 250"/>
+  <path class="edge" d="M 960 170 L 960 250"/>
+
+  <rect class="accent-blue" x="80" y="250" width="480" height="96"/>
+  <text class="head" x="104" y="280">PTB Application</text>
+  <text class="sub" x="104" y="302">concurrent_updates 64, AIORateLimiter, PicklePersistence</text>
+  <text class="sub" x="104" y="324">CommandHandler, CallbackQueryHandler, MessageHandler, TypeHandler</text>
+
+  <rect class="accent-purple" x="720" y="250" width="480" height="96"/>
+  <text class="head" x="744" y="280">Kurigram Client</text>
+  <text class="sub" x="744" y="302">Bot session over MTProto, RawUpdateHandler, decorated filters</text>
+  <text class="sub" x="744" y="324">Mikobot/events.py registers message, callback, member and inline handlers</text>
+
+  <path class="edge" d="M 320 346 L 320 424"/>
+  <path class="edge" d="M 960 346 L 960 424"/>
+
+  <rect class="panel" x="80" y="424" width="480" height="96"/>
+  <text class="head" x="104" y="454">Core runtime</text>
+  <text class="sub" x="104" y="476">Mikobot/__init__.py: config, logging with token redaction, event loop, clients</text>
+  <text class="sub" x="104" y="498">Mikobot/__main__.py: handler registration, plugin discovery, migration, shutdown</text>
+
+  <rect class="panel" x="720" y="424" width="480" height="96"/>
+  <text class="head" x="744" y="454">Plugin system</text>
+  <text class="sub" x="744" y="476">Mikobot/plugins: 57 modules auto discovered through glob</text>
+  <text class="sub" x="744" y="498">LOAD and NO_LOAD control ordering and exclusions</text>
+
+  <path class="edge" d="M 200 520 L 160 600"/>
+  <path class="edge" d="M 400 520 L 440 600"/>
+  <path class="edge" d="M 800 520 L 800 600"/>
+
+  <rect class="accent-green" x="20" y="600" width="280" height="96"/>
+  <text class="head" x="44" y="630">PostgreSQL</text>
+  <text class="sub" x="44" y="652">SQLAlchemy scoped sessions</text>
+  <text class="sub" x="44" y="674">29 modules: warns, locks, notes, rules</text>
+
+  <rect class="accent-green" x="320" y="600" width="280" height="96"/>
+  <text class="head" x="344" y="630">MongoDB</text>
+  <text class="sub" x="344" y="652">PyMongo collections</text>
+  <text class="sub" x="344" y="674">10 modules: users, chats, afk, whispers</text>
+
+  <rect class="accent-orange" x="620" y="600" width="280" height="96"/>
+  <text class="head" x="644" y="630">External HTTP APIs</text>
+  <text class="sub" x="644" y="652">Shared httpx client, HTTP/2, 20s timeout</text>
+  <text class="sub" x="644" y="674">Gemini, Openverse, HN Algolia, DuckDuckGo</text>
+
+  <rect class="accent-red" x="920" y="600" width="340" height="96"/>
+  <text class="head" x="944" y="630">Supporting services</text>
+  <text class="sub" x="944" y="652">Telegraph, speedtest, ffmpeg, Pillow, ONNX</text>
+  <text class="sub" x="944" y="674">fonts for styled text, nekos for media search</text>
+
+  <rect class="panel" x="20" y="726" width="1240" height="88"/>
+  <text class="head" x="44" y="756">Deployment targets</text>
+  <text class="sub" x="44" y="780">Heroku worker dyno via app.json and heroku.yml, Docker image built from the multi stage Dockerfile, or a bare VPS run with python -m Mikobot</text>
+  <text class="sub" x="44" y="800">Every target executes the same entry point: python -m Mikobot</text>
+</svg>

@@ -1,4 +1,4 @@
-# https://github.com/Infamous-Hydra/YaeMiko
+# https://github.com/bisug/YaeMiko-V2
 # https://github.com/Team-ProjectCodeX
 # https://t.me/O_okarma
 
