@@ -550,6 +550,14 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("return await self.create_quotly(self._API)", source)
         self.assertIn("event.command and len(event.command) > 1", source)
 
+    def test_quotely_uses_kurigram_forward_origin(self):
+        source = (ROOT / "Mikobot/plugins/quotely.py").read_text(encoding="utf-8")
+        self.assertNotIn("event.fwd_from", source)
+        self.assertIn("event.forward_origin", source)
+        self.assertIn('getattr(forward_origin, "sender_user", None)', source)
+        self.assertIn('getattr(forward_origin, "sender_user_name", None)', source)
+        self.assertIn('getattr(forward_origin, "author_signature", None)', source)
+
     def test_pyrate_limiter_v4_uses_nonblocking_api(self):
         tree = ast.parse(
             (ROOT / "Mikobot/plugins/cust_filters.py").read_text(encoding="utf-8")

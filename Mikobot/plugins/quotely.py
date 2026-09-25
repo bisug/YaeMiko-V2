@@ -72,26 +72,28 @@ class Quotly:
             else {}
         )
 
-        is_fwd = event.fwd_from
+        forward_origin = event.forward_origin
         name, last_name = None, None
 
         if sender and sender.id not in DEV_USERS:
             id_ = sender.id
             name = get_display_name(sender)
-        elif not is_fwd:
+        elif not forward_origin:
             id_ = event.from_user.id if event.from_user else None
             sender = event.from_user
             name = get_display_name(sender)
         else:
-            id_, sender = None, None
-            name = is_fwd.from_name
-            if is_fwd.from_id:
-                id_ = is_fwd.from_id
-                try:
-                    sender = await app.get_users(id_)
-                    name = get_display_name(sender)
-                except ValueError:
-                    pass
+            sender = getattr(forward_origin, "sender_user", None)
+            forward_chat = getattr(forward_origin, "sender_chat", None) or getattr(
+                forward_origin, "chat", None
+            )
+            id_ = sender.id if sender else forward_chat.id if forward_chat else None
+            name = (
+                get_display_name(sender)
+                or getattr(forward_origin, "sender_user_name", None)
+                or getattr(forward_chat, "title", None)
+                or getattr(forward_origin, "author_signature", None)
+            )
         if sender and hasattr(sender, "last_name"):
             last_name = sender.last_name
 
