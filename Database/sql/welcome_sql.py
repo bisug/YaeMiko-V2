@@ -182,11 +182,12 @@ def welcome_mutes(chat_id):
 
 def set_welcome_mutes(chat_id, welcomemutes):
     with WM_LOCK:
-        prev = SESSION.get(WelcomeMute, (str(chat_id)))
-        if prev:
-            SESSION.delete(prev)
-        welcome_m = WelcomeMute(str(chat_id), welcomemutes)
-        SESSION.add(welcome_m)
+        welcome_m = SESSION.get(WelcomeMute, str(chat_id))
+        if welcome_m is None:
+            welcome_m = WelcomeMute(str(chat_id), welcomemutes)
+            SESSION.add(welcome_m)
+        else:
+            welcome_m.welcomemutes = welcomemutes
         SESSION.commit()
 
 
@@ -474,25 +475,29 @@ def getRaidStatus(chat_id):
 
 def setRaidStatus(chat_id, status, time=21600, acttime=3600):
     with RAID_LOCK:
-        if prevObj := SESSION.get(RaidMode, str(chat_id)):
-            SESSION.delete(prevObj)
-        newObj = RaidMode(str(chat_id), status, time, acttime)
-        SESSION.add(newObj)
+        raid = SESSION.get(RaidMode, str(chat_id))
+        if raid is None:
+            raid = RaidMode(str(chat_id), status, time, acttime)
+            SESSION.add(raid)
+        else:
+            raid.status = status
+            raid.time = time
+            raid.acttime = acttime
         SESSION.commit()
 
 
 def toggleRaidStatus(chat_id):
-    newObj = True
     with RAID_LOCK:
         prevObj = SESSION.get(RaidMode, str(chat_id))
         if prevObj:
-            newObj = not prevObj.status
-        stat = RaidMode(
-            str(chat_id), newObj, prevObj.time or 21600, prevObj.acttime or 3600
-        )
-        SESSION.add(stat)
+            prevObj.status = not prevObj.status
+            new_status = prevObj.status
+        else:
+            prevObj = RaidMode(str(chat_id), True, 21600, 3600)
+            SESSION.add(prevObj)
+            new_status = True
         SESSION.commit()
-        return newObj
+        return new_status
 
 
 def _ResetRaidOnRestart():

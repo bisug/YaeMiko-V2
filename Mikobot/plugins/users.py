@@ -198,7 +198,7 @@ USER_DB_LOCK = RLock()
 def _user_db_is_fresh(user_id, username, chat_id, chat_name):
     key = (user_id, chat_id)
     with USER_DB_LOCK:
-        return (username, chat_name) in USER_DB_CACHE.get(key, ())
+        return USER_DB_CACHE.get(key) == (username, chat_name)
 
 
 def _mark_user_db_fresh(user_id, username, chat_id, chat_name):

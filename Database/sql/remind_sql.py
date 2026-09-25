@@ -66,8 +66,12 @@ def set_remind(chat_id, time_sec, remind_message, user_id):
         reminds.user_id = user_id
         SESSION.add(reminds)
         SESSION.commit()
-        if not time_sec in REMINDERS:
-            REMINDERS[time_sec] = []
+        REMINDERS.setdefault(time_sec, [])
+        REMINDERS[time_sec] = [
+            item
+            for item in REMINDERS[time_sec]
+            if item["chat_id"] != str(chat_id)
+        ]
         REMINDERS[time_sec].append(
             {"chat_id": str(chat_id), "message": remind_message, "user_id": user_id}
         )
@@ -79,20 +83,32 @@ def rem_remind(chat_id, time_sec, remind_message, user_id):
         if reminds:
             SESSION.delete(reminds)
             SESSION.commit()
-            REMINDERS[time_sec].remove(
-                {"chat_id": str(chat_id), "message": remind_message, "user_id": user_id}
-            )
+            REMINDERS[time_sec] = [
+                item
+                for item in REMINDERS.get(time_sec, [])
+                if item["chat_id"] != str(chat_id)
+            ]
+            if not REMINDERS[time_sec]:
+                REMINDERS.pop(time_sec, None)
             return True
         SESSION.close()
         return False
 
 
 def get_remind_in_chat(chat_id, timestamp):
-    return SESSION.get(Reminds, (str(chat_id), int(timestamp)))
+    try:
+        return SESSION.get(Reminds, (str(chat_id), int(timestamp)))
+    finally:
+        SESSION.close()
 
 
 def num_reminds_in_chat(chat_id):
-    return SESSION.query(Reminds).filter(Reminds.chat_id == str(chat_id)).count()
+    try:
+        return SESSION.query(Reminds).filter(
+            Reminds.chat_id == str(chat_id)
+        ).count()
+    finally:
+        SESSION.close()
 
 
 def get_reminds_in_chat(chat_id):
@@ -122,13 +138,13 @@ def __get_all_reminds():
                 except:
                     pass
                 continue
-            REMINDERS[chat.time_seconds] = [
+            REMINDERS.setdefault(chat.time_seconds, []).append(
                 {
                     "chat_id": chat.chat_id,
                     "message": chat.remind_message,
                     "user_id": chat.user_id,
                 }
-            ]
+            )
     finally:
         SESSION.close()
 

@@ -361,7 +361,9 @@ class FederationDeletionTests(unittest.TestCase):
             "Federations": object,
             "ChatF": SimpleNamespace(fed_id=object()),
             "BansF": SimpleNamespace(fed_id=object()),
-            "FedSubs": SimpleNamespace(fed_id=object()),
+            "FedSubs": SimpleNamespace(
+                fed_id=object(), fed_subs=object()
+            ),
             "OWNER_ID": 999,
             "Session": lambda engine: session,
             "ENGINE": object(),
@@ -945,6 +947,166 @@ class DatabaseRegressionTests(unittest.TestCase):
         self.assertIn("return SESSION.get(Users, int(user_id))", users)
         self.assertNotIn("ChatMembers.query", users)
 
+
+
+    def test_user_database_freshness_uses_value_equality(self):
+        source = (ROOT / "Mikobot/plugins/users.py").read_text(encoding="utf-8")
+        self.assertIn(
+            "return USER_DB_CACHE.get(key) == (username, chat_name)", source
+        )
+        self.assertNotIn(
+            "return (username, chat_name) in USER_DB_CACHE.get(key, ())", source
+        )
+
+    def test_federation_subscription_lookups_and_startup_cache(self):
+        get_spec_subs = load_function(
+            ROOT / "Database/sql/feds_sql.py",
+            "get_spec_subs",
+            {"FEDS_SUBSCRIBER": {"source": {"other"}}},
+        )
+        self.assertFalse(get_spec_subs("source", "target"))
+
+        class SubscriptionSession:
+            def __init__(self):
+                self.closed = False
+
+            def query(self, model):
+                return SimpleNamespace(
+                    all=lambda: [
+                        SimpleNamespace(fed_id="source", fed_subs="target")
+                    ]
+                )
+
+            def close(self):
+                self.closed = True
+
+        session = SubscriptionSession()
+        namespace = {
+            "SESSION": session,
+            "FedSubs": object,
+            "FEDS_SUBSCRIBER": {"stale": {"value"}},
+            "MYFEDS_SUBSCRIBER": {"stale": {"value"}},
+        }
+        load_function(
+            ROOT / "Database/sql/feds_sql.py", "__load_feds_subscriber", namespace
+        )()
+        self.assertEqual(namespace["FEDS_SUBSCRIBER"], {"source": {"target"}})
+        self.assertEqual(namespace["MYFEDS_SUBSCRIBER"], {"target": {"source"}})
+        self.assertTrue(session.closed)
+
+    def test_federation_deletion_removes_incoming_subscriptions(self):
+        source = (ROOT / "Database/sql/feds_sql.py").read_text(encoding="utf-8")
+        self.assertIn(
+            "(FedSubs.fed_id == fed_id) | (FedSubs.fed_subs == fed_id)", source
+        )
+
+    def test_federation_ban_mutations_update_caches_incrementally(self):
+        tree = ast.parse((ROOT / "Database/sql/feds_sql.py").read_text(encoding="utf-8"))
+        for name in ("fban_user", "multi_fban_user", "un_fban_user"):
+            function = next(
+                node
+                for node in tree.body
+                if isinstance(node, ast.FunctionDef) and node.name == name
+            )
+            self.assertFalse(
+                any(
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name)
+                    and node.func.id == "__load_all_feds_banned"
+                    for node in ast.walk(function)
+                ),
+                name,
+            )
+
+    def test_connection_history_uses_chat_ids_as_cache_keys(self):
+        class History:
+            def __init__(self, user_id, chat_id, chat_name, conn_time):
+                self.user_id = user_id
+                self.chat_id = chat_id
+                self.chat_name = chat_name
+                self.conn_time = conn_time
+
+        class Session:
+            def get(self, model, key):
+                return None
+
+            def add(self, value):
+                pass
+
+            def delete(self, value):
+                pass
+
+            def commit(self):
+                pass
+
+        cache = {}
+        add_history = load_function(
+            ROOT / "Database/sql/connection_sql.py",
+            "add_history_conn",
+            {
+                "CONNECTION_HISTORY_LOCK": threading.RLock(),
+                "ConnectionHistory": History,
+                "HISTORY_CONNECT": cache,
+                "SESSION": Session(),
+                "time": SimpleNamespace(time=lambda: 1700000000),
+            },
+        )
+        add_history(1, "-100", "first")
+        add_history(1, "-200", "second")
+        self.assertEqual(set(cache[1]), {"-100", "-200"})
+
+    def test_federation_empty_reverse_subscription_cache_is_safe(self):
+        get_mysubs = load_function(
+            ROOT / "Database/sql/feds_sql.py",
+            "get_mysubs",
+            {"MYFEDS_SUBSCRIBER": {}},
+        )
+        self.assertEqual(get_mysubs("missing"), [])
+
+    def test_connection_checks_run_database_access_off_event_loop(self):
+        source = (ROOT / "Mikobot/plugins/connection.py").read_text(encoding="utf-8")
+        self.assertIn(
+            "connection = await asyncio.to_thread(sql.get_connected_chat, user_id)",
+            source,
+        )
+        self.assertIn(
+            "await asyncio.to_thread(sql.disconnect, user_id)", source
+        )
+        self.assertNotIn("disconnect_chat(update, bot)", source)
+
+    def test_reminder_startup_preserves_same_timestamp_entries(self):
+        class Reminder:
+            def __init__(self, chat_id):
+                self.chat_id = chat_id
+                self.time_seconds = 200
+                self.remind_message = chat_id
+                self.user_id = 1
+
+        class Session:
+            def query(self, model):
+                return SimpleNamespace(
+                    all=lambda: [Reminder("chat1"), Reminder("chat2")]
+                )
+
+            def close(self):
+                pass
+
+        reminders = {}
+        load_function(
+            ROOT / "Database/sql/remind_sql.py",
+            "__get_all_reminds",
+            {
+                "Reminds": object,
+                "SESSION": Session(),
+                "REMINDERS": reminders,
+                "time": SimpleNamespace(time=lambda: 0),
+                "rem_remind": lambda *args: True,
+            },
+        )()
+        self.assertEqual(
+            [item["chat_id"] for item in reminders[200]],
+            ["chat1", "chat2"],
+        )
 
 
 class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):

@@ -1,4 +1,5 @@
 # <============================================== IMPORTS =========================================================>
+import asyncio
 import html
 import os
 import random
@@ -216,7 +217,7 @@ async def disable_welcome(_, message: Message):
 # <================================================ NORMAL WELCOME FUNCTION =======================================================>
 async def send(update: Update, message, keyboard, backup_message):
     chat = update.effective_chat
-    cleanserv = sql.clean_service(chat.id)
+    cleanserv = await asyncio.to_thread(sql.clean_service, chat.id)
     reply = update.effective_message.message_id
     if cleanserv:
         try:
@@ -321,9 +322,13 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     msg = update.effective_message
 
-    should_welc, cust_welcome, cust_content, welc_type = sql.get_welc_pref(chat.id)
-    welc_mutes = sql.welcome_mutes(chat.id)
-    human_checks = sql.get_human_checks(user.id, chat.id)
+    should_welc, cust_welcome, cust_content, welc_type = await asyncio.to_thread(
+        sql.get_welc_pref, chat.id
+    )
+    welc_mutes = await asyncio.to_thread(sql.welcome_mutes, chat.id)
+    human_checks = await asyncio.to_thread(
+        sql.get_human_checks, user.id, chat.id
+    )
 
     new_members = update.effective_message.new_chat_members
 
@@ -348,7 +353,7 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if should_welc:
             reply = update.message.message_id
-            cleanserv = sql.clean_service(chat.id)
+            cleanserv = await asyncio.to_thread(sql.clean_service, chat.id)
             if cleanserv:
                 try:
                     await dispatcher.bot.delete_message(
@@ -445,7 +450,7 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 continue
 
             else:
-                buttons = sql.get_welc_buttons(chat.id)
+                buttons = await asyncio.to_thread(sql.get_welc_buttons, chat.id)
                 keyb = build_keyboard(buttons)
 
                 if welc_type not in (sql.Types.TEXT, sql.Types.BUTTON_TEXT):
@@ -630,7 +635,7 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             else:
                 sent = await send(update, res, keyboard, backup_message)
-            prev_welc = sql.get_clean_pref(chat.id)
+            prev_welc = await asyncio.to_thread(sql.get_clean_pref, chat.id)
             if prev_welc:
                 try:
                     await bot.delete_message(chat.id, prev_welc)
@@ -638,7 +643,9 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     pass
 
                 if sent:
-                    sql.set_clean_welcome(chat.id, sent.message_id)
+                    await asyncio.to_thread(
+                        sql.set_clean_welcome, chat.id, sent.message_id
+                    )
 
         if welcome_log:
             return welcome_log
@@ -713,14 +720,16 @@ async def left_member(update, context: ContextTypes.DEFAULT_TYPE):
     bot = context.bot
     chat = update.effective_chat
     user = update.effective_user
-    should_goodbye, cust_goodbye, goodbye_type = sql.get_gdbye_pref(chat.id)
+    should_goodbye, cust_goodbye, goodbye_type = await asyncio.to_thread(
+        sql.get_gdbye_pref, chat.id
+    )
 
     if user.id == bot.id:
         return
 
     if should_goodbye:
         reply = update.message.message_id
-        cleanserv = sql.clean_service(chat.id)
+        cleanserv = await asyncio.to_thread(sql.clean_service, chat.id)
         if cleanserv:
             try:
                 await dispatcher.bot.delete_message(chat.id, update.message.message_id)
@@ -785,7 +794,9 @@ async def left_member(update, context: ContextTypes.DEFAULT_TYPE):
                     chatname=chat.title,
                     id=left_mem.id,
                 )
-                buttons = sql.get_gdbye_buttons(chat.id)
+                buttons = await asyncio.to_thread(
+                    sql.get_gdbye_buttons, chat.id
+                )
                 keyb = build_keyboard(buttons)
 
             else:
@@ -810,7 +821,9 @@ async def welcome(update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     if not args or args[0].lower() == "noformat":
         noformat = True
-        pref, welcome_m, cust_content, welcome_type = sql.get_welc_pref(chat.id)
+        pref, welcome_m, cust_content, welcome_type = await asyncio.to_thread(
+            sql.get_welc_pref, chat.id
+        )
         await update.effective_message.reply_text(
             f"This chat has its welcome setting set to: `{pref}`.\n"
             f"The welcome message (not filling the {{}}) is:",
@@ -818,7 +831,7 @@ async def welcome(update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         if welcome_type == sql.Types.BUTTON_TEXT or welcome_type == sql.Types.TEXT:
-            buttons = sql.get_welc_buttons(chat.id)
+            buttons = await asyncio.to_thread(sql.get_welc_buttons, chat.id)
             if noformat:
                 welcome_m += revert_buttons(buttons)
                 await update.effective_message.reply_text(welcome_m)
@@ -827,7 +840,7 @@ async def welcome(update, context: ContextTypes.DEFAULT_TYPE):
                 keyboard = InlineKeyboardMarkup(keyb)
                 await send(update, welcome_m, keyboard, sql.DEFAULT_WELCOME)
         else:
-            buttons = sql.get_welc_buttons(chat.id)
+            buttons = await asyncio.to_thread(sql.get_welc_buttons, chat.id)
             if noformat:
                 welcome_m += revert_buttons(buttons)
                 await ENUM_FUNC_MAP[welcome_type](
@@ -847,13 +860,17 @@ async def welcome(update, context: ContextTypes.DEFAULT_TYPE):
 
     elif len(args) >= 1:
         if args[0].lower() in ("on", "yes"):
-            sql.set_welc_preference(str(chat.id), True)
+            await asyncio.to_thread(
+                sql.set_welc_preference, str(chat.id), True
+            )
             await update.effective_message.reply_text(
                 "Okay! I'll greet members when they join.",
             )
 
         elif args[0].lower() in ("off", "no"):
-            sql.set_welc_preference(str(chat.id), False)
+            await asyncio.to_thread(
+                sql.set_welc_preference, str(chat.id), False
+            )
             await update.effective_message.reply_text(
                 "I'll go loaf around and not welcome anyone then.",
             )
@@ -871,7 +888,9 @@ async def goodbye(update, context: ContextTypes.DEFAULT_TYPE):
 
     if not args or args[0] == "noformat":
         noformat = True
-        pref, goodbye_m, goodbye_type = sql.get_gdbye_pref(chat.id)
+        pref, goodbye_m, goodbye_type = await asyncio.to_thread(
+            sql.get_gdbye_pref, chat.id
+        )
         await update.effective_message.reply_text(
             f"This chat has its goodbye setting set to: `{pref}`.\n"
             f"The goodbye message (not filling the {{}}) is:",
@@ -879,7 +898,7 @@ async def goodbye(update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         if goodbye_type == sql.Types.BUTTON_TEXT:
-            buttons = sql.get_gdbye_buttons(chat.id)
+            buttons = await asyncio.to_thread(sql.get_gdbye_buttons, chat.id)
             if noformat:
                 goodbye_m += revert_buttons(buttons)
                 await update.effective_message.reply_text(goodbye_m)
@@ -900,11 +919,15 @@ async def goodbye(update, context: ContextTypes.DEFAULT_TYPE):
 
     elif len(args) >= 1:
         if args[0].lower() in ("on", "yes"):
-            sql.set_gdbye_preference(str(chat.id), True)
+            await asyncio.to_thread(
+                sql.set_gdbye_preference, str(chat.id), True
+            )
             await update.effective_message.reply_text("Okay its set to on!")
 
         elif args[0].lower() in ("off", "no"):
-            sql.set_gdbye_preference(str(chat.id), False)
+            await asyncio.to_thread(
+                sql.set_gdbye_preference, str(chat.id), False
+            )
             await update.effective_message.reply_text("Okay its set to no!")
 
         else:
@@ -926,7 +949,9 @@ async def set_welcome(update, context: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text("You didn't specify what to reply with!")
         return ""
 
-    sql.set_custom_welcome(chat.id, content, text, data_type, buttons)
+    await asyncio.to_thread(
+        sql.set_custom_welcome, chat.id, content, text, data_type, buttons
+    )
     await msg.reply_text("Successfully set custom welcome message!")
 
     return (
@@ -943,7 +968,13 @@ async def reset_welcome(update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     user = update.effective_user
 
-    sql.set_custom_welcome(chat.id, None, sql.DEFAULT_WELCOME, sql.Types.TEXT)
+    await asyncio.to_thread(
+        sql.set_custom_welcome,
+        chat.id,
+        None,
+        sql.DEFAULT_WELCOME,
+        sql.Types.TEXT,
+    )
     await update.effective_message.reply_text(
         "Successfully reset welcome message to default!"
     )
@@ -968,7 +999,9 @@ async def set_goodbye(update, context: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text("You didn't specify what to reply with!")
         return ""
 
-    sql.set_custom_gdbye(chat.id, content or text, data_type, buttons)
+    await asyncio.to_thread(
+        sql.set_custom_gdbye, chat.id, content or text, data_type, buttons
+    )
     await msg.reply_text("Successfully set custom goodbye message!")
     return (
         f"<b>{html.escape(chat.title)}:</b>\n"
@@ -984,7 +1017,9 @@ async def reset_goodbye(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
     chat = update.effective_chat
     user = update.effective_user
 
-    sql.set_custom_gdbye(chat.id, sql.DEFAULT_GOODBYE, sql.Types.TEXT)
+    await asyncio.to_thread(
+        sql.set_custom_gdbye, chat.id, sql.DEFAULT_GOODBYE, sql.Types.TEXT
+    )
     await update.effective_message.reply_text(
         "Successfully reset goodbye message to default!",
     )
@@ -1007,7 +1042,9 @@ async def welcomemute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str
 
     if len(args) >= 1:
         if args[0].lower() in ("off", "no"):
-            sql.set_welcome_mutes(chat.id, False)
+            await asyncio.to_thread(
+                sql.set_welcome_mutes, chat.id, False
+            )
             await msg.reply_text("I will no longer mute people on joining!")
             return (
                 f"<b>{html.escape(chat.title)}:</b>\n"
@@ -1016,7 +1053,9 @@ async def welcomemute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str
                 f"Has toggled welcome mute to <b>off</b>."
             )
         elif args[0].lower() in ["soft"]:
-            sql.set_welcome_mutes(chat.id, "soft")
+            await asyncio.to_thread(
+                sql.set_welcome_mutes, chat.id, "soft"
+            )
             await msg.reply_text(
                 "I will restrict users permission to send media for 24 hours.",
             )
@@ -1027,7 +1066,9 @@ async def welcomemute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str
                 f"Has toggled welcome mute to <b>soft</b>."
             )
         elif args[0].lower() in ["strong"]:
-            sql.set_welcome_mutes(chat.id, "strong")
+            await asyncio.to_thread(
+                sql.set_welcome_mutes, chat.id, "strong"
+            )
             await msg.reply_text(
                 "I will now mute people when they join until they prove they're not a bot. They will have 120 seconds before they get kicked.",
             )
@@ -1044,7 +1085,7 @@ async def welcomemute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str
             )
             return ""
     else:
-        curr_setting = sql.welcome_mutes(chat.id)
+        curr_setting = await asyncio.to_thread(sql.welcome_mutes, chat.id)
         reply = (
             "Give me a setting!\nChoose one out of: <code>off</code>/<code>no</code> or <code>soft</code> or <code>strong</code> only! \n"
             f"Current setting: <code>{curr_setting}</code>"
@@ -1061,7 +1102,7 @@ async def clean_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
     user = update.effective_user
 
     if not args:
-        clean_pref = sql.get_clean_pref(chat.id)
+        clean_pref = await asyncio.to_thread(sql.get_clean_pref, chat.id)
         if clean_pref:
             await update.effective_message.reply_text(
                 "I should be deleting welcome messages up to two days old.",
@@ -1073,7 +1114,9 @@ async def clean_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
         return ""
 
     if args[0].lower() in ("on", "yes"):
-        sql.set_clean_welcome(str(chat.id), True)
+        await asyncio.to_thread(
+            sql.set_clean_welcome, str(chat.id), True
+        )
         await update.effective_message.reply_text(
             "I'll try to delete old welcome messages!"
         )
@@ -1084,7 +1127,9 @@ async def clean_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
             "Has toggled clean welcomes to <code>on</code>."
         )
     elif args[0].lower() in ("off", "no"):
-        sql.set_clean_welcome(str(chat.id), False)
+        await asyncio.to_thread(
+            sql.set_clean_welcome, str(chat.id), False
+        )
         await update.effective_message.reply_text(
             "I won't delete old welcome messages."
         )
@@ -1109,12 +1154,16 @@ async def cleanservice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> st
         if len(args) >= 1:
             var = args[0]
             if var in ("no", "off"):
-                sql.set_clean_service(chat.id, False)
+                await asyncio.to_thread(
+                    sql.set_clean_service, chat.id, False
+                )
                 await update.effective_message.reply_text(
                     "Welcome clean service is : off"
                 )
             elif var in ("yes", "on"):
-                sql.set_clean_service(chat.id, True)
+                await asyncio.to_thread(
+                    sql.set_clean_service, chat.id, True
+                )
                 await update.effective_message.reply_text(
                     "Welcome clean service is : on"
                 )
@@ -1129,7 +1178,7 @@ async def cleanservice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> st
                 parse_mode=ParseMode.HTML,
             )
     else:
-        curr = sql.clean_service(chat.id)
+        curr = await asyncio.to_thread(sql.clean_service, chat.id)
         if curr:
             await update.effective_message.reply_text(
                 "Welcome clean service is : <code>on</code>",
@@ -1159,7 +1208,7 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if join_user == user.id:
-        sql.set_human_checks(user.id, chat.id)
+        await asyncio.to_thread(sql.set_human_checks, user.id, chat.id)
         waitlist_key = (chat.id, user.id)
         member_dict = VERIFIED_USER_WAITLIST.pop(waitlist_key, None)
         if not member_dict:
@@ -1209,7 +1258,7 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     member_dict["backup_message"],
                 )
 
-            prev_welc = sql.get_clean_pref(chat.id)
+            prev_welc = await asyncio.to_thread(sql.get_clean_pref, chat.id)
             if prev_welc:
                 try:
                     await bot.delete_message(chat.id, prev_welc)
@@ -1217,7 +1266,9 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     pass
 
                 if sent:
-                    sql.set_clean_welcome(chat.id, sent.message_id)
+                    await asyncio.to_thread(
+                        sql.set_clean_welcome, chat.id, sent.message_id
+                    )
 
     else:
         await query.answer(text="You're not allowed to do this!")
