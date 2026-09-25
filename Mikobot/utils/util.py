@@ -32,22 +32,30 @@ async def put_cleanmode(chat_id, message_id):
 
 
 async def auto_clean(client):
-    while not await asyncio.sleep(30):
-        try:
-            for chat_id in cleanmode:
+    while True:
+        await asyncio.sleep(30)
+        for chat_id in list(cleanmode):
+            try:
                 if not await is_cleanmode_on(chat_id):
                     continue
-                for x in cleanmode[chat_id]:
-                    if datetime.now() <= x["timer_after"]:
+                for item in cleanmode[chat_id]:
+                    if datetime.now() <= item["timer_after"]:
                         continue
                     try:
-                        await client.delete_messages(chat_id, x["msg_id"])
-                    except FloodWait as e:
-                        await asyncio.sleep(e.value)
-                    except:
-                        continue
-        except:
-            continue
+                        await client.delete_messages(chat_id, item["msg_id"])
+                    except FloodWait as exc:
+                        await asyncio.sleep(exc.value)
+                    except Exception:
+                        LOGGER.exception(
+                            "Unable to clean temporary message in chat %s", chat_id
+                        )
+                cleanmode[chat_id] = [
+                    item
+                    for item in cleanmode[chat_id]
+                    if datetime.now() <= item["timer_after"]
+                ]
+            except Exception:
+                LOGGER.exception("Unable to process cleanmode for chat %s", chat_id)
 
 
 # temp db for banned

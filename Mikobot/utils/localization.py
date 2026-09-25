@@ -47,7 +47,8 @@ def cache_localizations(files: List[str]) -> Dict[str, Dict[str, Dict[str, str]]
     for file in files:
         _, lname, pname = file.split(os.path.sep)
         pname = pname.split(".")[0]
-        dic = json.load(open(file, encoding="utf-8"))
+        with open(file, encoding="utf-8") as source:
+            dic = json.load(source)
         dic.update(ldict[lname].get(pname, {}))
         ldict[lname][pname] = dic
     return ldict

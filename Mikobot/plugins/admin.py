@@ -87,7 +87,7 @@ async def promote(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if isinstance(bot_member, ChatMemberAdministrator):
         try:
-            await bot.promoteChatMember(
+            await bot.promote_chat_member(
                 chat.id,
                 user_id,
                 can_change_info=bot_member.can_change_info,
@@ -110,7 +110,7 @@ async def promote(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await message.reply_text("An error occurred while promoting.")
             return
 
-    await bot.sendMessage(
+    await bot.send_message(
         chat.id,
         f"Successfully promoted {user_member.user.first_name or user_id}!",
         parse_mode=ParseMode.HTML,
@@ -187,7 +187,7 @@ async def fullpromote(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if isinstance(bot_member, ChatMemberAdministrator):
         try:
-            await bot.promoteChatMember(
+            await bot.promote_chat_member(
                 chat.id,
                 user_id,
                 can_change_info=bot_member.can_change_info,
@@ -211,7 +211,7 @@ async def fullpromote(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await message.reply_text("An error occurred while promoting.")
             return
 
-    await bot.sendMessage(
+    await bot.send_message(
         chat.id,
         f"Successfully promoted {user_member.user.first_name or user_id}!",
         parse_mode=ParseMode.HTML,
@@ -301,7 +301,7 @@ async def demote(update: Update, context: ContextTypes.DEFAULT_TYPE):
             can_manage_topics=False,
         )
 
-        await bot.sendMessage(
+        await bot.send_message(
             chat.id,
             f"SUCCESSFULLY DEMOTED <b>{user_member.user.first_name or user_id}</b>!",
             parse_mode=ParseMode.HTML,
@@ -401,14 +401,14 @@ async def set_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     try:
-        await bot.setChatAdministratorCustomTitle(chat.id, user_id, title)
+        await bot.set_chat_administrator_custom_title(chat.id, user_id, title)
     except BadRequest:
         await message.reply_text(
             "Either they aren't promoted by me or you set a title text that is impossible to set."
         )
         raise
 
-    await bot.sendMessage(
+    await bot.send_message(
         chat.id,
         f"Successfully set title for <code>{user_member.user.first_name or user_id}</code> "
         f"to <code>{html.escape(title[:16])}</code>!",
@@ -461,7 +461,7 @@ async def pin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if prev_message and is_group:
         try:
-            await bot.pinChatMessage(
+            await bot.pin_chat_message(
                 chat.id,
                 prev_message.message_id,
                 disable_notification=is_silent,
@@ -506,7 +506,7 @@ async def unpin(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        await bot.unpinChatMessage(chat.id)
+        await bot.unpin_chat_message(chat.id)
     except BadRequest as excp:
         if excp.message == "Chat_not_modified":
             pass
@@ -589,7 +589,7 @@ async def invite(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if isinstance(bot_member, ChatMemberAdministrator)
             else None
         ):
-            invitelink = await bot.exportChatInviteLink(chat.id)
+            invitelink = await bot.export_chat_invite_link(chat.id)
             await update.effective_message.reply_text(invitelink)
         else:
             await update.effective_message.reply_text(
@@ -747,7 +747,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if isinstance(bot_member, ChatMemberAdministrator):
             try:
-                await bot.promoteChatMember(
+                await bot.promote_chat_member(
                     chat.id,
                     user_id,
                     can_change_info=bot_member.can_change_info,
@@ -828,7 +828,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         try:
-            await bot.promoteChatMember(
+            await bot.promote_chat_member(
                 chat.id,
                 user_id,
                 can_change_info=False,
@@ -924,7 +924,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
         try:
-            await bot.setChatAdministratorCustomTitle(chat.id, user_id, title)
+            await bot.set_chat_administrator_custom_title(chat.id, user_id, title)
         except BadRequest:
             await message.edit_text(
                 "Either they aren't promoted by me or you set a title text that is impossible to set."
@@ -966,7 +966,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if is_group:
             try:
-                await bot.pinChatMessage(
+                await bot.pin_chat_message(
                     chat.id,
                     message_id,
                     disable_notification=is_silent,
@@ -1008,7 +1008,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         try:
-            await bot.unpinChatMessage(chat.id)
+            await bot.unpin_chat_message(chat.id)
         except BadRequest as excp:
             if excp.message == "Chat_not_modified":
                 pass

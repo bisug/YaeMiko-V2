@@ -720,7 +720,7 @@ def set_fed_log(fed_id, chat_id):
         fed_name = getfed["fname"]
         fed_members = getfed["fusers"]
         fed_rules = getfed["frules"]
-        fed_log = str(chat_id)
+        fed_log = None if chat_id is None else str(chat_id)
         # Set user
         FEDERATION_BYOWNER[str(owner_id)]["flog"] = fed_log
         FEDERATION_BYFEDID[str(fed_id)]["flog"] = fed_log

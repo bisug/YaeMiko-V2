@@ -35,26 +35,38 @@ def _safe_remove(path):
 
 def get_media_from_message(message):
     if message.document:
-        if int(message.document.file_size) > MAX_FILE_SIZE:
+        if int(message.document.file_size or 0) > MAX_FILE_SIZE:
             return None, None
         if not (message.document.mime_type or "").startswith("image/"):
             return None, None
         return message.document.file_id, "image"
     if message.sticker:
         if message.sticker.is_animated:
+            if message.sticker.file_size and message.sticker.file_size > MAX_FILE_SIZE:
+                return None, None
             return (
                 (message.sticker.thumbs[0].file_id, "image")
                 if message.sticker.thumbs
                 else (None, None)
             )
+        if message.sticker.file_size and message.sticker.file_size > MAX_FILE_SIZE:
+            return None, None
         return message.sticker.file_id, "image"
     if message.photo:
+        if message.photo.file_size and message.photo.file_size > MAX_FILE_SIZE:
+            return None, None
         return message.photo.file_id, "image"
     if message.animation:
+        if message.animation.file_size and message.animation.file_size > MAX_FILE_SIZE:
+            return None, None
         return message.animation.file_id, "video"
     if message.video:
+        if message.video.file_size and message.video.file_size > MAX_FILE_SIZE:
+            return None, None
         return message.video.file_id, "video"
     if message.video_note:
+        if message.video_note.file_size and message.video_note.file_size > MAX_FILE_SIZE:
+            return None, None
         return message.video_note.file_id, "video"
     return None, None
 

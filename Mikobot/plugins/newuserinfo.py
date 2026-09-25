@@ -1,4 +1,6 @@
 import os
+import tempfile
+import uuid
 
 import unidecode
 from PIL import Image, ImageChops, ImageDraw, ImageFont
@@ -20,19 +22,14 @@ async def circle(pfp, size=(900, 900)):
     return pfp
 
 
-async def download_and_process_pfp(user):
+async def download_and_process_pfp(user, source_path):
     try:
-        pic = await app.download_media(
-            user.photo.big_file_id, file_name=f"pp{user.id}.png"
-        )
+        pic = await app.download_media(user.photo.big_file_id, file_name=source_path)
         if pic:
-            pfp = Image.open(pic).convert("RGBA")
-            return await circle(pfp, size=(900, 900))
+            with Image.open(pic) as source:
+                return await circle(source.convert("RGBA"), size=(900, 900))
     except Exception:
         LOGGER.exception("User info operation failed")
-    finally:
-        if "pic" in locals() and pic:
-            os.remove(pic)
     return None
 
 
@@ -45,43 +42,36 @@ async def userinfopic(
     pfp_x_offset=0,
     pfp_y_offset=0,
     pfp_size=(1218, 1385),
+    source_path=None,
+    output_path=None,
 ):
-    user_name = unidecode.unidecode(user.first_name)
+    with tempfile.NamedTemporaryFile(prefix="yae-userinfo-", suffix=".png") as source_file:
+        source_path = source_path or source_file.name
+        user_name = unidecode.unidecode(user.first_name)
 
-    # Load the background image
-    background = Image.open("Extra/user.jpg")
-    background = background.resize(
-        (background.size[0], background.size[1]), Image.Resampling.LANCZOS
-    )
+        with Image.open("Extra/user.jpg") as source:
+            background = source.convert("RGB")
+        draw = ImageDraw.Draw(background)
+        font = ImageFont.truetype("Extra/default.ttf", 100)
 
-    draw = ImageDraw.Draw(background)
-    font = ImageFont.truetype("Extra/default.ttf", 100)
+        try:
+            pfp = await download_and_process_pfp(user, source_path)
+            if pfp:
+                pfp_x = 927 + pfp_x_offset
+                pfp_y = (background.size[1] - pfp.size[1]) // 2 - 290 + pfp_y_offset
+                pfp = await circle(pfp, size=pfp_size)
+                background.paste(pfp, (pfp_x, pfp_y), pfp)
 
-    try:
-        pfp = await download_and_process_pfp(user)
-        if pfp:
-            # Adjust pfp_x and pfp_y with the offsets
-            pfp_x = 927 + pfp_x_offset
-            pfp_y = (background.size[1] - pfp.size[1]) // 2 - 290 + pfp_y_offset
-
-            # Increase the size of the pfp circle
-            pfp = await circle(pfp, size=pfp_size)
-            background.paste(pfp, (pfp_x, pfp_y), pfp)
-
-        user_bbox = draw.textbbox((0, 0), user_name, font=font)
-        user_id_bbox = draw.textbbox((0, 0), str(user.id), font=font)
-
-        draw.text((user_x, user_y), user_name, font=font, fill="white")
-        draw.text((user_id_x, user_id_y), str(user.id), font=font, fill="white")
-
-        userinfo = f"downloads/userinfo_{user.id}.png"
-        background.save(userinfo)
-
-    except Exception:
-        LOGGER.exception("User info operation failed")
-        userinfo = None
-
-    return userinfo
+            draw.text((user_x, user_y), user_name, font=font, fill="white")
+            draw.text((user_id_x, user_id_y), str(user.id), font=font, fill="white")
+            userinfo = output_path or f"downloads/userinfo_{user.id}_{uuid.uuid4().hex}.png"
+            background.save(userinfo)
+            return userinfo
+        except Exception:
+            LOGGER.exception("User info operation failed")
+            return None
+        finally:
+            background.close()
 
 
 # Command handler for /userinfo
@@ -91,18 +81,21 @@ async def userinfo_command(client, message):
     user_x, user_y = 1035, 2885
     user_id_x, user_id_y = 1035, 2755
 
+    processing_message = await message.reply("Processing user information...")
     try:
-        # Send a message indicating that user information is being processed
-        processing_message = await message.reply("Processing user information...")
-
-        # Generate user info image
-        image_path = await userinfopic(user, user_x, user_y, user_id_x, user_id_y)
-
-        # Delete the processing message
-        await processing_message.delete()
-
-        if image_path:
-            # Initialize the caption with basic information
+        with tempfile.TemporaryDirectory(prefix="yae-userinfo-") as temp_dir:
+            image_path = await userinfopic(
+                user,
+                user_x,
+                user_y,
+                user_id_x,
+                user_id_y,
+                source_path=os.path.join(temp_dir, f"{user.id}.png"),
+                output_path=os.path.join(temp_dir, "userinfo.png"),
+            )
+            if not image_path:
+                await processing_message.delete()
+                return
             caption = (
                 f"「 **According to the Mikos analogy, the userinfo is...** : 」\n\n"
                 f"❐  𝗜𝗗: {user.id}\n"
@@ -155,7 +148,6 @@ async def userinfo_command(client, message):
             await message.reply_photo(
                 photo=image_path, caption=caption, parse_mode=ParseMode.MARKDOWN
             )
-            os.remove(image_path)
-
+            await processing_message.delete()
     except Exception:
         LOGGER.exception("User info operation failed")

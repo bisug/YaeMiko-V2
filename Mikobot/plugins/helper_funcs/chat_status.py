@@ -9,7 +9,7 @@ from telegram.constants import ChatMemberStatus, ChatType
 from telegram.error import Forbidden
 from telegram.ext import ContextTypes
 
-from Mikobot import DEL_CMDS, DEV_USERS, DRAGONS, SUPPORT_CHAT, dispatcher
+from Mikobot import DEL_CMDS, DEV_USERS, DRAGONS, LOGGER, SUPPORT_CHAT, dispatcher
 
 # <=======================================================================================================>
 
@@ -262,30 +262,33 @@ async def is_user_ban_protected(
 
 async def is_user_in_chat(chat: Chat, user_id: int) -> bool:
     member = await chat.get_member(user_id)
-    return member.status in (ChatMemberStatus.LEFT, ChatMemberStatus.RESTRICTED)
+    return member.status in (
+        ChatMemberStatus.MEMBER,
+        ChatMemberStatus.ADMINISTRATOR,
+        ChatMemberStatus.OWNER,
+        ChatMemberStatus.RESTRICTED,
+    )
 
 
 def dev_plus(func):
     @wraps(func)
-    def is_dev_plus_func(
+    async def is_dev_plus_func(
         update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs
     ):
-        context.bot
         user = update.effective_user
+        message = update.effective_message
 
-        if user.id in DEV_USERS:
-            return func(update, context, *args, **kwargs)
-        elif not user:
-            pass
-        elif DEL_CMDS and " " not in update.effective_message.text:
+        if user and user.id in DEV_USERS:
+            return await func(update, context, *args, **kwargs)
+        if DEL_CMDS and message.text and " " not in message.text:
             try:
-                update.effective_message.delete()
-            except:
-                pass
+                await message.delete()
+            except Exception:
+                LOGGER.exception("Unable to delete unauthorized command")
         else:
-            update.effective_message.reply_text(
-                "This is a developer restricted command."
-                " You do not have permissions to run this."
+            await message.reply_text(
+                "This is a developer restricted command. "
+                "You do not have permissions to run this."
             )
 
     return is_dev_plus_func
@@ -293,24 +296,22 @@ def dev_plus(func):
 
 def sudo_plus(func):
     @wraps(func)
-    def is_sudo_plus_func(
+    async def is_sudo_plus_func(
         update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs
     ):
-        context.bot
         user = update.effective_user
         chat = update.effective_chat
+        message = update.effective_message
 
         if user and is_sudo_plus(chat, user.id):
-            return func(update, context, *args, **kwargs)
-        elif not user:
-            pass
-        elif DEL_CMDS and " " not in update.effective_message.text:
+            return await func(update, context, *args, **kwargs)
+        if DEL_CMDS and message.text and " " not in message.text:
             try:
-                update.effective_message.delete()
-            except:
-                pass
+                await message.delete()
+            except Exception:
+                LOGGER.exception("Unable to delete unauthorized command")
         else:
-            update.effective_message.reply_text(
+            await message.reply_text(
                 "Who dis non-admin telling me what to do? You want a punch?"
             )
 
@@ -322,17 +323,21 @@ def support_plus(func):
     async def is_support_plus_func(
         update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs
     ):
-        bot = context.bot
         user = update.effective_user
         chat = update.effective_chat
+        message = update.effective_message
 
         if user and is_support_plus(chat, user.id):
             return await func(update, context, *args, **kwargs)
-        elif DEL_CMDS and " " not in update.effective_message.text:
+        if DEL_CMDS and message.text and " " not in message.text:
             try:
-                await update.effective_message.delete()
-            except:
-                pass
+                await message.delete()
+            except Exception:
+                LOGGER.exception("Unable to delete unauthorized command")
+        else:
+            await message.reply_text(
+                "You do not have permission to use this command."
+            )
 
     return is_support_plus_func
 

@@ -170,7 +170,7 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if to_group:
             for chat in chats:
                 try:
-                    await context.bot.sendMessage(
+                    await context.bot.send_message(
                         int(chat.chat_id),
                         escape_markdown_v2(to_send[1]),
                         parse_mode=ParseMode.MARKDOWN_V2,
@@ -182,7 +182,7 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if to_user:
             for user in users:
                 try:
-                    await context.bot.sendMessage(
+                    await context.bot.send_message(
                         int(user.user_id),
                         escape_markdown_v2(to_send[1]),
                         parse_mode=ParseMode.MARKDOWN_V2,
@@ -222,8 +222,7 @@ async def chats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for chat in all_chats:
         try:
             curr_chat = await context.bot.get_chat(chat.chat_id)
-            await curr_chat.get_member(context.bot.id)
-            chat_members = await curr_chat.get_member_count(context.bot.id)
+            chat_members = await context.bot.get_chat_member_count(chat.chat_id)
             chatfile += "{}. {} | {} | {}\n".format(
                 P,
                 chat.chat_name,
@@ -249,7 +248,7 @@ async def chat_checker(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bot_admin = await update.effective_message.chat.get_member(bot.id)
         if isinstance(bot_admin, ChatMemberAdministrator):
             if bot_admin.can_post_messages is False:
-                await bot.leaveChat(update.effective_message.chat.id)
+                await bot.leave_chat(update.effective_message.chat.id)
     except Forbidden:
         pass
 

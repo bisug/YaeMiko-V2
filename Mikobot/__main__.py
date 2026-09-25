@@ -1,8 +1,4 @@
-async def error_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    error = context.error
-    LOGGER.error("Exception while handling update: %s", error, exc_info=error)
-    if isinstance(error, TelegramError):
-        LOGGER.warning("Telegram error while handling update: %s", error)
+
 # https://github.com/Infamous-Hydra/YaeMiko
 # https://github.com/Team-ProjectCodeX
 
@@ -749,7 +745,17 @@ async def settings_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prev_match = re.match(r"stngs_prev\((.+?),(.+?)\)", query.data)
     next_match = re.match(r"stngs_next\((.+?),(.+?)\)", query.data)
     back_match = re.match(r"stngs_back\((.+?)\)", query.data)
+    chat_id = next(
+        (match.group(1) for match in (mod_match, prev_match, next_match, back_match) if match),
+        None,
+    )
+    if chat_id is None:
+        return
     try:
+        chat = await bot.get_chat(chat_id)
+        if not await is_user_admin(chat, user.id):
+            await query.answer("You are no longer an administrator of this chat.", alert=True)
+            return
         if mod_match:
             chat_id = mod_match.group(1)
             module = mod_match.group(2)
@@ -849,7 +855,7 @@ async def get_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ),
             )
         else:
-            text = "Click here to check your settings."
+            await msg.reply_text(text)
 
     else:
         await send_settings(chat.id, user.id, True)

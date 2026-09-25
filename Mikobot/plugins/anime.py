@@ -6,6 +6,7 @@ import os
 import random
 import re
 import shlex
+import tempfile
 import time
 from datetime import datetime
 from os.path import basename
@@ -756,10 +757,15 @@ async def clog(
         data += "\n\n\n\n"
     await app.send_message(chat_id=MESSAGE_DUMP, text=log)
     if msg or cq:
-        with open("query_data.txt", "x") as output:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", prefix="yae-query-", delete=False, encoding="utf-8"
+        ) as output:
             output.write(data)
-        await app.send_document(MESSAGE_DUMP, "query_data.txt")
-        os.remove("query_data.txt")
+            query_file = output.name
+        try:
+            await app.send_document(MESSAGE_DUMP, query_file)
+        finally:
+            os.remove(query_file)
     if replied:
         media = replied.photo or replied.sticker or replied.animation or replied.video
         media_path = await app.download_media(media)
@@ -767,10 +773,15 @@ async def clog(
     if file:
         await app.send_document(MESSAGE_DUMP, file)
     if send_as_file:
-        with open("dataInQuestio.txt", "x") as text_file:
-            text_file.write()
-        await app.send_document(MESSAGE_DUMP, "dataInQuestio.txt")
-        os.remove("dataInQuestio.txt")
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", prefix="yae-data-", delete=False, encoding="utf-8"
+        ) as text_file:
+            text_file.write(data)
+            data_file = text_file.name
+        try:
+            await app.send_document(MESSAGE_DUMP, data_file)
+        finally:
+            os.remove(data_file)
 
 
 def get_btns(

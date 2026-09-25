@@ -47,20 +47,20 @@ class Quotly:
 
     async def _format_quote(self, event, reply=None, sender=None, type_="private"):
         async def telegraph(file_):
-            file = file_ + ".png"
-            Image.open(file_).save(file, "PNG")
-            files = {"file": open(file, "rb").read()}
-            uri = (
-                "https://telegra.ph"
-                + (
+            with Image.open(file_) as image:
+                converted = image.convert("RGB")
+                converted.save(file_, "PNG")
+            with open(file_, "rb") as source:
+                files = {"file": source.read()}
+            try:
+                return "https://telegra.ph" + (
                     await async_searcher(
                         "https://telegra.ph/upload", post=True, data=files, re_json=True
                     )
                 )[0]["src"]
-            )
-            os.remove(file)
-            os.remove(file_)
-            return uri
+            finally:
+                if os.path.exists(file_):
+                    os.remove(file_)
 
         reply = (
             {

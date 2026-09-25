@@ -76,7 +76,7 @@ async def mute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     if member.status in [ChatMember.RESTRICTED, ChatMember.MEMBER]:
         chat_permissions = ChatPermissions(can_send_messages=False)
         await bot.restrict_chat_member(chat.id, user_id, chat_permissions)
-        await bot.sendMessage(
+        await bot.send_message(
             chat.id,
             f"Muted <b>{html.escape(member.user.first_name)}</b> with no expiration date!",
             parse_mode=ParseMode.HTML,
@@ -126,7 +126,7 @@ async def unmute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                 await bot.restrict_chat_member(chat.id, int(user_id), chat_permissions)
             except BadRequest:
                 pass
-            await bot.sendMessage(
+            await bot.send_message(
                 chat.id,
                 f"I shall allow <b>{html.escape(member.user.first_name)}</b> to text!",
                 parse_mode=ParseMode.HTML,
@@ -201,7 +201,7 @@ async def temp_mute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                 chat_permissions,
                 until_date=mutetime,
             )
-            await bot.sendMessage(
+            await bot.send_message(
                 chat.id,
                 f"Muted <b>{html.escape(member.user.first_name)}</b> for {time_val}!",
                 parse_mode=ParseMode.HTML,

@@ -96,7 +96,7 @@ async def add_blackliststicker(update: Update, context: ContextTypes.DEFAULT_TYP
         added = 0
         for trigger in to_blacklist:
             try:
-                get = await bot.getStickerSet(trigger)
+                get = await bot.get_sticker_set(trigger)
                 sql.add_to_stickers(chat_id, trigger.lower())
                 added += 1
             except BadRequest:
@@ -137,7 +137,7 @@ async def add_blackliststicker(update: Update, context: ContextTypes.DEFAULT_TYP
             )
             return
         try:
-            get = await bot.getStickerSet(trigger)
+            get = await bot.get_sticker_set(trigger)
             sql.add_to_stickers(chat_id, trigger.lower())
             added += 1
         except BadRequest:
@@ -441,7 +441,7 @@ async def del_blackliststicker(update: Update, context: ContextTypes.DEFAULT_TYP
                         update.effective_user.id,
                         permissions=ChatPermissions(can_send_messages=False),
                     )
-                    await bot.sendMessage(
+                    await bot.send_message(
                         chat.id,
                         "{} muted because using '{}' which in blacklist stickers".format(
                             mention_markdown(user.id, user.first_name),
@@ -457,7 +457,7 @@ async def del_blackliststicker(update: Update, context: ContextTypes.DEFAULT_TYP
                     await message.delete()
                     res = chat.unban_member(update.effective_user.id)
                     if res:
-                        await bot.sendMessage(
+                        await bot.send_message(
                             chat.id,
                             "{} kicked because using '{}' which in blacklist stickers".format(
                                 mention_markdown(user.id, user.first_name),
@@ -472,7 +472,7 @@ async def del_blackliststicker(update: Update, context: ContextTypes.DEFAULT_TYP
                 elif getmode == 5:
                     await message.delete()
                     await chat.ban_member(user.id)
-                    await bot.sendMessage(
+                    await bot.send_message(
                         chat.id,
                         "{} banned because using '{}' which in blacklist stickers".format(
                             mention_markdown(user.id, user.first_name),
@@ -488,7 +488,7 @@ async def del_blackliststicker(update: Update, context: ContextTypes.DEFAULT_TYP
                     await message.delete()
                     bantime = await extract_time(message, value)
                     await chat.ban_member(user.id, until_date=bantime)
-                    await bot.sendMessage(
+                    await bot.send_message(
                         chat.id,
                         "{} banned for {} because using '{}' which in blacklist stickers".format(
                             mention_markdown(user.id, user.first_name),
@@ -510,7 +510,7 @@ async def del_blackliststicker(update: Update, context: ContextTypes.DEFAULT_TYP
                         permissions=ChatPermissions(can_send_messages=False),
                         until_date=mutetime,
                     )
-                    await bot.sendMessage(
+                    await bot.send_message(
                         chat.id,
                         "{} muted for {} because using '{}' which in blacklist stickers".format(
                             mention_markdown(user.id, user.first_name),

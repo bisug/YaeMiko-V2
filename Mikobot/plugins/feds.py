@@ -303,7 +303,7 @@ async def leave_fed(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # administrators = await chat.get_administrators().status
     getuser = await bot.get_chat_member(chat.id, user.id).status
-    if getuser in "creator" or user.id in DRAGONS:
+    if getuser == "creator" or user.id in DRAGONS:
         if sql.chat_leave_fed(chat.id) is True:
             get_fedlog = await sql.get_fed_log(fed_id)
             if get_fedlog:
@@ -1324,7 +1324,7 @@ async def fed_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for chat in chat_list:
             title = "*New broadcast from Fed {}*\n".format(fedinfo["fname"])
             try:
-                await bot.sendMessage(
+                await bot.send_message(
                     chat,
                     title + text,
                     parse_mode=ParseMode.MARKDOWN,

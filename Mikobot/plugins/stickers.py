@@ -1,9 +1,10 @@
 import asyncio
 import os
 import re
-import shutil
 import tempfile
 import textwrap
+import uuid
+from pathlib import Path
 
 import emoji
 from PIL import Image, ImageDraw, ImageFont
@@ -51,6 +52,7 @@ def get_emoji_regex():
 
 EMOJI_PATTERN = get_emoji_regex()
 SUPPORTED_TYPES = ["jpeg", "png", "webp"]
+MAX_MEDIA_SIZE = 20 * 1024 * 1024
 
 
 @app.on_message(filters.command(["getsticker"], PREFIX_HANDLER), group=111)
@@ -63,19 +65,17 @@ async def getsticker_(self: Client, ctx: Message, strings):
         return await ctx.reply("Only support sticker..")
     if sticker.is_animated:
         return await ctx.reply(strings("no_anim_stick"))
-    with tempfile.TemporaryDirectory() as tempdir:
-        path = os.path.join(tempdir, "getsticker")
-    sticker_file = await self.download_media(
-        message=ctx.reply_to_message,
-        file_name=f"{path}/{sticker.set_name}.png",
-    )
-    await ctx.reply_to_message.reply_document(
-        document=sticker_file,
-        caption=f"<b>Emoji:</b> {sticker.emoji}\n"
-        f"<b>Sticker ID:</b> <code>{sticker.file_id}</code>\n\n"
-        f"<b>Send by:</b> @{self.me.username}",
-    )
-    shutil.rmtree(tempdir, ignore_errors=True)
+    with tempfile.TemporaryDirectory(prefix="yae-sticker-") as tempdir:
+        sticker_file = await self.download_media(
+            message=ctx.reply_to_message,
+            file_name=os.path.join(tempdir, f"{sticker.set_name or 'sticker'}.png"),
+        )
+        await ctx.reply_to_message.reply_document(
+            document=sticker_file,
+            caption=f"<b>Emoji:</b> {sticker.emoji}\n"
+            f"<b>Sticker ID:</b> <code>{sticker.file_id}</code>\n\n"
+            f"<b>Send by:</b> @{self.me.username}",
+        )
 
 
 @app.on_message(filters.command("getvidsticker"), group=222)
@@ -382,23 +382,27 @@ async def kang_sticker(self: Client, ctx: Message, strings):
 
 
 def resize_image(filename: str) -> str:
-    im = Image.open(filename)
     maxsize = 512
-    scale = maxsize / max(im.width, im.height)
-    sizenew = (int(im.width * scale), int(im.height * scale))
-    im = im.resize(sizenew, Image.NEAREST)
-    downpath, f_name = os.path.split(filename)
-    # not hardcoding png_image as "sticker.png"
-    png_image = os.path.join(downpath, f"{f_name.split('.', 1)[0]}.png")
-    im.save(png_image, "PNG")
+    with Image.open(filename) as source:
+        scale = min(1, maxsize / max(source.size))
+        size = tuple(max(1, round(value * scale)) for value in source.size)
+        image = source.convert("RGBA").resize(size, Image.Resampling.LANCZOS)
+        downpath, _ = os.path.split(filename)
+        png_image = os.path.join(
+            downpath,
+            f"{os.path.splitext(os.path.basename(filename))[0]}.png",
+        )
+        image.save(png_image, "PNG")
     if png_image != filename:
         os.remove(filename)
     return png_image
 
 
 async def convert_video(filename: str) -> str:
-    downpath, f_name = os.path.split(filename)
-    webm_video = os.path.join(downpath, f"{f_name.split('.', 1)[0]}.webm")
+    downpath, _ = os.path.split(filename)
+    webm_video = os.path.join(
+        downpath, f"{os.path.splitext(os.path.basename(filename))[0]}.webm"
+    )
     cmd = [
         "ffmpeg",
         "-loglevel",
@@ -422,10 +426,20 @@ async def convert_video(filename: str) -> str:
         webm_video,
     ]
 
-    proc = await asyncio.create_subprocess_exec(*cmd)
-    # Wait for the subprocess to finish
-    await proc.communicate()
-
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
+    except TimeoutError:
+        proc.kill()
+        await proc.wait()
+        return False
+    if proc.returncode != 0 or not os.path.exists(webm_video):
+        LOGGER.error("FFmpeg conversion failed: %s", stderr.decode(errors="replace"))
+        return False
     if webm_video != filename:
         os.remove(filename)
     return webm_video
@@ -442,22 +456,33 @@ async def handler(client, message):
         await message.reply("Provide some text please.")
         return
 
-    file = await client.download_media(reply_message)
-    msg = await message.reply("Memifying this image! Please wait.")
-
     text = message.text.split("/mmf ", maxsplit=1)[1].strip()
-    if len(text) < 1:
-        return await msg.edit("You might want to try `/mmf text`")
+    if not text:
+        return await message.reply("You might want to try `/mmf text`")
 
-    meme = await draw_text(file, text)
-    await client.send_document(message.chat.id, document=meme)
-    await msg.delete()
-    os.remove(meme)
+    if reply_message.document and reply_message.document.file_size and reply_message.document.file_size > MAX_MEDIA_SIZE:
+        return await message.reply("That document is too large.")
+    if reply_message.photo and reply_message.photo.file_size and reply_message.photo.file_size > MAX_MEDIA_SIZE:
+        return await message.reply("That photo is too large.")
+    if reply_message.video and reply_message.video.file_size and reply_message.video.file_size > MAX_MEDIA_SIZE:
+        return await message.reply("That video is too large.")
+    with tempfile.TemporaryDirectory(prefix="yae-memify-") as temp_dir:
+        source = os.path.join(temp_dir, f"{uuid.uuid4().hex}{Path(reply_message.file_name or '').suffix or '.png'}")
+        output = os.path.join(temp_dir, f"{uuid.uuid4().hex}.webp")
+        downloaded = await client.download_media(reply_message, file_name=source)
+        if not downloaded:
+            return await message.reply("Unable to download that media.")
+        meme = await draw_text(downloaded, text, output)
+        try:
+            await client.send_document(message.chat.id, document=meme)
+        finally:
+            if os.path.exists(meme):
+                os.remove(meme)
 
 
-async def draw_text(image_path, text):
-    img = Image.open(image_path)
-    os.remove(image_path)
+async def draw_text(image_path, text, output_path=None):
+    with Image.open(image_path) as source:
+        img = source.convert("RGBA")
     i_width, i_height = img.size
 
     if os.name == "nt":
@@ -570,10 +595,10 @@ async def draw_text(image_path, text):
 
             current_h += u_height + pad
 
-    image_name = "memify.webp"
-    webp_file = os.path.join(image_name)
-    img.save(webp_file, "webp")
-    return webp_file
+    if output_path is None:
+        output_path = f"{uuid.uuid4().hex}.webp"
+    img.save(output_path, "webp")
+    return output_path
 
 
 @app.on_message(filters.command(["stickerinfo", "stinfo"]), group=888)

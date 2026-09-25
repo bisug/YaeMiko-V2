@@ -164,7 +164,7 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
         if reason:
             reply += f"\n<code> </code><b>•  Reason:</b> \n{html.escape(reason)}"
-        await bot.sendMessage(
+        await bot.send_message(
             chat.id,
             reply,
             parse_mode=ParseMode.HTML,
@@ -253,7 +253,7 @@ async def temp_ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             BAN_STICKER,
             message_thread_id=message.message_thread_id if chat.is_forum else None,
         )  # banhammer marie sticker
-        await bot.sendMessage(
+        await bot.send_message(
             chat.id,
             f"Banned! User {mention_html(member.user.id, html.escape(member.user.first_name))} "
             f"will be banned for {time_val}.",
@@ -322,7 +322,7 @@ async def kick(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             BAN_STICKER,
             message_thread_id=message.message_thread_id if chat.is_forum else None,
         )  # banhammer marie sticker
-        await bot.sendMessage(
+        await bot.send_message(
             chat.id,
             f"Capitain I have kicked, {mention_html(member.user.id, html.escape(member.user.first_name))}.",
             parse_mode=ParseMode.HTML,
@@ -608,7 +608,7 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             if reason:
                 reply += f"\n<code> </code><b>•  Reason:</b> \n{html.escape(reason)}"
-            await bot.sendMessage(
+            await bot.send_message(
                 chat.id,
                 reply,
                 parse_mode=ParseMode.HTML,

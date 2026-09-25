@@ -2,8 +2,6 @@
 import importlib
 import re
 from typing import Dict, List, Optional, Tuple, Union
-
-from future.utils import string_types
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import CommandHandler, ContextTypes, MessageHandler
@@ -22,9 +20,9 @@ FILENAME = __name__.rsplit(".", 1)[-1]
 if is_module_loaded(FILENAME):
     from Database.sql import disable_sql as sql
     from Mikobot.plugins.helper_funcs.chat_status import (
+        ADMIN_CACHE,
         check_admin,
         connection_status,
-        is_user_admin,
     )
 
     DISABLE_CMDS = []
@@ -44,7 +42,7 @@ if is_module_loaded(FILENAME):
             super().__init__(command, callback, block=block)
             self.admin_ok = admin_ok
 
-            if isinstance(command, string_types):
+            if isinstance(command, str):
                 commands = frozenset({command.lower()})
                 DISABLE_CMDS.append(command)
                 if admin_ok:
@@ -95,9 +93,10 @@ if is_module_loaded(FILENAME):
                                 chat.id, command_parts[0].lower()
                             ):
                                 # check if command was disabled
-                                is_disabled = command_parts[
-                                    0
-                                ] in ADMIN_CMDS and is_user_admin(chat, user.id)
+                                is_disabled = (
+                                    command_parts[0].lower() in ADMIN_CMDS
+                                    and user.id in ADMIN_CACHE.get(chat.id, ())
+                                )
                                 if not is_disabled:
                                     return None
                                 else:

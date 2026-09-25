@@ -42,6 +42,18 @@ def _load_local_env():
         pass
 
 
+def env_bool(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean")
+
+
 _load_local_env()
 
 
@@ -124,25 +136,25 @@ if sys.version_info < (3, 6):
 
 # <================================================ ENV VARIABLES =======================================================>
 # Determine whether the bot is running in an environment with environment variables or not
-ENV = bool(os.environ.get("ENV", False))
+ENV = env_bool("ENV")
 
 if ENV:
     # Read configuration from environment variables
     API_ID = int(os.environ.get("API_ID", None))
     API_HASH = os.environ.get("API_HASH", None)
-    ALLOW_CHATS = os.environ.get("ALLOW_CHATS", True)
-    ALLOW_EXCL = os.environ.get("ALLOW_EXCL", False)
+    ALLOW_CHATS = env_bool("ALLOW_CHATS")
+    ALLOW_EXCL = env_bool("ALLOW_EXCL")
     DB_URI = os.environ.get("DATABASE_URL")
-    DEL_CMDS = bool(os.environ.get("DEL_CMDS", False))
-    BAN_STICKER = bool(os.environ.get("BAN_STICKER", True))
+    DEL_CMDS = env_bool("DEL_CMDS")
+    BAN_STICKER = os.environ.get("BAN_STICKER", "")
     EVENT_LOGS = os.environ.get("EVENT_LOGS", None)
-    INFOPIC = bool(os.environ.get("INFOPIC", "True"))
+    INFOPIC = env_bool("INFOPIC", True)
     MESSAGE_DUMP = os.environ.get("MESSAGE_DUMP", None)
     DB_NAME = os.environ.get("DB_NAME", "MikoDB")
     LOAD = os.environ.get("LOAD", "").split()
     MONGO_DB_URI = os.environ.get("MONGO_DB_URI")
     NO_LOAD = os.environ.get("NO_LOAD", "").split()
-    STRICT_GBAN = bool(os.environ.get("STRICT_GBAN", True))
+    STRICT_GBAN = env_bool("STRICT_GBAN", True)
     SUPPORT_ID = int(os.environ.get("SUPPORT_ID", "-100"))  # Support group id
     SUPPORT_CHAT = os.environ.get("SUPPORT_CHAT", "Ecstasy_Realm")
     TEMP_DOWNLOAD_DIRECTORY = os.environ.get("TEMP_DOWNLOAD_DIRECTORY", "./")

@@ -2,6 +2,7 @@ import ast
 import asyncio
 import threading
 import unittest
+from unittest import mock
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -70,6 +71,31 @@ class FakeSession:
 
     def rollback(self):
         self.rollbacks += 1
+
+class EnvironmentTests(unittest.TestCase):
+    def test_boolean_values_are_explicit(self):
+        env_bool = load_function(
+            ROOT / "Mikobot/__init__.py",
+            "env_bool",
+            {"os": __import__("os")},
+        )
+        for value in ("1", "true", "yes", "on"):
+            with mock.patch.dict(__import__("os").environ, {"TEST_FLAG": value}):
+                self.assertTrue(env_bool("TEST_FLAG"))
+        for value in ("0", "false", "no", "off"):
+            with mock.patch.dict(__import__("os").environ, {"TEST_FLAG": value}):
+                self.assertFalse(env_bool("TEST_FLAG"))
+        with mock.patch.dict(__import__("os").environ, {"TEST_FLAG": "invalid"}):
+            with self.assertRaises(ValueError):
+                env_bool("TEST_FLAG")
+
+    def test_waitlist_is_scoped_to_chat_and_user(self):
+        tree = ast.parse((ROOT / "Mikobot/plugins/welcome.py").read_text(encoding="utf-8"))
+        source = ast.unparse(tree)
+        self.assertIn("(chat.id, new_mem.id)", source)
+        self.assertIn("VERIFIED_USER_WAITLIST.pop((chat_id, member.id), None)", source)
+        self.assertIn("waitlist_key = (chat.id, user.id)", source)
+
 
 class BroadcastParsingTests(unittest.TestCase):
     def setUp(self):

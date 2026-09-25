@@ -25,6 +25,10 @@ async def telegraph_upload(client: Client, message: Message):
         return
 
     status = await message.reply_text("Downloading and uploading to Telegraph…")
+    media = replied.media
+    if getattr(media, "file_size", 0) > 20 * 1024 * 1024:
+        await status.edit_text("That media is too large to upload (20 MB maximum).")
+        return
     with tempfile.TemporaryDirectory(prefix="yae-telegraph-") as temp_dir:
         downloaded_file = await client.download_media(replied, file_name=temp_dir)
         if not downloaded_file:

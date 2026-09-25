@@ -394,7 +394,7 @@ async def del_blacklist(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         update.effective_user.id,
                         permissions=ChatPermissions(can_send_messages=False),
                     )
-                    await bot.sendMessage(
+                    await bot.send_message(
                         chat.id,
                         f"Muted {user.first_name} for using Blacklisted word: {trigger}!",
                         message_thread_id=(
@@ -406,7 +406,7 @@ async def del_blacklist(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await message.delete()
                     res = chat.unban_member(update.effective_user.id)
                     if res:
-                        await bot.sendMessage(
+                        await bot.send_message(
                             chat.id,
                             f"Kicked {user.first_name} for using Blacklisted word: {trigger}!",
                             message_thread_id=(
@@ -417,7 +417,7 @@ async def del_blacklist(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 elif getmode == 5:
                     await message.delete()
                     await chat.ban_member(user.id)
-                    await bot.sendMessage(
+                    await bot.send_message(
                         chat.id,
                         f"Banned {user.first_name} for using Blacklisted word: {trigger}",
                         message_thread_id=(
@@ -429,7 +429,7 @@ async def del_blacklist(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await message.delete()
                     bantime = await extract_time(message, value)
                     await chat.ban_member(user.id, until_date=bantime)
-                    await bot.sendMessage(
+                    await bot.send_message(
                         chat.id,
                         f"Banned {user.first_name} until '{value}' for using Blacklisted word: {trigger}!",
                         message_thread_id=(
@@ -446,7 +446,7 @@ async def del_blacklist(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         until_date=mutetime,
                         permissions=ChatPermissions(can_send_messages=False),
                     )
-                    await bot.sendMessage(
+                    await bot.send_message(
                         chat.id,
                         f"Muted {user.first_name} until '{value}' for using Blacklisted word: {trigger}!",
                         message_thread_id=(

@@ -3,6 +3,7 @@ import html
 import os
 import random
 import re
+import tempfile
 import textwrap
 import time
 from contextlib import suppress
@@ -97,26 +98,22 @@ async def draw_multiple_line_text(image, text, font, text_start_height):
         y_text += line_height
 
 
-async def welcomepic(pic, user, chat, user_id):
+async def welcomepic(pic, user, chat, user_id, output_path=None):
     user = unidecode.unidecode(user)
-    background = Image.open("Extra/bgg.jpg")
-    background = background.resize(
-        (background.size[0], background.size[1]), Image.Resampling.LANCZOS
-    )
-    pfp = Image.open(pic).convert("RGBA")
-    pfp = await circle(pfp, size=(259, 259))
+    with Image.open("Extra/bgg.jpg") as source:
+        background = source.convert("RGB")
+    with Image.open(pic) as source:
+        pfp = await circle(source.convert("RGBA"), size=(259, 259))
     pfp_x = 55
     pfp_y = (background.size[1] - pfp.size[1]) // 2 + 38
     draw = ImageDraw.Draw(background)
     font = ImageFont.truetype("Extra/Calistoga-Regular.ttf", 42)
-    bbox = draw.textbbox((0, 0), f"{user} [{user_id}]", font=font)
-    text_width, text_height = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    text_x = 20
-    text_y = background.height - text_height - 20 - 25
-    draw.text((text_x, text_y), f"{user} [{user_id}]", font=font, fill="white")
+    draw.text((20, background.height - 45), f"{user} [{user_id}]", font=font, fill="white")
     background.paste(pfp, (pfp_x, pfp_y), pfp)
-    welcome_image_path = f"downloads/welcome_{user_id}.png"
+    pfp.close()
+    welcome_image_path = output_path or f"downloads/welcome_{user_id}.png"
     background.save(welcome_image_path)
+    background.close()
     return welcome_image_path
 
 
@@ -151,34 +148,32 @@ async def member_has_joined(client, member: ChatMemberUpdated):
         )
         user_id = user.id
         dc = user.dc_id
-        try:
-            pic = await client.download_media(
-                user.photo.big_file_id, file_name=f"pp{user_id}.png"
-            )
-        except AttributeError:
-            pic = "Extra/profilepic.png"
-        try:
-            welcomeimg = await welcomepic(
-                pic, user.first_name, member.chat.title, user_id
-            )
-            user_username = user.username if user.username else f"user?id={user.id}"
-
-            # Create an inline keyboard with a URL button
-            inline_keyboard = IM([[IB("🔗 USER", url=f"https://t.me/{user_username}")]])
-
-            temp.MELCOW[f"welcome-{chat_id}"] = await client.send_photo(
-                member.chat.id,
-                photo=welcomeimg,
-                caption=f"**𝗛𝗲𝘆❗️{mention}, 𝗪𝗲𝗹𝗰𝗼𝗺𝗲 𝗧𝗼 {member.chat.title} 𝗚𝗿𝗼𝘂𝗽.**\n\n**𝗜𝗗 : {user_id}**\n**𝗗𝗔𝗧𝗘 𝗝𝗢𝗜𝗡𝗘𝗗 : {joined_date}**",
-                reply_markup=inline_keyboard,  # Add the inline keyboard
-            )
-        except Exception:
-            LOGGER.exception("Unable to create the welcome image for user %s", user_id)
-        try:
-            os.remove(f"downloads/welcome_{user_id}.png")
-            os.remove(f"downloads/pp{user_id}.png")
-        except Exception:
-            pass
+        with tempfile.TemporaryDirectory(prefix="yae-welcome-") as temp_dir:
+            try:
+                pic = await client.download_media(
+                    user.photo.big_file_id,
+                    file_name=os.path.join(temp_dir, f"{user_id}.png"),
+                )
+            except AttributeError:
+                pic = "Extra/profilepic.png"
+            try:
+                welcomeimg = await welcomepic(
+                    pic,
+                    user.first_name,
+                    member.chat.title,
+                    user_id,
+                    os.path.join(temp_dir, "welcome.png"),
+                )
+                user_username = user.username if user.username else f"user?id={user.id}"
+                inline_keyboard = IM([[IB("🔗 USER", url=f"https://t.me/{user_username}")]])
+                temp.MELCOW[f"welcome-{chat_id}"] = await client.send_photo(
+                    member.chat.id,
+                    photo=welcomeimg,
+                    caption=f"**𝗛𝗲𝘆❗️{mention}, 𝗪𝗲𝗹𝗰𝗼𝗺𝗲 𝗧𝗼 {member.chat.title} 𝗚𝗿𝗼𝘂𝗽.**\n\n**𝗜𝗗 : {user_id}**\n**𝗗𝗔𝗧𝗘 𝗝𝗢𝗜𝗡𝗘𝗗 : {joined_date}**",
+                    reply_markup=inline_keyboard,
+                )
+            except Exception:
+                LOGGER.exception("Unable to create the welcome image for user %s", user_id)
 
 
 @app.on_message(ft.command("dwelcome on"))
@@ -534,7 +529,7 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     if not media_wel:
                         VERIFIED_USER_WAITLIST.update(
                             {
-                                new_mem.id: {
+                                (chat.id, new_mem.id): {
                                     "should_welc": should_welc,
                                     "media_wel": False,
                                     "status": False,
@@ -548,7 +543,7 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     else:
                         VERIFIED_USER_WAITLIST.update(
                             {
-                                new_mem.id: {
+                                (chat.id, new_mem.id): {
                                     "should_welc": should_welc,
                                     "chat_id": chat.id,
                                     "status": False,
@@ -668,7 +663,9 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def check_not_bot(member, chat_id, message_id, context):
     bot = context.bot
-    member_dict = VERIFIED_USER_WAITLIST.pop(member.id)
+    member_dict = VERIFIED_USER_WAITLIST.pop((chat_id, member.id), None)
+    if not member_dict:
+        return
     member_status = member_dict.get("status")
     if not member_status:
         try:
@@ -1130,9 +1127,12 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if join_user == user.id:
         sql.set_human_checks(user.id, chat.id)
-        member_dict = VERIFIED_USER_WAITLIST.pop(user.id)
+        waitlist_key = (chat.id, user.id)
+        member_dict = VERIFIED_USER_WAITLIST.pop(waitlist_key, None)
+        if not member_dict:
+            return await query.answer(text="This verification has expired.", alert=True)
         member_dict["status"] = True
-        VERIFIED_USER_WAITLIST.update({user.id: member_dict})
+        VERIFIED_USER_WAITLIST[waitlist_key] = member_dict
         await query.answer(text="Yeet! You're a human, unmuted!")
         await bot.restrict_chat_member(
             chat.id,

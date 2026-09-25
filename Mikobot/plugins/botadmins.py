@@ -6,7 +6,6 @@
 
 from telegram import Update
 from telegram.constants import ParseMode
-from telegram.error import TelegramError
 from telegram.ext import CommandHandler, ContextTypes
 
 from Mikobot import DEMONS, DEV_USERS, DRAGONS, LOGGER, OWNER_ID, WOLVES, function
@@ -17,17 +16,8 @@ from Mikobot.utils.parser import mention_html
 
 
 # <================================================ FUNCTION =======================================================>
-async def get_chat_member(context: ContextTypes.DEFAULT_TYPE, user_id):
-    try:
-        return await context.bot.get_chat_member(user_id, user_id)
-    except TelegramError as e:
-        LOGGER.error(f"Error getting chat member {user_id}: {e}")
-        return None
-
-
 async def get_user_info(context: ContextTypes.DEFAULT_TYPE, user_id):
-    user_info = await get_chat_member(context, user_id)
-    return user_info.user.first_name if user_info else "Unknown User"
+    return str(user_id)
 
 
 async def get_users_info(context: ContextTypes.DEFAULT_TYPE, user_ids):
@@ -43,13 +33,8 @@ async def get_users_list(context: ContextTypes.DEFAULT_TYPE, user_ids):
 
 @support_plus
 async def botstaff(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        owner = await get_chat_member(context, OWNER_ID)
-        owner_info = await mention_html(owner.user.first_name, owner.user.id)
-        reply = f"✪ <b>OWNER :</b> {owner_info} (<code>{OWNER_ID}</code>)\n"
-    except TelegramError as e:
-        LOGGER.error(f"Error getting owner information: {e}")
-        reply = ""
+    owner_info = await mention_html("Owner", OWNER_ID)
+    reply = f"✪ <b>OWNER :</b> {owner_info} (<code>{OWNER_ID}</code>)\n"
 
     true_dev = list(set(DEV_USERS) - {OWNER_ID})
     reply += "\n\n➪ <b>SPECIAL GRADE USERS :</b>\n"
