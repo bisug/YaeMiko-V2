@@ -19,7 +19,6 @@ from uuid import uuid4
 import requests
 import urllib3
 from bs4 import BeautifulSoup
-from pymongo import AsyncMongoClient
 from pyrogram import Client, filters
 from pyrogram.enums import ChatMemberStatus, ChatType
 from pyrogram.errors import (
@@ -37,7 +36,8 @@ from pyrogram.types import (
     Message,
 )
 
-from Mikobot import BOT_USERNAME, MESSAGE_DUMP, MONGO_DB_URI, OWNER_ID, app
+from Database.mongodb.db import mongo
+from Mikobot import BOT_USERNAME, MESSAGE_DUMP, OWNER_ID, app
 from Mikobot.state import state
 from Mikobot.utils.custom_filters import PREFIX_HANDLER
 
@@ -47,18 +47,12 @@ FILLERS = {}
 
 BOT_OWNER = {OWNER_ID}
 
-_MGCLIENT = AsyncMongoClient(MONGO_DB_URI)
-
-_DATABASE = _MGCLIENT["MikobotAnime"]
+_DATABASE = mongo["MikobotAnime"]
 
 
 def get_collection(name: str):
     """Create or Get Collection from your database"""
     return _DATABASE[name]
-
-
-async def _close_db() -> None:
-    await _MGCLIENT.close()
 
 
 GROUPS = get_collection("GROUPS")
@@ -675,10 +669,12 @@ async def take_screen_shot(
 
 async def get_user_from_channel(cid):
     try:
-        k = (await CC.find_one({"_id": str(cid)}))["usr"]
-        return k
+        return (await CC.find_one({"_id": str(cid)}))["usr"]
     except TypeError:
         return None
+
+
+gcc = get_user_from_channel
 
 
 async def return_json_senpai(

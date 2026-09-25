@@ -11,6 +11,7 @@ from telegram.ext import CommandHandler, ContextTypes, MessageHandler, filters
 from telegram.helpers import mention_html
 
 import Database.sql.global_bans_sql as sql
+from Database.mongodb.users_db import Users
 from Database.sql.users_sql import get_user_com_chats
 from Mikobot import (
     DEV_USERS,
@@ -100,18 +101,10 @@ async def gban(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await message.reply_text("Fool! You can't attack Telegram's native tech!")
         return
 
-    try:
-        user_chat = await bot.get_chat(user_id)
-    except BadRequest as excp:
-        if excp.message == "User not found":
-            await message.reply_text("I can't seem to find this user.")
-            return ""
-        else:
-            return
-
-    if user_chat.type != "private":
-        await message.reply_text("That's not a user!")
-        return
+    user_info = await Users.get_user_info(user_id) or {}
+    user_name = user_info.get("name") or str(user_id)
+    user_username = user_info.get("username") or None
+    user_target = mention_html(user_id, user_name)
 
     if sql.is_user_gbanned(user_id):
         if not reason:
@@ -120,11 +113,7 @@ async def gban(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        old_reason = sql.update_gban_reason(
-            user_id,
-            user_chat.username or user_chat.first_name,
-            reason,
-        )
+        old_reason = sql.update_gban_reason(user_id, user_username or user_name, reason)
         if old_reason:
             await message.reply_text(
                 "This user is already gbanned, for the following reason:\n"
@@ -157,8 +146,8 @@ async def gban(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"#GBANNED\n"
         f"<b>Originated from:</b> <code>{chat_origin}</code>\n"
         f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
-        f"<b>Banned User:</b> {mention_html(user_chat.id, user_chat.first_name)}\n"
-        f"<b>Banned User ID:</b> <code>{user_chat.id}</code>\n"
+        f"<b>Banned User:</b> {user_target}\n"
+        f"<b>Banned User ID:</b> <code>{user_id}</code>\n"
         f"<b>Event Stamp:</b> <code>{current_time}</code>"
     )
 
@@ -183,7 +172,7 @@ async def gban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await send_to_list(bot, DRAGONS, log_message, html=True)
 
-    sql.gban_user(user_id, user_chat.username or user_chat.first_name, reason)
+    sql.gban_user(user_id, user_username or user_name, reason)
 
     chats = get_user_com_chats(user_id)
     gbanned_chats = 0
@@ -248,7 +237,7 @@ async def gban(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_id,
             "#EVENT"
             "You have been marked as Malicious and as such have been banned from any future groups we manage."
-            f"\n<b>Reason:</b> <code>{html.escape(user.reason)}</code>"
+            f"\n<b>Reason:</b> <code>{html.escape(reason or 'No reason provided')}</code>"
             f"</b>Appeal Chat:</b> @{SUPPORT_CHAT}",
             parse_mode=ParseMode.HTML,
         )
@@ -272,18 +261,15 @@ async def ungban(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    user_chat = await bot.get_chat(user_id)
-    if user_chat.type != "private":
-        await message.reply_text("That's not a user!")
-        return
+    user_info = await Users.get_user_info(user_id) or {}
+    user_name = user_info.get("name") or str(user_id)
+    user_target = mention_html(user_id, user_name)
 
     if not sql.is_user_gbanned(user_id):
         await message.reply_text("This user is not gbanned!")
         return
 
-    await message.reply_text(
-        f"I'll give {user_chat.first_name} a second chance, globally."
-    )
+    await message.reply_text(f"I'll give {user_name} a second chance, globally.")
 
     start_time = time.time()
     datetime_fmt = "%Y-%m-%dT%H:%M"
@@ -298,8 +284,8 @@ async def ungban(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"#UNGBANNED\n"
         f"<b>Originated from:</b> <code>{chat_origin}</code>\n"
         f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
-        f"<b>Unbanned User:</b> {mention_html(user_chat.id, user_chat.first_name)}\n"
-        f"<b>Unbanned User ID:</b> <code>{user_chat.id}</code>\n"
+        f"<b>Unbanned User:</b> {user_target}\n"
+        f"<b>Unbanned User ID:</b> <code>{user_id}</code>\n"
         f"<b>Event Stamp:</b> <code>{current_time}</code>"
     )
 

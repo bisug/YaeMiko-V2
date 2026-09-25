@@ -8,6 +8,7 @@ from typing import Optional
 import Mikobot
 from telegram import Update
 from telegram.ext import CommandHandler
+from telegram.helpers import mention_html
 
 from Mikobot import dispatcher
 from Mikobot.plugins.helper_funcs.chat_status import dev_plus, sudo_plus
@@ -84,13 +85,15 @@ async def add_disaster_level(update: Update, level: str, context) -> str:
     message = update.effective_message
     user = update.effective_user
     chat = update.effective_chat
-    bot, args = context.bot, context.args
+    args = context.args
     user_id = await extract_user(message, context, args)
     reply = await check_user_id(user_id)
     if reply:
         await message.reply_text(reply)
         return ""
-    user_member = await bot.get_chat(user_id)
+    if user_id == int(context.bot.id):
+        return ""
+    target_name = str(user_id)
     rt = ""
 
     async with ELEVATED_USERS_LOCK:
@@ -112,14 +115,13 @@ async def add_disaster_level(update: Update, level: str, context) -> str:
         apply_elevated_users(data)
 
     await message.reply_text(
-        rt
-        + f"\nSuccessfully set Disaster level of {user_member.first_name} to {level}!"
+        rt + f"\nSuccessfully set Disaster level of {target_name} to {level}!"
     )
 
     log_message = (
         f"#{level.upper()}\n"
         f"<b>Admin:</b> {mention_html(user.id, html.escape(user.first_name))}\n"
-        f"<b>User:</b> {mention_html(user_member.id, html.escape(user_member.first_name))}"
+        f"<b>User:</b> {mention_html(user_id, target_name)}"
     )
 
     if chat.type != "private":

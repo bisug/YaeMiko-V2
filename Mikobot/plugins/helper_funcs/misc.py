@@ -1,5 +1,7 @@
 # <============================================== IMPORTS =========================================================>
 from math import ceil
+from functools import wraps
+from html import escape
 from typing import Dict, List
 from uuid import uuid4
 
@@ -10,11 +12,13 @@ from telegram import (
     InlineQueryResultArticle,
     InputTextMessageContent,
     LinkPreviewOptions,
+    Update,
 )
+
 from telegram.constants import MessageLimit, ParseMode
 from telegram.error import TelegramError
 
-from Mikobot import NO_LOAD
+from Mikobot import NO_LOAD, OWNER_ID
 
 # <=======================================================================================================>
 

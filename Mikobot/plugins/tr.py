@@ -13,7 +13,11 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes, filters
 
 from Mikobot import LOGGER, function
-from Mikobot.plugins.anime import DEFAULT_SERVICE_URLS, LANGUAGES
+from Mikobot.plugins.anime import (
+    DEFAULT_SERVICE_URLS,
+    LANGUAGES,
+    google_new_transError,
+)
 from Mikobot.plugins.disable import DisableAbleCommandHandler
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 

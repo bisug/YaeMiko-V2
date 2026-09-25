@@ -2,10 +2,8 @@
 from typing import List, Optional, Union
 
 from telegram import Message, MessageEntity
-from telegram.error import BadRequest
 from telegram.ext import ContextTypes
 
-from Mikobot import LOGGER
 from Mikobot.plugins.users import get_user_id
 
 # <=======================================================================================================>
@@ -85,20 +83,6 @@ async def extract_user_and_text(
     else:
         return None, None
 
-    try:
-        await context.bot.get_chat(user_id)
-    except BadRequest as excp:
-        if excp.message in ("User_id_invalid", "Chat not found"):
-            await message.reply_text(
-                "I don't seem to have interacted with this user before - please forward a message from "
-                "them to give me control! (like a voodoo doll, I need a piece of them to be able "
-                "to execute certain commands...)",
-            )
-        else:
-            LOGGER.exception("Exception %s on user %s", excp.message, user_id)
-
-        return None, None
-
     return user_id, text
 
 
@@ -158,25 +142,6 @@ async def extract_unt_fedban(
 
     else:
         return None, None
-
-    try:
-        await context.bot.get_chat(user_id)
-    except BadRequest as excp:
-        if excp.message in ("User_id_invalid", "Chat not found") and not isinstance(
-            user_id,
-            int,
-        ):
-            await message.reply_text(
-                "I don't seem to have interacted with this user before "
-                "please forward a message from them to give me control! "
-                "(like a voodoo doll, I need a piece of them to be able to execute certain commands...)",
-            )
-            return None, None
-        elif excp.message != "Chat not found":
-            LOGGER.exception("Exception %s on user %s", excp.message, user_id)
-            return None, None
-        elif not isinstance(user_id, int):
-            return None, None
 
     return user_id, text
 

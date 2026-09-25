@@ -7,7 +7,7 @@ from pyrogram.errors import ChatAdminRequired, UserNotParticipant
 from pyrogram.types import ChatPermissions, InlineKeyboardButton, InlineKeyboardMarkup
 
 from Database.mongodb import fsub_db as db
-from Mikobot import BOT_ID, DRAGONS as DEVS, OWNER_ID, app
+from Mikobot import BOT_ID, DRAGONS as DEVS, LOGGER, OWNER_ID, app
 from Mikobot.events import register
 
 F_SUBSCRIBE_COMMAND = r"/(fsub|Fsub|forcesubscribe|Forcesub|forcesub|Forcesubscribe)"
@@ -78,6 +78,15 @@ async def force_subscribe_new_message(message):
     if not settings:
         return
     if not message.from_user or message.from_user.id in DEVS or message.from_user.id == OWNER_ID:
+        return
+    try:
+        sender = await app.get_chat_member(message.chat.id, message.from_user.id)
+        if sender.status in {ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR}:
+            return
+    except UserNotParticipant:
+        return
+    except Exception:
+        LOGGER.exception("Unable to check force-subscribe sender privileges")
         return
     try:
         if message.chat.id not in BOT_PRIVILEGE_CACHE:

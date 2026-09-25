@@ -183,9 +183,7 @@ class Quotly:
             request = await async_searcher(url, post=True, json=content, re_json=True)
         except ContentTypeError as er:
             if url != self._API:
-                return await self.create_quotly(
-                    self._API, post=True, json=content, re_json=True
-                )
+                return await self.create_quotly(self._API)
             raise er
 
         if request.get("ok"):
@@ -213,7 +211,10 @@ async def async_searcher(
     *args,
     **kwargs
 ):
-    async with aiohttp.ClientSession(headers=headers) as client:
+    async with aiohttp.ClientSession(
+        headers=headers,
+        timeout=aiohttp.ClientTimeout(total=20),
+    ) as client:
         request = client.post(url, json=json, data=data, ssl=ssl, *args, **kwargs) if post else client.get(url, params=params, ssl=ssl, *args, **kwargs)
         response = await request
         response.raise_for_status()

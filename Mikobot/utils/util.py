@@ -13,7 +13,8 @@ from pyrogram.errors import (
 from pyrogram.types import Message
 
 from Database.mongodb.afk_db import is_cleanmode_on
-from Mikobot import LOGGER, loop
+from Database.mongodb.users_db import Users
+from Mikobot import LOGGER
 
 BANNED = {}
 
@@ -80,14 +81,14 @@ async def broadcast_messages(user_id, message):
         await asyncio.sleep(e.x)
         return await broadcast_messages(user_id, message)
     except InputUserDeactivated:
-        await db_name.delete_user(int(user_id))
+        await Users.delete_user(int(user_id))
         LOGGER.info(f"{user_id}-Removed from Database, since deleted account.")
         return False, "Deleted"
     except UserIsBlocked:
         LOGGER.info(f"{user_id} -Blocked the bot.")
         return False, "Blocked"
     except PeerIdInvalid:
-        await db_name.delete_user(int(user_id))
+        await Users.delete_user(int(user_id))
         LOGGER.info(f"{user_id} - PeerIdInvalid")
         return False, "Error"
     except Exception:

@@ -602,7 +602,7 @@ be useful when updating a current note
 *Admins only:*
  » /save <notename> <notedata> : saves notedata as a note with name notename
  ➠ A button can be added to a note by using standard markdown link syntax - the link should just be prepended with a \
-`buttonurl:` section, as such: `[somelink](buttonurl:example.com)`. Check `/markdownhelp` for more info
+`buttonurl:` section, as such: `[somelink](buttonurl:example.com)`.
  » /save <notename> : save the replied message as a note with name notename
  Separate diff replies by `%%%` to get random notes
  ➠ *Example:*

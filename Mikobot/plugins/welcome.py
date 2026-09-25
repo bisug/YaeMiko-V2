@@ -39,6 +39,7 @@ from Mikobot import (
     EVENT_LOGS,
     LOGGER,
     OWNER_ID,
+    SUPPORT_STAFF,
     app,
     dispatcher,
     function,
@@ -135,7 +136,7 @@ async def member_has_joined(client, member: ChatMemberUpdated):
     ):
         return
     user = member.new_chat_member.user if member.new_chat_member else member.from_user
-    if user.id in SUDO:
+    if user.id in SUPPORT_STAFF:
         await client.send_message(member.chat.id, "**Global Admins Joined The Chat!**")
         return
     elif user.is_bot:
@@ -423,20 +424,22 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     if creator.username:
                         reply += "\nCreator Username: @{}".format(creator.username)
 
-                    await bot.send_message(
-                        EVENT_LOGS,
-                        reply,
-                        parse_mode=ParseMode.MARKDOWN,
-                    )
+                    if EVENT_LOGS:
+                        await bot.send_message(
+                            EVENT_LOGS,
+                            reply,
+                            parse_mode=ParseMode.MARKDOWN,
+                        )
                 else:
-                    await bot.send_message(
-                        EVENT_LOGS,
-                        "#NEW_GROUP\n<b>Group name:</b> {}\n<b>ID:</b> <code>{}</code>".format(
-                            html.escape(chat.title),
-                            chat.id,
-                        ),
-                        parse_mode=ParseMode.HTML,
-                    )
+                    if EVENT_LOGS:
+                        await bot.send_message(
+                            EVENT_LOGS,
+                            "#NEW_GROUP\n<b>Group name:</b> {}\n<b>ID:</b> <code>{}</code>".format(
+                                html.escape(chat.title),
+                                chat.id,
+                            ),
+                            parse_mode=ParseMode.HTML,
+                        )
                 await update.effective_message.reply_text(
                     "I feel like I'm gonna suffocate in here.",
                     reply_to_message_id=reply,

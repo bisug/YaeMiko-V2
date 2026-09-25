@@ -139,16 +139,8 @@ async def get_user_id(username: str) -> Union[int, None]:
 
     else:
         for user_obj in users:
-            try:
-                userdat = await dispatcher.bot.get_chat(user_obj.user_id)
-                if userdat.username == username:
-                    return userdat.id
-
-            except BadRequest as excp:
-                if excp.message == "Chat not found":
-                    pass
-                else:
-                    LOGGER.exception("Error extracting user ID")
+            if (user_obj.username or "").lower() == username.lower():
+                return user_obj.user_id
 
     return None
 

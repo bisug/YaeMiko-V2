@@ -5,6 +5,7 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
 import contextlib
+import html
 import importlib
 import json
 import re
@@ -205,8 +206,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ),
                 )
 
-            elif args[0].lower() == "markdownhelp":
-                IMPORTED["exᴛʀᴀs"].markdown_help_sender(update)
             elif args[0].lower().startswith("stngs_"):
                 match = re.match("stngs_(.*)", args[0].lower())
                 chat = await dispatcher.bot.get_chat(match.group(1))
@@ -938,15 +937,15 @@ if __name__ == "__main__":
         raise
     finally:
         try:
-            from Mikobot.plugins.anime import _close_db
-
-            loop.run_until_complete(_close_db())
-        except Exception:
-            LOGGER.exception("Failed to close anime database client")
-        try:
             app.stop()
         except Exception:
             LOGGER.exception("Failed to stop Kurigram client")
+        try:
+            from Database.mongodb.db import close_db
+
+            loop.run_until_complete(close_db())
+        except Exception:
+            LOGGER.exception("Failed to close MongoDB client")
         try:
             from Mikobot.state import state
 

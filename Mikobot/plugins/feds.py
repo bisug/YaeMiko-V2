@@ -9,7 +9,6 @@ import uuid
 from io import BytesIO
 
 from telegram import (
-    ChatMember,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     MessageEntity,
@@ -21,6 +20,7 @@ from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
 from telegram.helpers import mention_html, mention_markdown
 
 import Database.sql.feds_sql as sql
+from Database.mongodb.users_db import Users
 from Mikobot import (
     DRAGONS,
     EVENT_LOGS,
@@ -108,14 +108,15 @@ async def new_fed(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "\n`/joinfed {}`".format(fed_name, fed_id, fed_id),
             parse_mode=ParseMode.MARKDOWN,
         )
-        try:
-            await bot.send_message(
-                EVENT_LOGS,
-                "New Federation: <b>{}</b>\nID: <pre>{}</pre>".format(fed_name, fed_id),
-                parse_mode=ParseMode.HTML,
-            )
-        except:
-            LOGGER.warning("Cannot send a message to EVENT_LOGS")
+        if EVENT_LOGS:
+            try:
+                await bot.send_message(
+                    EVENT_LOGS,
+                    "New Federation: <b>{}</b>\nID: <pre>{}</pre>".format(fed_name, fed_id),
+                    parse_mode=ParseMode.HTML,
+                )
+            except Exception:
+                LOGGER.warning("Cannot send a message to EVENT_LOGS", exc_info=True)
     else:
         await update.effective_message.reply_text(
             "Please write down the name of the federation",
@@ -352,10 +353,8 @@ async def user_join_fed(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if is_user_fed_owner(fed_id, user.id) or user.id in DRAGONS:
         user_id = await extract_user(msg, context, args)
-        if user_id:
-            user = await bot.get_chat(user_id)
-        elif not msg.reply_to_message and not args:
-            user = msg.from_user
+        if not user_id:
+            user_id = msg.from_user.id
         elif not msg.reply_to_message and (
             not args
             or (
@@ -367,19 +366,16 @@ async def user_join_fed(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ):
             await msg.reply_text("I cannot extract user from this message")
             return
-        else:
-            LOGGER.warning("error")
+
         getuser = sql.search_user_in_fed(fed_id, user_id)
         fed_id = sql.get_fed_id(chat.id)
         info = sql.get_fed_info(fed_id)
         get_owner = ast.literal_eval(info["fusers"])["owner"]
-        get_owner = await bot.get_chat(get_owner)
-        if isinstance(get_owner, ChatMember):
-            if user_id == get_owner.id:
-                await update.effective_message.reply_text(
-                    "You do know that the user is the federation owner, right? RIGHT?",
-                )
-                return
+        if int(user_id) == int(get_owner):
+            await update.effective_message.reply_text(
+                "You do know that the user is the federation owner, right? RIGHT?",
+            )
+            return
         if getuser:
             await update.effective_message.reply_text(
                 "I cannot promote users who are already federation admins! Can remove them if you want!",
@@ -416,12 +412,8 @@ async def user_demote_fed(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if is_user_fed_owner(fed_id, user.id):
         msg = update.effective_message
         user_id = await extract_user(msg, context, args)
-        if user_id:
-            user = await bot.get_chat(user_id)
-
-        elif not msg.reply_to_message and not args:
-            user = msg.from_user
-
+        if not user_id:
+            user_id = msg.from_user.id
         elif not msg.reply_to_message and (
             not args
             or (
@@ -433,8 +425,6 @@ async def user_demote_fed(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ):
             await msg.reply_text("I cannot extract user from this message")
             return
-        else:
-            LOGGER.warning("error")
 
         if user_id == bot.id:
             await update.effective_message.reply_text(
@@ -592,13 +582,13 @@ async def fed_ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     message = update.effective_message
 
-    user_id, reason = extract_unt_fedban(message, context, args)
-
-    fban, fbanreason, fbantime = sql.get_fban_user(fed_id, user_id)
+    user_id, reason = await extract_unt_fedban(message, context, args)
 
     if not user_id:
         await message.reply_text("You don't seem to be referring to a user")
         return
+
+    fban, fbanreason, fbantime = sql.get_fban_user(fed_id, user_id)
 
     if user_id == bot.id:
         await message.reply_text(
@@ -626,34 +616,12 @@ async def fed_ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await message.reply_text("Fool! You can't attack Telegram's native tech!")
         return
 
-    try:
-        user_chat = await bot.get_chat(user_id)
-        isvalid = True
-        fban_user_id = user_chat.id
-        fban_user_name = user_chat.first_name
-        fban_user_lname = user_chat.last_name
-        fban_user_uname = user_chat.username
-    except BadRequest as excp:
-        if not str(user_id).isdigit():
-            await send_message(update.effective_message, excp.message)
-            return
-        elif len(str(user_id)) != 9:
-            await send_message(update.effective_message, "That's so not a user!")
-            return
-        isvalid = False
-        fban_user_id = int(user_id)
-        fban_user_name = "user({})".format(user_id)
-        fban_user_lname = None
-        fban_user_uname = None
-
-    if isvalid and user_chat.type != "private":
-        await send_message(update.effective_message, "That's so not a user!")
-        return
-
-    if isvalid:
-        user_target = mention_html(fban_user_id, fban_user_name)
-    else:
-        user_target = fban_user_name
+    fban_user_id = int(user_id)
+    user_info = await Users.get_user_info(fban_user_id) or {}
+    fban_user_name = user_info.get("name") or f"user({fban_user_id})"
+    fban_user_lname = None
+    fban_user_uname = user_info.get("username") or None
+    user_target = mention_html(fban_user_id, fban_user_name)
 
     if fban:
         fed_name = info["fname"]
@@ -1001,39 +969,17 @@ async def unfban(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("Only federation admins can do this!")
         return
 
-    user_id = extract_user_fban(message, context, args)
+    user_id = await extract_user_fban(message, context, args)
     if not user_id:
         await message.reply_text("You do not seem to be referring to a user.")
         return
 
-    try:
-        user_chat = await bot.get_chat(user_id)
-        isvalid = True
-        fban_user_id = user_chat.id
-        fban_user_name = user_chat.first_name
-        fban_user_lname = user_chat.last_name
-        fban_user_uname = user_chat.username
-    except BadRequest as excp:
-        if not str(user_id).isdigit():
-            await send_message(update.effective_message, excp.message)
-            return
-        elif len(str(user_id)) != 9:
-            await send_message(update.effective_message, "That's so not a user!")
-            return
-        isvalid = False
-        fban_user_id = int(user_id)
-        fban_user_name = "user({})".format(user_id)
-        fban_user_lname = None
-        fban_user_uname = None
-
-    if isvalid and user_chat.type != "private":
-        await message.reply_text("That's so not a user!")
-        return
-
-    if isvalid:
-        user_target = mention_html(fban_user_id, fban_user_name)
-    else:
-        user_target = fban_user_name
+    fban_user_id = int(user_id)
+    user_info = await Users.get_user_info(fban_user_id) or {}
+    fban_user_name = user_info.get("name") or f"user({fban_user_id})"
+    fban_user_lname = None
+    fban_user_uname = user_info.get("username") or None
+    user_target = mention_html(fban_user_id, fban_user_name)
 
     fban, fbanreason, fbantime = sql.get_fban_user(fed_id, fban_user_id)
     if fban is False:
@@ -1187,8 +1133,8 @@ async def unfban(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			 "\n<b>Federation Admin:</b> {}" \
 			 "\n<b>User:</b> {}" \
 			 "\n<b>User ID:</b> <code>{}</code>".format(info['fname'], mention_html(user.id, user.first_name),
-												 mention_html(user_chat.id, user_chat.first_name),
-															  user_chat.id),
+												 user_target,
+															  fban_user_id),
 			html=True)
 	"""
 
@@ -1919,121 +1865,48 @@ async def del_fed_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def fed_stat_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    bot, args = context.bot, context.args
-    chat = update.effective_chat
-    user = update.effective_user
+    args = context.args
     msg = update.effective_message
 
-    if args:
-        if args[0].isdigit():
-            user_id = args[0]
-        else:
-            user_id = await extract_user(msg, context, args)
+    if len(args) >= 2 and args[0].isdigit():
+        user_id = int(args[0])
+        fed_id = args[1]
     else:
-        user_id = await extract_user(msg, context, args)
+        user_id = await extract_user(msg, context, args) or msg.from_user.id
+        fed_id = None
 
-    if user_id:
-        if len(args) == 2 and args[0].isdigit():
-            fed_id = args[1]
-            user_name, reason, fbantime = sql.get_user_fban(fed_id, str(user_id))
-            if fbantime:
-                fbantime = time.strftime("%d/%m/%Y", time.localtime(fbantime))
-            else:
-                fbantime = "Unavaiable"
-            if user_name is False:
-                await send_message(
-                    update.effective_message,
-                    "Fed {} not found!".format(fed_id),
-                    parse_mode=ParseMode.MARKDOWN,
-                )
-                return
-            if user_name == "" or user_name is None:
-                user_name = "He/she"
-            if not reason:
-                await send_message(
-                    update.effective_message,
-                    "{} is not banned in this federation!".format(user_name),
-                )
-            else:
-                teks = "{} banned in this federation because:\n`{}`\n*Banned at:* `{}`".format(
-                    user_name,
-                    reason,
-                    fbantime,
-                )
-                await send_message(
-                    update.effective_message, teks, parse_mode=ParseMode.MARKDOWN
-                )
+    if fed_id is not None:
+        user_name, reason, banned_at = sql.get_user_fban(fed_id, str(user_id))
+        if user_name is False:
+            await send_message(msg, f"Fed {fed_id} not found!", parse_mode=ParseMode.MARKDOWN)
             return
-        user_name, fbanlist = sql.get_user_fbanlist(str(user_id))
-        if user_name == "":
-            try:
-                user_first = await bot.get_chat(user_id)
-                if isinstance(user_first, ChatMember):
-                    user_name = user_id.first_name
-            except BadRequest:
-                user_name = "He/she"
-            if user_name == "" or user_name is None:
-                user_name = "He/she"
-        if len(fbanlist) == 0:
-            await send_message(
-                update.effective_message,
-                "{} is not banned in any federation!".format(user_name),
-            )
-            return
-        else:
-            teks = "{} has been banned in this federation:\n".format(user_name)
-            for x in fbanlist:
-                teks += "- `{}`: {}\n".format(x[0], x[1][:20])
-            teks += "\nIf you want to find out more about the reasons for Fedban specifically, use /fbanstat <FedID>"
-            await send_message(update.effective_message, teks, parse_mode=ParseMode.MARKDOWN)
-
-    elif not msg.reply_to_message and not args:
-        user_id = msg.from_user.id
-        user_name, fbanlist = sql.get_user_fbanlist(user_id)
-        if user_name == "":
-            user_name = msg.from_user.first_name
-        if len(fbanlist) == 0:
-            await send_message(
-                update.effective_message,
-                "{} is not banned in any federation!".format(user_name),
-            )
-        else:
-            teks = "{} has been banned in this federation:\n".format(user_name)
-            for x in fbanlist:
-                teks += "- `{}`: {}\n".format(x[0], x[1][:20])
-            teks += "\nIf you want to find out more about the reasons for Fedban specifically, use /fbanstat <FedID>"
-            await send_message(update.effective_message, teks, parse_mode=ParseMode.MARKDOWN)
-
-    else:
-        fed_id = args[0]
-        fedinfo = sql.get_fed_info(fed_id)
-        if not fedinfo:
-            await send_message(
-                update.effective_message, "Fed {} not found!".format(fed_id)
-            )
-            return
-        name, reason, fbantime = sql.get_user_fban(fed_id, msg.from_user.id)
-        if fbantime:
-            fbantime = time.strftime("%d/%m/%Y", time.localtime(fbantime))
-        else:
-            fbantime = "Unavaiable"
-        if not name:
-            name = msg.from_user.first_name
+        user_name = user_name or "He/she"
+        banned_at = (
+            time.strftime("%d/%m/%Y", time.localtime(banned_at))
+            if banned_at
+            else "Unavailable"
+        )
         if not reason:
-            await send_message(
-                update.effective_message,
-                "{} is not banned in this federation".format(name),
-            )
+            await send_message(msg, f"{user_name} is not banned in this federation!")
             return
         await send_message(
-            update.effective_message,
-            "{} banned in this federation because:\n`{}`\n*Banned at:* `{}`".format(
-                name,
-                reason,
-                fbantime,
-            ),
+            msg,
+            f"{user_name} banned in this federation because:\n`{reason}`\n*Banned at:* `{banned_at}`",
             parse_mode=ParseMode.MARKDOWN,
         )
+        return
+
+    user_name, fbanlist = sql.get_user_fbanlist(str(user_id))
+    user_name = user_name or "He/she"
+    if not fbanlist:
+        await send_message(msg, f"{user_name} is not banned in any federation!")
+        return
+
+    text = f"{user_name} has been banned in this federation:\n"
+    for banned_user, reason in fbanlist:
+        text += f"- `{banned_user}`: {reason[:20]}\n"
+    text += "\nIf you want to find out more about the reasons for Fedban specifically, use /fbanstat <FedID>"
+    await send_message(msg, text, parse_mode=ParseMode.MARKDOWN)
 
 
 async def set_fed_log(update: Update, context: ContextTypes.DEFAULT_TYPE):

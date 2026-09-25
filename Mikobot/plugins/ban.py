@@ -456,7 +456,7 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 @connection_status
 @gloggable
 @check_admin(permission="can_restrict_members", is_bot=True)
-async def selfunban(context: ContextTypes.DEFAULT_TYPE, update: Update) -> str:
+async def selfunban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     message = update.effective_message
     user = update.effective_user
     bot, args = context.bot, context.args
@@ -465,7 +465,7 @@ async def selfunban(context: ContextTypes.DEFAULT_TYPE, update: Update) -> str:
 
     try:
         chat_id = int(args[0])
-    except:
+    except (BadRequest, IndexError, ValueError, TypeError):
         await message.reply_text("Give a valid chat ID.")
         return
 

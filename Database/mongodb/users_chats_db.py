@@ -1,11 +1,11 @@
-from pymongo import AsyncMongoClient
+from Database.mongodb.db import mongo
 
-from Mikobot import DB_NAME, MONGO_DB_URI
+from Mikobot import DB_NAME
 
 
 class UsersData:
-    def __init__(self, uri, database_name):
-        self._client = AsyncMongoClient(uri)
+    def __init__(self, database_name):
+        self._client = mongo
         self.db = self._client[database_name]
         self.col = self.db["userlist"]
         self.grp = self.db["groups"]
@@ -108,4 +108,4 @@ class UsersData:
         return (await self.db.command("dbstats"))["dataSize"]
 
 
-db = UsersData(MONGO_DB_URI, DB_NAME)
+db = UsersData(DB_NAME)

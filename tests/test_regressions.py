@@ -24,6 +24,19 @@ def load_function(path, name, namespace):
     return namespace[name]
 
 
+def load_nested_function(path, name, namespace):
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    function = next(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name
+    )
+    module = ast.Module(body=[function], type_ignores=[])
+    ast.fix_missing_locations(module)
+    exec(compile(module, str(path), "exec"), namespace)
+    return namespace[name]
+
+
 class FakeQuery:
     def __init__(self):
         self.filters = []
@@ -395,6 +408,160 @@ class FederationCallbackTests(unittest.IsolatedAsyncioTestCase):
 
     async def _record_answer(self, *args, **kwargs):
         self.answer = (args, kwargs)
+
+
+class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
+    async def test_global_log_failure_preserves_chat_logging(self):
+        stopped = []
+
+        class BadRequest(Exception):
+            def __init__(self, message):
+                self.message = message
+                super().__init__(message)
+
+        class Bot:
+            async def send_message(self, chat_id, *args, **kwargs):
+                if chat_id == "-100":
+                    raise BadRequest("Chat not found")
+                return SimpleNamespace()
+
+        send_log = load_nested_function(
+            ROOT / "Mikobot/plugins/log_channel.py",
+            "send_log",
+            {
+                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
+                "BadRequest": BadRequest,
+                "ParseMode": SimpleNamespace(HTML="HTML"),
+                "LinkPreviewOptions": SimpleNamespace,
+                "LOGGER": SimpleNamespace(warning=lambda *args, **kwargs: None),
+                "sql": SimpleNamespace(
+                    get_chat_log_channel=lambda chat_id: "per-chat",
+                    stop_chat_logging=lambda chat_id: stopped.append(chat_id),
+                ),
+            },
+        )
+
+        await send_log(SimpleNamespace(bot=Bot()), "-100", 42, "event")
+        self.assertEqual(stopped, [])
+
+    def test_federation_extractors_are_awaited(self):
+        tree = ast.parse((ROOT / "Mikobot/plugins/feds.py").read_text(encoding="utf-8"))
+        source = ast.unparse(tree)
+        self.assertIn("await extract_unt_fedban(message, context, args)", source)
+        self.assertIn("await extract_user_fban(message, context, args)", source)
+
+    def test_roar_uses_ptb_argument_order(self):
+        tree = ast.parse((ROOT / "Mikobot/plugins/ban.py").read_text(encoding="utf-8"))
+        function = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.AsyncFunctionDef) and node.name == "selfunban"
+        )
+        self.assertEqual([arg.arg for arg in function.args.args], ["update", "context"])
+
+    def test_rules_error_path_does_not_use_failed_chat(self):
+        tree = ast.parse((ROOT / "Mikobot/plugins/rules.py").read_text(encoding="utf-8"))
+        function = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.AsyncFunctionDef) and node.name == "send_rules"
+        )
+        handler = next(node for node in ast.walk(function) if isinstance(node, ast.ExceptHandler))
+        names = {node.id for node in ast.walk(handler) if isinstance(node, ast.Name)}
+        self.assertNotIn("chat", names)
+
+    def test_missing_event_logs_are_not_stringified_or_sent(self):
+        log_source = (ROOT / "Mikobot/plugins/log_channel.py").read_text(encoding="utf-8")
+        self.assertNotIn("str(EVENT_LOGS)", log_source)
+        self.assertIn("if EVENT_LOGS:", log_source)
+        self.assertIn("if not is_chat_log:", log_source)
+
+        for relative in ("Mikobot/plugins/feds.py", "Mikobot/plugins/welcome.py"):
+            tree = ast.parse((ROOT / relative).read_text(encoding="utf-8"))
+            event_log_sends = [
+                node
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "send_message"
+                and any(isinstance(arg, ast.Name) and arg.id == "EVENT_LOGS" for arg in node.args)
+            ]
+            parents = {
+                child: parent
+                for parent in ast.walk(tree)
+                for child in ast.iter_child_nodes(parent)
+            }
+            self.assertTrue(event_log_sends, relative)
+            for call in event_log_sends:
+                current = call
+                while current in parents:
+                    current = parents[current]
+                    if isinstance(current, ast.If):
+                        break
+                self.assertIsInstance(current, ast.If, relative)
+
+    def test_force_subscribe_skips_chat_privileged_members(self):
+        source = (ROOT / "Mikobot/plugins/fsub.py").read_text(encoding="utf-8")
+        self.assertIn("ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR", source)
+
+    def test_quotely_has_timeout_and_valid_fallback(self):
+        source = (ROOT / "Mikobot/plugins/quotely.py").read_text(encoding="utf-8")
+        self.assertIn("aiohttp.ClientTimeout(total=20)", source)
+        self.assertIn("return await self.create_quotly(self._API)", source)
+
+    def test_async_mongodb_uses_one_client_and_explicit_close(self):
+        client_paths = [
+            path
+            for path in (ROOT / "Database/mongodb").glob("*.py")
+            if "AsyncMongoClient(" in path.read_text(encoding="utf-8")
+        ]
+        self.assertEqual(client_paths, [ROOT / "Database/mongodb/db.py"])
+        anime_source = (ROOT / "Mikobot/plugins/anime.py").read_text(encoding="utf-8")
+        self.assertIn('mongo["MikobotAnime"]', anime_source)
+        main_source = (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8")
+        self.assertIn("close_db()", main_source)
+
+    def test_ai_failures_are_logged_and_obsolete_help_is_removed(self):
+        ai_source = (ROOT / "Mikobot/plugins/ai.py").read_text(encoding="utf-8")
+        self.assertIn('LOGGER.exception("Gemini request failed")', ai_source)
+        main_source = (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8")
+        self.assertNotIn("markdownhelp", main_source)
+
+    def test_confirmed_undefined_runtime_names_are_resolved(self):
+        expected_imports = {
+            "Mikobot/plugins/welcome.py": {("Mikobot", "SUPPORT_STAFF")},
+            "Mikobot/plugins/disasters.py": {("telegram.helpers", "mention_html")},
+            "Mikobot/plugins/tr.py": {("Mikobot.plugins.anime", "google_new_transError")},
+        }
+        for relative, required in expected_imports.items():
+            tree = ast.parse((ROOT / relative).read_text(encoding="utf-8"))
+            imports = {
+                (node.module, alias.name)
+                for node in tree.body
+                if isinstance(node, ast.ImportFrom) and node.module
+                for alias in node.names
+            }
+            self.assertTrue(required <= imports, relative)
+
+        main_tree = ast.parse((ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8"))
+        self.assertTrue(
+            any(
+                isinstance(node, ast.Import)
+                and any(alias.name == "html" for alias in node.names)
+                for node in main_tree.body
+            )
+        )
+        anime_source = (ROOT / "Mikobot/plugins/anime.py").read_text(encoding="utf-8")
+        self.assertIn("gcc = get_user_from_channel", anime_source)
+        self.assertNotIn("SESSION.query(UserF)", (ROOT / "Database/sql/feds_sql.py").read_text(encoding="utf-8"))
+        for relative in (
+            "Mikobot/plugins/helper_funcs/extraction.py",
+            "Mikobot/plugins/users.py",
+            "Mikobot/plugins/gban.py",
+            "Mikobot/plugins/feds.py",
+            "Mikobot/plugins/afk.py",
+        ):
+            self.assertNotIn("get_chat(user_id)", (ROOT / relative).read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

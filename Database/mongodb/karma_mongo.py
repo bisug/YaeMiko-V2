@@ -1,14 +1,9 @@
 from typing import Dict, Union
 
-from pymongo import AsyncMongoClient
+from Database.mongodb.db import dbname
 
-from Mikobot import DB_NAME, MONGO_DB_URI
-
-client = AsyncMongoClient(MONGO_DB_URI)
-db = client[DB_NAME]
-
-coupledb = db.couple
-karmadb = db.karma
+coupledb = dbname.couple
+karmadb = dbname.karma
 
 
 async def _get_lovers(chat_id: int):

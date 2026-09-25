@@ -4,7 +4,7 @@ import html
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
 
-from Mikobot import GEMINI_API_KEY, GEMINI_MODEL, function
+from Mikobot import GEMINI_API_KEY, GEMINI_MODEL, LOGGER, function
 
 GEMINI_CLIENT = None
 _GEMINI_TYPES = None
@@ -62,7 +62,8 @@ async def get_ai_response(prompt: str) -> str:
         if answer:
             return _format_answer(answer)
     except Exception:
-        pass
+        LOGGER.exception("Gemini request failed")
+
     return "Gemini is unavailable or not configured. Set GEMINI_API_KEY and try again."
 
 

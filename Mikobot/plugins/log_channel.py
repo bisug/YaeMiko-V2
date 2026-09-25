@@ -78,9 +78,8 @@ if is_module_loaded(FILENAME):
                     result += (
                         f"\nLink: https://t.me/{chat.username}/{message.message_id}"
                     )
-                log_chat = str(EVENT_LOGS)
-                if log_chat:
-                    await send_log(context, log_chat, chat.id, result)
+                if EVENT_LOGS:
+                    await send_log(context, EVENT_LOGS, chat.id, result)
 
             return result
 
@@ -93,6 +92,7 @@ if is_module_loaded(FILENAME):
         result: str,
     ):
         bot = context.bot
+        is_chat_log = log_chat_id == sql.get_chat_log_channel(orig_chat_id)
         try:
             await bot.send_message(
                 log_chat_id,
@@ -102,13 +102,19 @@ if is_module_loaded(FILENAME):
             )
         except BadRequest as excp:
             if excp.message == "Chat not found":
+                if not is_chat_log:
+                    LOGGER.warning(
+                        "Global log channel %s is unavailable; per-chat logging is unchanged",
+                        log_chat_id,
+                    )
+                    return
                 try:
                     await bot.send_message(
                         orig_chat_id,
                         "This log channel has been deleted - unsetting.",
                         message_thread_id=1,
                     )
-                except:
+                except BadRequest:
                     await bot.send_message(
                         orig_chat_id,
                         "This log channel has been deleted - unsetting.",

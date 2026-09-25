@@ -13,6 +13,10 @@ class Users:
     collection = dbname[db_name]
 
     @staticmethod
+    async def delete_user(user_id: int):
+        await Users.collection.delete_one({"_id": user_id})
+
+    @staticmethod
     async def get_user_info(user_id: int | str):
         if isinstance(user_id, str):
             return await Users.collection.find_one({"username": user_id.lstrip("@")})

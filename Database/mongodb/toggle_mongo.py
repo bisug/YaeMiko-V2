@@ -1,4 +1,4 @@
-from Database.mongodb.db import *
+from Database.mongodb.db import dbname
 
 dwelcomedb = dbname.dwelcome
 nsfwdb = dbname.nsfw

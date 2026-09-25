@@ -93,7 +93,6 @@ async def no_longer_afk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def reply_afk(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    bot = context.bot
     message = update.effective_message
     userc = update.effective_user
     userc_id = userc.id
@@ -127,15 +126,7 @@ async def reply_afk(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
             chk_users.append(user_id)
 
-            try:
-                chat = await bot.get_chat(user_id)
-            except BadRequest:
-                LOGGER.error(
-                    "Error: Could not fetch userid {} for AFK module".format(user_id)
-                )
-                return
-            fst_name = chat.first_name
-
+            fst_name = message.text[ent.offset : ent.offset + ent.length].lstrip("@")
             await check_afk(update, context, user_id, fst_name, userc_id)
 
     elif message.reply_to_message:
