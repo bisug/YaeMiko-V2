@@ -915,6 +915,29 @@ class DatabaseRegressionTests(unittest.TestCase):
         self.assertEqual(session.key, ("fed", "123"))
         self.assertTrue(session.closed)
 
+    def test_telegram_at_constructors_use_ptb_22_8_fields(self):
+        from telegram import InlineQueryResultArticle, InputTextMessageContent
+        from telegram import MenuButtonWebApp, WebAppInfo
+
+        result = InlineQueryResultArticle(
+            id="article-1",
+            title="Article",
+            thumbnail_url="https://example.com/thumb.jpg",
+            input_message_content=InputTextMessageContent("text"),
+        )
+        self.assertEqual(result.thumbnail_url, "https://example.com/thumb.jpg")
+        self.assertIsInstance(
+            MenuButtonWebApp("Open", WebAppInfo("https://example.com")).web_app,
+            WebAppInfo,
+        )
+
+        chatadmin = (ROOT / "Mikobot/plugins/chatadmin.py").read_text(encoding="utf-8")
+        misc = (ROOT / "Mikobot/plugins/helper_funcs/misc.py").read_text(encoding="utf-8")
+        self.assertIn("WebAppInfo(context.args[1])", chatadmin)
+        self.assertIn("thumbnail_url=thumb_url", misc)
+        self.assertIn("id=str(uuid4())", misc)
+        self.assertNotIn("thumb_url=thumb_url", misc)
+
     def test_note_and_filter_buttons_commit_with_their_parent(self):
         for relative, names in {
             "Database/sql/notes_sql.py": {"add_note_to_db"},

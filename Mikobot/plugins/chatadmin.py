@@ -1,7 +1,13 @@
 import html
 from datetime import datetime, timezone
 
-from telegram import MenuButtonCommands, MenuButtonDefault, MenuButtonWebApp, Update
+from telegram import (
+    MenuButtonCommands,
+    MenuButtonDefault,
+    MenuButtonWebApp,
+    Update,
+    WebAppInfo,
+)
 from telegram.constants import ChatType, ParseMode
 from telegram.error import BadRequest, TelegramError
 from telegram.ext import CommandHandler, ContextTypes
@@ -187,7 +193,13 @@ async def menu_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     elif action == "default":
         await context.bot.set_chat_menu_button(chat_id, MenuButtonDefault())
     elif action == "webapp" and len(context.args) > 1:
-        await context.bot.set_chat_menu_button(chat_id, MenuButtonWebApp(context.args[1], context.args[1]))
+        await context.bot.set_chat_menu_button(
+            chat_id,
+            MenuButtonWebApp(
+                context.args[1],
+                WebAppInfo(context.args[1]),
+            ),
+        )
     else:
         await update.effective_message.reply_text("Usage: /menubutton [commands|default|webapp <url>]")
         return

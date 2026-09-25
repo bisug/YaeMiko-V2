@@ -128,10 +128,10 @@ def article(
     link_preview_options: LinkPreviewOptions = None,
 ) -> InlineQueryResultArticle:
     return InlineQueryResultArticle(
-        id=uuid4(),
+        id=str(uuid4()),
         title=title,
         description=description,
-        thumb_url=thumb_url,
+        thumbnail_url=thumb_url,
         input_message_content=InputTextMessageContent(
             message_text=message_text,
             link_preview_options=link_preview_options,
