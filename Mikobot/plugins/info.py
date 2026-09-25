@@ -18,7 +18,6 @@ from telegram.helpers import mention_html
 from Database.sql.approve_sql import is_approved
 from Infamous.karma import START_IMG
 from Mikobot import DEV_USERS, DRAGONS, INFOPIC, OWNER_ID, function
-from Mikobot.__main__ import STATS, USER_INFO
 from Mikobot.plugins.helper_funcs.chat_status import support_plus
 from Mikobot.plugins.users import get_user_id
 
@@ -114,6 +113,8 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if is_approved(chat.id, chat_obj.id):
             head += f"\n➲ <b>Approved:</b> This user is approved in this chat."
 
+        from Mikobot.__main__ import USER_INFO
+
         disaster_level_present = False
 
         if chat_obj.id == OWNER_ID:
@@ -194,6 +195,8 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @support_plus
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    from Mikobot.__main__ import STATS
+
     stats = "📊 <b>Yae Miko Bot's Statistics:</b>\n\n" + "\n".join(
         [mod.__stats__() for mod in STATS]
     )

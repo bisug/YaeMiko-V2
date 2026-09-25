@@ -109,6 +109,32 @@ class EnvironmentTests(unittest.TestCase):
             },
         )
 
+    def test_plugin_imports_do_not_import_main(self):
+        for path in (ROOT / "Mikobot/plugins/ping.py", ROOT / "Mikobot/plugins/info.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            self.assertFalse(
+                any(
+                    isinstance(node, ast.ImportFrom)
+                    and node.module == "Mikobot.__main__"
+                    for node in tree.body
+                ),
+                path.name,
+            )
+
+
+    def test_quotely_uses_supported_entity_types(self):
+        source = (ROOT / "Mikobot/plugins/quotely.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        imports = {
+            (node.module, alias.name)
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom) and node.module
+            for alias in node.names
+        }
+        self.assertIn(("pyrogram.enums", "MessageEntityType"), imports)
+        self.assertNotIn("MessageEntityPhone", source)
+
+
     def test_boolean_values_are_explicit(self):
         env_bool = load_function(
             ROOT / "Mikobot/__init__.py",

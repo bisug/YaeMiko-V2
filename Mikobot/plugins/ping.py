@@ -6,8 +6,8 @@ from telegram.constants import ParseMode
 from telegram.ext import CommandHandler, ContextTypes
 
 from Mikobot import StartTime, function
-from Mikobot.__main__ import get_readable_time
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
+from Mikobot.utils.human_read import get_readable_time
 
 # <=======================================================================================================>
 

@@ -7,7 +7,7 @@ from random import choice
 import aiohttp
 from aiohttp import ContentTypeError
 from PIL import Image
-from pyrogram import types
+from pyrogram.enums import MessageEntityType
 
 
 def get_display_name(user):
@@ -29,20 +29,20 @@ class Quotly:
         "#2c3e50", "#3a1c71", "#4b1248", "#1f4037", "#16222a",
     )
     _entities = {
-        types.MessageEntityPhone: "phone_number",
-        types.MessageEntityMention: "mention",
-        types.MessageEntityBold: "bold",
-        types.MessageEntityCashtag: "cashtag",
-        types.MessageEntityStrike: "strikethrough",
-        types.MessageEntityHashtag: "hashtag",
-        types.MessageEntityEmail: "email",
-        types.MessageEntityMentionName: "text_mention",
-        types.MessageEntityUnderline: "underline",
-        types.MessageEntityUrl: "url",
-        types.MessageEntityTextUrl: "text_link",
-        types.MessageEntityBotCommand: "bot_command",
-        types.MessageEntityCode: "code",
-        types.MessageEntityPre: "pre",
+        MessageEntityType.PHONE_NUMBER: "phone_number",
+        MessageEntityType.MENTION: "mention",
+        MessageEntityType.BOLD: "bold",
+        MessageEntityType.CASHTAG: "cashtag",
+        MessageEntityType.STRIKETHROUGH: "strikethrough",
+        MessageEntityType.HASHTAG: "hashtag",
+        MessageEntityType.EMAIL: "email",
+        MessageEntityType.TEXT_MENTION: "text_mention",
+        MessageEntityType.UNDERLINE: "underline",
+        MessageEntityType.URL: "url",
+        MessageEntityType.TEXT_LINK: "text_link",
+        MessageEntityType.BOT_COMMAND: "bot_command",
+        MessageEntityType.CODE: "code",
+        MessageEntityType.PRE: "pre",
     }
 
     async def _format_quote(self, event, reply=None, sender=None, type_="private"):
@@ -98,8 +98,28 @@ class Quotly:
         entities = (
             [
                 {
-                    "type": self._entities[type(entity)],
-                    **{k: v for k, v in entity.to_dict().items() if k != "_"},
+                    "type": self._entities[entity.type],
+                    "offset": entity.offset,
+                    "length": entity.length,
+                    **({"url": entity.url} if entity.url else {}),
+                    **(
+                        {
+                            "user": {
+                                "id": entity.user.id,
+                                "first_name": entity.user.first_name,
+                                "last_name": entity.user.last_name,
+                                "username": entity.user.username,
+                            }
+                        }
+                        if entity.user
+                        else {}
+                    ),
+                    **({"language": entity.language} if entity.language else {}),
+                    **(
+                        {"custom_emoji_id": entity.custom_emoji_id}
+                        if entity.custom_emoji_id
+                        else {}
+                    ),
                 }
                 for entity in event.entities
             ]
