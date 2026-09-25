@@ -4,7 +4,6 @@ import os
 import tempfile
 from pathlib import Path
 
-from opennsfw_onnx import NSFWClassifier
 from pyrogram import filters
 
 from Database.mongodb.toggle_mongo import is_nsfw_on, nsfw_off, nsfw_on
@@ -16,12 +15,17 @@ from Mikobot.utils.errors import capture_err
 
 
 # <================================================ FUNCTION =======================================================>
-classifier = NSFWClassifier()
+classifier = None
 NSFW_THRESHOLD = 0.75
 MAX_FILE_SIZE = 3 * 1024 * 1024
 
 
 async def _scan(file_path: str):
+    global classifier
+    if classifier is None:
+        from opennsfw_onnx import NSFWClassifier
+
+        classifier = NSFWClassifier()
     return await asyncio.to_thread(classifier.classify, file_path)
 
 

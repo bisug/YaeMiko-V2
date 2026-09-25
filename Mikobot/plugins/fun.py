@@ -1,7 +1,6 @@
 # <============================================== IMPORTS =========================================================>
 import random
 
-from pyjokes import get_joke
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
@@ -42,6 +41,8 @@ async def dare(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def joke(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    from pyjokes import get_joke
+
     await update.effective_message.reply_text(get_joke())
 
 

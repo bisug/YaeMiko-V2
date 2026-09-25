@@ -72,6 +72,29 @@ class FakeSession:
     def rollback(self):
         self.rollbacks += 1
 
+class CleanmodeCacheTests(unittest.IsolatedAsyncioTestCase):
+    async def test_disabled_cleanmode_is_cached(self):
+        calls = 0
+
+        class Collection:
+            async def find_one(self, query):
+                nonlocal calls
+                calls += 1
+                return {"chat_id": query["chat_id"]}
+
+        namespace = {"cleanmode": {}, "cleandb": Collection()}
+        is_cleanmode_on = load_function(
+            ROOT / "Database/mongodb/afk_db.py",
+            "is_cleanmode_on",
+            namespace,
+        )
+
+        self.assertFalse(await is_cleanmode_on(123))
+        self.assertFalse(await is_cleanmode_on(123))
+        self.assertEqual(calls, 1)
+
+
+
 class EnvironmentTests(unittest.TestCase):
     def test_boolean_values_are_explicit(self):
         env_bool = load_function(

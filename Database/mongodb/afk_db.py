@@ -6,15 +6,10 @@ cleanmode = {}
 
 
 async def is_cleanmode_on(chat_id: int) -> bool:
-    mode = cleanmode.get(chat_id)
-    if not mode:
+    if chat_id not in cleanmode:
         user = await cleandb.find_one({"chat_id": chat_id})
-        if not user:
-            cleanmode[chat_id] = True
-            return True
-        cleanmode[chat_id] = False
-        return False
-    return mode
+        cleanmode[chat_id] = not bool(user)
+    return cleanmode[chat_id]
 
 
 async def cleanmode_on(chat_id: int):
@@ -49,5 +44,4 @@ async def remove_afk(user_id: int):
 
 
 async def get_afk_users() -> list:
-    users = usersdb.find({"user_id": {"$gt": 0}})
-    return list(await users.to_list(length=1000000000)) if users else []
+    return [user async for user in usersdb.find({"user_id": {"$gt": 0}})]

@@ -1,3 +1,6 @@
+from time import perf_counter
+
+from cachetools import TTLCache
 from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus, ChatType
 from pyrogram.errors import ChatAdminRequired, UserNotParticipant
@@ -10,6 +13,7 @@ from Mikobot.events import register
 F_SUBSCRIBE_COMMAND = r"/(fsub|Fsub|forcesubscribe|Forcesub|forcesub|Forcesubscribe)"
 FORCESUBSCRIBE_ON = {"on", "yes", "y"}
 FORCESUBSCRIBE_OFF = {"off", "no", "n"}
+BOT_PRIVILEGE_CACHE = TTLCache(maxsize=10_000, ttl=600, timer=perf_counter)
 
 
 
@@ -76,9 +80,12 @@ async def force_subscribe_new_message(message):
     if not message.from_user or message.from_user.id in DEVS or message.from_user.id == OWNER_ID:
         return
     try:
-        member = await app.get_chat_member(message.chat.id, message.from_user.id)
-        bot = await app.get_chat_member(message.chat.id, (await app.get_me()).id)
-        if not getattr(bot.privileges, "can_restrict_members", False):
+        if message.chat.id not in BOT_PRIVILEGE_CACHE:
+            bot = await app.get_chat_member(message.chat.id, BOT_ID)
+            BOT_PRIVILEGE_CACHE[message.chat.id] = bool(
+                getattr(bot.privileges, "can_restrict_members", False)
+            )
+        if not BOT_PRIVILEGE_CACHE[message.chat.id]:
             return
     except Exception:
         return

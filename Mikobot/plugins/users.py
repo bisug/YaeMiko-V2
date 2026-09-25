@@ -1,7 +1,11 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
 from io import BytesIO
+from threading import RLock
+from time import monotonic
 from typing import Union
+
+from cachetools import TTLCache
 
 from pyrogram import Client
 from pyrogram import filters as fil
@@ -22,8 +26,6 @@ from Mikobot.plugins.helper_funcs.string_handling import escape_markdown_v2
 
 USERS_GROUP = 4
 CHAT_GROUP = 5
-DEV_AND_MORE = DEV_USERS.append(int(OWNER_ID))
-
 
 BROADCAST_TARGETS = {"-all", "-group", "-user"}
 
@@ -86,8 +88,8 @@ async def broadcast_cmd(client: Client, message: Message):
     chatttt = 0
     uerror = 0
     cerror = 0
-    chats = sql.get_all_chats() or []
-    users = get_all_users()
+    chats = await asyncio.to_thread(sql.get_all_chats) or []
+    users = await asyncio.to_thread(get_all_users)
 
     if "-user" in targets:
         for chat in users:
@@ -127,7 +129,7 @@ async def get_user_id(username: str) -> Union[int, None]:
     if username.startswith("@"):
         username = username[1:]
 
-    users = sql.get_userid_by_name(username)
+    users = await asyncio.to_thread(sql.get_userid_by_name, username)
 
     if not users:
         return None
@@ -163,8 +165,8 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
             to_user = True
         else:
             to_group = to_user = True
-        chats = sql.get_all_chats() or []
-        users = get_all_users()
+        chats = await asyncio.to_thread(sql.get_all_chats) or []
+        users = await asyncio.to_thread(get_all_users)
         failed = 0
         failed_user = 0
         if to_group:
@@ -196,27 +198,67 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+USER_DB_CACHE = TTLCache(maxsize=100_000, ttl=300, timer=monotonic)
+BOT_STATUS_CACHE = TTLCache(maxsize=10_000, ttl=600, timer=monotonic)
+USER_DB_LOCK = RLock()
+
+
+def _user_db_is_fresh(user_id, username, chat_id, chat_name):
+    key = (user_id, chat_id)
+    with USER_DB_LOCK:
+        return (username, chat_name) in USER_DB_CACHE.get(key, ())
+
+
+def _mark_user_db_fresh(user_id, username, chat_id, chat_name):
+    with USER_DB_LOCK:
+        USER_DB_CACHE[(user_id, chat_id)] = (username, chat_name)
+
+
 async def log_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     msg = update.effective_message
 
-    sql.update_user(msg.from_user.id, msg.from_user.username, chat.id, chat.title)
+    if msg.from_user and not _user_db_is_fresh(
+        msg.from_user.id, msg.from_user.username, chat.id, chat.title
+    ):
+        await asyncio.to_thread(
+            sql.update_user,
+            msg.from_user.id,
+            msg.from_user.username,
+            chat.id,
+            chat.title,
+        )
+        _mark_user_db_fresh(
+            msg.from_user.id, msg.from_user.username, chat.id, chat.title
+        )
 
-    if msg.reply_to_message:
-        sql.update_user(
+    if (
+        msg.reply_to_message
+        and msg.reply_to_message.from_user
+        and not _user_db_is_fresh(
+            msg.reply_to_message.from_user.id,
+            msg.reply_to_message.from_user.username,
+            chat.id,
+            chat.title,
+        )
+    ):
+        await asyncio.to_thread(
+            sql.update_user,
+            msg.reply_to_message.from_user.id,
+            msg.reply_to_message.from_user.username,
+            chat.id,
+            chat.title,
+        )
+        _mark_user_db_fresh(
             msg.reply_to_message.from_user.id,
             msg.reply_to_message.from_user.username,
             chat.id,
             chat.title,
         )
 
-    if msg.from_user:
-        sql.update_user(msg.from_user.id, msg.from_user.username)
-
-
 @check_admin(only_dev=True)
 async def chats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    all_chats = sql.get_all_chats() or []
+    all_chats = await asyncio.to_thread(sql.get_all_chats) or []
     chatfile = "List of chats.\n0. Chat Name | Chat ID | Members Count\n"
     P = 1
     for chat in all_chats:
@@ -244,13 +286,17 @@ async def chats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def chat_checker(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bot = context.bot
+    chat_id = update.effective_chat.id
+    if chat_id in BOT_STATUS_CACHE:
+        return
     try:
         bot_admin = await update.effective_message.chat.get_member(bot.id)
+        BOT_STATUS_CACHE[chat_id] = True
         if isinstance(bot_admin, ChatMemberAdministrator):
             if bot_admin.can_post_messages is False:
-                await bot.leave_chat(update.effective_message.chat.id)
+                await bot.leave_chat(chat_id)
     except Forbidden:
-        pass
+        BOT_STATUS_CACHE[chat_id] = True
 
 
 def __user_info__(user_id):

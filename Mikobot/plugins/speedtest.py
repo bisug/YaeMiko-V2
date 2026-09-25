@@ -1,5 +1,6 @@
 # <============================================== IMPORTS =========================================================>
-import speedtest
+import asyncio
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackQueryHandler, ContextTypes
@@ -35,14 +36,16 @@ async def speedtestxyz_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     if query.from_user.id in DEV_USERS:
         msg = await update.effective_message.edit_text("Running a speedtest....")
-        speed = speedtest.Speedtest()
-        speed.get_best_server()
-        speed.download()
-        speed.upload()
+        import speedtest
+
+        speed = await asyncio.to_thread(speedtest.Speedtest)
+        await asyncio.to_thread(speed.get_best_server)
+        await asyncio.to_thread(speed.download)
+        await asyncio.to_thread(speed.upload)
         replymsg = "SpeedTest Results:"
 
         if query.data == "speedtest_image":
-            speedtest_image = speed.results.share()
+            speedtest_image = await asyncio.to_thread(speed.results.share)
             await update.effective_message.reply_photo(
                 photo=speedtest_image,
                 caption=replymsg,
@@ -50,7 +53,7 @@ async def speedtestxyz_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await msg.delete()
 
         elif query.data == "speedtest_text":
-            result = speed.results.dict()
+            result = await asyncio.to_thread(speed.results.dict)
             replymsg += f"\nDownload: `{convert(result['download'])}Mb/s`\nUpload: `{convert(result['upload'])}Mb/s`\nPing: `{result['ping']}`"
             await update.effective_message.edit_text(
                 replymsg, parse_mode=ParseMode.MARKDOWN

@@ -145,18 +145,18 @@ async def karma_toggle_xd(_, message):
     state = message.text.split(None, 1)[1].strip().lower()
 
     if state == "on":
-        disabled = karmadb.find_one({"chat_id_toggle": chat_id})
+        disabled = await karmadb.find_one({"chat_id_toggle": chat_id})
         if disabled:
-            karmadb.delete_one({"chat_id_toggle": chat_id})
+            await karmadb.delete_one({"chat_id_toggle": chat_id})
             await message.reply_text("Enabled the karma system.")
         else:
             await message.reply_text("Karma system is already enabled.")
     elif state == "off":
-        disabled = karmadb.find_one({"chat_id_toggle": chat_id})
+        disabled = await karmadb.find_one({"chat_id_toggle": chat_id})
         if disabled:
             await message.reply_text("Karma system is already disabled.")
         else:
-            karmadb.insert_one({"chat_id_toggle": chat_id})
+            await karmadb.insert_one({"chat_id_toggle": chat_id})
             await message.reply_text("Disabled the karma system.")
     else:
         await message.reply_text(usage)

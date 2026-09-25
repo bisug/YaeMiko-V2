@@ -115,7 +115,7 @@ def _configure_logging():
         handlers=handlers,
         force=True,
     )
-    for name in ("apscheduler", "pyrogram", "pyrate_limiter"):
+    for name in ("pyrogram", "pyrate_limiter"):
         logging.getLogger(name).setLevel(logging.ERROR)
     # HTTPX logs complete Telegram API URLs at INFO, including the bot token.
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -155,6 +155,7 @@ if ENV:
     MONGO_DB_URI = os.environ.get("MONGO_DB_URI")
     NO_LOAD = os.environ.get("NO_LOAD", "").split()
     STRICT_GBAN = env_bool("STRICT_GBAN", True)
+    ACTIVITY_LOG = env_bool("ACTIVITY_LOG", False)
     SUPPORT_ID = int(os.environ.get("SUPPORT_ID", "-100"))  # Support group id
     SUPPORT_CHAT = os.environ.get("SUPPORT_CHAT", "Ecstasy_Realm")
     TEMP_DOWNLOAD_DIRECTORY = os.environ.get("TEMP_DOWNLOAD_DIRECTORY", "./")
@@ -213,6 +214,7 @@ else:
     MONGO_DB_URI = Config.MONGO_DB_URI
     NO_LOAD = Config.NO_LOAD
     STRICT_GBAN = Config.STRICT_GBAN
+    ACTIVITY_LOG = env_bool("ACTIVITY_LOG", False)
     SUPPORT_CHAT = Config.SUPPORT_CHAT
     TEMP_DOWNLOAD_DIRECTORY = Config.TEMP_DOWNLOAD_DIRECTORY
     TOKEN = Config.TOKEN

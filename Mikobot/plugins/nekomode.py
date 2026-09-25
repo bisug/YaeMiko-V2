@@ -4,7 +4,7 @@
 # NEKOS
 
 # <============================================== IMPORTS =========================================================>
-import nekos
+import asyncio
 
 from Database.mongodb.toggle_mongo import is_nekomode_on, nekomode_off, nekomode_on
 from pyrogram import filters
@@ -57,10 +57,10 @@ async def wallpaper(_, event):
     chat_id = event.chat.id
     nekomode_status = await is_nekomode_on(chat_id)
     if nekomode_status:
+        import nekos
+
         target = "wallpaper"
-        img_url = nekos.img(
-            target
-        )  # Replace nekos.img(target) with the correct function call
+        img_url = await asyncio.to_thread(nekos.img, target)
         await event.reply(file=img_url)
 
 

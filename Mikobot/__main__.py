@@ -41,6 +41,7 @@ from telegram.ext import (
 
 from Infamous.karma import *
 from Mikobot import (
+    ACTIVITY_LOG,
     BOT_NAME,
     LOGGER,
     OWNER_ID,
@@ -916,8 +917,9 @@ def main():
     )
 
     dispatcher.add_error_handler(error_callback)
-    dispatcher.add_handler(TypeHandler(Update, log_activity), group=-100)
-    app.add_handler(RawUpdateHandler(log_kurigram_activity))
+    if ACTIVITY_LOG:
+        dispatcher.add_handler(TypeHandler(Update, log_activity), group=-100)
+        app.add_handler(RawUpdateHandler(log_kurigram_activity))
 
     LOGGER.info("Mikobot is starting >> Using long polling.")
     dispatcher.run_polling(drop_pending_updates=False, close_loop=False)

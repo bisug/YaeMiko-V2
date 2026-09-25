@@ -7,8 +7,8 @@
 # TURN ON INLINE MODE FOR USE.
 
 # <============================================== IMPORTS =========================================================>
-import shortuuid
-from pymongo import MongoClient
+from uuid import uuid4
+
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -18,31 +18,9 @@ from telegram import (
 )
 from telegram.ext import CallbackQueryHandler, ContextTypes, InlineQueryHandler
 
-from Mikobot import DB_NAME, MONGO_DB_URI, function
+from Mikobot import function
 
-# Initialize MongoDB client
-client = MongoClient(MONGO_DB_URI)
-db = client[DB_NAME]
-collection = db["whispers"]
-
-
-# <==================================================== CLASS ===================================================>
-# Whispers Class
-class Whispers:
-    @staticmethod
-    def add_whisper(WhisperId, WhisperData):
-        whisper = {"WhisperId": WhisperId, "whisperData": WhisperData}
-        collection.insert_one(whisper)
-
-    @staticmethod
-    def del_whisper(WhisperId):
-        collection.delete_one({"WhisperId": WhisperId})
-
-    @staticmethod
-    def get_whisper(WhisperId):
-        whisper = collection.find_one({"WhisperId": WhisperId})
-        return whisper["whisperData"] if whisper else None
-
+from Database.mongodb.whispers import Whispers
 
 # <==================================================== BOOT FUNCTION ===================================================>
 # Inline query handler
@@ -75,10 +53,10 @@ async def mainwhisper(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "type": "inline",
         "message": message,
     }
-    whisperId = shortuuid.uuid()
+    whisperId = uuid4().hex
 
     # Add the whisper to the database
-    Whispers.add_whisper(whisperId, whisperData)
+    await Whispers.add_whisper(whisperId, whisperData)
 
     answers = [
         InlineQueryResultArticle(
@@ -108,7 +86,7 @@ async def mainwhisper(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def showWhisper(update: Update, context: ContextTypes.DEFAULT_TYPE):
     callback_query = update.callback_query
     whisperId = callback_query.data.split("_")[-1]
-    whisper = Whispers.get_whisper(whisperId)
+    whisper = await Whispers.get_whisper(whisperId)
 
     if not whisper:
         await context.bot.answer_callback_query(

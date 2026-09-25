@@ -48,7 +48,7 @@ async def extract_user(c: app, m: Message) -> Tuple[int, str, str]:
                         LOGGER.error(format_exc())
 
                 try:
-                    user = Users.get_user_info(user_found)
+                    user = await Users.get_user_info(user_found)
                     user_id = user["_id"]
                     user_first_name = user["name"]
                     user_name = user["username"]
@@ -89,7 +89,7 @@ async def extract_user(c: app, m: Message) -> Tuple[int, str, str]:
 
             if user_id is not None:
                 try:
-                    user = Users.get_user_info(user_id)
+                    user = await Users.get_user_info(user_id)
                     user_first_name = user["name"]
                     user_name = user["username"]
                 except Exception as ef:

@@ -32,11 +32,17 @@ from telegram.helpers import escape_markdown, mention_html, mention_markdown
 import Database.sql.welcome_sql as sql
 from Database.mongodb.toggle_mongo import dwelcome_off, dwelcome_on, is_dwelcome_on
 from Database.sql.global_bans_sql import is_user_gbanned
-from Infamous.temp import temp
-from Mikobot import ALLOW_CHATS
-from Mikobot import DEV_USERS
-from Mikobot import DEV_USERS as SUDO
-from Mikobot import DRAGONS, EVENT_LOGS, LOGGER, OWNER_ID, app, dispatcher, function
+from Mikobot import (
+    ALLOW_CHATS,
+    DEV_USERS,
+    DRAGONS,
+    EVENT_LOGS,
+    LOGGER,
+    OWNER_ID,
+    app,
+    dispatcher,
+    function,
+)
 from Mikobot.plugins.helper_funcs.chat_status import check_admin, is_user_ban_protected
 from Mikobot.plugins.helper_funcs.misc import build_keyboard, revert_buttons
 from Mikobot.plugins.helper_funcs.msg_types import get_welcome_type
@@ -69,6 +75,9 @@ ENUM_FUNC_MAP = {
 }
 
 VERIFIED_USER_WAITLIST = {}
+
+
+WELCOME_MESSAGES = {}
 
 
 # <================================================ TEMPLATE WELCOME FUNCTION =======================================================>
@@ -136,9 +145,9 @@ async def member_has_joined(client, member: ChatMemberUpdated):
         welcome_enabled = await is_dwelcome_on(chat_id)
         if not welcome_enabled:
             return
-        if f"welcome-{chat_id}" in temp.MELCOW:
+        if f"welcome-{chat_id}" in WELCOME_MESSAGES:
             try:
-                await temp.MELCOW[f"welcome-{chat_id}"].delete()
+                await WELCOME_MESSAGES[f"welcome-{chat_id}"].delete()
             except:
                 pass
         mention = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
@@ -166,7 +175,7 @@ async def member_has_joined(client, member: ChatMemberUpdated):
                 )
                 user_username = user.username if user.username else f"user?id={user.id}"
                 inline_keyboard = IM([[IB("🔗 USER", url=f"https://t.me/{user_username}")]])
-                temp.MELCOW[f"welcome-{chat_id}"] = await client.send_photo(
+                WELCOME_MESSAGES[f"welcome-{chat_id}"] = await client.send_photo(
                     member.chat.id,
                     photo=welcomeimg,
                     caption=f"**𝗛𝗲𝘆❗️{mention}, 𝗪𝗲𝗹𝗰𝗼𝗺𝗲 𝗧𝗼 {member.chat.title} 𝗚𝗿𝗼𝘂𝗽.**\n\n**𝗜𝗗 : {user_id}**\n**𝗗𝗔𝗧𝗘 𝗝𝗢𝗜𝗡𝗘𝗗 : {joined_date}**",
