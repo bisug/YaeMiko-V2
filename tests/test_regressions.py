@@ -509,6 +509,45 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("aiohttp.ClientTimeout(total=20)", source)
         self.assertIn("return await self.create_quotly(self._API)", source)
 
+    def test_pyrate_limiter_v4_uses_nonblocking_api(self):
+        tree = ast.parse(
+            (ROOT / "Mikobot/plugins/cust_filters.py").read_text(encoding="utf-8")
+        )
+        class_node = next(
+            node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == "AntiSpam"
+        )
+        module = ast.fix_missing_locations(ast.Module(body=[class_node], type_ignores=[]))
+
+        calls = []
+
+        class Duration:
+            SECOND = 1
+            MINUTE = 60
+            HOUR = 3600
+            DAY = 86400
+
+        class Limiter:
+            def __init__(self, bucket):
+                self.bucket = bucket
+
+            def try_acquire(self, user, **kwargs):
+                calls.append((user, kwargs))
+                return False
+
+        namespace = {
+            "DEV_USERS": [],
+            "DRAGONS": [],
+            "Duration": Duration,
+            "Rate": lambda limit, interval: (limit, interval),
+            "InMemoryBucket": lambda rates: rates,
+            "Limiter": Limiter,
+        }
+        exec(compile(module, "cust_filters.py", "exec"), namespace)
+        anti_spam = namespace["AntiSpam"]()
+
+        self.assertTrue(anti_spam.check_user(123))
+        self.assertEqual(calls, [(123, {"blocking": False})])
+
     def test_async_mongodb_uses_one_client_and_explicit_close(self):
         client_paths = [
             path

@@ -3,7 +3,7 @@ import random
 import re
 from html import escape
 
-from pyrate_limiter import BucketFullException, Duration, InMemoryBucket, Limiter, Rate
+from pyrate_limiter import Duration, InMemoryBucket, Limiter, Rate
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Update
 from telegram.constants import ChatMemberStatus, MessageLimit, ParseMode
 from telegram.error import BadRequest
@@ -54,8 +54,7 @@ class AntiSpam:
     def __init__(self):
         self.whitelist = (DEV_USERS or []) + (DRAGONS or [])
         # Values are HIGHLY experimental, its recommended you pay attention to our commits as we will be adjusting the values over time with what suits best.
-        Duration.CUSTOM = 15  # Custom duration, 15 seconds
-        self.sec_limit = Rate(6, Duration.CUSTOM)  # 6 / Per 15 Seconds
+        self.sec_limit = Rate(6, Duration.SECOND * 15)  # 6 / Per 15 Seconds
         self.min_limit = Rate(20, Duration.MINUTE)  # 20 / Per minute
         self.hour_limit = Rate(100, Duration.HOUR)  # 100 / Per hour
         self.daily_limit = Rate(1000, Duration.DAY)  # 1000 / Per day
@@ -71,11 +70,7 @@ class AntiSpam:
         """
         if user in self.whitelist:
             return False
-        try:
-            self.limiter.try_acquire(user)
-            return False
-        except BucketFullException:
-            return True
+        return not self.limiter.try_acquire(user, blocking=False)
 
 
 MessageHandlerChecker = AntiSpam()
