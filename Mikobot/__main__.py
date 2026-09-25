@@ -928,13 +928,13 @@ def main():
 if __name__ == "__main__":
     try:
         LOGGER.info("Successfully loaded modules: " + str(ALL_MODULES))
-        loop.run_until_complete(app.start())
+        app.start()
         main()
     except KeyboardInterrupt:
         pass
     except Exception:
-        err = traceback.format_exc()
-        LOGGER.info(err)
+        LOGGER.exception("Fatal error while starting the bot")
+        raise
     finally:
         try:
             from Mikobot.plugins.anime import _close_db
@@ -943,7 +943,7 @@ if __name__ == "__main__":
         except Exception:
             LOGGER.exception("Failed to close anime database client")
         try:
-            loop.run_until_complete(app.stop())
+            app.stop()
         except Exception:
             LOGGER.exception("Failed to stop Kurigram client")
         try:

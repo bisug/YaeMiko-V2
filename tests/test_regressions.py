@@ -134,6 +134,16 @@ class EnvironmentTests(unittest.TestCase):
         self.assertIn(("pyrogram.enums", "MessageEntityType"), imports)
         self.assertNotIn("MessageEntityPhone", source)
 
+    def test_kurigram_lifecycle_uses_sync_wrappers(self):
+        source = (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8")
+        self.assertIn("        app.start()", source)
+        self.assertIn("            app.stop()", source)
+        self.assertNotIn("run_until_complete(app.start())", source)
+        self.assertNotIn("run_until_complete(app.stop())", source)
+
+
+        self.assertNotIn("MessageEntityPhone", source)
+
 
     def test_boolean_values_are_explicit(self):
         env_bool = load_function(
