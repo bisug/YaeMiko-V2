@@ -366,8 +366,6 @@ Actions are available with connected groups:
 
 
 async def help_connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.args
-
     if update.effective_message.chat.type != "private":
         await send_message(
             update.effective_message, "PM me with that command to get help."

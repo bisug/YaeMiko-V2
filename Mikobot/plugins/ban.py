@@ -434,7 +434,6 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                 return log_message
 
         except BadRequest as excp:
-            raise
             if excp.message != "User not found":
                 raise
             await message.reply_text("I can't seem to find this user.")

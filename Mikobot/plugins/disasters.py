@@ -15,7 +15,13 @@ from Mikobot.plugins.helper_funcs.chat_status import dev_plus, sudo_plus
 from Mikobot.plugins.helper_funcs.extraction import extract_user
 from Mikobot.plugins.log_channel import gloggable
 
-ELEVATED_USERS_FILE = os.path.join(os.getcwd(), "Mikobot/elevated_users.json")
+# Resolve relative to this file, not the process working directory, so the bot
+# finds the same file regardless of where it was launched from.
+ELEVATED_USERS_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "Mikobot",
+    "elevated_users.json",
+)
 
 DISASTER_LEVELS = {
     "Dragon": "sudos",
@@ -53,6 +59,10 @@ def update_elevated_users(data):
 
 
 def apply_elevated_users(data):
+    # The tier names are rebound to lists at the end of Mikobot/__init__.py, so the
+    # slice assignment mutates the existing list in place. That matters because other
+    # modules bind them with `from Mikobot import DRAGONS`; rebinding would leave
+    # those copies stale.
     Mikobot.DRAGONS[:] = sorted(
         set(Mikobot.DEV_USERS)
         | set(Mikobot.CONFIG_SUDOS)

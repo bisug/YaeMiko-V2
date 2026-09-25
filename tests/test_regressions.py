@@ -1394,5 +1394,122 @@ class RepositoryGateTests(unittest.TestCase):
         self.assertEqual(self._errors("validate_docs"), [])
 
 
+class ElevatedUserBaselineTests(unittest.TestCase):
+    """CONFIG_* baselines must be captured after elevated users and the owner are
+    merged, otherwise apply_elevated_users rebuilds the runtime lists without
+    them and promoted users silently lose their tier on the next promotion."""
+
+    def _resolve(self, body):
+        """Execute the SETS block of Mikobot/__init__.py with a fake _load_elevated_users."""
+        source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
+        start = source.index("ELEVATED_USERS = _load_elevated_users()")
+        end = source.index("# <============================================== INITIALIZE APPLICATION")
+        block = source[start:end]
+        namespace = {
+            "OWNER_ID": 5,
+            "DRAGONS": {10},
+            "DEV_USERS": set(),
+            "WOLVES": set(),
+            "DEMONS": set(),
+            "TIGERS": set(),
+            "_load_elevated_users": lambda: {
+                "sudos": [99],
+                "supports": [98],
+                "whitelists": [97],
+                "tigers": [96],
+            },
+        }
+        exec(compile(block, "__init_sets__.py", "exec"), namespace)
+        return namespace
+
+    def test_baselines_include_elevated_users_and_owner(self):
+        namespace = self._resolve(None)
+        self.assertEqual(namespace["CONFIG_SUDOS"], {5, 10, 99})
+        self.assertEqual(namespace["CONFIG_DEMONS"], {98})
+        self.assertEqual(namespace["CONFIG_WOLVES"], {97})
+        self.assertEqual(namespace["CONFIG_TIGERS"], {96})
+
+    def test_promotion_preserves_owner_and_promoted_users(self):
+        namespace = self._resolve(None)
+        mikobot = SimpleNamespace(
+            DEV_USERS=list(namespace["DEV_USERS"]),
+            CONFIG_SUDOS=namespace["CONFIG_SUDOS"],
+            CONFIG_DEMONS=namespace["CONFIG_DEMONS"],
+            CONFIG_WOLVES=namespace["CONFIG_WOLVES"],
+            CONFIG_TIGERS=namespace["CONFIG_TIGERS"],
+            # The end of __init__ rebinds these tiers to lists.
+            DRAGONS=list(namespace["DRAGONS"]),
+            DEMONS=list(namespace["DEMONS"]),
+            WOLVES=list(namespace["WOLVES"]),
+            TIGERS=list(namespace["TIGERS"]),
+            SUPPORT_STAFF=[5],
+            OWNER_ID=5,
+        )
+        apply_users = load_function(
+            ROOT / "Mikobot/plugins/disasters.py",
+            "apply_elevated_users",
+            {"Mikobot": mikobot},
+        )
+        apply_users(
+            {
+                "sudos": [99],
+                "supports": [98],
+                "whitelists": [97],
+                "tigers": [96],
+            }
+        )
+        # The owner and the previously promoted sudo must survive the rebuild.
+        self.assertIn(5, mikobot.DRAGONS)
+        self.assertIn(99, mikobot.DRAGONS)
+        self.assertIn(5, mikobot.SUPPORT_STAFF)
+
+
+class ChatStatusPrecedenceTests(unittest.TestCase):
+    """`else False or user.id in DRAGONS` parses as `else (False or ... in DRAGONS)`.
+    An admin lacking the specific permission short-circuits to False and a sudo
+    user is wrongly denied, so the DRAGONS check has to sit outside the ternary."""
+
+    def test_sudo_user_is_allowed_even_without_the_permission(self):
+        source = (ROOT / "Mikobot/plugins/helper_funcs/chat_status.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("else False or user.id in DRAGONS", source)
+        self.assertIn("or user.id in DRAGONS", source)
+
+
+class EnvIntegerParsingTests(unittest.TestCase):
+    """int(None) raises TypeError, which an `except ValueError` never catches, so a
+    missing variable used to escape as a raw traceback instead of a clear message."""
+
+    def _env_int(self, environ, name, default=None):
+        source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        function = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == "env_int"
+        )
+        module = ast.Module(body=[function], type_ignores=[])
+        ast.fix_missing_locations(module)
+        namespace = {"os": SimpleNamespace(environ=environ)}
+        exec(compile(module, "env_int.py", "exec"), namespace)
+        return namespace["env_int"](name, default)
+
+    def test_missing_value_reports_a_clear_error(self):
+        with self.assertRaises(SystemExit) as caught:
+            self._env_int({}, "OWNER_ID")
+        self.assertIn("OWNER_ID", str(caught.exception))
+
+    def test_non_numeric_value_reports_a_clear_error(self):
+        with self.assertRaises(SystemExit):
+            self._env_int({"OWNER_ID": "not-a-number"}, "OWNER_ID")
+
+    def test_valid_value_is_parsed(self):
+        self.assertEqual(self._env_int({"OWNER_ID": "42"}, "OWNER_ID"), 42)
+
+    def test_default_is_used_when_absent(self):
+        self.assertEqual(self._env_int({}, "SUPPORT_ID", -100), -100)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -105,12 +105,12 @@ def check_admin(
                             f"I don't have permission to {no_permission}."
                         )
                 if is_user:
-                    if isinstance(user_member, ChatMemberOwner):
+                    if isinstance(user_member, ChatMemberOwner) or user.id in DRAGONS:
                         return await func(update, context, *args, **kwargs)
                     elif (
                         getattr(user_member, permission)
                         if isinstance(user_member, ChatMemberAdministrator)
-                        else False or user.id in DRAGONS
+                        else False
                     ):
                         return await func(update, context, *args, **kwargs)
                     elif no_reply:
@@ -133,12 +133,16 @@ def check_admin(
                             f"I don't have permission to {no_permission}."
                         )
 
-                    if isinstance(user_member, ChatMemberOwner) or user.id in DEV_USERS:
+                    if (
+                        isinstance(user_member, ChatMemberOwner)
+                        or user.id in DEV_USERS
+                        or user.id in DRAGONS
+                    ):
                         pass
                     elif (
                         getattr(user_member, permission)
                         if isinstance(user_member, ChatMemberAdministrator)
-                        else False or user.id in DRAGONS
+                        else False
                     ):
                         pass
                     elif no_reply:

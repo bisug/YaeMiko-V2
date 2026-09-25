@@ -56,6 +56,26 @@ def env_bool(name, default=False):
     raise ValueError(f"{name} must be a boolean")
 
 
+def env_int(name, default=None, message=None):
+    """Read an integer from the environment with a message a user can act on.
+
+    os.environ.get(name, None) returns None when unset, and int(None) raises
+    TypeError, which an `except ValueError` around it would never catch. Catch
+    both so a missing or malformed variable reports the same helpful error.
+    """
+    raw = os.environ.get(name)
+    if raw is None or not str(raw).strip():
+        if default is not None:
+            return default
+        raise SystemExit(message or f"Your {name} environment variable is not set.")
+    try:
+        return int(str(raw).strip())
+    except ValueError:
+        raise SystemExit(
+            message or f"Your {name} environment variable is not a valid integer."
+        )
+
+
 _load_local_env()
 
 
@@ -145,7 +165,7 @@ ENV = env_bool("ENV")
 
 if ENV:
     # Read configuration from environment variables
-    API_ID = int(os.environ.get("API_ID", None))
+    API_ID = env_int("API_ID", message="Your API_ID env variable is not a valid integer.")
     API_HASH = os.environ.get("API_HASH", None)
     ALLOW_CHATS = env_bool("ALLOW_CHATS")
     ALLOW_EXCL = env_bool("ALLOW_EXCL")
@@ -161,7 +181,7 @@ if ENV:
     NO_LOAD = os.environ.get("NO_LOAD", "").split()
     STRICT_GBAN = env_bool("STRICT_GBAN", True)
     ACTIVITY_LOG = env_bool("ACTIVITY_LOG", False)
-    SUPPORT_ID = int(os.environ.get("SUPPORT_ID", "-100"))  # Support group id
+    SUPPORT_ID = env_int("SUPPORT_ID", -100)  # Support group id
     SUPPORT_CHAT = os.environ.get("SUPPORT_CHAT", "Ecstasy_Realm")
     TEMP_DOWNLOAD_DIRECTORY = os.environ.get("TEMP_DOWNLOAD_DIRECTORY", "./")
     TOKEN = os.environ.get("TOKEN", None)
@@ -169,10 +189,9 @@ if ENV:
     GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
     # Read and validate integer variables
-    try:
-        OWNER_ID = int(os.environ.get("OWNER_ID", None))
-    except ValueError:
-        raise Exception("Your OWNER_ID env variable is not a valid integer.")
+    OWNER_ID = env_int(
+        "OWNER_ID", message="Your OWNER_ID env variable is not a valid integer."
+    )
 
     try:
         BL_CHATS = set(int(x) for x in os.environ.get("BL_CHATS", "").split())
@@ -265,10 +284,6 @@ if GEMINI_MODEL == "gemini-2.5-flash-lite":
     GEMINI_MODEL = "gemini-3.5-flash-lite"
 
 # <================================================= SETS =====================================================>
-CONFIG_SUDOS = set(DRAGONS)
-CONFIG_DEMONS = set(DEMONS)
-CONFIG_WOLVES = set(WOLVES)
-CONFIG_TIGERS = set(TIGERS)
 ELEVATED_USERS = _load_elevated_users()
 DRAGONS.update(int(user_id) for user_id in ELEVATED_USERS.get("sudos", []))
 DEMONS.update(int(user_id) for user_id in ELEVATED_USERS.get("supports", []))
@@ -277,6 +292,15 @@ TIGERS.update(int(user_id) for user_id in ELEVATED_USERS.get("tigers", []))
 # Add OWNER_ID to the DRAGONS and DEV_USERS sets
 DRAGONS.add(OWNER_ID)
 DEV_USERS.add(OWNER_ID)
+
+# Baseline copies of the resolved tiers. These must be taken after the elevated
+# users are merged and the owner is added, otherwise apply_elevated_users rebuilds
+# the runtime lists from a baseline that is missing the owner and every promoted
+# user, silently dropping them on the next promotion.
+CONFIG_SUDOS = set(DRAGONS)
+CONFIG_DEMONS = set(DEMONS)
+CONFIG_WOLVES = set(WOLVES)
+CONFIG_TIGERS = set(TIGERS)
 # <=======================================================================================================>
 
 # <============================================== INITIALIZE APPLICATION =========================================================>

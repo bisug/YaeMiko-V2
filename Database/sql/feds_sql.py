@@ -665,17 +665,7 @@ def get_all_feds_users_global():
 
 
 def search_fed_by_id(fed_id):
-    get = FEDERATION_BYFEDID.get(fed_id)
-    if get is None:
-        return False
-    else:
-        return get
-    result = False
-    for Q in curr:
-        if Q.fed_id == fed_id:
-            result = Q.fed_id
-
-    return result
+    return FEDERATION_BYFEDID.get(fed_id) or False
 
 
 def user_feds_report(user_id: int) -> bool:
