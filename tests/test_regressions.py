@@ -589,7 +589,11 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
 
     def test_quotely_has_timeout_and_valid_fallback(self):
         source = (ROOT / "Mikobot/plugins/quotely.py").read_text(encoding="utf-8")
-        self.assertIn("aiohttp.ClientTimeout(total=20)", source)
+        self.assertIn("from Mikobot.state import state", source)
+        self.assertIn("state.post", source)
+        self.assertIn("state.get", source)
+        self.assertIn("httpx.HTTPError", source)
+        self.assertNotIn("aiohttp", source)
         self.assertIn("suffix=\".png\"", source)
         self.assertIn("image.convert(\"RGB\").save(file, format=\"PNG\")", source)
         self.assertNotIn("suffix=\".webp\"", source)

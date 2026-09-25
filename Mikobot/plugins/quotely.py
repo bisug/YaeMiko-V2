@@ -5,8 +5,7 @@ import os
 import tempfile
 from random import choice
 
-import aiohttp
-from aiohttp import ContentTypeError
+import httpx
 from PIL import Image
 from pyrogram.enums import MessageEntityType
 
@@ -18,6 +17,7 @@ def get_display_name(user):
 
 from Mikobot import DEV_USERS, app
 from Mikobot.events import register
+from Mikobot.state import state
 
 # <=======================================================================================================>
 
@@ -186,7 +186,7 @@ class Quotly:
         }
         try:
             request = await async_searcher(url, post=True, json=content, re_json=True)
-        except ContentTypeError as er:
+        except ValueError as er:
             if url != self._API:
                 return await self.create_quotly(self._API)
             raise er
@@ -218,18 +218,18 @@ async def async_searcher(
     *args,
     **kwargs
 ):
-    async with aiohttp.ClientSession(
-        headers=headers,
-        timeout=aiohttp.ClientTimeout(total=20),
-    ) as client:
-        request = client.post(url, json=json, data=data, ssl=ssl, *args, **kwargs) if post else client.get(url, params=params, ssl=ssl, *args, **kwargs)
-        response = await request
-        response.raise_for_status()
-        if re_json:
-            return await response.json()
-        if re_content:
-            return await response.read()
-        return await response.text()
+    request = (
+        state.post(url, headers=headers, params=params, json=json, data=data, **kwargs)
+        if post
+        else state.get(url, headers=headers, params=params, **kwargs)
+    )
+    response = await request
+    response.raise_for_status()
+    if re_json:
+        return response.json()
+    if re_content:
+        return response.content
+    return response.text
 
 
 @register(pattern="^/q(?: |$)(.*)")
@@ -288,7 +288,7 @@ async def quott_(event):
     try:
         file = await quotly.create_quotly(reply_, bg=match, reply=replied_to, sender=user)
         message = await event.reply_photo(file)
-    except (aiohttp.ClientError, OSError, KeyError, TypeError, ValueError) as error:
+    except (httpx.HTTPError, OSError, KeyError, TypeError, ValueError) as error:
         await msg.edit(f"Quote generation failed: {error}")
         return
     finally:
