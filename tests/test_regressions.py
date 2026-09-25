@@ -656,7 +656,14 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         main_source = (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8")
         self.assertIn("close_db()", main_source)
 
-    def test_ai_failures_are_logged_and_obsolete_help_is_removed(self):
+    def test_sqlalchemy_uses_psycopg3_driver(self):
+        source = (ROOT / "Database/sql/__init__.py").read_text(encoding="utf-8")
+        self.assertIn('DB_URI.startswith(("postgres://", "postgresql://"))', source)
+        self.assertIn('"postgresql+psycopg://"', source)
+        requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+        self.assertIn("psycopg[binary,pool]==3.3.6", requirements)
+        self.assertNotIn("psycopg2-binary", requirements)
+
         ai_source = (ROOT / "Mikobot/plugins/ai.py").read_text(encoding="utf-8")
         self.assertIn('LOGGER.exception("Gemini request failed")', ai_source)
         self.assertIn("AutomaticFunctionCallingConfig", ai_source)

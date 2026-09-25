@@ -4,8 +4,10 @@ from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
 from Mikobot import DB_URI
 from Mikobot import LOGGER as log
 
-if DB_URI and DB_URI.startswith("postgres://"):
-    DB_URI = DB_URI.replace("postgres://", "postgresql://", 1)
+if DB_URI and DB_URI.startswith(("postgres://", "postgresql://")):
+    DB_URI = DB_URI.replace("postgres://", "postgresql+psycopg://", 1).replace(
+        "postgresql://", "postgresql+psycopg://", 1
+    )
 
 
 ENGINE = None
