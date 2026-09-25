@@ -94,15 +94,17 @@ jobs:
           file: Dockerfile
           push: false
           tags: yaemiko:ci
+          # Buildx uses the docker-container driver, so without load the image
+          # stays inside the builder and the inspect step below cannot see it.
+          load: true
 
-      - name: Verify the image entry point
+      - name: Verify the image CMD
         run: |
           image_id=$(docker image inspect yaemiko:ci --format '{{.Id}}')
-          entrypoint=$(docker image inspect yaemiko:ci \
-            --format '{{json .Config.Cmd}}')
+          cmd=$(docker image inspect yaemiko:ci --format '{{json .Config.Cmd}}')
           echo "image: $image_id"
-          echo "cmd: $entrypoint"
-          if [ "$entrypoint" != '["python","-m","Mikobot"]' ]; then
-            echo "FAIL the image CMD must be python -m Mikobot"
+          echo "cmd: $cmd"
+          if [ "$cmd" != '["python","-m","Mikobot"]' ]; then
+            echo "FAIL the image CMD must be python -m Mikobot, found $cmd"
             exit 1
           fi

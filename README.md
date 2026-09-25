@@ -514,8 +514,8 @@ python -m unittest discover -s tests -v      # regression suite
 git diff --check                             # no whitespace damage
 ```
 
-The `docker` job then builds the worker image with Buildx and asserts its `CMD` is
-`python -m Mikobot`.
+The `docker` job then builds the worker image with Buildx, loads it into the local image
+store, and asserts its `CMD` is `python -m Mikobot`.
 
 The suite in [`tests/test_regressions.py`](tests/test_regressions.py) mostly uses AST extraction
 rather than importing the bot, so it stays fast. One test genuinely needs `python-telegram-bot`
