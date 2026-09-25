@@ -13,6 +13,10 @@ GEMINI.md
 *.prompt.md
 *.prompt.txt
 
+# Persistence
+ptb_persistence.pickle
+ptb_persistence.pickle.*
+
 # Session files , logs
 Mikobot/*.session
 Mikobot/*.session-journal

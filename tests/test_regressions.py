@@ -122,6 +122,26 @@ class EnvironmentTests(unittest.TestCase):
             },
         )
 
+    def test_ptb_persistence_is_configured_for_context_data(self):
+        source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        imports = {
+            (node.module, alias.name)
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom) and node.module
+            for alias in node.names
+        }
+        self.assertIn(("telegram.ext", "PicklePersistence"), imports)
+        self.assertIn(("telegram.ext", "PersistenceInput"), imports)
+        self.assertIn("PicklePersistence(", source)
+        self.assertIn(".persistence(persistence)", source)
+        self.assertIn("chat_data=True", source)
+        self.assertIn("user_data=True", source)
+        self.assertIn("bot_data=False", source)
+        self.assertIn("callback_data=False", source)
+        gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+        self.assertIn("ptb_persistence.pickle", gitignore)
+
     def test_start_escapes_markdown_with_imported_helper(self):
         tree = ast.parse((ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8"))
         imports = {

@@ -22,7 +22,7 @@ import telegram.ext as tg
 from pyrogram import Client, errors
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
-from telegram.ext import AIORateLimiter, Application
+from telegram.ext import AIORateLimiter, Application, PersistenceInput, PicklePersistence
 
 # <=======================================================================================================>
 
@@ -278,11 +278,21 @@ DEV_USERS.add(OWNER_ID)
 
 # <============================================== INITIALIZE APPLICATION =========================================================>
 # Initialize the application builder and add a handler
+persistence = PicklePersistence(
+    filepath=os.path.join(os.path.dirname(__file__), "..", "ptb_persistence.pickle"),
+    store_data=PersistenceInput(
+        bot_data=False,
+        chat_data=True,
+        user_data=True,
+        callback_data=False,
+    ),
+)
 dispatcher = (
     Application.builder()
     .token(TOKEN)
     .concurrent_updates(64)
     .rate_limiter(AIORateLimiter())
+    .persistence(persistence)
     .build()
 )
 function = dispatcher.add_handler
