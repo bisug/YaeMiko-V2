@@ -1,5 +1,6 @@
 # <============================================== IMPORTS =========================================================>
 import html
+from uuid import uuid4
 
 from telegram import (
     ChatMemberAdministrator,
@@ -346,6 +347,12 @@ async def set_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id, title = await extract_user_and_text(message, context, args)
 
     if message.from_user.id == 1087968824:
+        action_token = uuid4().hex[:8]
+        context.chat_data[f"anon_admin_{action_token}"] = {
+            "user_id": user_id,
+            "title": title,
+        }
+
         await message.reply_text(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
@@ -353,7 +360,7 @@ async def set_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     [
                         InlineKeyboardButton(
                             text="Click to prove admin.",
-                            callback_data=f"admin_=title={user_id}={title}",
+                            callback_data=f"admin_=title={action_token}",
                         ),
                     ],
                 ],
@@ -702,9 +709,42 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     admin_user = query.from_user
 
-    splitter = query.data.replace("admin_", "").split("=")
+    parts = query.data.split("=")
+    action = parts[1] if len(parts) > 1 else ""
+    expected_parts = {"promote": 3, "demote": 3, "title": 3, "pin": 4, "unpin": 2, "unpinall": 2}
+    if (
+        len(parts) < 2
+        or parts[0] != "admin_"
+        or action not in expected_parts
+        or len(parts) != expected_parts[action]
+    ):
+        await query.answer("Invalid callback data.", show_alert=True)
+        return
 
-    if splitter[1] == "promote":
+    payload = parts[2] if len(parts) > 2 else ""
+
+    if action in {"promote", "demote"}:
+        if not payload.isdigit():
+            await query.answer("Invalid callback data.", show_alert=True)
+            return
+        payload = int(payload)
+    elif action == "pin" and parts[3] not in {"0", "1"}:
+        await query.answer("Invalid callback data.", show_alert=True)
+        return
+
+    if action == "title":
+        pending_token = payload
+        pending = context.chat_data.get(f"anon_admin_{pending_token}")
+        if not pending:
+            await query.answer("This title request has expired.", show_alert=True)
+            return
+        payload = pending["user_id"]
+        pending_title = pending["title"]
+    else:
+        pending_token = None
+        pending_title = None
+
+    if action == "promote":
         promoter = await chat.get_member(admin_user.id)
 
         if (
@@ -720,14 +760,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        try:
-            user_id = int(splitter[2])
-        except ValueError:
-            user_id = splitter[2]
-            await message.edit_text(
-                "You don't seem to be referring to a user or the ID specified is incorrect..."
-            )
-            return
+        user_id = payload
 
         try:
             user_member = await chat.get_member(user_id)
@@ -784,7 +817,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return log_message
 
-    elif splitter[1] == "demote":
+    elif action == "demote":
         demoter = await chat.get_member(admin_user.id)
 
         if not (
@@ -797,14 +830,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        try:
-            user_id = int(splitter[2])
-        except:
-            user_id = splitter[2]
-            await message.edit_text(
-                "You don't seem to be referring to a user or the ID specified is incorrect.."
-            )
-            return
+        user_id = payload
 
         try:
             user_member = await chat.get_member(user_id)
@@ -864,8 +890,9 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-    elif splitter[1] == "title":
-        title = splitter[3]
+    elif action == "title":
+        context.chat_data.pop(f"anon_admin_{pending_token}", None)
+        title = pending_title
 
         admin_member = await chat.get_member(admin_user.id)
 
@@ -883,13 +910,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.answer("You don't have the necessary rights to do that!")
             return
 
-        try:
-            user_id = int(splitter[2])
-        except:
-            await message.edit_text(
-                "You don't seem to be referring to a user or the ID specified is incorrect...",
-            )
-            return
+        user_id = payload
 
         try:
             user_member = await chat.get_member(user_id)
@@ -936,8 +957,9 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"to <code>{html.escape(title[:16])}</code>!",
             parse_mode=ParseMode.HTML,
         )
+        await query.answer("Done")
 
-    elif splitter[1] == "pin":
+    elif action == "pin":
         admin_member = await chat.get_member(admin_user.id)
 
         if (
@@ -957,11 +979,11 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         try:
-            message_id = int(splitter[2])
+            message_id = int(payload)
         except:
             return
 
-        is_silent = splitter[3] == "1"
+        is_silent = parts[3] == "1"
         is_group = chat.type != "private" and chat.type != "channel"
 
         if is_group:
@@ -978,6 +1000,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     raise
 
             await message.edit_text("Done Pinned.")
+            await query.answer("Done")
 
             log_message = (
                 f"<b>{html.escape(chat.title)}</b>\n"
@@ -987,7 +1010,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             return log_message
 
-    elif splitter[1] == "unpin":
+    elif action == "unpin":
         admin_member = await chat.get_member(admin_user.id)
 
         if (
@@ -1023,10 +1046,11 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"#UNPINNED\n"
             f"<b>Admin:</b> {mention_html(admin_user.id, html.escape(admin_user.first_name))}"
         )
+        await query.answer("Done")
 
         return log_message
 
-    elif splitter[1] == "unpinall":
+    elif action == "unpinall":
         admin_member = await chat.get_member(admin_user.id)
 
         if (
@@ -1050,6 +1074,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 raise
 
         await message.edit_text("Done unpinning all messages.")
+        await query.answer("Done")
         log_message = (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#UNPINNED-ALL\n"
@@ -1108,7 +1133,7 @@ ADMIN_REFRESH_HANDLER = CommandHandler(
     "admincache", refresh_admin, filters=filters.ChatType.GROUPS, block=False
 )
 ADMIN_CALLBACK_HANDLER = CallbackQueryHandler(
-    admin_callback, block=False, pattern=r"admin_"
+    admin_callback, block=False, pattern=r"^admin_=(?:promote|demote|title|pin|unpin|unpinall)(?:=.*)?$"
 )
 
 function(ADMINLIST_HANDLER)

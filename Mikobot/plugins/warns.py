@@ -145,34 +145,42 @@ async def warn(
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     query: Optional[CallbackQuery] = update.callback_query
     user: Optional[User] = update.effective_user
-    match = re.match(r"rm_warn\((.+?)\)", query.data)
-    if match:
-        user_id = match.group(1)
-        chat: Optional[Chat] = update.effective_chat
-        chat_member = await chat.get_member(user.id)
-        if isinstance(chat_member, (ChatMemberAdministrator, ChatMemberOwner)):
-            pass
-        else:
-            await query.answer("You need to be admin to do this!")
-            return
-        res = sql.remove_warn(user_id, chat.id)
-        if res:
-            await update.effective_message.edit_text(
-                "Warn removed by {}.".format(mention_html(user.id, user.first_name)),
-                parse_mode=ParseMode.HTML,
-            )
-            user_member = await chat.get_member(user_id)
-            return (
-                f"<b>{html.escape(chat.title)}:</b>\n"
-                f"#UNWARN\n"
-                f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
-                f"<b>User:</b> {mention_html(user_member.user.id, user_member.user.first_name)}"
-            )
-        else:
-            await update.effective_message.edit_text(
-                "User already has no warns.",
-                parse_mode=ParseMode.HTML,
-            )
+    match = re.fullmatch(r"rm_warn\((-?\d+)\)", query.data)
+    if not match:
+        await query.answer("Invalid callback data.", show_alert=True)
+        return
+    try:
+        user_id = int(match.group(1))
+    except ValueError:
+        await query.answer("Invalid callback data.", show_alert=True)
+        return
+    chat: Optional[Chat] = update.effective_chat
+    chat_member = await chat.get_member(user.id)
+    if isinstance(chat_member, (ChatMemberAdministrator, ChatMemberOwner)):
+        pass
+    else:
+        await query.answer("You need to be admin to do this!")
+        return
+    res = sql.remove_warn(user_id, chat.id)
+    if res:
+        await update.effective_message.edit_text(
+            "Warn removed by {}.".format(mention_html(user.id, user.first_name)),
+            parse_mode=ParseMode.HTML,
+        )
+        user_member = await chat.get_member(user_id)
+        await query.answer("Warn removed.")
+        return (
+            f"<b>{html.escape(chat.title)}:</b>\n"
+            f"#UNWARN\n"
+            f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
+            f"<b>User:</b> {mention_html(user_member.user.id, user_member.user.first_name)}"
+        )
+    else:
+        await update.effective_message.edit_text(
+            "User already has no warns.",
+            parse_mode=ParseMode.HTML,
+        )
+        await query.answer()
 
     return ""
 
@@ -525,7 +533,9 @@ RESET_WARN_HANDLER = CommandHandler(
     filters=filters.ChatType.GROUPS,
     block=False,
 )
-CALLBACK_QUERY_HANDLER = CallbackQueryHandler(button, pattern=r"rm_warn", block=False)
+CALLBACK_QUERY_HANDLER = CallbackQueryHandler(
+    button, pattern=r"^rm_warn\(-?\d+\)$", block=False
+)
 MYWARNS_HANDLER = DisableAbleCommandHandler(
     "warns", warns, filters=filters.ChatType.GROUPS, block=False
 )

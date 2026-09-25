@@ -517,9 +517,18 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.effective_message
     args = context.args
     log_message = ""
-    splitter = query.data.replace("bans_", "").split("=")
+    parts = query.data.removeprefix("bans_").split("=")
+    if len(parts) != 4 or parts[1] not in {"ban", "unban"}:
+        await query.answer("Invalid callback data.", show_alert=True)
+        return log_message
 
+    log_message = ""
     admin_user = query.from_user
+    action = parts[1]
+    pending = context.chat_data.get(f"anon_ban_{parts[3]}")
+    if not pending:
+        await query.answer("This action has expired.", show_alert=True)
+        return log_message
     member = await chat.get_member(admin_user.id)
 
     if (
@@ -538,15 +547,14 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return log_message
 
-    action = splitter[1]
-    pending = context.chat_data.pop(f"anon_ban_{splitter[3]}", {})
-
+    context.chat_data.pop(f"anon_ban_{parts[3]}", None)
     if action == "ban":
         # workaround for checking user admin status
         try:
-            user_id = int(splitter[2])
+            user_id = int(parts[2])
         except ValueError:
-            user_id = splitter[2]
+            await query.answer("Invalid callback data.", show_alert=True)
+            return log_message
         reason = pending.get("reason", "")
         chat_name = pending.get("chat_title")
 
@@ -653,11 +661,12 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return log_message
 
-    elif splitter[1] == "unban":
+    elif action == "unban":
         try:
-            user_id = int(splitter[2])
+            user_id = int(parts[2])
         except ValueError:
-            user_id = splitter[2]
+            await query.answer("Invalid callback data.", show_alert=True)
+            return log_message
         reason = pending.get("reason", "")
 
         if isinstance(user_id, str):
@@ -704,6 +713,7 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if reason:
             log += f"\n<b>Reason:</b> {reason}"
 
+        await query.answer("Done unbanned user.")
         return log
 
 
@@ -734,7 +744,9 @@ KICKME_HANDLER = DisableAbleCommandHandler(
     "kickme", kickme, filters=filters.ChatType.GROUPS, block=False
 )
 BAN_CALLBACK_HANDLER = CallbackQueryHandler(
-    bans_callback, block=False, pattern=r"bans_"
+    bans_callback,
+    block=False,
+    pattern=r"^bans_-?\d+=(?:ban|unban)=-?\d+=[0-9a-f]{8}$",
 )
 
 function(BAN_HANDLER)

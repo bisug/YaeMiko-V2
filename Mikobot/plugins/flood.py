@@ -121,32 +121,37 @@ async def flood_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bot = context.bot
     query = update.callback_query
     user = update.effective_user
-    match = re.match(r"unmute_flooder\((.+?)\)", query.data)
-    if match:
-        user_id = match.group(1)
-        chat = update.effective_chat.id
-        try:
-            await bot.restrict_chat_member(
-                chat,
-                int(user_id),
-                permissions=ChatPermissions(
-                    can_send_messages=True,
-                    can_send_audios=True,
-                    can_send_documents=True,
-                    can_send_photos=True,
-                    can_send_videos=True,
-                    can_send_video_notes=True,
-                    can_send_voice_notes=True,
-                    can_send_other_messages=True,
-                    can_add_web_page_previews=True,
-                ),
-            )
-            await update.effective_message.edit_text(
-                f"Unmuted by {mention_html(user.id, html.escape(user.first_name))}.",
-                parse_mode="HTML",
-            )
-        except:
-            pass
+    match = re.fullmatch(r"unmute_flooder\((-?\d+)\)", query.data)
+    if not match:
+        await query.answer("Invalid callback data.", show_alert=True)
+        return
+    user_id = int(match.group(1))
+    chat = update.effective_chat.id
+    try:
+        await bot.restrict_chat_member(
+            chat,
+            user_id,
+            permissions=ChatPermissions(
+                can_send_messages=True,
+                can_send_audios=True,
+                can_send_documents=True,
+                can_send_photos=True,
+                can_send_videos=True,
+                can_send_video_notes=True,
+                can_send_voice_notes=True,
+                can_send_other_messages=True,
+                can_add_web_page_previews=True,
+            ),
+        )
+        await update.effective_message.edit_text(
+            f"Unmuted by {mention_html(user.id, html.escape(user.first_name))}.",
+            parse_mode="HTML",
+        )
+    except Exception:
+        await query.answer("Unable to unmute this user.", show_alert=True)
+        return
+
+    await query.answer("User unmuted.")
 
 
 @loggable
@@ -445,7 +450,7 @@ SET_FLOOD_MODE_HANDLER = CommandHandler(
     "setfloodmode", set_flood_mode, block=False
 )  # , filters=filters.ChatType.GROUPS)
 FLOOD_QUERY_HANDLER = CallbackQueryHandler(
-    flood_button, pattern=r"unmute_flooder", block=False
+    flood_button, pattern=r"^unmute_flooder\(-?\d+\)$", block=False
 )
 FLOOD_HANDLER = CommandHandler(
     "flood", flood, filters=filters.ChatType.GROUPS, block=False

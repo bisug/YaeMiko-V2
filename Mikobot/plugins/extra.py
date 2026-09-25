@@ -93,9 +93,16 @@ async def close_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     message_id = context.user_data.get("log_message_id")
     if message_id:
-        await context.bot.delete_message(
-            chat_id=query.message.chat_id, message_id=message_id
-        )
+        try:
+            await context.bot.delete_message(
+                chat_id=query.message.chat_id, message_id=message_id
+            )
+            context.user_data.pop("log_message_id", None)
+            await query.answer()
+        except Exception:
+            await query.answer("Unable to close this log.", show_alert=True)
+    else:
+        await query.answer("This log has already been closed.")
 
 
 @app.on_message(filters.command("pyroping"))

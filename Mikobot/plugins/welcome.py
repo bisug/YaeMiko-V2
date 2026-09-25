@@ -1143,9 +1143,16 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     query = update.callback_query
     bot = context.bot
-    match = re.match(r"user_join_\((.+?)\)", query.data)
+    match = re.fullmatch(r"user_join_\((-?\d+)\)", query.data)
     message = update.effective_message
-    join_user = int(match.group(1))
+    if not match:
+        await query.answer("Invalid callback data.", show_alert=True)
+        return
+    try:
+        join_user = int(match.group(1))
+    except ValueError:
+        await query.answer("Invalid callback data.", show_alert=True)
+        return
 
     if join_user == user.id:
         sql.set_human_checks(user.id, chat.id)
@@ -1339,7 +1346,7 @@ CLEAN_WELCOME = CommandHandler(
 WELCOME_HELP = CommandHandler("welcomehelp", welcome_help, block=False)
 WELCOME_MUTE_HELP = CommandHandler("welcomemutehelp", welcome_mute_help, block=False)
 BUTTON_VERIFY_HANDLER = CallbackQueryHandler(
-    user_button, pattern=r"user_join_", block=False
+    user_button, pattern=r"^user_join_\(-?\d+\)$", block=False
 )
 
 function(NEW_MEM_HANDLER)

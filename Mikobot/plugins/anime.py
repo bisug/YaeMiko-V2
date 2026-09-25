@@ -3968,7 +3968,7 @@ async def get_user_back_btn(client: Client, cq: CallbackQuery, cdata: dict):
     except (WebpageMediaEmpty, WebpageCurlFailed):
         await clog("Mikobot", pic, "LINK", msg=cq)
         await cq.edit_message_media(
-            InputMediaPhoto(failed_pic, caption=msg), creply_markup=btns
+            InputMediaPhoto(failed_pic, caption=msg), reply_markup=btns
         )
 
 
@@ -4121,6 +4121,7 @@ async def list_update_anilist_btn(client: Client, cq: CallbackQuery, cdata: dict
             ]
         )
     await cq.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(btns))
+    await cq.answer()
 
 
 @app.on_callback_query(
@@ -4143,6 +4144,7 @@ async def browse_btn(client: Client, cq: CallbackQuery, cdata: dict):
         ]
     ]
     await cq.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(btns))
+    await cq.answer()
 
 
 @app.on_callback_query(filters.regex(pattern=r"(lsas|lsus|dlt)_(.*)"))
@@ -4863,6 +4865,7 @@ async def ns_(client: app, cq: CallbackQuery, cdata: dict):
     msg = await get_scheduled(int(day))
     buttons = get_btns("SCHEDULED", result=[int(day)], user=user)
     await cq.edit_message_text(msg[0], reply_markup=buttons)
+    await cq.answer()
 
 
 @app.on_edited_message(
@@ -4950,6 +4953,7 @@ async def watch_(client: app, cq: CallbackQuery, cdata: dict):
             )
     button.append([InlineKeyboardButton("Back", callback_data=f"wol_{qry}_{user}")])
     await cq.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(button))
+    await cq.answer()
 
 
 @app.on_callback_query(filters.regex(pattern=r"wol_(.*)"))
@@ -4968,6 +4972,7 @@ async def wls(client: app, cq: CallbackQuery, cdata: dict):
             ]
         )
     await cq.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(buttons))
+    await cq.answer()
 
 
 @app.on_edited_message(
@@ -5028,10 +5033,18 @@ example: /fillers Detective Conan"""
 @app.on_callback_query(filters.regex(pattern=r"fill_(.*)"))
 @check_user
 async def filler_btn(client: app, cq: CallbackQuery, cdata: dict):
-    kek, req, user = cdata["data"].split("_")
-    result = await parse_filler((FILLERS.get(req))[0])
+    parts = cdata["data"].split("_")
+    if len(parts) != 3:
+        await cq.answer("Invalid callback data.", show_alert=True)
+        return
+    kek, req, user = parts
+    filler = FILLERS.pop(req, None)
+    if filler is None:
+        await cq.answer("This request has expired.", show_alert=True)
+        return
+    result = await parse_filler(filler[0])
     msg = ""
-    msg += f"**Fillers for anime** `{(FILLERS.get(req))[1]}`"
+    msg += f"**Fillers for anime** `{filler[1]}`"
     msg += "\n\n**Manga Canon episodes:**\n"
     msg += str(result.get("total_ep"))
     msg += "\n\n**Mixed/Canon fillers:**\n"
@@ -5042,7 +5055,7 @@ async def filler_btn(client: app, cq: CallbackQuery, cdata: dict):
         msg += "\n\n**Anime Canon episodes:**\n"
         msg += str(result.get("ac_ep"))
     await cq.edit_message_text(msg)
-
+    await cq.answer()
 
 
 @app.on_message(filters.command("animequotes"))
@@ -5066,6 +5079,7 @@ async def changek_quote(client, callback_query):
         media=InputMediaPhoto(media=random.choice(QUOTES_IMG)),
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+    await callback_query.answer()
 
 
 QUOTES_IMG = [

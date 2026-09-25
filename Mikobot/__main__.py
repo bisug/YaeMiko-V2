@@ -565,6 +565,7 @@ async def repo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def Miko_about_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
     if query.data == "Miko_":
         uptime = get_readable_time((time.time() - StartTime))
         message_text = (

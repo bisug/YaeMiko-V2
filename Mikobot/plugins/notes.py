@@ -389,6 +389,7 @@ async def clearall_btn(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     note = notename.name.lower()
                     sql.rm_note(chat.id, note)
                 await message.edit_text("Deleted all notes.")
+                await query.answer("Deleted all notes.")
             except BadRequest:
                 return
 
@@ -400,6 +401,7 @@ async def clearall_btn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "notes_cancel":
         if member.status == "creator" or query.from_user.id in DRAGONS:
             await message.edit_text("Clearing of all notes has been cancelled.")
+            await query.answer()
             return
         if member.status == "administrator":
             await query.answer("Only owner of the chat can do this.")

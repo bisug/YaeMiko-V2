@@ -34,6 +34,10 @@ async def speedtestxyz(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def speedtestxyz_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
+    if query.data not in {"speedtest_image", "speedtest_text"}:
+        await query.answer("Invalid selection.", show_alert=True)
+        return
+
     if query.from_user.id in DEV_USERS:
         msg = await update.effective_message.edit_text("Running a speedtest....")
         import speedtest
@@ -58,6 +62,7 @@ async def speedtestxyz_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await update.effective_message.edit_text(
                 replymsg, parse_mode=ParseMode.MARKDOWN
             )
+        await query.answer("Speedtest complete.")
     else:
         await query.answer("You are required to join Black Bulls to use this command.")
 

@@ -385,8 +385,10 @@ async def connect_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     parse_mode=ParseMode.MARKDOWN,
                 )
                 sql.add_history_conn(user.id, str(conn_chat.id), chat_name)
+                await query.answer()
             else:
                 await query.message.edit_text("Connection failed!")
+                await query.answer("Connection failed.", show_alert=True)
         else:
             await context.bot.answer_callback_query(
                 query.id,
@@ -399,6 +401,7 @@ async def connect_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             sql.disconnected_chat = await query.message.edit_text(
                 "Disconnected from chat!"
             )
+            await query.answer()
         else:
             await context.bot.answer_callback_query(
                 query.id,
@@ -408,10 +411,14 @@ async def connect_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif clear_match:
         sql.clear_history_conn(query.from_user.id)
         await query.message.edit_text("History connected has been cleared!")
+        await query.answer()
     elif connect_close:
         await query.message.edit_text("Closed. To open again, type /connect")
+        await query.answer()
     else:
-        connect_chat(update, context)
+        await context.bot.answer_callback_query(
+            query.id, "Invalid callback data.", show_alert=True
+        )
 
 
 # <=================================================== HELP ====================================================>
@@ -439,5 +446,11 @@ function(CommandHandler("connection", connection_chat, block=False))
 function(CommandHandler("disconnect", disconnect_chat, block=False))
 function(CommandHandler("allowconnect", allow_connections, block=False))
 function(CommandHandler("helpconnect", help_connect_chat, block=False))
-function(CallbackQueryHandler(connect_button, pattern=r"connect", block=False))
+function(
+    CallbackQueryHandler(
+        connect_button,
+        pattern=r"^(?:connect\(-?\d+\)|connect_(?:disconnect|clear|close))$",
+        block=False,
+    )
+)
 # <================================================ END =======================================================>

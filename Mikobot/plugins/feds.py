@@ -1827,6 +1827,7 @@ async def del_fed_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if query.data == "rmfed_cancel":
         await query.message.edit_text("Federation deletion cancelled")
+        await query.answer()
         return
 
     try:

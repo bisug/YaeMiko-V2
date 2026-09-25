@@ -221,13 +221,13 @@ async def callback_query_handler(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     if not query or not query.data.startswith(f"{CALLBACK_PREFIX}:"):
         return
-    await query.answer()
     try:
         _, pokemon_id, view, page_text = query.data.split(":", 3)
         pokemon = await get_pokemon(int(pokemon_id))
         text, keyboard = await _render(pokemon, view, int(page_text))
         if query.message and hasattr(query.message, "edit_caption"):
             await query.message.edit_caption(text=text, parse_mode=ParseMode.HTML, reply_markup=keyboard)
+        await query.answer()
     except HTTPError:
         await query.answer("PokéAPI is unavailable. Please try again later.", show_alert=True)
     except (ValueError, KeyError, TypeError):

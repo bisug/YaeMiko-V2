@@ -191,6 +191,7 @@ async def unapproveall_btn(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for user_id in users:
                 sql.disapprove(chat.id, user_id)
             await message.edit_text("Successfully Unapproved all user in this Chat.")
+            await query.answer("All users unapproved.")
             return
 
         if member.status == "administrator":
@@ -203,6 +204,7 @@ async def unapproveall_btn(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await message.edit_text(
                 "Removing of all approved users has been cancelled."
             )
+            await query.answer()
             return ""
         if member.status == "administrator":
             await query.answer("Only owner of the chat can do this.")

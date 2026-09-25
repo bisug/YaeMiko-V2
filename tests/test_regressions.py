@@ -815,6 +815,55 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(unban_calls, [])
 
+    async def test_malformed_ptb_callbacks_are_answered_without_crashing(self):
+        async def answer_query(*args, **kwargs):
+            return None
+
+        callbacks = [
+            (
+                "admin_callback",
+                {"Update": object, "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object), "loggable": lambda function: function},
+                "admin_",
+            ),
+            (
+                "bans_callback",
+                {"Update": object, "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object), "loggable": lambda function: function},
+                "bans_",
+            ),
+        ]
+        for name, dependencies, data in callbacks:
+            callback = load_function(ROOT / f"Mikobot/plugins/{'admin' if name == 'admin_callback' else 'ban'}.py", name, dependencies)
+            await callback(
+                SimpleNamespace(
+                    callback_query=SimpleNamespace(
+                        data=data, from_user=SimpleNamespace(id=1), answer=answer_query
+                    ),
+                    effective_chat=None,
+                    effective_message=None,
+                ),
+                SimpleNamespace(args=[], bot=SimpleNamespace(), chat_data={}),
+            )
+
+        user_button = load_function(
+            ROOT / "Mikobot/plugins/welcome.py",
+            "user_button",
+            {
+                "Update": object,
+                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
+                "re": __import__("re"),
+            },
+        )
+        await user_button(
+            SimpleNamespace(
+                callback_query=SimpleNamespace(data="user_join_invalid", answer=answer_query),
+                effective_chat=None,
+                effective_user=SimpleNamespace(id=1),
+                effective_message=None,
+            ),
+            SimpleNamespace(bot=SimpleNamespace()),
+        )
+
+
     async def test_numeric_whispers_compare_the_stored_id(self):
         answers = []
 
@@ -828,6 +877,7 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
                 "Update": object,
                 "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
                 "Whispers": SimpleNamespace(
+                    del_whisper=lambda whisper_id: asyncio.sleep(0),
                     get_whisper=lambda whisper_id: asyncio.sleep(
                         0,
                         {
@@ -892,7 +942,7 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
             source = (ROOT / relative).read_text(encoding="utf-8")
             self.assertNotIn("can_send_media_messages", source, relative)
             self.assertNotIn("can_send_invite_users", source, relative)
-        self.assertIn('is_silent = splitter[3] == "1"', (ROOT / "Mikobot/plugins/admin.py").read_text(encoding="utf-8"))
+        self.assertIn('is_silent = parts[3] == "1"', (ROOT / "Mikobot/plugins/admin.py").read_text(encoding="utf-8"))
         self.assertIn("context.chat_data.pop", (ROOT / "Mikobot/plugins/ban.py").read_text(encoding="utf-8"))
         self.assertIn("Contact me in PM to get your current settings.", (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8"))
 

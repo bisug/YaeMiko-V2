@@ -101,7 +101,8 @@ async def showWhisper(update: Update, context: ContextTypes.DEFAULT_TYPE):
     userType = whisper["usertype"]
     from_user_id = callback_query.from_user.id
 
-    if from_user_id == whisper["user"]:
+    is_sender = from_user_id == whisper["user"]
+    if is_sender:
         await context.bot.answer_callback_query(
             callback_query.id, whisper["message"], show_alert=True
         )
@@ -122,6 +123,10 @@ async def showWhisper(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.answer_callback_query(
             callback_query.id, "Not your Whisper!", show_alert=True
         )
+        return
+
+    if not is_sender:
+        await Whispers.del_whisper(whisperId)
 
 
 # Function to parse user message

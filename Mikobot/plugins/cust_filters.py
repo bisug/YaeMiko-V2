@@ -609,6 +609,7 @@ async def rmall_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             allfilters = sql.get_chat_triggers(chat.id)
             if not allfilters:
                 await msg.edit_text("No filters in this chat, nothing to stop!")
+                await query.answer("There are no filters to remove.")
                 return
 
             count = 0
@@ -621,6 +622,7 @@ async def rmall_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 sql.remove_filter(chat.id, i)
 
             await msg.edit_text(f"Cleaned {count} filters in {chat.title}")
+            await query.answer("All filters removed.")
 
         if member.status == "administrator":
             await query.answer("Only owner of the chat can do this.")
