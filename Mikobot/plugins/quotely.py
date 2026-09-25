@@ -1,5 +1,6 @@
 # <============================================== IMPORTS =========================================================>
 import base64
+import io
 import os
 import tempfile
 from random import choice
@@ -191,9 +192,11 @@ class Quotly:
             raise er
 
         if request.get("ok"):
-            with tempfile.NamedTemporaryFile(suffix=".webp", delete=False) as file:
+            image_data = base64.b64decode(request["result"]["image"])
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as file:
                 file_name = file.name
-                file.write(base64.b64decode(request["result"]["image"]))
+                with Image.open(io.BytesIO(image_data)) as image:
+                    image.convert("RGB").save(file, format="PNG")
             return file_name
         raise Exception(str(request))
 
