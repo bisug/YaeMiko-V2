@@ -132,6 +132,49 @@ class EnvironmentTests(unittest.TestCase):
         }
         self.assertIn(("telegram.helpers", "escape_markdown"), imports)
 
+    def test_ptb_updates_are_processed_concurrently(self):
+        source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
+        self.assertIn(".concurrent_updates(64)", source)
+
+    def test_disabled_antiflood_skips_admin_lookup(self):
+        source = (ROOT / "Mikobot/plugins/flood.py").read_text(encoding="utf-8")
+        early_return = "if sql.get_flood_limit(chat.id) == 0:\n        return \"\""
+        self.assertLess(
+            source.index(early_return),
+            source.index("if await is_user_admin(chat, user.id):"),
+        )
+
+    def test_message_hot_paths_fail_fast(self):
+        afk_source = (ROOT / "Mikobot/plugins/afk.py").read_text(encoding="utf-8")
+        self.assertIn("if not sql.is_afk(user.id):\n        return", afk_source)
+
+        gban_source = (ROOT / "Mikobot/plugins/gban.py").read_text(encoding="utf-8")
+        gban_tree = ast.parse(gban_source)
+        enforce_gban = next(
+            node
+            for node in gban_tree.body
+            if isinstance(node, ast.AsyncFunctionDef) and node.name == "enforce_gban"
+        )
+        gban_body = ast.get_source_segment(gban_source, enforce_gban)
+        self.assertLess(
+            gban_body.index("if not sql.does_chat_gban(chat.id):"),
+            gban_body.index("await chat.get_member(bot.id)"),
+        )
+
+        locks_source = (ROOT / "Mikobot/plugins/locks.py").read_text(encoding="utf-8")
+        locks_tree = ast.parse(locks_source)
+        del_lockables = next(
+            node
+            for node in locks_tree.body
+            if isinstance(node, ast.AsyncFunctionDef) and node.name == "del_lockables"
+        )
+        locks_body = ast.get_source_segment(locks_source, del_lockables)
+        self.assertLess(
+            locks_body.index("locks = sql.get_locks(chat.id)"),
+            locks_body.index("await chat.get_member(context.bot.id)"),
+        )
+        self.assertNotIn("sql.is_locked(chat.id, lockable)", locks_body)
+
     def test_kurigram_handlers_pass_callback_before_filter(self):
         tree = ast.parse((ROOT / "Mikobot/events.py").read_text(encoding="utf-8"))
         calls = {

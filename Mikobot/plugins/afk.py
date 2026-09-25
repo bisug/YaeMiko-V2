@@ -62,11 +62,11 @@ async def no_longer_afk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user:  # ignore channels
         return
 
-    if sql.is_afk(user.id):
-        afk_user = sql.check_afk_status(user.id)
+    if not sql.is_afk(user.id):
+        return
 
-        time = humanize.naturaldelta(datetime.now() - afk_user.time)
-
+    afk_user = sql.check_afk_status(user.id)
+    time = humanize.naturaldelta(datetime.now() - afk_user.time)
     res = sql.rm_afk(user.id)
     if res:
         if message.new_chat_members:  # dont say msg

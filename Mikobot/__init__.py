@@ -278,7 +278,12 @@ DEV_USERS.add(OWNER_ID)
 
 # <============================================== INITIALIZE APPLICATION =========================================================>
 # Initialize the application builder and add a handler
-dispatcher = Application.builder().token(TOKEN).build()
+dispatcher = (
+    Application.builder()
+    .token(TOKEN)
+    .concurrent_updates(64)
+    .build()
+)
 function = dispatcher.add_handler
 # <=======================================================================================================>
 

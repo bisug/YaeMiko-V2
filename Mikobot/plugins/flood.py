@@ -37,6 +37,9 @@ async def check_flood(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user:
         return ""
 
+    if sql.get_flood_limit(chat.id) == 0:
+        return ""
+
     if await is_user_admin(chat, user.id):
         sql.update_flood(chat.id, None)
         return ""

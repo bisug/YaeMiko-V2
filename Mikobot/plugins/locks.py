@@ -19,11 +19,7 @@ from Mikobot import DRAGONS, LOGGER, dispatcher, function
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.disable import DisableAbleCommandHandler
 from Mikobot.plugins.helper_funcs.alternate import send_message, typing_action
-from Mikobot.plugins.helper_funcs.chat_status import (
-    check_admin,
-    is_bot_admin,
-    user_not_admin,
-)
+from Mikobot.plugins.helper_funcs.chat_status import check_admin, is_bot_admin, is_user_admin
 from Mikobot.plugins.log_channel import loggable
 
 ad = AlphabetDetector()
@@ -410,17 +406,28 @@ async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         )
 
 
-@user_not_admin
-@check_admin(permission="can_delete_messages", is_bot=True, no_reply=True)
 async def del_lockables(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat  # type: Optional[Chat]
     message = update.effective_message  # type: Optional[Message]
     user = update.effective_user
+    locks = sql.get_locks(chat.id)
+    if not locks or not any(getattr(locks, lockable, False) for lockable in LOCK_TYPES):
+        return
+    if not user:
+        return
+    try:
+        bot_member = await chat.get_member(context.bot.id)
+    except TelegramError:
+        return
+    if not isinstance(bot_member, ChatMemberAdministrator) or not bot_member.can_delete_messages:
+        return
+    if await is_user_admin(chat, user.id):
+        return
     if is_approved(chat.id, user.id):
         return
     for lockable, filter in LOCK_TYPES.items():
         if lockable == "rtl":
-            if sql.is_locked(chat.id, lockable):
+            if getattr(locks, lockable, False):
                 if message.caption:
                     check = ad.detect_alphabet("{}".format(message.caption))
                     if "ARABIC" in check:
@@ -445,7 +452,7 @@ async def del_lockables(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         break
             continue
         if lockable == "button":
-            if sql.is_locked(chat.id, lockable):
+            if getattr(locks, lockable, False):
                 if message.reply_markup and message.reply_markup.inline_keyboard:
                     try:
                         await message.delete()
@@ -457,7 +464,7 @@ async def del_lockables(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     break
             continue
         if lockable == "inline":
-            if sql.is_locked(chat.id, lockable):
+            if getattr(locks, lockable, False):
                 if message and message.via_bot:
                     try:
                         await message.delete()
@@ -469,7 +476,7 @@ async def del_lockables(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     break
             continue
         if lockable == "forwardchannel":
-            if sql.is_locked(chat.id, lockable):
+            if getattr(locks, lockable, False):
                 if message.forward_from_chat:
                     if message.forward_from_chat.type == "channel":
                         try:
@@ -483,7 +490,7 @@ async def del_lockables(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 continue
             continue
         if lockable == "forwardbot":
-            if sql.is_locked(chat.id, lockable):
+            if getattr(locks, lockable, False):
                 if message.forward_from:
                     if message.forward_from.is_bot:
                         try:
@@ -497,7 +504,7 @@ async def del_lockables(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 continue
             continue
         if lockable == "anonchannel":
-            if sql.is_locked(chat.id, lockable):
+            if getattr(locks, lockable, False):
                 if message.from_user:
                     if message.from_user.id == 136817688:
                         try:
@@ -510,7 +517,7 @@ async def del_lockables(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         break
                 continue
             continue
-        if filter.check_update(update) and sql.is_locked(chat.id, lockable):
+        if filter.check_update(update) and getattr(locks, lockable, False):
             if lockable == "bots":
                 new_members = update.effective_message.new_chat_members
                 for new_mem in new_members:

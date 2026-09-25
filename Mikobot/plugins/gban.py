@@ -403,34 +403,31 @@ async def check_and_ban(update, user_id, should_message=True):
 async def enforce_gban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Not using @restrict handler to avoid spamming - just ignore if cant gban.
     bot = context.bot
+    chat = update.effective_chat
+    if not sql.does_chat_gban(chat.id):
+        return
     try:
-        get_member = await update.effective_chat.get_member(
-            bot.id,
-        )
-        if isinstance(get_member, ChatMemberAdministrator):
-            restrict_permission = get_member.can_restrict_members
-        else:
-            return
+        get_member = await chat.get_member(bot.id)
     except Forbidden:
         return
-    if sql.does_chat_gban(update.effective_chat.id) and restrict_permission:
-        user = update.effective_user
-        chat = update.effective_chat
-        msg = update.effective_message
+    if not isinstance(get_member, ChatMemberAdministrator) or not get_member.can_restrict_members:
+        return
 
+    user = update.effective_user
+    msg = update.effective_message
+    if user and not await is_user_admin(chat, user.id):
+        await check_and_ban(update, user.id)
+        return
+
+    if msg.new_chat_members:
+        new_members = msg.new_chat_members
+        for mem in new_members:
+            await check_and_ban(update, mem.id)
+
+    if msg.reply_to_message:
+        user = msg.reply_to_message.from_user
         if user and not await is_user_admin(chat, user.id):
-            await check_and_ban(update, user.id)
-            return
-
-        if msg.new_chat_members:
-            new_members = update.effective_message.new_chat_members
-            for mem in new_members:
-                await check_and_ban(update, mem.id)
-
-        if msg.reply_to_message:
-            user = msg.reply_to_message.from_user
-            if user and not await is_user_admin(chat, user.id):
-                await check_and_ban(update, user.id, should_message=False)
+            await check_and_ban(update, user.id, should_message=False)
 
 
 @check_admin(is_user=True)
