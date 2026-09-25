@@ -15,7 +15,7 @@ if is_module_loaded(FILENAME):
     from telegram import Update
     from telegram.constants import ParseMode
     from telegram.error import BadRequest, Forbidden
-    from telegram.ext import CommandHandler, JobQueue
+    from telegram.ext import CommandHandler
     from telegram.helpers import escape_markdown
 
     from Database.sql import log_channel_sql as sql
@@ -29,14 +29,10 @@ if is_module_loaded(FILENAME):
         async def log_action(
             update: Update,
             context: ContextTypes.DEFAULT_TYPE,
-            job_queue: JobQueue = None,
             *args,
             **kwargs,
         ):
-            if not job_queue:
-                result = await func(update, context, *args, **kwargs)
-            else:
-                result = await func(update, context, job_queue, *args, **kwargs)
+            result = await func(update, context, *args, **kwargs)
 
             chat = update.effective_chat
             message = update.effective_message
