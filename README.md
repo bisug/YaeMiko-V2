@@ -101,7 +101,7 @@ Full walkthrough: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | Plugins | [`Mikobot/plugins`](Mikobot/plugins) | 57 feature modules, auto discovered |
 | SQL layer | [`Database/sql`](Database/sql) | 29 SQLAlchemy modules backed by PostgreSQL |
 | Mongo layer | [`Database/mongodb`](Database/mongodb) | 10 collection modules plus a shared client |
-| Shared helpers | [`Mikobot/utils`](Mikobot/utils), [`Mikobot/plugins/helper_funcs`](Mikobot/plugins/helper_funcs) | Parsers, permissions, caching, extraction, localization |
+| Shared helpers | [`Mikobot/utils`](Mikobot/utils), [`Mikobot/plugins/helper_funcs`](Mikobot/plugins/helper_funcs) | Caching, custom filters, error capture, localization, message parsing, readable sizes |
 | Static assets | [`Extra`](Extra), [`locales`](locales) | Fonts, default avatars, catalogs for `en-US`, `id-ID`, `id-JW` |
 
 ### Startup sequence
@@ -261,7 +261,7 @@ YaeMiko/
 │   ├── state.py                 Shared httpx client
 │   ├── elevated_users.json      Runtime elevated user additions
 │   ├── plugins/                 57 feature modules + helper_funcs
-│   └── utils/                   Parsers, permissions, caching, localization
+│   └── utils/                   Caching, filters, error capture, localization, parsing
 ├── Database/
 │   ├── mongodb/                 10 PyMongo collection modules + client
 │   └── sql/                     29 SQLAlchemy modules
