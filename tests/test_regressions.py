@@ -548,6 +548,10 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         source = (ROOT / "Mikobot/plugins/quotely.py").read_text(encoding="utf-8")
         self.assertIn("aiohttp.ClientTimeout(total=20)", source)
         self.assertIn("return await self.create_quotly(self._API)", source)
+        self.assertIn("shnwazdev-quoteapi.vercel.app/quote/generate", source)
+        self.assertNotIn("bot.lyo.su/quote/generate", source)
+        self.assertIn("event.forward_origin", source)
+
         self.assertIn("event.command and len(event.command) > 1", source)
 
     def test_quotely_uses_kurigram_forward_origin(self):

@@ -23,7 +23,9 @@ from Mikobot.events import register
 
 # <================================================ CLASS & FUNCTION =======================================================>
 class Quotly:
-    _API = "https://bot.lyo.su/quote/generate"
+
+    _API = "https://shnwazdev-quoteapi.vercel.app/quote/generate"
+
     _COLORS = (
         "#1b1429", "#2b1b3d", "#123456", "#0f2027", "#42275a",
         "#2c3e50", "#3a1c71", "#4b1248", "#1f4037", "#16222a",
