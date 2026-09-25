@@ -227,7 +227,10 @@ async def async_searcher(
 
 @register(pattern="^/q(?: |$)(.*)")
 async def quott_(event):
-    match = (event.command[1] if len(event.command) > 1 else "").strip()
+    match = (
+        (event.command[1] if event.command and len(event.command) > 1 else "")
+        .strip()
+    )
     if not event.reply_to_message:
         return await event.reply("Please reply to a message.")
 

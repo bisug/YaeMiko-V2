@@ -73,7 +73,7 @@ async def force_subscribe(message):
 
 
 @app.on_message(filters.group & filters.incoming)
-async def force_subscribe_new_message(message):
+async def force_subscribe_new_message(_, message):
     settings = await db.fs_settings(message.chat.id)
     if not settings:
         return

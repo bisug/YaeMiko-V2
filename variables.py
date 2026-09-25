@@ -49,7 +49,7 @@ class Config(object):
     # Bot token
     TOKEN = os.environ.get("TOKEN", "")
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
+    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
     # Owner's Telegram user ID (Must be an integer)
     OWNER_ID = int(os.environ.get("OWNER_ID", "0"))

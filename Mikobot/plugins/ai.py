@@ -46,6 +46,9 @@ async def _gemini(prompt: str) -> str | None:
         system_instruction=SYSTEM_INSTRUCTION,
         max_output_tokens=1000,
         temperature=0.4,
+        automatic_function_calling=_GEMINI_TYPES.AutomaticFunctionCallingConfig(
+            disable=True
+        ),
     )
     response = await asyncio.to_thread(
         GEMINI_CLIENT.models.generate_content,

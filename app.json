@@ -121,7 +121,7 @@
       "GEMINI_MODEL": {
          "description": "Optional Gemini model ID.",
          "required": false,
-         "value": "gemini-2.5-flash-lite"
+         "value": "gemini-3.5-flash-lite"
       },
       "LOGGER": {
          "description": "Enable file logging.",

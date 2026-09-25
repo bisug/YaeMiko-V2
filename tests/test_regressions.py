@@ -504,10 +504,24 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         source = (ROOT / "Mikobot/plugins/fsub.py").read_text(encoding="utf-8")
         self.assertIn("ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR", source)
 
+    def test_kurigram_message_callbacks_accept_client_and_message(self):
+        for relative, function_name in (
+            ("Mikobot/plugins/fsub.py", "force_subscribe_new_message"),
+            ("Mikobot/plugins/zombies.py", "zombies"),
+        ):
+            tree = ast.parse((ROOT / relative).read_text(encoding="utf-8"))
+            function = next(
+                node
+                for node in tree.body
+                if isinstance(node, ast.AsyncFunctionDef) and node.name == function_name
+            )
+            self.assertEqual(len(function.args.args), 2, relative)
+
     def test_quotely_has_timeout_and_valid_fallback(self):
         source = (ROOT / "Mikobot/plugins/quotely.py").read_text(encoding="utf-8")
         self.assertIn("aiohttp.ClientTimeout(total=20)", source)
         self.assertIn("return await self.create_quotly(self._API)", source)
+        self.assertIn("event.command and len(event.command) > 1", source)
 
     def test_pyrate_limiter_v4_uses_nonblocking_api(self):
         tree = ast.parse(
@@ -563,8 +577,20 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
     def test_ai_failures_are_logged_and_obsolete_help_is_removed(self):
         ai_source = (ROOT / "Mikobot/plugins/ai.py").read_text(encoding="utf-8")
         self.assertIn('LOGGER.exception("Gemini request failed")', ai_source)
+        self.assertIn("AutomaticFunctionCallingConfig", ai_source)
+        self.assertIn("disable=True", ai_source)
         main_source = (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8")
         self.assertNotIn("markdownhelp", main_source)
+
+        for relative in ("Mikobot/__init__.py", "variables.py", "app.json"):
+            source = (ROOT / relative).read_text(encoding="utf-8")
+            self.assertIn("gemini-3.5-flash-lite", source)
+            if relative == "Mikobot/__init__.py":
+                self.assertIn(
+                    'if GEMINI_MODEL == "gemini-2.5-flash-lite"', source
+                )
+            else:
+                self.assertNotIn("gemini-2.5-flash-lite", source)
 
     def test_confirmed_undefined_runtime_names_are_resolved(self):
         expected_imports = {

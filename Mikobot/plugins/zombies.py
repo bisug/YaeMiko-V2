@@ -44,7 +44,7 @@ async def _remove_deleted(message, status):
 
 
 @app.on_message(filters.regex(r"^[!/]zombies(?:\s+(clean))?(?:@\S+)?$"), group=1)
-async def zombies(message):
+async def zombies(_, message):
     if message.chat.type not in {ChatType.GROUP, ChatType.SUPERGROUP}:
         return await message.reply("Zombies can only be checked in groups or supergroups.")
     clean = len(message.command or []) > 1 and message.command[1].lower() == "clean"

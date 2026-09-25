@@ -162,7 +162,7 @@ if ENV:
     TEMP_DOWNLOAD_DIRECTORY = os.environ.get("TEMP_DOWNLOAD_DIRECTORY", "./")
     TOKEN = os.environ.get("TOKEN", None)
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
+    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
     # Read and validate integer variables
     try:
@@ -253,7 +253,12 @@ else:
         WOLVES = set(int(x) for x in Config.WOLVES or [])
     except ValueError:
         raise Exception("Your whitelisted users list does not contain valid integers.")
+
 # <======================================================================================================>
+
+if GEMINI_MODEL == "gemini-2.5-flash-lite":
+    LOGGER.warning("Replacing retired Gemini model with gemini-3.5-flash-lite")
+    GEMINI_MODEL = "gemini-3.5-flash-lite"
 
 # <================================================= SETS =====================================================>
 CONFIG_SUDOS = set(DRAGONS)
