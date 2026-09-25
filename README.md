@@ -504,27 +504,40 @@ python -m Mikobot
 `validate` job, which the `docker` job depends on, executes:
 
 ```bash
+pip install "python-telegram-bot[rate-limiter,job-queue]==22.8"   # the one import the suite needs
 python -m json.tool app.json >/dev/null      # manifest is valid JSON
+python -m json.tool railway.json >/dev/null   # Railway config is valid JSON
+python tests/validate_deployment.py           # blueprints agree with the entry point
+python tests/validate_docs.py                 # links, anchors, SVG, dead assets, no secrets
 python -m compileall -q .                    # every module compiles
 python -m unittest discover -s tests -v      # regression suite
 git diff --check                             # no whitespace damage
 ```
 
-The `docker` job then builds the worker image with Buildx.
+The `docker` job then builds the worker image with Buildx and asserts its `CMD` is
+`python -m Mikobot`.
 
-The regression suite in [`tests/test_regressions.py`](tests/test_regressions.py) is dependency free
-and uses AST extraction to assert behaviour, including that every inline button call carries an
-explicit style and that the permission related PTB fields are the ones the installed version
-supports.
+The suite in [`tests/test_regressions.py`](tests/test_regressions.py) mostly uses AST extraction
+rather than importing the bot, so it stays fast. One test genuinely needs `python-telegram-bot`
+installed, because it asserts the field names of the pinned 22.8 release against the real package.
+CI installs that one dependency and fails if the version is not 22.8, so the assertion cannot pass
+by accident on a machine with a different version.
 
 Reproduce the full gate locally:
 
 ```bash
+pip install "python-telegram-bot[rate-limiter,job-queue]==22.8"
+python tests/validate_deployment.py
+python tests/validate_docs.py
 python -m json.tool app.json >/dev/null
+python -m json.tool railway.json >/dev/null
 python -m compileall -q .
 python -m unittest discover -s tests -v
 git diff --check
 ```
+
+If you do not have `python-telegram-bot` installed, that single test will report
+`ModuleNotFoundError` while the rest still pass. Install the pin above to run the whole suite.
 
 ---
 

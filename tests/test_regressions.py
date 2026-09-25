@@ -950,8 +950,19 @@ class DatabaseRegressionTests(unittest.TestCase):
         self.assertEqual(unstyled, [])
 
     def test_telegram_at_constructors_use_ptb_22_8_fields(self):
+        # Skipped rather than failed when the pinned client is absent, so a
+        # contributor without the dependency still gets a useful suite. CI
+        # installs python-telegram-bot 22.8 and fails if the version differs, so
+        # this assertion always runs there.
+        try:
+            import telegram
+        except ModuleNotFoundError:
+            self.skipTest("python-telegram-bot is not installed")
+
         from telegram import InlineQueryResultArticle, InputTextMessageContent
         from telegram import MenuButtonWebApp, WebAppInfo
+
+        self.assertEqual(telegram.__version__, "22.8")
 
         result = InlineQueryResultArticle(
             id="article-1",
