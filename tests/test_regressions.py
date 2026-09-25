@@ -1,5 +1,6 @@
 import ast
 import asyncio
+import sys
 import threading
 import unittest
 from unittest import mock
@@ -1360,6 +1361,21 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('is_silent = parts[3] == "1"', (ROOT / "Mikobot/plugins/admin.py").read_text(encoding="utf-8"))
         self.assertIn("context.chat_data.pop", (ROOT / "Mikobot/plugins/ban.py").read_text(encoding="utf-8"))
         self.assertIn("Contact me in PM to get your current settings.", (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8"))
+
+
+class DeploymentManifestTests(unittest.TestCase):
+    def test_manifests_are_valid(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import validate_deployment
+
+        errors = []
+        for check in (
+            validate_deployment.check_railway,
+            validate_deployment.check_render,
+            validate_deployment.check_start_command_is_uniform,
+        ):
+            check(errors)
+        self.assertEqual(errors, [])
 
 
 if __name__ == "__main__":

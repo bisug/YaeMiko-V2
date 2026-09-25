@@ -25,7 +25,12 @@ jobs:
           python-version: "3.14"
 
       - name: Validate JSON
-        run: python -m json.tool app.json >/dev/null
+        run: |
+          python -m json.tool app.json >/dev/null
+          python -m json.tool railway.json >/dev/null
+
+      - name: Validate deployment manifests
+        run: python tests/validate_deployment.py
 
       - name: Compile application
         run: python -m compileall -q .

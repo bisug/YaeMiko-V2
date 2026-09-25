@@ -13,6 +13,8 @@
 [![TgCryptoRust](https://img.shields.io/badge/TgCryptoRust-1.3.1-2AABEE?style=for-the-badge&logo=rust&logoColor=white)](https://pypi.org/project/TgCryptoRust/)
 [![Docker](https://img.shields.io/badge/docker-multistage-2496ED?style=for-the-badge&logo=docker&logoColor=white)](Dockerfile)
 [![Heroku](https://img.shields.io/badge/deploy-heroku-79589F?style=for-the-badge&logo=heroku&logoColor=white)](https://dashboard.heroku.com/apps/new?template=https://github.com/bisug/YaeMiko-V2)
+[![Render](https://img.shields.io/badge/deploy-render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://dashboard.render.com/blueprint/new)
+[![Railway](https://img.shields.io/badge/deploy-railway-1F2A44?style=for-the-badge&logo=railway&logoColor=white)](https://railway.app/new)
 [![CI](https://img.shields.io/github/actions/workflow/status/bisug/YaeMiko-V2/ci.yml?branch=main&style=for-the-badge&label=CI&color=4c1)](https://github.com/bisug/YaeMiko-V2/actions/workflows/ci.yml)
 [![CodeQL](https://img.shields.io/github/actions/workflow/status/bisug/YaeMiko-V2/codeql.yml?branch=main&style=for-the-badge&label=CodeQL&color=8957e5)](https://github.com/bisug/YaeMiko-V2/actions/workflows/codeql.yml)
 
@@ -32,6 +34,7 @@
   <a href="#plugin-catalogue">Plugins</a> &nbsp; | &nbsp;
   <a href="#configuration">Configuration</a> &nbsp; | &nbsp;
   <a href="#deployment">Deployment</a> &nbsp; | &nbsp;
+  <a href="docs/DEPLOYMENT.md">Full deploy guide</a> &nbsp; | &nbsp;
   <a href="docs/ARCHITECTURE.md">Deep dive</a>
 </p>
 
@@ -50,7 +53,7 @@ state in PostgreSQL and document shaped data in MongoDB, and ships 57 plugin mod
 | **Telegram** | PTB 22.8 on the Bot API, Kurigram 2.2.26 on MTProto, side by side |
 | **Storage** | PostgreSQL 16 through SQLAlchemy 2.1, MongoDB through PyMongo 4.18 |
 | **Modules** | 57 auto discovered plugins under `Mikobot/plugins` |
-| **Deployment** | Heroku worker dyno, Docker, or bare VPS |
+| **Deployment** | Render, Railway, Heroku, Docker, or a bare VPS |
 | **Guarantees** | CI compile, unit, JSON and whitespace gates, weekly CodeQL, Dependabot updates |
 
 > **Maintained fork.** This repository is the main home of YaeMiko and is forked from
@@ -74,8 +77,8 @@ state in PostgreSQL and document shaped data in MongoDB, and ships 57 plugin mod
   full Telegram API URL.
 - **Dual store design.** Structured chat state lives in PostgreSQL, user profiles, chats, AFK
   entries, whispers and karma live in MongoDB.
-- **Deploy anywhere.** The same `python -m Mikobot` entry point runs on Heroku, in the multi stage
-  Docker image, or on a plain VPS.
+- **Deploy anywhere.** The same `python -m Mikobot` entry point runs on Render, Railway, Heroku, in
+  the multi stage Docker image, or on a plain VPS. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 - **Modular by drop in.** Plugins are discovered with `glob`; `LOAD` controls ordering and
   `NO_LOAD` excludes modules, so no code change is needed to trim the bot.
 
@@ -216,14 +219,18 @@ YaeMiko/
 ├── docs/                        Documentation and SVG diagrams
 │   ├── ARCHITECTURE.md
 │   ├── CONFIGURATION.md
+│   ├── DEPLOYMENT.md
 │   ├── PLUGINS.md
 │   └── assets/
 │       ├── architecture.svg
+│       ├── deploy-paths.svg
 │       ├── update-flow.svg
 │       ├── wordmark-dark.svg
 │       └── wordmark-light.svg
 ├── .github/workflows/           CI and CodeQL
 ├── app.json                     Heroku app manifest
+├── render.yaml                  Render blueprint, worker plus Postgres
+├── railway.json                 Railway config, Dockerfile and restart policy
 ├── Dockerfile                   Multi stage image
 ├── heroku.yml                   Heroku Docker build and run
 ├── Procfile                     Heroku worker entry
@@ -312,7 +319,68 @@ Never commit a filled `.env`. The file is already listed in `.gitignore`.
 
 ## Deployment
 
-All three targets run the same entry point: `python -m Mikobot`.
+All five targets run the same entry point: `python -m Mikobot`.
+
+![Deployment paths](docs/assets/deploy-paths.svg)
+
+| Target | Blueprint | Cheapest tier | Difficulty |
+| --- | --- | --- | --- |
+| [Render](#render) | [`render.yaml`](render.yaml) | Paid worker, about 7 USD per month | Easiest |
+| [Railway](#railway) | [`railway.json`](railway.json) | Trial credit, then usage based | Easy |
+| [Heroku](#heroku) | [`app.json`](app.json), [`heroku.yml`](heroku.yml) | About 5 USD per month | Easy |
+| [VPS](#local-host-or-vps) | systemd unit, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | From 4 USD per month | Medium |
+| Any Docker host | [`Dockerfile`](Dockerfile) | Host dependent | Medium |
+
+Step by step guide for every option, including the full VPS setup with systemd and PostgreSQL:
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+YaeMiko holds a long polling connection to the Bot API and never binds a port. On Render it must be
+a background worker, never a web service, or health checks will fail forever.
+
+### Before any platform
+
+| What | Where |
+| --- | --- |
+| `API_ID`, `API_HASH` | [my.telegram.org/apps](https://my.telegram.org/apps) |
+| `TOKEN` | [@BotFather](https://t.me/BotFather) |
+| `OWNER_ID` | [userid.bot](https://t.me/userid_bot) |
+| `MONGO_DB_URI` | [MongoDB Atlas](https://www.mongodb.com/atlas) free M0 cluster |
+| PostgreSQL | Provided by the platform, or install it on a VPS |
+
+Full variable list with defaults: [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
+
+### Render
+
+[`render.yaml`](render.yaml) declares a Docker background worker and a Postgres instance.
+`DATABASE_URL` is wired through `fromDatabase`, so it is never typed by hand.
+
+<p align="center">
+  <a href="https://dashboard.render.com/blueprint/new">
+    <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render" width="200">
+  </a>
+</p>
+
+1. Open [dashboard.render.com/blueprint/new](https://dashboard.render.com/blueprint/new) and connect
+   `bisug/YaeMiko-V2`.
+2. Keep the plan `0.5c-512mb`. Render Free instances cover web services, Postgres and Key Value
+   only, so a worker needs a paid plan.
+3. Fill the prompted values: `API_ID`, `API_HASH`, `TOKEN`, `OWNER_ID`, `SUPPORT_CHAT`,
+   `SUPPORT_ID`, `EVENT_LOGS`, `MESSAGE_DUMP`, `MONGO_DB_URI`, and the optional lists.
+4. Apply. The first build installs every wheel, so allow 5 to 10 minutes.
+5. Send `/start` to the bot.
+
+### Railway
+
+[`railway.json`](railway.json) pins the Dockerfile builder and an `ON_FAILURE` restart policy.
+
+1. Create an empty project at [railway.app/new](https://railway.app/new) and deploy from
+   `bisug/YaeMiko-V2`. Railway detects the root Dockerfile automatically.
+2. Add a PostgreSQL database. Railway injects `DATABASE_URL`, which the bot already reads.
+3. Add the variables listed in [Before any platform](#before-any-platform), with `ENV=True`.
+4. Deploy and watch for `Mikobot is starting`.
+
+The container filesystem is ephemeral, so `ptb_persistence.pickle` resets on every deploy. Attach a
+Railway volume at `/root/Mikobot` to keep it.
 
 ### Heroku
 
@@ -471,6 +539,7 @@ button an explicit `style`.
 ### Services
 
 - [Heroku](https://www.heroku.com/) for worker hosting and the PostgreSQL addon
+- [Render](https://render.com/) and [Railway](https://railway.app/) for one click container deploys
 - [MongoDB Atlas](https://www.mongodb.com/atlas) for the document store
 - [GitHub Actions](https://github.com/features/actions),
   [CodeQL](https://github.com/github/codeql) and

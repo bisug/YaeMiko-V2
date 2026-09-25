@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720" role="img" aria-label="YaeMiko deployment paths">
+  <title>YaeMiko deployment paths</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8b949e"/>
+    </marker>
+    <style>
+      .bg { fill: #0d1117; }
+      .panel { fill: #161b22; stroke: #30363d; stroke-width: 1.5; rx: 12; }
+      .title { fill: #e6edf3; font: 600 20px "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .head { fill: #e6edf3; font: 600 15px "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .sub { fill: #8b949e; font: 400 12px "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .edge { stroke: #8b949e; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+      .blue { fill: #1f3b5c; stroke: #58a6ff; stroke-width: 1.5; rx: 12; }
+      .green { fill: #16301f; stroke: #3fb950; stroke-width: 1.5; rx: 12; }
+      .purple { fill: #2a1f3d; stroke: #bc8cff; stroke-width: 1.5; rx: 12; }
+      .orange { fill: #3a2716; stroke: #f0883e; stroke-width: 1.5; rx: 12; }
+      .red { fill: #3b1a22; stroke: #f778ba; stroke-width: 1.5; rx: 12; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="720"/>
+  <text class="title" x="48" y="46">Deployment paths</text>
+  <text class="sub" x="48" y="70">One source, one entry point: python -m Mikobot</text>
+
+  <rect class="panel" x="440" y="100" width="400" height="86"/>
+  <text class="head" x="640" y="132" text-anchor="middle">Source repository</text>
+  <text class="sub" x="640" y="154" text-anchor="middle">bisug/YaeMiko-V2, branch main</text>
+  <text class="sub" x="640" y="172" text-anchor="middle">Dockerfile is the single build definition</text>
+
+  <path class="edge" d="M 540 186 L 170 250"/>
+  <path class="edge" d="M 640 186 L 480 250"/>
+  <path class="edge" d="M 740 186 L 810 250"/>
+  <path class="edge" d="M 800 186 L 1120 250"/>
+
+  <rect class="purple" x="40" y="250" width="260" height="110"/>
+  <text class="head" x="64" y="282">Render</text>
+  <text class="sub" x="64" y="304">render.yaml, type worker</text>
+  <text class="sub" x="64" y="324">Paid plan required, 0.5c-512mb</text>
+  <text class="sub" x="64" y="344">Postgres wired by fromDatabase</text>
+
+  <rect class="green" x="350" y="250" width="260" height="110"/>
+  <text class="head" x="374" y="282">Railway</text>
+  <text class="sub" x="374" y="304">railway.json, builder DOCKERFILE</text>
+  <text class="sub" x="374" y="324">ON_FAILURE restart, 10 retries</text>
+  <text class="sub" x="374" y="344">Postgres plugin injects DATABASE_URL</text>
+
+  <rect class="blue" x="680" y="250" width="260" height="110"/>
+  <text class="head" x="704" y="282">Heroku</text>
+  <text class="sub" x="704" y="304">app.json plus heroku.yml</text>
+  <text class="sub" x="704" y="324">heroku-postgresql 16 addon</text>
+  <text class="sub" x="704" y="344">Procfile worker fallback</text>
+
+  <rect class="orange" x="990" y="250" width="250" height="110"/>
+  <text class="head" x="1014" y="282">VPS</text>
+  <text class="sub" x="1014" y="304">systemd unit, dedicated user</text>
+  <text class="sub" x="1014" y="324">Local PostgreSQL, full disk</text>
+  <text class="sub" x="1014" y="344">Only option with real persistence</text>
+
+  <path class="edge" d="M 170 360 L 500 420"/>
+  <path class="edge" d="M 480 360 L 540 420"/>
+  <path class="edge" d="M 810 360 L 700 420"/>
+  <path class="edge" d="M 1120 360 L 820 420"/>
+
+  <rect class="panel" x="480" y="420" width="420" height="80"/>
+  <text class="head" x="690" y="452" text-anchor="middle">python -m Mikobot</text>
+  <text class="sub" x="690" y="476" text-anchor="middle">Same command on every target</text>
+
+  <path class="edge" d="M 690 500 L 690 540"/>
+
+  <rect class="red" x="480" y="540" width="420" height="120"/>
+  <text class="head" x="504" y="572">Required inputs, identical everywhere</text>
+  <text class="sub" x="504" y="596">ENV=True, API_ID, API_HASH, TOKEN, OWNER_ID</text>
+  <text class="sub" x="504" y="618">DATABASE_URL, MONGO_DB_URI, DB_NAME</text>
+  <text class="sub" x="504" y="640">EVENT_LOGS, MESSAGE_DUMP, SUPPORT_CHAT, SUPPORT_ID</text>
+
+  <rect class="panel" x="20" y="420" width="400" height="240"/>
+  <text class="head" x="44" y="452">Why a worker, not a web service</text>
+  <text class="sub" x="44" y="478">The bot holds a long polling connection to the</text>
+  <text class="sub" x="44" y="498">Telegram Bot API. It never binds a port, so a web</text>
+  <text class="sub" x="44" y="518">service would fail health checks forever. Declare</text>
+  <text class="sub" x="44" y="538">type worker on Render, and the equivalent worker</text>
+  <text class="sub" x="44" y="558">process everywhere else.</text>
+  <text class="sub" x="44" y="588">State: chat and user context is persisted to a</text>
+  <text class="sub" x="44" y="608">pickle file. On Render, Railway and Heroku the disk</text>
+  <text class="sub" x="44" y="628">is ephemeral, so that file resets on each deploy.</text>
+  <text class="sub" x="44" y="648">Attach a disk or volume to keep it.</text>
+</svg>

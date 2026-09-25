@@ -1,0 +1,98 @@
+# https://github.com/bisug/YaeMiko-V2
+# Render blueprint: https://render.com/docs/blueprint-spec
+# Create a Blueprint at https://dashboard.render.com/blueprint/new
+#
+# YaeMiko is a long running bot, not an HTTP server, so it is declared as a
+# background worker (type: worker). Workers do not bind a port.
+#
+# Render Free instances cover web services, Postgres and Key Value only, so the
+# worker needs a paid plan. 0.5c-512mb is the smallest one.
+
+services:
+  - type: worker
+    name: yaemiko
+    runtime: docker
+    plan: 0.5c-512mb
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: python -m Mikobot
+    # Long polling is the only traffic source, so there is no health check path.
+    maxShutdownDelaySeconds: 120
+    autoDeployTrigger: commit
+    envVars:
+      # Runtime must be truthy or variables.py is read instead of the environment.
+      - key: ENV
+        value: "True"
+
+      # Secrets: Render asks for these when the Blueprint is applied.
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: TOKEN
+        sync: false
+      - key: OWNER_ID
+        sync: false
+      - key: SUPPORT_CHAT
+        sync: false
+      - key: SUPPORT_ID
+        sync: false
+      - key: EVENT_LOGS
+        sync: false
+      - key: MESSAGE_DUMP
+        sync: false
+      - key: DEV_USERS
+        sync: false
+      - key: DRAGONS
+        sync: false
+      - key: DEMONS
+        sync: false
+      - key: WOLVES
+        sync: false
+      - key: TIGERS
+        sync: false
+      - key: BL_CHATS
+        sync: false
+
+      # Render has no MongoDB service. Paste an Atlas free tier SRV string here.
+      - key: MONGO_DB_URI
+        sync: false
+      - key: DB_NAME
+        value: MikoDB
+
+      # Wired from the Postgres instance below, never hardcoded.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: yaemiko-db
+          property: connectionString
+
+      # Toggles.
+      - key: DEL_CMDS
+        value: "True"
+      - key: STRICT_GBAN
+        value: "True"
+      - key: ALLOW_CHATS
+        value: "True"
+      - key: ALLOW_EXCL
+        value: "True"
+      - key: INFOPIC
+        value: "True"
+      - key: LOGGER
+        value: "True"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: TEMP_DOWNLOAD_DIRECTORY
+        value: ./
+
+      # Optional AI features. Leave GEMINI_API_KEY empty to disable /askai and /palm.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash-lite
+
+databases:
+  - name: yaemiko-db
+    plan: free
+    postgresMajorVersion: "16"
+    databaseName: yaemiko
