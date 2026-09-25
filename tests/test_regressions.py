@@ -109,6 +109,29 @@ class EnvironmentTests(unittest.TestCase):
             },
         )
 
+    def test_start_escapes_markdown_with_imported_helper(self):
+        tree = ast.parse((ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8"))
+        imports = {
+            (node.module, alias.name)
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom) and node.module
+            for alias in node.names
+        }
+        self.assertIn(("telegram.helpers", "escape_markdown"), imports)
+
+    def test_kurigram_handlers_pass_callback_before_filter(self):
+        tree = ast.parse((ROOT / "Mikobot/events.py").read_text(encoding="utf-8"))
+        calls = {
+            node.func.id: node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        }
+        for handler_name in ("MessageHandler", "InlineQueryHandler", "CallbackQueryHandler"):
+            args = calls[handler_name].args
+            self.assertIsInstance(args[0].func, ast.Name, handler_name)
+            self.assertEqual(args[0].func.id, "_with_client", handler_name)
+            self.assertEqual(args[1].id, "handler_filter", handler_name)
+
     def test_plugin_imports_do_not_import_main(self):
         for path in (ROOT / "Mikobot/plugins/ping.py", ROOT / "Mikobot/plugins/info.py"):
             tree = ast.parse(path.read_text(encoding="utf-8"))

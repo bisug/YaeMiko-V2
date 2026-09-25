@@ -38,6 +38,7 @@ from telegram.ext import (
     TypeHandler,
     filters,
 )
+from telegram.helpers import escape_markdown
 
 from Infamous.karma import *
 from Mikobot import (

@@ -27,7 +27,7 @@ def register(**args):
     def decorator(func):
         handler_filter = filters.regex(pattern) if pattern else filters.all
         app.add_handler(
-            MessageHandler(handler_filter, _with_client(func)),
+            MessageHandler(_with_client(func), handler_filter),
             group=group,
         )
         return func
