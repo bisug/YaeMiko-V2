@@ -292,9 +292,7 @@ async def send(update: Update, message, keyboard, backup_message):
                     parse_mode=ParseMode.MARKDOWN,
                     reply_to_message_id=reply,
                 )
-            LOGGER.warning(message)
-            LOGGER.warning(keyboard)
-            LOGGER.exception("Could not parse! Got invalid URL host errors")
+            LOGGER.exception("Could not parse welcome message with invalid URL host")
         elif excp.message == "Have no rights to send a message":
             return
         else:
@@ -692,8 +690,10 @@ async def check_not_bot(member, chat_id, message_id, context):
     if not member_status:
         try:
             await bot.unban_chat_member(chat_id, member.id)
-        except:
-            pass
+        except Exception:
+            LOGGER.exception(
+                "Unable to kick unverified user %s from chat %s", member.id, chat_id
+            )
 
         try:
             await bot.edit_message_text(
@@ -701,8 +701,12 @@ async def check_not_bot(member, chat_id, message_id, context):
                 chat_id=chat_id,
                 message_id=message_id,
             )
-        except:
-            pass
+        except Exception:
+            LOGGER.exception(
+                "Unable to update verification message %s in chat %s",
+                message_id,
+                chat_id,
+            )
 
 
 async def left_member(update, context: ContextTypes.DEFAULT_TYPE):

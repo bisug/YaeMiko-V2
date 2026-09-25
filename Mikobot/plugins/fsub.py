@@ -32,7 +32,10 @@ async def participant_check(channel, user_id):
     except (UserNotParticipant, ChatAdminRequired):
         return False
     except Exception:
-        return False
+        LOGGER.exception(
+            "Unable to check channel %s membership for user %s", channel, user_id
+        )
+        return True
 
 
 @register(pattern=rf"^{F_SUBSCRIBE_COMMAND} ?(.*)")
@@ -97,6 +100,10 @@ async def force_subscribe_new_message(_, message):
         if not BOT_PRIVILEGE_CACHE[message.chat.id]:
             return
     except Exception:
+        LOGGER.exception(
+            "Unable to check bot privileges for force-subscribe chat %s",
+            message.chat.id,
+        )
         return
     channel = settings["channel"]
     if await participant_check(channel, message.from_user.id):

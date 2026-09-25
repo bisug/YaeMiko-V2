@@ -1649,6 +1649,7 @@ async def fed_import_bans(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         fileformat = msg.reply_to_message.document.file_name.split(".")[-1]
+        import_failed = False
         if fileformat == "json":
             multi_fed_id = []
             multi_import_userid = []
@@ -1701,7 +1702,7 @@ async def fed_import_bans(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     multi_import_username.append(import_username)
                     multi_import_reason.append(import_reason)
                     success += 1
-                sql.multi_fban_user(
+                imported = sql.multi_fban_user(
                     multi_fed_id,
                     multi_import_userid,
                     multi_import_firstname,
@@ -1709,9 +1710,16 @@ async def fed_import_bans(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     multi_import_username,
                     multi_import_reason,
                 )
-            text = "Blocks were successfully imported. {} people are blocked.".format(
-                success,
+                if imported is False:
+                    import_failed = True
+                    failed += success
+                    success = 0
+            text = (
+                "Block import failed."
+                if import_failed
+                else "Blocks were successfully imported."
             )
+            text += f" {success} people are blocked."
             if failed >= 1:
                 text += " {} Failed to import.".format(failed)
             get_fedlog = await sql.get_fed_log(fed_id)
@@ -1785,7 +1793,7 @@ async def fed_import_bans(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     success += 1
                     # t = ThreadWithReturnValue(target=sql.fban_user, args=(fed_id, str(import_userid), import_firstname, import_lastname, import_username, import_reason,))
                     # t.start()
-                sql.multi_fban_user(
+                imported = sql.multi_fban_user(
                     multi_fed_id,
                     multi_import_userid,
                     multi_import_firstname,
@@ -1793,9 +1801,18 @@ async def fed_import_bans(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     multi_import_username,
                     multi_import_reason,
                 )
+                if imported is False:
+                    import_failed = True
+                    failed += success
+                    success = 0
             csvFile.close()
             os.remove("fban_{}.csv".format(msg.reply_to_message.document.file_id))
-            text = "Files were imported successfully. {} people banned.".format(success)
+            text = (
+                "Block import failed."
+                if import_failed
+                else "Files were imported successfully."
+            )
+            text += f" {success} people banned."
             if failed >= 1:
                 text += " {} Failed to import.".format(failed)
             get_fedlog = await sql.get_fed_log(fed_id)

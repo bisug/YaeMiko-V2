@@ -221,7 +221,6 @@ async def temp_mute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             await message.reply_text(f"Muted for {time_val}!", do_quote=False)
             return log
         else:
-            LOGGER.warning(update)
             LOGGER.exception(
                 "ERROR muting user %s in chat %s (%s) due to %s",
                 user_id,

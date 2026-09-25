@@ -14,7 +14,7 @@ FILENAME = __name__.rsplit(".", 1)[-1]
 if is_module_loaded(FILENAME):
     from telegram import Update
     from telegram.constants import ParseMode
-    from telegram.error import BadRequest, Forbidden
+    from telegram.error import BadRequest, Forbidden, TelegramError
     from telegram.ext import CommandHandler
     from telegram.helpers import escape_markdown
 
@@ -50,7 +50,14 @@ if is_module_loaded(FILENAME):
                     )
                 log_chat = sql.get_chat_log_channel(chat.id)
                 if log_chat:
-                    await send_log(context, log_chat, chat.id, result)
+                    try:
+                        await send_log(context, log_chat, chat.id, result)
+                    except Exception:
+                        LOGGER.exception(
+                            "Unable to deliver per-chat log for chat %s to channel %s",
+                            chat.id,
+                            log_chat,
+                        )
 
             return result
 
@@ -75,7 +82,14 @@ if is_module_loaded(FILENAME):
                         f"\nLink: https://t.me/{chat.username}/{message.message_id}"
                     )
                 if EVENT_LOGS:
-                    await send_log(context, EVENT_LOGS, chat.id, result)
+                    try:
+                        await send_log(context, EVENT_LOGS, chat.id, result)
+                    except Exception:
+                        LOGGER.exception(
+                            "Unable to deliver global log for chat %s to channel %s",
+                            chat.id,
+                            EVENT_LOGS,
+                        )
 
             return result
 
@@ -117,15 +131,21 @@ if is_module_loaded(FILENAME):
                     )
                 sql.stop_chat_logging(orig_chat_id)
             else:
-                LOGGER.warning(excp.message)
-                LOGGER.warning(result)
-                LOGGER.exception("Could not parse")
+                LOGGER.warning("Unable to parse audit log: %s", excp.message)
+                LOGGER.exception("Audit log formatting failed for channel %s", log_chat_id)
 
-                await bot.send_message(
-                    log_chat_id,
-                    result
-                    + "\n\nFormatting has been disabled due to an unexpected error.",
-                )
+                try:
+                    await bot.send_message(
+                        log_chat_id,
+                        result
+                        + "\n\nFormatting has been disabled due to an unexpected error.",
+                    )
+                except TelegramError:
+                    LOGGER.warning(
+                        "Unable to deliver unformatted audit log to channel %s",
+                        log_chat_id,
+                        exc_info=True,
+                    )
 
     @check_admin(is_user=True)
     async def logging(update: Update, context: ContextTypes.DEFAULT_TYPE):

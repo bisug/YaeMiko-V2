@@ -5,12 +5,9 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
 import contextlib
-import html
 import importlib
-import json
 import re
 import time
-import traceback
 from platform import python_version
 from random import choice
 
@@ -397,53 +394,32 @@ async def genshin_command_callback(update: Update, context: ContextTypes.DEFAULT
         )
 
 
-async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Log the error and send a telegram message to notify the developer."""
-    # Log the error before we do anything else, so we can see it even if something breaks.
-    LOGGER.error(msg="Exception while handling an update:", exc_info=context.error)
-
-    # traceback.format_exception returns the usual python message about an exception, but as a
-    # list of strings rather than a single string, so we have to join them together.
-    tb_list = traceback.format_exception(
-        None, context.error, context.error.__traceback__
-    )
-    tb = "".join(tb_list)
-
-    # Build the message with some markup and additional information about what happened.
-    message = (
-        "An exception was raised while handling an update\n"
-        "<pre>update = {}</pre>\n\n"
-        "<pre>{}</pre>"
-    ).format(
-        html.escape(json.dumps(update.to_dict(), indent=2, ensure_ascii=False)),
-        html.escape(tb),
-    )
-
-    if len(message) >= 4096:
-        message = message[:4096]
-    # Finally, send the message
-    await context.bot.send_message(
-        chat_id=OWNER_ID, text=message, parse_mode=ParseMode.HTML
-    )
-
-
-# for test purposes
-async def error_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def error_callback(update: object, context: ContextTypes.DEFAULT_TYPE):
     error = context.error
-    if isinstance(error, Forbidden):
-        LOGGER.warning("Forbidden while handling update: %s", error)
-    elif isinstance(error, BadRequest):
-        LOGGER.warning("Bad Telegram request while handling update: %s", error)
-    elif isinstance(error, TimedOut):
-        LOGGER.warning("Telegram request timed out while handling update")
-    elif isinstance(error, NetworkError):
-        LOGGER.warning("Telegram network error while handling update: %s", error)
-    elif isinstance(error, ChatMigrated):
-        LOGGER.info("Telegram chat migrated: %s", error)
-    elif isinstance(error, TelegramError):
-        LOGGER.warning("Telegram error while handling update: %s", error)
-    elif error is not None:
-        LOGGER.error("Unhandled update error", exc_info=error)
+    summary = (
+        _activity_summary(update) if isinstance(update, Update) else type(update).__name__
+    )
+    message = f"Update error [{summary}]: {error}"
+
+    if isinstance(error, ChatMigrated):
+        LOGGER.info(message)
+    elif isinstance(error, (Forbidden, BadRequest, TimedOut, NetworkError, TelegramError)):
+        LOGGER.warning(message)
+    else:
+        LOGGER.error("Unhandled update error [%s]", summary, exc_info=error)
+
+    if isinstance(update, Update) and update.callback_query:
+        try:
+            await update.callback_query.answer(
+                "The action failed. Please try again later.", show_alert=True
+            )
+        except TelegramError:
+            LOGGER.debug(
+                "Unable to answer failed callback %s in chat %s",
+                update.callback_query.id,
+                update.effective_chat.id if update.effective_chat else None,
+                exc_info=True,
+            )
 
 
 async def help_button(update: Update, context: ContextTypes.DEFAULT_TYPE):

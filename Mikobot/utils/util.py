@@ -92,6 +92,7 @@ async def broadcast_messages(user_id, message):
         LOGGER.info(f"{user_id} - PeerIdInvalid")
         return False, "Error"
     except Exception:
+        LOGGER.exception("Broadcast to user %s failed", user_id)
         return False, "Error"
 
 

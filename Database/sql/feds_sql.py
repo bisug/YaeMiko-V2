@@ -2,11 +2,12 @@ import ast
 import threading
 
 from sqlalchemy import BigInteger, Boolean, Column, Integer, String, UnicodeText
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from telegram.error import BadRequest, Forbidden
 
 from Database.sql import BASE, ENGINE, SESSION
-from Mikobot import OWNER_ID, dispatcher
+from Mikobot import LOGGER, OWNER_ID, dispatcher
 
 
 class Federations(BASE):
@@ -269,8 +270,9 @@ def del_fed(fed_id, user_id):
             )
             session.delete(curr)
             session.commit()
-        except Exception:
+        except SQLAlchemyError:
             session.rollback()
+            LOGGER.exception("Unable to delete federation %s", fed_id)
             return False
         finally:
             session.close()
@@ -501,32 +503,30 @@ def get_frules(fed_id):
 
 def fban_user(fed_id, user_id, first_name, last_name, user_name, reason, time):
     with FEDS_LOCK:
-        r = SESSION.query(BansF).all()
-        for I in r:
-            if I.fed_id == fed_id:
-                if int(I.user_id) == int(user_id):
-                    SESSION.delete(I)
-
-        r = BansF(
-            str(fed_id),
-            str(user_id),
-            first_name,
-            last_name,
-            user_name,
-            reason,
-            time,
-        )
-
-        SESSION.add(r)
         try:
+            for existing in SESSION.query(BansF).all():
+                if existing.fed_id == str(fed_id) and int(existing.user_id) == int(user_id):
+                    SESSION.delete(existing)
+
+            ban = BansF(
+                str(fed_id),
+                str(user_id),
+                first_name,
+                last_name,
+                user_name,
+                reason,
+                time,
+            )
+            SESSION.add(ban)
             SESSION.commit()
-        except:
+        except SQLAlchemyError:
             SESSION.rollback()
+            LOGGER.exception(
+                "Unable to persist federation ban for fed %s user %s", fed_id, user_id
+            )
             return False
-        finally:
-            SESSION.commit()
         __load_all_feds_banned()
-        return r
+        return ban
 
 
 def multi_fban_user(
@@ -537,61 +537,57 @@ def multi_fban_user(
     multi_user_name,
     multi_reason,
 ):
-    if True:  # with FEDS_LOCK:
-        counter = 0
-        time = 0
-        for x in range(len(multi_fed_id)):
-            fed_id = multi_fed_id[x]
-            user_id = multi_user_id[x]
-            first_name = multi_first_name[x]
-            last_name = multi_last_name[x]
-            user_name = multi_user_name[x]
-            reason = multi_reason[x]
-            r = SESSION.query(BansF).all()
-            for I in r:
-                if I.fed_id == fed_id:
-                    if int(I.user_id) == int(user_id):
-                        SESSION.delete(I)
-
-            r = BansF(
-                str(fed_id),
-                str(user_id),
-                first_name,
-                last_name,
-                user_name,
-                reason,
-                time,
-            )
-
-            SESSION.add(r)
-            counter += 1
+    with FEDS_LOCK:
         try:
+            counter = 0
+            for index in range(len(multi_fed_id)):
+                fed_id = multi_fed_id[index]
+                user_id = multi_user_id[index]
+                for existing in SESSION.query(BansF).all():
+                    if existing.fed_id == str(fed_id) and int(existing.user_id) == int(user_id):
+                        SESSION.delete(existing)
+
+                SESSION.add(
+                    BansF(
+                        str(fed_id),
+                        str(user_id),
+                        multi_first_name[index],
+                        multi_last_name[index],
+                        multi_user_name[index],
+                        multi_reason[index],
+                        0,
+                    )
+                )
+                counter += 1
             SESSION.commit()
-        except:
+        except SQLAlchemyError:
             SESSION.rollback()
+            LOGGER.exception("Unable to persist %d federation bans", len(multi_fed_id))
             return False
-        finally:
-            SESSION.commit()
         __load_all_feds_banned()
         return counter
 
 
 def un_fban_user(fed_id, user_id):
     with FEDS_LOCK:
-        r = SESSION.query(BansF).all()
-        for I in r:
-            if I.fed_id == fed_id:
-                if int(I.user_id) == int(user_id):
-                    SESSION.delete(I)
+        ban = None
         try:
+            for existing in SESSION.query(BansF).all():
+                if existing.fed_id == str(fed_id) and int(existing.user_id) == int(user_id):
+                    ban = existing
+                    SESSION.delete(existing)
+                    break
+            if ban is None:
+                return None
             SESSION.commit()
-        except:
+        except SQLAlchemyError:
             SESSION.rollback()
+            LOGGER.exception(
+                "Unable to remove federation ban for fed %s user %s", fed_id, user_id
+            )
             return False
-        finally:
-            SESSION.commit()
         __load_all_feds_banned()
-        return I
+        return ban
 
 
 def get_fban_user(fed_id, user_id):

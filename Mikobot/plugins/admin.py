@@ -13,7 +13,7 @@ from telegram.error import BadRequest
 from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, filters
 from telegram.helpers import mention_html
 
-from Mikobot import DRAGONS, function
+from Mikobot import DRAGONS, LOGGER, function
 from Mikobot.plugins.disable import DisableAbleCommandHandler
 from Mikobot.plugins.helper_funcs.alternate import send_message
 from Mikobot.plugins.helper_funcs.chat_status import (
@@ -268,7 +268,11 @@ async def demote(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         user_member = await chat.get_member(user_id)
-    except:
+    except BadRequest as exc:
+        LOGGER.warning(
+            "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
+        )
+        await message.reply_text("I can't find this user.")
         return
 
     if user_member.status == ChatMemberStatus.OWNER:
@@ -369,15 +373,19 @@ async def set_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
-    try:
-        user_member = await chat.get_member(user_id)
-    except:
-        return
-
     if not user_id:
         await message.reply_text(
             "You don't seem to be referring to a user or the ID specified is incorrect..",
         )
+        return
+
+    try:
+        user_member = await chat.get_member(user_id)
+    except BadRequest as exc:
+        LOGGER.warning(
+            "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
+        )
+        await message.reply_text("I can't find this user.")
         return
 
     if user_member.status == ChatMemberStatus.OWNER:
@@ -764,7 +772,11 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         try:
             user_member = await chat.get_member(user_id)
-        except:
+        except BadRequest as exc:
+            LOGGER.warning(
+                "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
+            )
+            await query.answer("Unable to find this user.", show_alert=True)
             return
 
         if (
@@ -834,7 +846,11 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         try:
             user_member = await chat.get_member(user_id)
-        except:
+        except BadRequest as exc:
+            LOGGER.warning(
+                "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
+            )
+            await query.answer("Unable to find this user.", show_alert=True)
             return
 
         if user_member.status == ChatMemberStatus.OWNER:
@@ -914,7 +930,11 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         try:
             user_member = await chat.get_member(user_id)
-        except:
+        except BadRequest as exc:
+            LOGGER.warning(
+                "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
+            )
+            await query.answer("Unable to find this user.", show_alert=True)
             return
 
         if user_member.status == ChatMemberStatus.OWNER:
@@ -980,7 +1000,8 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         try:
             message_id = int(payload)
-        except:
+        except ValueError:
+            await query.answer("Invalid message ID.", show_alert=True)
             return
 
         is_silent = parts[3] == "1"

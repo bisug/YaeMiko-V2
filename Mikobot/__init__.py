@@ -102,21 +102,24 @@ def _configure_logging():
         "%(asctime)s | %(levelname)s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    handlers = [logging.StreamHandler()]
-    try:
-        handlers.insert(0, logging.handlers.RotatingFileHandler(
-            "Logs.txt", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
-        ))
-    except OSError:
-        # Container filesystems may expose stdout but not a writable log file.
-        pass
-    for handler in handlers:
-        handler.setFormatter(formatter)
-    logging.basicConfig(
-        level=LOG_LEVEL,
-        handlers=handlers,
-        force=True,
-    )
+    root_logger = logging.getLogger()
+    if not root_logger.handlers:
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
+        root_logger.addHandler(stream_handler)
+    existing_handlers = {type(handler) for handler in root_logger.handlers}
+    if logging.handlers.RotatingFileHandler not in existing_handlers:
+        try:
+            file_handler = logging.handlers.RotatingFileHandler(
+                "Logs.txt", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+            )
+        except OSError:
+            # Container filesystems may expose stdout but not a writable log file.
+            pass
+        else:
+            file_handler.setFormatter(formatter)
+            root_logger.addHandler(file_handler)
+    root_logger.setLevel(LOG_LEVEL)
     for name in ("pyrogram", "pyrate_limiter"):
         logging.getLogger(name).setLevel(logging.ERROR)
     # HTTPX logs complete Telegram API URLs at INFO, including the bot token.

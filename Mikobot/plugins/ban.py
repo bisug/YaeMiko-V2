@@ -188,7 +188,6 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             await message.reply_text("Banned!", do_quote=False)
             return log
         else:
-            LOGGER.warning(update)
             LOGGER.exception(
                 "ERROR banning user %s in chat %s (%s) due to %s",
                 user_id,
@@ -279,7 +278,6 @@ async def temp_ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             )
             return log
         else:
-            LOGGER.warning(update)
             LOGGER.exception(
                 "ERROR banning user %s in chat %s (%s) due to %s",
                 user_id,
@@ -648,16 +646,14 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 # Do not reply
                 await message.edit_text("Banned!")
                 return log
-            else:
-                LOGGER.warning(update)
-                LOGGER.exception(
-                    "ERROR banning user %s in chat %s (%s) due to %s",
-                    user_id,
-                    chat.title,
-                    chat.id,
-                    excp.message,
-                )
-                await message.edit_text("Uhm...that didn't work...")
+            LOGGER.exception(
+                "ERROR banning user %s in chat %s (%s) due to %s",
+                user_id,
+                chat.title,
+                chat.id,
+                excp.message,
+            )
+            await message.edit_text("Uhm...that didn't work...")
 
         return log_message
 

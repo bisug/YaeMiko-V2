@@ -20,7 +20,7 @@ ptb_persistence.pickle.*
 # Session files , logs
 Mikobot/*.session
 Mikobot/*.session-journal
-Logs.txt
+Logs.txt*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

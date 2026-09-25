@@ -374,6 +374,8 @@ class FederationDeletionTests(unittest.TestCase):
             "FEDERATION_BANNED_FULL": {"fed": {1: {}}},
             "FEDS_SUBSCRIBER": {"fed": {}},
             "MYFEDS_SUBSCRIBER": {"fed": {}},
+            "SQLAlchemyError": RuntimeError,
+            "LOGGER": SimpleNamespace(exception=lambda *args, **kwargs: None),
         }
 
     def test_non_owner_cannot_delete(self):
@@ -537,6 +539,105 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
 
         await send_log(SimpleNamespace(bot=Bot()), "-100", 42, "event")
         self.assertEqual(stopped, [])
+
+    async def test_error_handler_answers_failed_callback(self):
+        answers = []
+        warnings = []
+        errors = []
+
+        class TelegramError(Exception):
+            pass
+
+        class Update:
+            def __init__(self):
+                self.callback_query = SimpleNamespace(
+                    id="callback-1",
+                    answer=self.record_answer,
+                )
+                self.effective_chat = SimpleNamespace(id=42)
+
+            async def record_answer(self, *args, **kwargs):
+                answers.append((args, kwargs))
+
+        error_callback = load_function(
+            ROOT / "Mikobot/__main__.py",
+            "error_callback",
+            {
+                "Update": Update,
+                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
+                "Forbidden": TelegramError,
+                "BadRequest": TelegramError,
+                "TimedOut": TelegramError,
+                "NetworkError": TelegramError,
+                "TelegramError": TelegramError,
+                "ChatMigrated": type("ChatMigrated", (TelegramError,), {}),
+                "_activity_summary": lambda update: "callback user=1 chat=42",
+                "LOGGER": SimpleNamespace(
+                    warning=lambda *args, **kwargs: warnings.append((args, kwargs)),
+                    info=lambda *args, **kwargs: None,
+                    error=lambda *args, **kwargs: errors.append((args, kwargs)),
+                    debug=lambda *args, **kwargs: None,
+                ),
+            },
+        )
+
+        await error_callback(Update(), SimpleNamespace(error=TelegramError("failed")))
+        self.assertEqual(len(answers), 1)
+        self.assertTrue(answers[0][1]["show_alert"])
+        self.assertEqual(len(warnings), 1)
+
+    async def test_audit_log_failure_does_not_fail_successful_action(self):
+        async def failing_send_log(*args, **kwargs):
+            raise RuntimeError("log delivery failed")
+
+        async def successful_action(update, context):
+            return "event"
+
+        loggable = load_nested_function(
+            ROOT / "Mikobot/plugins/log_channel.py",
+            "loggable",
+            {
+                "wraps": __import__("functools").wraps,
+                "Update": object,
+                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
+                "send_log": failing_send_log,
+                "sql": SimpleNamespace(get_chat_log_channel=lambda chat_id: -100),
+                "LOGGER": SimpleNamespace(exception=lambda *args, **kwargs: None),
+                "datetime": __import__("datetime").datetime,
+                "timezone": __import__("datetime").timezone,
+            },
+        )
+        update = SimpleNamespace(
+            effective_chat=SimpleNamespace(
+                id=42, is_forum=False, username=None, SUPERGROUP="supergroup"
+            ),
+            effective_message=SimpleNamespace(
+                chat=SimpleNamespace(type="private"), message_id=1, message_thread_id=None
+            ),
+        )
+        wrapped = loggable(successful_action)
+        result = await wrapped(update, SimpleNamespace())
+        self.assertTrue(result.startswith("event\nEvent stamp:"))
+
+    def test_federation_ban_functions_use_single_rollback_transaction(self):
+        source = (ROOT / "Database/sql/feds_sql.py").read_text(encoding="utf-8")
+        for name in ("fban_user", "multi_fban_user", "un_fban_user"):
+            function = next(
+                node
+                for node in ast.walk(ast.parse(source))
+                if isinstance(node, ast.FunctionDef) and node.name == name
+            )
+            self.assertEqual(
+                sum(
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "commit"
+                    for node in ast.walk(function)
+                ),
+                1,
+                name,
+            )
+            self.assertFalse(any(isinstance(node, ast.Try) and node.finalbody for node in ast.walk(function)))
 
     def test_federation_extractors_are_awaited(self):
         tree = ast.parse((ROOT / "Mikobot/plugins/feds.py").read_text(encoding="utf-8"))
@@ -728,14 +829,23 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
             }
             self.assertTrue(required <= imports, relative)
 
-        main_tree = ast.parse((ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8"))
-        self.assertTrue(
-            any(
-                isinstance(node, ast.Import)
-                and any(alias.name == "html" for alias in node.names)
-                for node in main_tree.body
-            )
-        )
+        main_source = (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8")
+        self.assertNotIn("traceback.format_exception", main_source)
+        self.assertIn("await update.callback_query.answer(", main_source)
+        self.assertIn("_activity_summary(update)", main_source)
+        for relative in (".gitignore", ".dockerignore"):
+            self.assertIn("Logs.txt*", (ROOT / relative).read_text(encoding="utf-8"))
+        init_source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
+        self.assertNotIn("force=True", init_source)
+        for relative in (
+            "Mikobot/plugins/ban.py",
+            "Mikobot/plugins/mute.py",
+            "Mikobot/plugins/log_channel.py",
+            "Mikobot/plugins/welcome.py",
+        ):
+            source = (ROOT / relative).read_text(encoding="utf-8")
+            self.assertNotIn("LOGGER.warning(update)", source)
+            self.assertNotIn("LOGGER.warning(result)", source)
         anime_source = (ROOT / "Mikobot/plugins/anime.py").read_text(encoding="utf-8")
         self.assertIn("gcc = get_user_from_channel", anime_source)
         self.assertNotIn("SESSION.query(UserF)", (ROOT / "Database/sql/feds_sql.py").read_text(encoding="utf-8"))
