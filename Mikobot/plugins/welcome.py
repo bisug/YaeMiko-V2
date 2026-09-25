@@ -51,7 +51,9 @@ from Mikobot.plugins.helper_funcs.msg_types import get_welcome_type
 from Mikobot.plugins.helper_funcs.string_handling import escape_invalid_curly_brackets
 from Mikobot.plugins.log_channel import loggable
 from Mikobot.utils.can_restrict import can_restrict
+from telegram.constants import KeyboardButtonStyle
 
+from pyrogram.enums import ButtonStyle
 # <=======================================================================================================>
 
 VALID_WELCOME_FORMATTERS = [
@@ -176,7 +178,7 @@ async def member_has_joined(client, member: ChatMemberUpdated):
                     os.path.join(temp_dir, "welcome.png"),
                 )
                 user_username = user.username if user.username else f"user?id={user.id}"
-                inline_keyboard = IM([[IB("🔗 USER", url=f"https://t.me/{user_username}")]])
+                inline_keyboard = IM([[IB("🔗 USER", url=f"https://t.me/{user_username}", style=ButtonStyle.PRIMARY)]])
                 WELCOME_MESSAGES[f"welcome-{chat_id}"] = await client.send_photo(
                     member.chat.id,
                     photo=welcomeimg,
@@ -590,7 +592,7 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                         callback_data="user_join_({})".format(
                                             new_mem.id
                                         ),
-                                    ),
+                                     style=KeyboardButtonStyle.SUCCESS),
                                 ],
                             ],
                         ),

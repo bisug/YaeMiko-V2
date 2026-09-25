@@ -20,6 +20,7 @@ from Infamous.karma import START_IMG
 from Mikobot import BOT_NAME, DEV_USERS, DRAGONS, INFOPIC, OWNER_ID, function
 from Mikobot.plugins.helper_funcs.chat_status import support_plus
 from Mikobot.plugins.users import get_user_id
+from telegram.constants import KeyboardButtonStyle
 
 # <=======================================================================================================>
 
@@ -206,7 +207,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [
             InlineKeyboardButton(
                 "㊋ Infamous • Hydra", url="https://t.me/Infamous_Hydra"
-            ),
+            , style=KeyboardButtonStyle.PRIMARY),
         ]
     ]
 

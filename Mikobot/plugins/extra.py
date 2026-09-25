@@ -8,6 +8,7 @@ from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
 
 from Mikobot import LOGGER, app, function
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
+from telegram.constants import KeyboardButtonStyle
 
 # <=======================================================================================================>
 
@@ -73,7 +74,7 @@ async def logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     with open("Logs.txt", "rb") as f:
         caption = "Here is your log"
         reply_markup = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Close", callback_data="close")]]
+            [[InlineKeyboardButton("Close", callback_data="close", style=KeyboardButtonStyle.PRIMARY)]]
         )
         message = await context.bot.send_document(
             document=f,

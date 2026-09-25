@@ -56,6 +56,7 @@ from Mikobot import (
 from Mikobot.plugins import ALL_MODULES
 from Mikobot.plugins.helper_funcs.chat_status import is_user_admin
 from Mikobot.plugins.helper_funcs.misc import paginate_modules
+from telegram.constants import KeyboardButtonStyle
 
 # <=======================================================================================================>
 
@@ -199,7 +200,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     update.effective_chat.id,
                     HELPABLE[mod].__help__,
                     InlineKeyboardMarkup(
-                        [[InlineKeyboardButton(text="◁", callback_data="help_back")]]
+                        [[InlineKeyboardButton(text="◁", callback_data="help_back", style=KeyboardButtonStyle.PRIMARY)]]
                     ),
                 )
 
@@ -247,15 +248,15 @@ async def extra_command_handlered(update: Update, context: ContextTypes.DEFAULT_
 
     keyboard = [
         [
-            InlineKeyboardButton("MANAGEMENT", callback_data="help_back"),
-            InlineKeyboardButton("AI", callback_data="ai_command_handler"),
+            InlineKeyboardButton("MANAGEMENT", callback_data="help_back", style=KeyboardButtonStyle.PRIMARY),
+            InlineKeyboardButton("AI", callback_data="ai_command_handler", style=KeyboardButtonStyle.PRIMARY),
         ],
         [
-            InlineKeyboardButton("ANIME", callback_data="anime_command_handler"),
-            InlineKeyboardButton("GENSHIN", callback_data="genshin_command_handler"),
+            InlineKeyboardButton("ANIME", callback_data="anime_command_handler", style=KeyboardButtonStyle.PRIMARY),
+            InlineKeyboardButton("GENSHIN", callback_data="genshin_command_handler", style=KeyboardButtonStyle.PRIMARY),
         ],
         [
-            InlineKeyboardButton("HOME", callback_data="Miko_back"),
+            InlineKeyboardButton("HOME", callback_data="Miko_back", style=KeyboardButtonStyle.PRIMARY),
         ],
     ]
 
@@ -277,19 +278,19 @@ async def extra_command_callback(update: Update, context: ContextTypes.DEFAULT_T
             reply_markup=InlineKeyboardMarkup(
                 [
                     [
-                        InlineKeyboardButton("MANAGEMENT", callback_data="help_back"),
-                        InlineKeyboardButton("AI", callback_data="ai_command_handler"),
+                        InlineKeyboardButton("MANAGEMENT", callback_data="help_back", style=KeyboardButtonStyle.PRIMARY),
+                        InlineKeyboardButton("AI", callback_data="ai_command_handler", style=KeyboardButtonStyle.PRIMARY),
                     ],
                     [
                         InlineKeyboardButton(
                             "ANIME", callback_data="anime_command_handler"
-                        ),
+                        , style=KeyboardButtonStyle.PRIMARY),
                         InlineKeyboardButton(
                             "GENSHIN", callback_data="genshin_command_handler"
-                        ),
+                        , style=KeyboardButtonStyle.PRIMARY),
                     ],
                     [
-                        InlineKeyboardButton("HOME", callback_data="Miko_back"),
+                        InlineKeyboardButton("HOME", callback_data="Miko_back", style=KeyboardButtonStyle.PRIMARY),
                     ],
                 ]
             ),
@@ -300,7 +301,7 @@ async def extra_command_callback(update: Update, context: ContextTypes.DEFAULT_T
 async def ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🧠 *AI commands:*\n\n➽ /askai <question>\n➽ /palm <question>\n➽ Miko <question>\n\nPowered by Google Gemini.",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("AI", callback_data="ai_handler")]]),
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("AI", callback_data="ai_handler", style=KeyboardButtonStyle.PRIMARY)]]),
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -311,7 +312,7 @@ async def ai_command_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         await query.answer()
         await query.message.edit_text(
             "🧠 *AI commands:*\n\n➽ /askai <question>\n➽ /palm <question>\n➽ Miko <question>\n\nPowered by Google Gemini.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("AI", callback_data="ai_handler")], [InlineKeyboardButton("» 𝘽𝘼𝘾𝙆 «", callback_data="extra_command_handler")]]),
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("AI", callback_data="ai_handler", style=KeyboardButtonStyle.PRIMARY)], [InlineKeyboardButton("» 𝘽𝘼𝘾𝙆 «", callback_data="extra_command_handler", style=KeyboardButtonStyle.PRIMARY)]]),
             parse_mode=ParseMode.MARKDOWN,
         )
 
@@ -322,7 +323,7 @@ async def ai_handler_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         await query.answer()
         await query.message.edit_text(
             "🧠 *AI commands:*\n\n➽ /askai <question>\n➽ /palm <question>\n➽ Miko <question>\n\nPowered by Google Gemini.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⇦ BACK", callback_data="ai_command_handler")]]),
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⇦ BACK", callback_data="ai_command_handler", style=KeyboardButtonStyle.PRIMARY)]]),
             parse_mode=ParseMode.MARKDOWN,
         )
 
@@ -353,15 +354,15 @@ async def anime_command_callback(update: Update, context: ContextTypes.DEFAULT_T
             reply_markup=InlineKeyboardMarkup(
                 [
                     [
-                        InlineKeyboardButton("More Info", url="https://anilist.co/"),
+                        InlineKeyboardButton("More Info", url="https://anilist.co/", style=KeyboardButtonStyle.PRIMARY),
                         InlineKeyboardButton(
                             "㊋Infamous•Hydra", url="https://t.me/Infamous_Hydra"
-                        ),
+                        , style=KeyboardButtonStyle.PRIMARY),
                     ],
                     [
                         InlineKeyboardButton(
                             "» 𝘽𝘼𝘾𝙆 «", callback_data="extra_command_handler"
-                        ),
+                        , style=KeyboardButtonStyle.PRIMARY),
                     ],
                 ]
             ),
@@ -381,12 +382,12 @@ async def genshin_command_callback(update: Update, context: ContextTypes.DEFAULT
                     [
                         InlineKeyboardButton(
                             "More Info", url="https://genshin.mihoyo.com/"
-                        ),
+                        , style=KeyboardButtonStyle.PRIMARY),
                     ],
                     [
                         InlineKeyboardButton(
                             "» 𝘽𝘼𝘾𝙆 «", callback_data="extra_command_handler"
-                        ),
+                        , style=KeyboardButtonStyle.PRIMARY),
                     ],
                 ]
             ),
@@ -443,7 +444,7 @@ async def help_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode=ParseMode.MARKDOWN,
                 link_preview_options=LinkPreviewOptions(is_disabled=True),
                 reply_markup=InlineKeyboardMarkup(
-                    [[InlineKeyboardButton(text="◁", callback_data="help_back")]]
+                    [[InlineKeyboardButton(text="◁", callback_data="help_back", style=KeyboardButtonStyle.PRIMARY)]]
                 ),
             )
 
@@ -516,7 +517,7 @@ async def gitsource_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
 
         # Adding the inline button
-        keyboard = [[InlineKeyboardButton(text="◁", callback_data="Miko_back")]]
+        keyboard = [[InlineKeyboardButton(text="◁", callback_data="Miko_back", style=KeyboardButtonStyle.PRIMARY)]]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await query.edit_message_text(
@@ -559,14 +560,14 @@ async def Miko_about_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
                     [
                         InlineKeyboardButton(
                             text="ABOUT", callback_data="Miko_support"
-                        ),
-                        InlineKeyboardButton(text="COMMAND", callback_data="help_back"),
+                        , style=KeyboardButtonStyle.PRIMARY),
+                        InlineKeyboardButton(text="COMMAND", callback_data="help_back", style=KeyboardButtonStyle.PRIMARY),
                     ],
                     [
-                        InlineKeyboardButton(text="INSIDER", callback_data="insider_"),
+                        InlineKeyboardButton(text="INSIDER", callback_data="insider_", style=KeyboardButtonStyle.PRIMARY),
                     ],
                     [
-                        InlineKeyboardButton(text="◁", callback_data="Miko_back"),
+                        InlineKeyboardButton(text="◁", callback_data="Miko_back", style=KeyboardButtonStyle.PRIMARY),
                     ],
                 ]
             ),
@@ -585,13 +586,13 @@ async def Miko_about_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
                     [
                         InlineKeyboardButton(
                             text="SUPPORT", url=f"https://t.me/{SUPPORT_CHAT}"
-                        ),
+                        , style=KeyboardButtonStyle.PRIMARY),
                         InlineKeyboardButton(
                             text="DEVELOPER", url=f"tg://user?id={OWNER_ID}"
-                        ),
+                        , style=KeyboardButtonStyle.PRIMARY),
                     ],
                     [
-                        InlineKeyboardButton(text="◁", callback_data="Miko_"),
+                        InlineKeyboardButton(text="◁", callback_data="Miko_", style=KeyboardButtonStyle.PRIMARY),
                     ],
                 ]
             ),
@@ -623,7 +624,7 @@ async def get_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 url="https://t.me/{}?start=ghelp_{}".format(
                                     context.bot.username, module
                                 ),
-                            )
+                             style=KeyboardButtonStyle.PRIMARY)
                         ]
                     ]
                 ),
@@ -639,13 +640,13 @@ async def get_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             url="https://t.me/{}?start=help".format(
                                 context.bot.username
                             ),
-                        )
+                         style=KeyboardButtonStyle.PRIMARY)
                     ],
                     [
                         InlineKeyboardButton(
                             text="OPEN HERE",
                             callback_data="extra_command_handler",
-                        )
+                         style=KeyboardButtonStyle.PRIMARY)
                     ],
                 ]
             ),
@@ -665,7 +666,7 @@ async def get_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat.id,
             text,
             InlineKeyboardMarkup(
-                [[InlineKeyboardButton(text="◁", callback_data="help_back")]]
+                [[InlineKeyboardButton(text="◁", callback_data="help_back", style=KeyboardButtonStyle.PRIMARY)]]
             ),
         )
 
@@ -749,7 +750,7 @@ async def settings_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             InlineKeyboardButton(
                                 text="◁",
                                 callback_data="stngs_back({})".format(chat_id),
-                            )
+                             style=KeyboardButtonStyle.PRIMARY)
                         ]
                     ]
                 ),
@@ -826,7 +827,7 @@ async def get_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 url="t.me/{}?start=stngs_{}".format(
                                     context.bot.username, chat.id
                                 ),
-                            )
+                             style=KeyboardButtonStyle.PRIMARY)
                         ]
                     ]
                 ),

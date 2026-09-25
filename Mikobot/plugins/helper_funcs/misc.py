@@ -19,12 +19,13 @@ from telegram.constants import MessageLimit, ParseMode
 from telegram.error import TelegramError
 
 from Mikobot import NO_LOAD, OWNER_ID
+from telegram.constants import KeyboardButtonStyle
 
 # <=======================================================================================================>
 
 
 # <================================================ FUNCTION =======================================================>
-class EqInlineKeyboardButton(InlineKeyboardButton):
+class EqInlineKeyboardButton(InlineKeyboardButton, style=KeyboardButtonStyle.PRIMARY):
     def __eq__(self, other):
         return self.text == other.text
 
@@ -70,7 +71,7 @@ def paginate_modules(page_n: int, module_dict: Dict, prefix, chat=None) -> List:
                     callback_data="{}_module({})".format(
                         prefix, x.__mod_name__.lower()
                     ),
-                )
+                 style=KeyboardButtonStyle.PRIMARY)
                 for x in module_dict.values()
             ]
         )
@@ -82,7 +83,7 @@ def paginate_modules(page_n: int, module_dict: Dict, prefix, chat=None) -> List:
                     callback_data="{}_module({},{})".format(
                         prefix, chat, x.__mod_name__.lower()
                     ),
-                )
+                 style=KeyboardButtonStyle.PRIMARY)
                 for x in module_dict.values()
             ]
         )
@@ -103,18 +104,18 @@ def paginate_modules(page_n: int, module_dict: Dict, prefix, chat=None) -> List:
             (
                 EqInlineKeyboardButton(
                     "◁", callback_data="{}_prev({})".format(prefix, modulo_page)
-                ),
+                , style=KeyboardButtonStyle.PRIMARY),
                 EqInlineKeyboardButton(
                     "» 𝘽𝘼𝘾𝙆 «", callback_data="extra_command_handler"
-                ),
+                , style=KeyboardButtonStyle.PRIMARY),
                 EqInlineKeyboardButton(
                     "▷", callback_data="{}_next({})".format(prefix, modulo_page)
-                ),
+                , style=KeyboardButtonStyle.PRIMARY),
             )
         ]
 
     else:
-        pairs += [[EqInlineKeyboardButton("⇦ 𝘽𝘼𝘾𝙆", callback_data="Miko_back")]]
+        pairs += [[EqInlineKeyboardButton("⇦ 𝘽𝘼𝘾𝙆", callback_data="Miko_back", style=KeyboardButtonStyle.PRIMARY)]]
 
     return pairs
 
@@ -161,9 +162,9 @@ def build_keyboard(buttons):
     keyb = []
     for btn in buttons:
         if btn.same_line and keyb:
-            keyb[-1].append(InlineKeyboardButton(btn.name, url=btn.url))
+            keyb[-1].append(InlineKeyboardButton(btn.name, url=btn.url, style=KeyboardButtonStyle.PRIMARY))
         else:
-            keyb.append([InlineKeyboardButton(btn.name, url=btn.url)])
+            keyb.append([InlineKeyboardButton(btn.name, url=btn.url, style=KeyboardButtonStyle.PRIMARY)])
 
     return keyb
 
@@ -185,9 +186,9 @@ def build_keyboard_parser(bot, chat_id, buttons):
         if btn.url == "{rules}":
             btn.url = "http://t.me/{}?start={}".format(bot.username, chat_id)
         if btn.same_line and keyb:
-            keyb[-1].append(InlineKeyboardButton(btn.name, url=btn.url))
+            keyb[-1].append(InlineKeyboardButton(btn.name, url=btn.url, style=KeyboardButtonStyle.PRIMARY))
         else:
-            keyb.append([InlineKeyboardButton(btn.name, url=btn.url)])
+            keyb.append([InlineKeyboardButton(btn.name, url=btn.url, style=KeyboardButtonStyle.PRIMARY)])
 
     return keyb
 
@@ -208,9 +209,9 @@ def build_keyboard_alternate(buttons):
     keyb = []
     for btn in buttons:
         if btn[2] and keyb:
-            keyb[-1].append(InlineKeyboardButton(btn[0], url=btn[1]))
+            keyb[-1].append(InlineKeyboardButton(btn[0], url=btn[1], style=KeyboardButtonStyle.PRIMARY))
         else:
-            keyb.append([InlineKeyboardButton(btn[0], url=btn[1])])
+            keyb.append([InlineKeyboardButton(btn[0], url=btn[1], style=KeyboardButtonStyle.PRIMARY)])
 
     return keyb
 

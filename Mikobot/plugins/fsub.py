@@ -9,6 +9,7 @@ from pyrogram.types import ChatPermissions, InlineKeyboardButton, InlineKeyboard
 from Database.mongodb import fsub_db as db
 from Mikobot import BOT_ID, DRAGONS as DEVS, LOGGER, OWNER_ID, app
 from Mikobot.events import register
+from pyrogram.enums import ButtonStyle
 
 F_SUBSCRIBE_COMMAND = r"/(fsub|Fsub|forcesubscribe|Forcesub|forcesub|Forcesubscribe)"
 FORCESUBSCRIBE_ON = {"on", "yes", "y"}
@@ -110,8 +111,8 @@ async def force_subscribe_new_message(_, message):
         return
     name = message.from_user.first_name.replace("<", "&lt;").replace(">", "&gt;")
     markup = InlineKeyboardMarkup([[
-        InlineKeyboardButton("Join Channel", url=f"https://t.me/{channel}"),
-        InlineKeyboardButton("Unmute Me", callback_data=f"fs_{message.from_user.id}"),
+        InlineKeyboardButton("Join Channel", url=f"https://t.me/{channel}", style=ButtonStyle.SUCCESS),
+        InlineKeyboardButton("Unmute Me", callback_data=f"fs_{message.from_user.id}", style=ButtonStyle.SUCCESS),
     ]])
     await message.reply(
         f'<b><a href="tg://user?id={message.from_user.id}">{name}</a></b>, you have <b>not subscribed</b> to our <b><a href="https://t.me/{channel}">channel</a></b> yet. Please join and press the button below to unmute yourself.',

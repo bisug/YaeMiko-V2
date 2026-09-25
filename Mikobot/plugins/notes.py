@@ -28,6 +28,7 @@ from Mikobot.plugins.helper_funcs.string_handling import (
 )
 
 from .cust_filters import MessageHandlerChecker
+from telegram.constants import KeyboardButtonStyle
 
 # <=======================================================================================================>
 
@@ -364,9 +365,9 @@ async def clearall(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardButton(
                         text="Delete all notes",
                         callback_data="notes_rmall",
-                    ),
+                     style=KeyboardButtonStyle.DANGER),
                 ],
-                [InlineKeyboardButton(text="Cancel", callback_data="notes_cancel")],
+                [InlineKeyboardButton(text="Cancel", callback_data="notes_cancel", style=KeyboardButtonStyle.PRIMARY)],
             ],
         )
         await update.effective_message.reply_text(

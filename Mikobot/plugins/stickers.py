@@ -34,6 +34,7 @@ from Mikobot import LOGGER, MESSAGE_DUMP, app
 from Mikobot.state import state
 from Mikobot.utils.custom_filters import PREFIX_HANDLER
 from Mikobot.utils.localization import use_chat_lang
+from pyrogram.enums import ButtonStyle
 
 
 def get_emoji_regex():
@@ -346,7 +347,7 @@ async def kang_sticker(self: Client, ctx: Message, strings):
                                 InlineKeyboardButton(
                                     strings("click_me"),
                                     url=f"https://t.me/{self.me.username}?start",
-                                )
+                                 style=ButtonStyle.PRIMARY)
                             ]
                         ]
                     ),
@@ -363,7 +364,7 @@ async def kang_sticker(self: Client, ctx: Message, strings):
                     InlineKeyboardButton(
                         text=strings("viewpack"),
                         url=f"https://t.me/addstickers/{packname}",
-                    )
+                     style=ButtonStyle.PRIMARY)
                 ]
             ]
         )
@@ -630,7 +631,7 @@ async def give_st_info(c: app, m: Message):
                 IKB(
                     "➕ 𝗔𝗱𝗱 𝘀𝘁𝗶𝗰𝗸𝗲𝗿 𝗽𝗮𝗰𝗸",
                     url=f"https://t.me/addstickers/{st_in.set_name}",
-                )
+                 style=ButtonStyle.PRIMARY)
             ]
         ]
     )

@@ -915,6 +915,38 @@ class DatabaseRegressionTests(unittest.TestCase):
         self.assertEqual(session.key, ("fed", "123"))
         self.assertTrue(session.closed)
 
+    def test_all_inline_button_calls_have_explicit_styles(self):
+        unstyled = []
+        for path in list((ROOT / "Mikobot").rglob("*.py")) + [
+            ROOT / "Infamous/karma.py"
+        ]:
+            source = path.read_text(encoding="utf-8")
+            tree = ast.parse(source)
+            aliases = set()
+            for node in tree.body:
+                if isinstance(node, ast.ImportFrom) and node.module in {
+                    "telegram",
+                    "pyrogram.types",
+                }:
+                    for alias in node.names:
+                        if alias.name == "InlineKeyboardButton":
+                            aliases.add(alias.asname or alias.name)
+            if any(
+                isinstance(node, ast.FunctionDef)
+                and node.name == "paginate_modules"
+                for node in tree.body
+            ):
+                aliases.add("EqInlineKeyboardButton")
+            for node in ast.walk(tree):
+                if (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name)
+                    and node.func.id in aliases
+                    and not any(keyword.arg == "style" for keyword in node.keywords)
+                ):
+                    unstyled.append(f"{path}:{node.lineno}")
+        self.assertEqual(unstyled, [])
+
     def test_telegram_at_constructors_use_ptb_22_8_fields(self):
         from telegram import InlineQueryResultArticle, InputTextMessageContent
         from telegram import MenuButtonWebApp, WebAppInfo

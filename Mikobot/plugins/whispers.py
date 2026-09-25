@@ -19,6 +19,7 @@ from telegram.ext import CallbackQueryHandler, ContextTypes, InlineQueryHandler
 from Mikobot import BOT_USERNAME, function
 
 from Database.mongodb.whispers import Whispers
+from telegram.constants import KeyboardButtonStyle
 
 # <==================================================== BOOT FUNCTION ===================================================>
 # Inline query handler
@@ -76,7 +77,7 @@ async def mainwhisper(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardButton(
                             "📩 𝗦𝗵𝗼𝘄 𝗪𝗵𝗶𝘀𝗽𝗲𝗿 📩",
                             callback_data=f"whisper_{whisperId}",
-                        )
+                         style=KeyboardButtonStyle.PRIMARY)
                     ]
                 ]
             ),

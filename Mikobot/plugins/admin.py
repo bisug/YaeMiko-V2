@@ -23,6 +23,7 @@ from Mikobot.plugins.helper_funcs.chat_status import (
 )
 from Mikobot.plugins.helper_funcs.extraction import extract_user, extract_user_and_text
 from Mikobot.plugins.log_channel import loggable
+from telegram.constants import KeyboardButtonStyle
 
 # <=======================================================================================================>
 
@@ -51,7 +52,7 @@ async def promote(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardButton(
                             text="Click to promote admin.",
                             callback_data=f"admin_=promote={user_id}",
-                        ),
+                         style=KeyboardButtonStyle.PRIMARY),
                     ],
                 ],
             ),
@@ -151,7 +152,7 @@ async def fullpromote(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardButton(
                             text="Click to promote admin.",
                             callback_data=f"admin_=promote={user_id}",
-                        ),
+                         style=KeyboardButtonStyle.PRIMARY),
                     ],
                 ],
             ),
@@ -252,7 +253,7 @@ async def demote(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardButton(
                             text="Click to prove admin.",
                             callback_data=f"admin_=demote={user_id}",
-                        ),
+                         style=KeyboardButtonStyle.DANGER),
                     ],
                 ],
             ),
@@ -365,7 +366,7 @@ async def set_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardButton(
                             text="Click to prove admin.",
                             callback_data=f"admin_=title={action_token}",
-                        ),
+                         style=KeyboardButtonStyle.SUCCESS),
                     ],
                 ],
             ),
@@ -466,7 +467,7 @@ async def pin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                         InlineKeyboardButton(
                             text="Click to prove admin.",
                             callback_data=f"admin_=pin={prev_message.message_id}={int(is_silent)}",
-                        ),
+                         style=KeyboardButtonStyle.PRIMARY),
                     ],
                 ],
             ),
@@ -512,7 +513,7 @@ async def unpin(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardButton(
                             text="Click to prove Admin.",
                             callback_data=f"admin_=unpin",
-                        ),
+                         style=KeyboardButtonStyle.DANGER),
                     ],
                 ],
             ),
@@ -558,7 +559,7 @@ async def unpinall(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardButton(
                             text="Click to prove admin.",
                             callback_data=f"admin_=unpinall",
-                        ),
+                         style=KeyboardButtonStyle.DANGER),
                     ],
                 ],
             ),

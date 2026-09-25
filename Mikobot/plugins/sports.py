@@ -10,6 +10,7 @@ from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
 
 from Mikobot import function
 from Mikobot.state import state
+from telegram.constants import KeyboardButtonStyle
 
 SPORTDB_KEY = os.getenv("SPORTDB_API_KEY", "123")
 SPORTDB_URL = f"https://www.thesportsdb.com/api/v1/json/{SPORTDB_KEY}"
@@ -67,7 +68,7 @@ def _league_keyboard(sport: str, leagues: list[dict]) -> InlineKeyboardMarkup:
             InlineKeyboardButton(
                 _escape(item.get("strLeague"), 35),
                 callback_data=f"sport_league:{sport}:{item['idLeague']}",
-            )
+             style=KeyboardButtonStyle.PRIMARY)
         ]
         for item in leagues
     ]
@@ -102,7 +103,7 @@ async def _send_league_message(message, sport: str, league_id: str) -> None:
             text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("⬅️ Leagues", callback_data=f"sport_menu:{sport}")]]
+                [[InlineKeyboardButton("⬅️ Leagues", callback_data=f"sport_menu:{sport}", style=KeyboardButtonStyle.PRIMARY)]]
             ),
         )
     except HTTPError:
@@ -125,7 +126,7 @@ async def _send_league(update: Update, sport: str, league_id: str) -> None:
             text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("⬅️ Leagues", callback_data=f"sport_menu:{sport}")]]
+                [[InlineKeyboardButton("⬅️ Leagues", callback_data=f"sport_menu:{sport}", style=KeyboardButtonStyle.PRIMARY)]]
             ),
         )
     except HTTPError:

@@ -12,6 +12,7 @@ from Mikobot.plugins.disable import DisableAbleCommandHandler
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.plugins.helper_funcs.extraction import extract_user
 from Mikobot.plugins.log_channel import loggable
+from telegram.constants import KeyboardButtonStyle
 
 
 @loggable
@@ -162,13 +163,13 @@ async def unapproveall(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardButton(
                         text="Unapprove all users",
                         callback_data="unapproveall_user",
-                    ),
+                     style=KeyboardButtonStyle.DANGER),
                 ],
                 [
                     InlineKeyboardButton(
                         text="Cancel",
                         callback_data="unapproveall_cancel",
-                    ),
+                     style=KeyboardButtonStyle.DANGER),
                 ],
             ],
         )

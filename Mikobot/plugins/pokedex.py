@@ -9,6 +9,7 @@ from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
 
 from Mikobot import function
 from Mikobot.state import state
+from telegram.constants import KeyboardButtonStyle
 
 POKEAPI = "https://pokeapi.co/api/v2"
 MOVES_PER_PAGE = 20
@@ -83,31 +84,31 @@ def _keyboard(
             buttons.append(
                 InlineKeyboardButton(
                     "⬅️ Previous", callback_data=f"{prefix}:moves:{page - 1}"
-                )
+                , style=KeyboardButtonStyle.PRIMARY)
             )
         buttons.append(
             InlineKeyboardButton(
                 f"Page {page + 1}/{pages}", callback_data=f"{prefix}:info:{page}"
-            )
+            , style=KeyboardButtonStyle.PRIMARY)
         )
         if page + 1 < pages:
             buttons.append(
                 InlineKeyboardButton(
                     "Next ➡️", callback_data=f"{prefix}:moves:{page + 1}"
-                )
+                , style=KeyboardButtonStyle.PRIMARY)
             )
         return InlineKeyboardMarkup([buttons])
     return InlineKeyboardMarkup(
         [
             [
-                InlineKeyboardButton("Overview", callback_data=f"{prefix}:info:0"),
-                InlineKeyboardButton("Stats", callback_data=f"{prefix}:stats:0"),
+                InlineKeyboardButton("Overview", callback_data=f"{prefix}:info:0", style=KeyboardButtonStyle.PRIMARY),
+                InlineKeyboardButton("Stats", callback_data=f"{prefix}:stats:0", style=KeyboardButtonStyle.PRIMARY),
             ],
             [
-                InlineKeyboardButton("Moves", callback_data=f"{prefix}:moves:0"),
+                InlineKeyboardButton("Moves", callback_data=f"{prefix}:moves:0", style=KeyboardButtonStyle.PRIMARY),
                 InlineKeyboardButton(
                     "Evolution", callback_data=f"{prefix}:evolution:0"
-                ),
+                , style=KeyboardButtonStyle.PRIMARY),
             ],
         ]
     )

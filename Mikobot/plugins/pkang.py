@@ -6,6 +6,7 @@ from pyrogram import filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from Mikobot import app
+from pyrogram.enums import ButtonStyle
 
 # <=======================================================================================================>
 
@@ -74,7 +75,7 @@ async def _packkang(app, message):
                     [
                         InlineKeyboardButton(
                             "PACK", url=f"http://t.me/addstickers/{short_name}"
-                        )
+                        , style=ButtonStyle.PRIMARY)
                     ]
                 ]
             ),

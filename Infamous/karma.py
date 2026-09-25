@@ -8,7 +8,9 @@ from telegram import InlineKeyboardButton
 from telegram.helpers import escape_markdown
 
 from Mikobot import BOT_NAME, BOT_USERNAME, OWNER_ID, SUPPORT_CHAT
+from telegram.constants import KeyboardButtonStyle
 
+from pyrogram.enums import ButtonStyle
 # <============================================== CONSTANTS =========================================================>
 START_IMG = [
     "https://telegra.ph/file/40b93b46642124605e678.jpg",
@@ -42,17 +44,17 @@ START_BTN = [
         InlineKeyboardButton(
             text="⇦ ADD ME ⇨",
             url=f"https://t.me/{BOT_USERNAME}?startgroup=true",
-        ),
+         style=KeyboardButtonStyle.PRIMARY),
     ],
     [
-        InlineKeyboardButton(text="HELP", callback_data="extra_command_handler"),
+        InlineKeyboardButton(text="HELP", callback_data="extra_command_handler", style=KeyboardButtonStyle.PRIMARY),
     ],
     [
-        InlineKeyboardButton(text="DETAILS", callback_data="Miko_"),
-        InlineKeyboardButton(text="SOURCE", callback_data="git_source"),
+        InlineKeyboardButton(text="DETAILS", callback_data="Miko_", style=KeyboardButtonStyle.PRIMARY),
+        InlineKeyboardButton(text="SOURCE", callback_data="git_source", style=KeyboardButtonStyle.PRIMARY),
     ],
     [
-        InlineKeyboardButton(text="CREATOR", url=f"tg://user?id={OWNER_ID}"),
+        InlineKeyboardButton(text="CREATOR", url=f"tg://user?id={OWNER_ID}", style=KeyboardButtonStyle.PRIMARY),
     ],
 ]
 
@@ -61,24 +63,24 @@ GROUP_START_BTN = [
         InlineKeyboardButton(
             text="⇦ ADD ME ⇨",
             url=f"https://t.me/{BOT_USERNAME}?startgroup=true",
-        ),
+         style=KeyboardButtonStyle.PRIMARY),
     ],
     [
-        InlineKeyboardButton(text="SUPPORT", url=f"https://t.me/{SUPPORT_CHAT}"),
-        InlineKeyboardButton(text="CREATOR", url=f"tg://user?id={OWNER_ID}"),
+        InlineKeyboardButton(text="SUPPORT", url=f"https://t.me/{SUPPORT_CHAT}", style=KeyboardButtonStyle.PRIMARY),
+        InlineKeyboardButton(text="CREATOR", url=f"tg://user?id={OWNER_ID}", style=KeyboardButtonStyle.PRIMARY),
     ],
 ]
 
 ALIVE_BTN = [
     [
-        ib(text="UPDATES", url="https://t.me/Hydra_Updates"),
-        ib(text="SUPPORT", url="https://t.me/hydraXsupport"),
+        ib(text="UPDATES", url="https://t.me/Hydra_Updates", style=ButtonStyle.PRIMARY),
+        ib(text="SUPPORT", url="https://t.me/hydraXsupport", style=ButtonStyle.PRIMARY),
     ],
     [
         ib(
             text="⇦ ADD ME ⇨",
             url=f"https://t.me/{BOT_USERNAME}?startgroup=true",
-        ),
+         style=ButtonStyle.PRIMARY),
     ],
 ]
 

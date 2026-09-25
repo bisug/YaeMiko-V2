@@ -10,6 +10,7 @@ from telegram.ext import CallbackContext, CommandHandler
 
 from Mikobot import dispatcher
 from Mikobot.state import state
+from telegram.constants import KeyboardButtonStyle
 
 ENDPOINT = "https://sasta-api.vercel.app/googleImageSearch"
 
@@ -95,7 +96,7 @@ async def reverse_image_search(update: Update, context: CallbackContext):
         text,
         link_preview_options=LinkPreviewOptions(is_disabled=True),
         reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton(STRINGS.OPEN_SEARCH_PAGE, url=search_url)]]
+            [[InlineKeyboardButton(STRINGS.OPEN_SEARCH_PAGE, url=search_url, style=KeyboardButtonStyle.PRIMARY)]]
         ),
         parse_mode=ParseMode.HTML,
     )

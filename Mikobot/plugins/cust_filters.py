@@ -33,6 +33,7 @@ from Mikobot.plugins.helper_funcs.string_handling import (
     markdown_to_html,
     split_quotes,
 )
+from telegram.constants import KeyboardButtonStyle
 
 # <=======================================================================================================>
 
@@ -587,9 +588,9 @@ async def rmall_filters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardButton(
                         text="STOP ALL FILTERS",
                         callback_data="filters_rmall",
-                    ),
+                     style=KeyboardButtonStyle.DANGER),
                 ],
-                [InlineKeyboardButton(text="CANCEL", callback_data="filters_cancel")],
+                [InlineKeyboardButton(text="CANCEL", callback_data="filters_cancel", style=KeyboardButtonStyle.PRIMARY)],
             ],
         )
         await update.effective_message.reply_text(

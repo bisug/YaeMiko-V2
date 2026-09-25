@@ -38,6 +38,7 @@ from Mikobot.plugins.helper_funcs.extraction import (
 from Mikobot.plugins.helper_funcs.misc import split_message
 from Mikobot.plugins.helper_funcs.string_handling import split_quotes
 from Mikobot.plugins.log_channel import loggable
+from telegram.constants import KeyboardButtonStyle
 
 WARN_HANDLER_GROUP = 9
 CURRENT_WARNING_FILTER_STRING = "<b>Current warning filters in this chat:</b>\n"
@@ -101,7 +102,7 @@ async def warn(
                     InlineKeyboardButton(
                         "🔘 Remove warn",
                         callback_data="rm_warn({})".format(user.id),
-                    ),
+                     style=KeyboardButtonStyle.DANGER),
                 ],
             ],
         )

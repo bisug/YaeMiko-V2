@@ -39,6 +39,7 @@ from Mikobot.plugins.helper_funcs.extraction import (
     extract_user_fban,
 )
 from Mikobot.plugins.helper_funcs.string_handling import markdown_parser
+from telegram.constants import KeyboardButtonStyle
 
 # <=======================================================================================================>
 
@@ -163,9 +164,9 @@ async def del_fed(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardButton(
                         text="⚠️ Delete Federation ⚠️",
                         callback_data="rmfed_{}:{}".format(fed_id, user.id),
-                    ),
+                     style=KeyboardButtonStyle.DANGER),
                 ],
-                [InlineKeyboardButton(text="Cancel", callback_data="rmfed_cancel")],
+                [InlineKeyboardButton(text="Cancel", callback_data="rmfed_cancel", style=KeyboardButtonStyle.DANGER)],
             ],
         ),
     )

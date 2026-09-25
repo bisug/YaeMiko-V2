@@ -8,6 +8,7 @@ from telegram.ext import CallbackQueryHandler, ContextTypes
 from Mikobot import DEV_USERS, function
 from Mikobot.plugins.disable import DisableAbleCommandHandler
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
+from telegram.constants import KeyboardButtonStyle
 
 # <=======================================================================================================>
 
@@ -21,8 +22,8 @@ def convert(speed):
 async def speedtestxyz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     buttons = [
         [
-            InlineKeyboardButton("Image", callback_data="speedtest_image"),
-            InlineKeyboardButton("Text", callback_data="speedtest_text"),
+            InlineKeyboardButton("Image", callback_data="speedtest_image", style=KeyboardButtonStyle.PRIMARY),
+            InlineKeyboardButton("Text", callback_data="speedtest_text", style=KeyboardButtonStyle.PRIMARY),
         ],
     ]
     await update.effective_message.reply_text(

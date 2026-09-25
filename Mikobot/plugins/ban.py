@@ -28,6 +28,7 @@ from Mikobot.plugins.helper_funcs.extraction import extract_user_and_text
 from Mikobot.plugins.helper_funcs.misc import mention_username
 from Mikobot.plugins.helper_funcs.string_handling import extract_time
 from Mikobot.plugins.log_channel import gloggable, loggable
+from telegram.constants import KeyboardButtonStyle
 
 __mod_name__ = "BAN"
 @loggable
@@ -69,7 +70,7 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                         InlineKeyboardButton(
                             text="Click to prove Admin.",
                             callback_data=f"bans_{chat.id}=ban={user_id}={action_token}",
-                        ),
+                         style=KeyboardButtonStyle.DANGER),
                     ],
                 ]
             ),
@@ -402,7 +403,7 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                         InlineKeyboardButton(
                             text="Click to prove Admin.",
                             callback_data=f"bans_{chat.id}=unban={user_id}={action_token}",
-                        ),
+                         style=KeyboardButtonStyle.SUCCESS),
                     ],
                 ]
             ),

@@ -13,6 +13,7 @@ import Database.sql.connection_sql as sql
 from Mikobot import DEV_USERS, DRAGONS, dispatcher, function
 from Mikobot.plugins.helper_funcs import chat_status
 from Mikobot.plugins.helper_funcs.alternate import send_message, typing_action
+from telegram.constants import KeyboardButtonStyle
 
 # <=======================================================================================================>
 
@@ -170,11 +171,11 @@ async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardButton(
                         text="❎ Close Button",
                         callback_data="connect_close",
-                    ),
+                     style=KeyboardButtonStyle.SUCCESS),
                     InlineKeyboardButton(
                         text="🧹 Clear History",
                         callback_data="connect_clear",
-                    ),
+                     style=KeyboardButtonStyle.DANGER),
                 ]
             else:
                 buttons = []
@@ -189,7 +190,7 @@ async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardButton(
                         text="🔌 Disconnect",
                         callback_data="connect_disconnect",
-                    ),
+                     style=KeyboardButtonStyle.DANGER),
                 )
             else:
                 text = "Write the chat ID or tag to connect!"
@@ -220,7 +221,7 @@ async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 callback_data="connect({})".format(
                                     history["chat_id"],
                                 ),
-                            ),
+                             style=KeyboardButtonStyle.SUCCESS),
                         ],
                     )
                 text += "╘══「 Total {} Chats 」".format(

@@ -12,6 +12,7 @@ from Mikobot.plugins.helper_funcs.string_handling import (
     markdown_parser,
     markdown_to_html,
 )
+from telegram.constants import KeyboardButtonStyle
 
 # <=======================================================================================================>
 
@@ -64,7 +65,7 @@ async def send_rules(update, chat_id, from_pm=False):
                         InlineKeyboardButton(
                             text="RULES",
                             url=f"t.me/{bot.username}?start={chat_id}",
-                        ),
+                         style=KeyboardButtonStyle.PRIMARY),
                     ],
                 ],
             ),
@@ -78,7 +79,7 @@ async def send_rules(update, chat_id, from_pm=False):
                         InlineKeyboardButton(
                             text="RULES",
                             url=f"t.me/{bot.username}?start={chat_id}",
-                        ),
+                         style=KeyboardButtonStyle.PRIMARY),
                     ],
                 ],
             ),
