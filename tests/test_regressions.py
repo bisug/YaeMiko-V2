@@ -1,5 +1,6 @@
 import ast
 import asyncio
+import importlib
 import sys
 import threading
 import unittest
@@ -1363,19 +1364,23 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Contact me in PM to get your current settings.", (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8"))
 
 
-class DeploymentManifestTests(unittest.TestCase):
-    def test_manifests_are_valid(self):
-        sys.path.insert(0, str(Path(__file__).resolve().parent))
-        import validate_deployment
+class RepositoryGateTests(unittest.TestCase):
+    """The deployment and documentation gates CI runs, so they cannot rot."""
 
+    def _errors(self, module_name):
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        module = importlib.import_module(module_name)
         errors = []
-        for check in (
-            validate_deployment.check_railway,
-            validate_deployment.check_render,
-            validate_deployment.check_start_command_is_uniform,
-        ):
-            check(errors)
-        self.assertEqual(errors, [])
+        for name in dir(module):
+            if name.startswith("check_"):
+                getattr(module, name)(errors)
+        return errors
+
+    def test_deployment_manifests_are_valid(self):
+        self.assertEqual(self._errors("validate_deployment"), [])
+
+    def test_documentation_is_valid(self):
+        self.assertEqual(self._errors("validate_docs"), [])
 
 
 if __name__ == "__main__":
