@@ -25,7 +25,7 @@ from telegram.constants import KeyboardButtonStyle
 
 
 # <================================================ FUNCTION =======================================================>
-class EqInlineKeyboardButton(InlineKeyboardButton, style=KeyboardButtonStyle.PRIMARY):
+class EqInlineKeyboardButton(InlineKeyboardButton):
     def __eq__(self, other):
         return self.text == other.text
 
