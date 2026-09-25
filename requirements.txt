@@ -21,7 +21,7 @@ python-telegram-bot==22.8
 emoji==2.16.0
 httpx[http2]==0.28.1
 google-genai
-humanize==4.13.0
+humanize==4.16.0
 Pillow==12.3.0
 psutil==7.0.0
 
