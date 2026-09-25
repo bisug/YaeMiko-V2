@@ -258,6 +258,19 @@ class StartupTests(unittest.TestCase):
             loop.close()
             asyncio.set_event_loop(None)
 
+    def test_runtime_bot_names_are_dynamic(self):
+        karma = (ROOT / "Infamous/karma.py").read_text(encoding="utf-8")
+        info = (ROOT / "Mikobot/plugins/info.py").read_text(encoding="utf-8")
+        init = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
+
+        self.assertIn("PM_START_TEXT = f", karma)
+        self.assertIn("HELP_STRINGS = f", karma)
+        self.assertIn("escape_markdown(BOT_NAME)", karma)
+        self.assertIn("escape(BOT_NAME)", info)
+        self.assertIn("Client(BOT_USERNAME", init)
+        for hardcoded_name in ("ɪ ᴀᴍ ᴍɪᴋᴏ", "Yae-Miko", "Yae Miko Bot"):
+            self.assertNotIn(hardcoded_name, karma + info)
+
     def test_startup_fetches_and_displays_bot_identity(self):
         source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
         self.assertLess(

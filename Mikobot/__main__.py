@@ -620,9 +620,8 @@ async def Miko_about_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             ),
         )
     elif query.data == "Miko_back":
-        first_name = update.effective_user.first_name
         await query.message.edit_text(
-            PM_START_TEXT.format(escape_markdown(first_name), BOT_NAME),
+            PM_START_TEXT,
             reply_markup=InlineKeyboardMarkup(START_BTN),
             parse_mode=ParseMode.MARKDOWN,
             link_preview_options=LinkPreviewOptions(is_disabled=True),

@@ -335,7 +335,7 @@ ALIVE_MSG = f"""
 
 # <=============================================== CLIENT SETUP ========================================================>
 # Create the Kurigram client instance
-app = Client("Mikobot", api_id=API_ID, api_hash=API_HASH, bot_token=TOKEN)
+app = Client(BOT_USERNAME, api_id=API_ID, api_hash=API_HASH, bot_token=TOKEN)
 loop.run_until_complete(send_booting_message())
 # <=======================================================================================================>
 

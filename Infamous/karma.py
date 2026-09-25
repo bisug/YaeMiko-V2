@@ -5,8 +5,9 @@
 # <============================================== IMPORTS =========================================================>
 from pyrogram.types import InlineKeyboardButton as ib
 from telegram import InlineKeyboardButton
+from telegram.helpers import escape_markdown
 
-from Mikobot import BOT_USERNAME, OWNER_ID, SUPPORT_CHAT
+from Mikobot import BOT_NAME, BOT_USERNAME, OWNER_ID, SUPPORT_CHAT
 
 # <============================================== CONSTANTS =========================================================>
 START_IMG = [
@@ -34,7 +35,7 @@ ALIVE_ANIMATION = [
 
 FIRST_PART_TEXT = "✨ *ʜᴇʟʟᴏ* `{}` . . ."
 
-PM_START_TEXT = "✨ *ɪ ᴀᴍ ᴍɪᴋᴏ, ᴀ ɢᴇɴꜱʜɪɴ ɪᴍᴘᴀᴄᴛ ᴛʜᴇᴍᴇᴅ ʀᴏʙᴏᴛ ᴡʜɪᴄʜ ᴄᴀɴ ʜᴇʟᴘ ʏᴏᴜ ᴛᴏ ᴍᴀɴᴀɢᴇ ᴀɴᴅ ꜱᴇᴄᴜʀᴇ ʏᴏᴜʀ ɢʀᴏᴜᴘ ᴡɪᴛʜ ʜᴜɢᴇ ɢʀᴏᴜᴘ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ*"
+PM_START_TEXT = f"✨ *ɪ ᴀᴍ {escape_markdown(BOT_NAME)}, ᴀ ɢᴇɴꜱʜɪɴ ɪᴍᴘᴀᴄᴛ ᴛʜᴇᴍᴇᴅ ʀᴏʙᴏᴛ ᴡʜɪᴄʜ ᴄᴀɴ ʜᴇʟᴘ ʏᴏᴜ ᴛᴏ ᴍᴀɴᴀɢᴇ ᴀɴᴅ ꜱᴇᴄᴜʀᴇ ʏᴏᴜʀ ɢʀᴏᴜᴘ ᴡɪᴛʜ ʜᴜɢᴇ ɢʀᴏᴜᴘ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ*"
 
 START_BTN = [
     [
@@ -81,8 +82,8 @@ ALIVE_BTN = [
     ],
 ]
 
-HELP_STRINGS = """
-🫧 *Yae-Miko* 🫧 [ㅤ](https://telegra.ph/file/b05535884267a19ee5c93.jpg)
+HELP_STRINGS = f"""
+🫧 *{escape_markdown(BOT_NAME)}* 🫧 [ㅤ](https://telegra.ph/file/b05535884267a19ee5c93.jpg)
 
 ☉ *Here, you will find a list of all the available commands.*
 

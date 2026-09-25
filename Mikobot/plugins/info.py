@@ -17,7 +17,7 @@ from telegram.helpers import mention_html
 
 from Database.sql.approve_sql import is_approved
 from Infamous.karma import START_IMG
-from Mikobot import DEV_USERS, DRAGONS, INFOPIC, OWNER_ID, function
+from Mikobot import BOT_NAME, DEV_USERS, DRAGONS, INFOPIC, OWNER_ID, function
 from Mikobot.plugins.helper_funcs.chat_status import support_plus
 from Mikobot.plugins.users import get_user_id
 
@@ -197,7 +197,7 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from Mikobot.__main__ import STATS
 
-    stats = "📊 <b>Yae Miko Bot's Statistics:</b>\n\n" + "\n".join(
+    stats = f"📊 <b>{escape(BOT_NAME)}'s Statistics:</b>\n\n" + "\n".join(
         [mod.__stats__() for mod in STATS]
     )
     result = re.sub(r"(\d+)", r"<code>\1</code>", stats)
