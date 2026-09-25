@@ -135,6 +135,10 @@ class EnvironmentTests(unittest.TestCase):
     def test_ptb_updates_are_processed_concurrently(self):
         source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
         self.assertIn(".concurrent_updates(64)", source)
+        self.assertIn("from telegram.ext import AIORateLimiter, Application", source)
+        self.assertIn(".rate_limiter(AIORateLimiter())", source)
+        requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+        self.assertIn("python-telegram-bot[rate-limiter]==22.8", requirements)
 
     def test_disabled_antiflood_skips_admin_lookup(self):
         source = (ROOT / "Mikobot/plugins/flood.py").read_text(encoding="utf-8")

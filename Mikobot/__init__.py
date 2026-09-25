@@ -22,7 +22,7 @@ import telegram.ext as tg
 from pyrogram import Client, errors
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
-from telegram.ext import Application
+from telegram.ext import AIORateLimiter, Application
 
 # <=======================================================================================================>
 
@@ -282,6 +282,7 @@ dispatcher = (
     Application.builder()
     .token(TOKEN)
     .concurrent_updates(64)
+    .rate_limiter(AIORateLimiter())
     .build()
 )
 function = dispatcher.add_handler
