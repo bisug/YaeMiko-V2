@@ -175,17 +175,16 @@ def add_filter(
             bool(buttons),
         )
 
+        SESSION.add(filt)
+        for b_name, url, same_line in buttons:
+            SESSION.add(Buttons(chat_id, keyword, b_name, url, same_line))
+        SESSION.commit()
+
         if keyword not in CHAT_FILTERS.get(str(chat_id), []):
             CHAT_FILTERS[str(chat_id)] = sorted(
                 CHAT_FILTERS.get(str(chat_id), []) + [keyword],
                 key=lambda x: (-len(x), x),
             )
-
-        SESSION.add(filt)
-        SESSION.commit()
-
-    for b_name, url, same_line in buttons:
-        add_note_button_to_db(chat_id, keyword, b_name, url, same_line)
 
 
 def new_add_filter(
@@ -225,17 +224,16 @@ def new_add_filter(
             file_id=file_id,
         )
 
+        SESSION.add(filt)
+        for b_name, url, same_line in buttons:
+            SESSION.add(Buttons(chat_id, keyword, b_name, url, same_line))
+        SESSION.commit()
+
         if keyword not in CHAT_FILTERS.get(str(chat_id), []):
             CHAT_FILTERS[str(chat_id)] = sorted(
                 CHAT_FILTERS.get(str(chat_id), []) + [keyword],
                 key=lambda x: (-len(x), x),
             )
-
-        SESSION.add(filt)
-        SESSION.commit()
-
-    for b_name, url, same_line in buttons:
-        add_note_button_to_db(chat_id, keyword, b_name, url, same_line)
 
 
 def remove_filter(chat_id, keyword):

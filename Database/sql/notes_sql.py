@@ -103,10 +103,9 @@ def add_note_to_db(chat_id, note_name, note_data, msgtype, buttons=None, file=No
             file=file,
         )
         SESSION.add(note)
+        for b_name, url, same_line in buttons:
+            SESSION.add(Buttons(chat_id, note_name, b_name, url, same_line))
         SESSION.commit()
-
-    for b_name, url, same_line in buttons:
-        add_note_button_to_db(chat_id, note_name, b_name, url, same_line)
 
 
 def get_note(chat_id, note_name):

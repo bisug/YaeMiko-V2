@@ -859,6 +859,94 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn("get_chat(user_id)", (ROOT / relative).read_text(encoding="utf-8"))
 
 
+class DatabaseRegressionTests(unittest.TestCase):
+    def test_sqlalchemy_pool_validates_and_recycles_connections(self):
+        source = (ROOT / "Database/sql/__init__.py").read_text(encoding="utf-8")
+        self.assertIn("pool_pre_ping=True", source)
+        self.assertIn("pool_recycle=1800", source)
+
+    def test_primary_key_lookups_replace_full_table_federation_scans(self):
+        tree = ast.parse((ROOT / "Database/sql/feds_sql.py").read_text(encoding="utf-8"))
+        for name in ("fban_user", "multi_fban_user", "un_fban_user", "get_fban_user"):
+            function = next(
+                node
+                for node in tree.body
+                if isinstance(node, ast.FunctionDef) and node.name == name
+            )
+            self.assertFalse(
+                any(
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "all"
+                    for node in ast.walk(function)
+                ),
+                name,
+            )
+
+    def test_federation_ban_lookup_uses_composite_primary_key(self):
+        class BanSession:
+            def __init__(self):
+                self.key = None
+                self.closed = False
+
+            def get(self, model, key):
+                self.key = key
+                return SimpleNamespace(reason="spam", time=60)
+
+            def close(self):
+                self.closed = True
+
+        session = BanSession()
+        get_fban_user = load_function(
+            ROOT / "Database/sql/feds_sql.py",
+            "get_fban_user",
+            {
+                "BansF": object,
+                "FEDERATION_BANNED_USERID": {"fed": [123]},
+                "SESSION": session,
+            },
+        )
+        self.assertEqual(
+            get_fban_user("fed", 123),
+            (True, "spam", 60),
+        )
+        self.assertEqual(session.key, ("fed", "123"))
+        self.assertTrue(session.closed)
+
+    def test_note_and_filter_buttons_commit_with_their_parent(self):
+        for relative, names in {
+            "Database/sql/notes_sql.py": {"add_note_to_db"},
+            "Database/sql/cust_filters_sql.py": {"add_filter", "new_add_filter"},
+        }.items():
+            tree = ast.parse((ROOT / relative).read_text(encoding="utf-8"))
+            for name in names:
+                function = next(
+                    node
+                    for node in tree.body
+                    if isinstance(node, ast.FunctionDef) and node.name == name
+                )
+                commits = [
+                    node
+                    for node in ast.walk(function)
+                    if isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "commit"
+                ]
+                self.assertEqual(len(commits), 1, f"{relative}:{name}")
+
+    def test_cleaner_and_lock_reset_targets_are_valid(self):
+        cleaner = (ROOT / "Database/sql/cleaner_sql.py").read_text(encoding="utf-8")
+        self.assertIn("curr.is_enable = is_enable", cleaner)
+        self.assertIn("SESSION.delete(unignored)", cleaner)
+        locks = (ROOT / "Database/sql/locks_sql.py").read_text(encoding="utf-8")
+        self.assertIn("if reset and curr_perm:", locks)
+        self.assertIn("if reset and curr_restr:", locks)
+        users = (ROOT / "Database/sql/users_sql.py").read_text(encoding="utf-8")
+        self.assertIn("return SESSION.get(Users, int(user_id))", users)
+        self.assertNotIn("ChatMembers.query", users)
+
+
+
 class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
     async def test_non_admin_cannot_use_anonymous_unban_callback(self):
         bans_callback = load_function(

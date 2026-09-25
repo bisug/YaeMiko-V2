@@ -155,7 +155,7 @@ def get_userid_by_name(username):
 
 def get_name_by_userid(user_id):
     try:
-        return SESSION.get(Users, Users.user_id == int(user_id)).first()
+        return SESSION.get(Users, int(user_id))
     finally:
         SESSION.close()
 
@@ -219,7 +219,6 @@ def migrate_chat(old_chat_id, new_chat_id):
         chat = SESSION.get(Chats, str(old_chat_id))
         if chat:
             chat.chat_id = str(new_chat_id)
-        SESSION.commit()
 
         chat_members = (
             SESSION.query(ChatMembers)
@@ -242,8 +241,6 @@ def del_user(user_id):
             SESSION.commit()
             return True
 
-        ChatMembers.query.filter(ChatMembers.user == user_id).delete()
-        SESSION.commit()
         SESSION.close()
     return False
 

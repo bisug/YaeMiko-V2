@@ -88,11 +88,7 @@ def rem_remind(chat_id, time_sec, remind_message, user_id):
 
 
 def get_remind_in_chat(chat_id, timestamp):
-    return (
-        SESSION.query(Reminds)
-        .filter(Reminds.chat_id == str(chat_id), Reminds.time_seconds == timestamp)
-        .first()
-    )
+    return SESSION.get(Reminds, (str(chat_id), int(timestamp)))
 
 
 def num_reminds_in_chat(chat_id):

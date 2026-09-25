@@ -15,7 +15,12 @@ ENGINE = None
 
 def start() -> scoped_session:
     global ENGINE
-    engine = create_engine(DB_URI, client_encoding="utf8")
+    engine = create_engine(
+        DB_URI,
+        client_encoding="utf8",
+        pool_pre_ping=True,
+        pool_recycle=1800,
+    )
     ENGINE = engine
     log.info("[PostgreSQL] Connecting to database......")
     BASE.metadata.create_all(engine)

@@ -109,7 +109,7 @@ RESTR_LOCK = threading.RLock()
 
 def init_permissions(chat_id, reset=False):
     curr_perm = SESSION.get(Permissions, str(chat_id))
-    if reset:
+    if reset and curr_perm:
         SESSION.delete(curr_perm)
         SESSION.flush()
     perm = Permissions(str(chat_id))
@@ -120,7 +120,7 @@ def init_permissions(chat_id, reset=False):
 
 def init_restrictions(chat_id, reset=False):
     curr_restr = SESSION.get(Restrictions, str(chat_id))
-    if reset:
+    if reset and curr_restr:
         SESSION.delete(curr_restr)
         SESSION.flush()
     restr = Restrictions(str(chat_id))

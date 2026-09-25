@@ -432,11 +432,10 @@ def chat_leave_fed(chat_id):
         FEDERATION_CHATS.pop(str(chat_id))
         FEDERATION_CHATS_BYID[str(fed_id)].remove(str(chat_id))
         # Delete from db
-        curr = SESSION.query(ChatF).all()
-        for U in curr:
-            if int(U.chat_id) == int(chat_id):
-                SESSION.delete(U)
-                SESSION.commit()
+        curr = SESSION.get(ChatF, str(chat_id))
+        if curr:
+            SESSION.delete(curr)
+            SESSION.commit()
         return True
 
 
@@ -504,9 +503,9 @@ def get_frules(fed_id):
 def fban_user(fed_id, user_id, first_name, last_name, user_name, reason, time):
     with FEDS_LOCK:
         try:
-            for existing in SESSION.query(BansF).all():
-                if existing.fed_id == str(fed_id) and int(existing.user_id) == int(user_id):
-                    SESSION.delete(existing)
+            existing = SESSION.get(BansF, (str(fed_id), str(user_id)))
+            if existing:
+                SESSION.delete(existing)
 
             ban = BansF(
                 str(fed_id),
@@ -543,9 +542,9 @@ def multi_fban_user(
             for index in range(len(multi_fed_id)):
                 fed_id = multi_fed_id[index]
                 user_id = multi_user_id[index]
-                for existing in SESSION.query(BansF).all():
-                    if existing.fed_id == str(fed_id) and int(existing.user_id) == int(user_id):
-                        SESSION.delete(existing)
+                existing = SESSION.get(BansF, (str(fed_id), str(user_id)))
+                if existing:
+                    SESSION.delete(existing)
 
                 SESSION.add(
                     BansF(
@@ -570,15 +569,11 @@ def multi_fban_user(
 
 def un_fban_user(fed_id, user_id):
     with FEDS_LOCK:
-        ban = None
         try:
-            for existing in SESSION.query(BansF).all():
-                if existing.fed_id == str(fed_id) and int(existing.user_id) == int(user_id):
-                    ban = existing
-                    SESSION.delete(existing)
-                    break
+            ban = SESSION.get(BansF, (str(fed_id), str(user_id)))
             if ban is None:
                 return None
+            SESSION.delete(ban)
             SESSION.commit()
         except SQLAlchemyError:
             SESSION.rollback()
@@ -591,20 +586,18 @@ def un_fban_user(fed_id, user_id):
 
 
 def get_fban_user(fed_id, user_id):
-    list_fbanned = FEDERATION_BANNED_USERID.get(fed_id)
-    if list_fbanned is None:
-        FEDERATION_BANNED_USERID[fed_id] = []
-    if user_id in FEDERATION_BANNED_USERID[fed_id]:
-        r = SESSION.query(BansF).all()
-        reason = None
-        for I in r:
-            if I.fed_id == fed_id:
-                if int(I.user_id) == int(user_id):
-                    reason = I.reason
-                    time = I.time
-        return True, reason, time
-    else:
+    fed_id = str(fed_id)
+    user_id = str(user_id)
+    if int(user_id) not in FEDERATION_BANNED_USERID.get(fed_id, []):
         return False, None, None
+
+    try:
+        ban = SESSION.get(BansF, (fed_id, user_id))
+        if ban is None:
+            return False, None, None
+        return True, ban.reason, ban.time
+    finally:
+        SESSION.close()
 
 
 def get_all_fban_users(fed_id):

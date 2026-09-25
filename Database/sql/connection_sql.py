@@ -108,7 +108,7 @@ def set_allow_connect_to_chat(chat_id: Union[int, str], setting: bool):
 
 def connect(user_id, chat_id):
     with CONNECTION_INSERTION_LOCK:
-        prev = SESSION.get(Connection, (int(user_id)))
+        prev = SESSION.get(Connection, int(user_id))
         if prev:
             SESSION.delete(prev)
         connect_to_chat = Connection(int(user_id), chat_id)
@@ -119,21 +119,21 @@ def connect(user_id, chat_id):
 
 def get_connected_chat(user_id):
     try:
-        return SESSION.get(Connection, (int(user_id)))
+        return SESSION.get(Connection, int(user_id))
     finally:
         SESSION.close()
 
 
 def curr_connection(chat_id):
     try:
-        return SESSION.get(Connection, (str(chat_id)))
+        return SESSION.query(Connection).filter(Connection.chat_id == str(chat_id)).first()
     finally:
         SESSION.close()
 
 
 def disconnect(user_id):
     with CONNECTION_INSERTION_LOCK:
-        disconnect = SESSION.get(Connection, (int(user_id)))
+        disconnect = SESSION.get(Connection, int(user_id))
         if disconnect:
             SESSION.delete(disconnect)
             SESSION.commit()
@@ -149,7 +149,7 @@ def add_history_conn(user_id, chat_id, chat_name):
         if HISTORY_CONNECT.get(int(user_id)):
             counting = (
                 SESSION.query(ConnectionHistory.user_id)
-                .filter(ConnectionHistory.user_id == str(user_id))
+                .filter(ConnectionHistory.user_id == int(user_id))
                 .count()
             )
             getchat_id = {
