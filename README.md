@@ -31,6 +31,7 @@
   <a href="#highlights">Highlights</a> &nbsp; | &nbsp;
   <a href="#architecture">Architecture</a> &nbsp; | &nbsp;
   <a href="#tech-stack">Tech stack</a> &nbsp; | &nbsp;
+  <a href="#system-requirements">Requirements</a> &nbsp; | &nbsp;
   <a href="#plugin-catalogue">Plugins</a> &nbsp; | &nbsp;
   <a href="#configuration">Configuration</a> &nbsp; | &nbsp;
   <a href="#deployment">Deployment</a> &nbsp; | &nbsp;
@@ -53,6 +54,7 @@ state in PostgreSQL and document shaped data in MongoDB, and ships 57 plugin mod
 | **Telegram** | PTB 22.8 on the Bot API, Kurigram 2.2.26 on MTProto, side by side |
 | **Storage** | PostgreSQL 16 through SQLAlchemy 2.1, MongoDB through PyMongo 4.18 |
 | **Modules** | 57 auto discovered plugins under `Mikobot/plugins` |
+| **Requirements** | 512 MB RAM minimum, 1 GB recommended, Python 3.14.7 |
 | **Deployment** | Render, Railway, Heroku, Docker, or a bare VPS |
 | **Guarantees** | CI compile, unit, JSON and whitespace gates, weekly CodeQL, Dependabot updates |
 
@@ -136,6 +138,7 @@ execution. Persistence, reply construction and error handling surround that spin
 | Component | Version | Link |
 | --- | --- | --- |
 | Python | 3.14.7 | [python.org](https://www.python.org/) |
+| ffmpeg and libgomp1 | system packages | Frame extraction and ONNX Runtime |
 | asyncio event loop | stdlib | [docs](https://docs.python.org/3/library/asyncio.html) |
 | Pinned interpreter | `python-3.14.7` | [.python-version](.python-version) |
 
@@ -197,6 +200,56 @@ execution. Persistence, reply construction and error handling surround that spin
 
 ---
 
+## System requirements
+
+![System requirement tiers](docs/assets/requirements-tiers.svg)
+
+Full detail, including database sizing, bandwidth, how to measure your own instance, and how to
+scale down: [docs/SYSTEM-REQUIREMENTS.md](docs/SYSTEM-REQUIREMENTS.md).
+
+| | Minimum | Recommended | Best |
+| --- | --- | --- | --- |
+| **CPU** | 1 shared vCPU | 1 dedicated vCPU | 2 dedicated vCPU |
+| **RAM** | 512 MB | 1 GB | 2 GB |
+| **Disk** | 5 GB | 10 GB | 20 GB |
+| **Swap** | 1 GB | none needed | none needed |
+| **OS** | Debian 12, Ubuntu 24.04, or any Docker host | same | same |
+| **Python** | 3.14.7 | 3.14.7 | 3.14.7 |
+| **Network** | 1 Mbps up, 5 GB per month | 10 Mbps up, 100 GB | 25 Mbps up, unmetered |
+| **Groups** | 1 to 3 | 10 to 30 | 100 or more |
+| **Platform fit** | Render `0.5c-512mb` | Render `1c-2g`, Railway, 1 GB VPS | 2 GB VPS |
+
+System packages on a bare metal install:
+
+```bash
+sudo apt-get install -y ffmpeg libgomp1
+```
+
+`ffmpeg` is required for frame extraction in the anti-NSFW check and for anime thumbnails.
+`libgomp1` is the OpenMP runtime ONNX Runtime links against. The [Dockerfile](Dockerfile) installs
+both, plus `curl`, in the runtime stage.
+
+Where the memory and disk go, measured from PyPI wheel sizes for the pinned dependencies:
+
+| Dependency | Wheel | Consequence |
+| --- | --- | --- |
+| onnxruntime | 22.5 MB | Largest single allocation, loaded on first anti-NSFW check |
+| opennsfw-onnx | 20.9 MB | Ships the model inside the wheel |
+| Pillow | 6.8 MB | Image buffers |
+| Kurigram | 5.8 MB | MTProto client |
+| SQLAlchemy | 4.6 MB | Native extensions |
+| All 24 direct dependencies | 65.4 MB | Install footprint before transitive dependencies |
+
+The RAM figures are estimates, not measurements of a live bot. To size your own instance, read the
+peak rather than the current usage:
+
+```bash
+grep VmHWM /proc/$(pgrep -f "python -m Mikobot" | head -1)/status
+```
+
+
+---
+
 ## Repository layout
 
 ```text
@@ -221,9 +274,11 @@ YaeMiko/
 │   ├── CONFIGURATION.md
 │   ├── DEPLOYMENT.md
 │   ├── PLUGINS.md
+│   ├── SYSTEM-REQUIREMENTS.md
 │   └── assets/
 │       ├── architecture.svg
 │       ├── deploy-paths.svg
+│       ├── requirements-tiers.svg
 │       ├── update-flow.svg
 │       ├── wordmark-dark.svg
 │       └── wordmark-light.svg

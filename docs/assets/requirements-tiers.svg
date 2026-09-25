@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 660" width="1280" height="660" role="img" aria-label="YaeMiko system requirement tiers">
+  <title>YaeMiko system requirement tiers</title>
+  <defs>
+    <linearGradient id="gmin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3b1a22"/>
+      <stop offset="100%" stop-color="#24131a"/>
+    </linearGradient>
+    <linearGradient id="grec" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1f3b5c"/>
+      <stop offset="100%" stop-color="#152636"/>
+    </linearGradient>
+    <linearGradient id="gbest" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#16301f"/>
+      <stop offset="100%" stop-color="#102116"/>
+    </linearGradient>
+    <style>
+      .bg { fill: #0d1117; }
+      .panel { fill: #161b22; stroke: #30363d; stroke-width: 1.5; rx: 14; }
+      .title { fill: #e6edf3; font: 600 20px "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .tier { fill: #e6edf3; font: 700 19px "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .head { fill: #e6edf3; font: 600 14px "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .sub { fill: #8b949e; font: 400 12px "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .big { fill: #e6edf3; font: 700 26px "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .unit { fill: #8b949e; font: 400 12px "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="660"/>
+  <text class="title" x="48" y="46">System requirement tiers</text>
+  <text class="sub" x="48" y="70">Same bot, same entry point, three levels of headroom</text>
+
+  <rect x="40" y="100" width="380" height="400" rx="14" fill="url(#gmin)" stroke="#f778ba" stroke-width="1.5"/>
+  <text class="tier" x="64" y="134">Minimum</text>
+  <text class="sub" x="64" y="156">Starts, connects, answers commands</text>
+  <text class="big" x="64" y="206">512 MB</text>
+  <text class="unit" x="64" y="226">RAM, 1 shared vCPU</text>
+  <text class="sub" x="64" y="262">Disk 5 GB, swap 1 GB</text>
+  <text class="sub" x="64" y="284">Python 3.14.7</text>
+  <text class="sub" x="64" y="306">1 to 3 groups</text>
+  <text class="sub" x="64" y="344">What you give up:</text>
+  <text class="sub" x="64" y="366">ONNX loads a 20.9 MB model on first use</text>
+  <text class="sub" x="64" y="386">ffmpeg frame extraction is slow</text>
+  <text class="sub" x="64" y="406">64 concurrent updates on one core</text>
+  <text class="sub" x="64" y="426">Fits: Render 0.5c-512mb</text>
+  <text class="sub" x="64" y="452">1 Mbps up, 5 GB per month</text>
+
+  <rect x="450" y="100" width="380" height="400" rx="14" fill="url(#grec)" stroke="#58a6ff" stroke-width="1.5"/>
+  <text class="tier" x="474" y="134">Recommended</text>
+  <text class="sub" x="474" y="156">The default choice for most groups</text>
+  <text class="big" x="474" y="206">1 GB</text>
+  <text class="unit" x="474" y="226">RAM, 1 dedicated vCPU</text>
+  <text class="sub" x="474" y="262">Disk 10 GB</text>
+  <text class="sub" x="474" y="284">Python 3.14.7</text>
+  <text class="sub" x="474" y="306">10 to 30 groups</text>
+  <text class="sub" x="474" y="344">What you gain:</text>
+  <text class="sub" x="474" y="366">Room for the ONNX session and buffers</text>
+  <text class="sub" x="474" y="386">No shared core throttling on replies</text>
+  <text class="sub" x="474" y="406">AI commands and media run alongside</text>
+  <text class="sub" x="474" y="426">Fits: Render 1c-2g, 1 GB VPS</text>
+  <text class="sub" x="474" y="452">10 Mbps up, 100 GB per month</text>
+
+  <rect x="860" y="100" width="380" height="400" rx="14" fill="url(#gbest)" stroke="#3fb950" stroke-width="1.5"/>
+  <text class="tier" x="884" y="134">Best</text>
+  <text class="sub" x="884" y="156">Large or media heavy groups</text>
+  <text class="big" x="884" y="206">2 GB</text>
+  <text class="unit" x="884" y="226">RAM, 2 dedicated vCPU</text>
+  <text class="sub" x="884" y="262">Disk 20 GB</text>
+  <text class="sub" x="884" y="284">Python 3.14.7</text>
+  <text class="sub" x="884" y="306">100 or more groups</text>
+  <text class="sub" x="884" y="344">What you gain:</text>
+  <text class="sub" x="884" y="366">ONNX uses one thread per core</text>
+  <text class="sub" x="884" y="386">ffmpeg stops starving the event loop</text>
+  <text class="sub" x="884" y="406">to_thread workers finish sooner</text>
+  <text class="sub" x="884" y="426">Fits: 2 GB VPS or better</text>
+  <text class="sub" x="884" y="452">25 Mbps up, unmetered</text>
+
+  <rect class="panel" x="40" y="524" width="1200" height="110"/>
+  <text class="head" x="64" y="554">Where the weight sits, measured from PyPI wheel sizes</text>
+  <text class="sub" x="64" y="580">onnxruntime 22.5 MB, opennsfw-onnx 20.9 MB, Pillow 6.8 MB, Kurigram 5.8 MB, SQLAlchemy 4.6 MB, pymongo 1.1 MB, python-telegram-bot 0.7 MB</text>
+  <text class="sub" x="64" y="602">24 direct dependencies total 65.4 MB of wheels. The ONNX session is lazy, it loads only when an anti-NSFW check runs.</text>
+  <text class="sub" x="64" y="624">RAM figures are estimates. Measure your own instance with VmHWM in /proc, see docs/SYSTEM-REQUIREMENTS.md.</text>
+</svg>

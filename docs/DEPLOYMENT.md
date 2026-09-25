@@ -8,6 +8,7 @@ Back to [README](../README.md).
 
 ## Contents
 
+- [System requirements](#system-requirements)
 - [Before you start](#before-you-start)
 - [Pick a platform](#pick-a-platform)
 - [Render](#render)
@@ -16,6 +17,27 @@ Back to [README](../README.md).
 - [VPS](#vps)
 - [Docker anywhere](#docker-anywhere)
 - [Troubleshooting](#troubleshooting)
+
+## System requirements
+
+Pick a tier before you pick a platform. Full detail in
+[SYSTEM-REQUIREMENTS.md](SYSTEM-REQUIREMENTS.md).
+
+| | Minimum | Recommended | Best |
+| --- | --- | --- | --- |
+| CPU | 1 shared vCPU | 1 dedicated vCPU | 2 dedicated vCPU |
+| RAM | 512 MB | 1 GB | 2 GB |
+| Disk | 5 GB | 10 GB | 20 GB |
+| Network | 1 Mbps up, 5 GB per month | 10 Mbps up, 100 GB | 25 Mbps up, unmetered |
+| Groups | 1 to 3 | 10 to 30 | 100 or more |
+| Fits | Render `0.5c-512mb` | Render `1c-2g`, Railway, 1 GB VPS | 2 GB VPS |
+
+Two rules that decide your tier:
+
+- A shared vCPU adds latency to every reply, because the bot is I/O bound and a throttled core is
+  shared with other tenants. A dedicated core is worth more than a faster clock.
+- The anti-NSFW check loads a 20.9 MB model into an ONNX Runtime session on first use. That is the
+  largest single allocation in the process, and it is what makes 512 MB tight.
 
 ## Before you start
 
