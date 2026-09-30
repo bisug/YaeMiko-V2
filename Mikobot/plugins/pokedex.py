@@ -2,14 +2,20 @@ import html
 import math
 from urllib.parse import quote
 
+from aiogram import F
+from aiogram.enums import ButtonStyle, ParseMode
+from aiogram.filters import Command, CommandObject
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 from httpx import HTTPError
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.constants import ParseMode
-from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
 
-from Mikobot import function
+from Mikobot import dp
 from Mikobot.state import state
-from telegram.constants import KeyboardButtonStyle
+from Mikobot.utils.gate import chain
 
 POKEAPI = "https://pokeapi.co/api/v2"
 MOVES_PER_PAGE = 20
@@ -84,31 +90,31 @@ def _keyboard(
             buttons.append(
                 InlineKeyboardButton(
                     "⬅️ Previous", callback_data=f"{prefix}:moves:{page - 1}"
-                , style=KeyboardButtonStyle.PRIMARY)
+                , style=ButtonStyle.PRIMARY)
             )
         buttons.append(
             InlineKeyboardButton(
                 f"Page {page + 1}/{pages}", callback_data=f"{prefix}:info:{page}"
-            , style=KeyboardButtonStyle.PRIMARY)
+            , style=ButtonStyle.PRIMARY)
         )
         if page + 1 < pages:
             buttons.append(
                 InlineKeyboardButton(
                     "Next ➡️", callback_data=f"{prefix}:moves:{page + 1}"
-                , style=KeyboardButtonStyle.PRIMARY)
+                , style=ButtonStyle.PRIMARY)
             )
         return InlineKeyboardMarkup([buttons])
     return InlineKeyboardMarkup(
         [
             [
-                InlineKeyboardButton("Overview", callback_data=f"{prefix}:info:0", style=KeyboardButtonStyle.PRIMARY),
-                InlineKeyboardButton("Stats", callback_data=f"{prefix}:stats:0", style=KeyboardButtonStyle.PRIMARY),
+                InlineKeyboardButton("Overview", callback_data=f"{prefix}:info:0", style=ButtonStyle.PRIMARY),
+                InlineKeyboardButton("Stats", callback_data=f"{prefix}:stats:0", style=ButtonStyle.PRIMARY),
             ],
             [
-                InlineKeyboardButton("Moves", callback_data=f"{prefix}:moves:0", style=KeyboardButtonStyle.PRIMARY),
+                InlineKeyboardButton("Moves", callback_data=f"{prefix}:moves:0", style=ButtonStyle.PRIMARY),
                 InlineKeyboardButton(
                     "Evolution", callback_data=f"{prefix}:evolution:0"
-                , style=KeyboardButtonStyle.PRIMARY),
+                , style=ButtonStyle.PRIMARY),
             ],
         ]
     )
@@ -194,40 +200,43 @@ async def _render(
     return text, _keyboard(pokemon["id"], view, page, pages)
 
 
-async def pokedex(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    message = update.effective_message
-    if not message:
-        return
-    if not context.args:
-        await message.reply_text("Usage: <code>/pokedex &lt;name or ID&gt;</code>")
+async def pokedex(message: Message, command: CommandObject) -> None:
+    if not command.args:
+        await message.answer("Usage: <code>/pokedex &lt;name or ID&gt;</code>")
         return
     try:
-        pokemon = await get_pokemon(" ".join(context.args))
+        pokemon = await get_pokemon(" ".join(command.args))
         species, _ = await get_pokemon_details(pokemon)
         text, image = _overview(pokemon, species)
         if image:
-            await message.reply_photo(photo=image, caption=text, parse_mode=ParseMode.HTML, reply_markup=_keyboard(pokemon["id"]))
+            await message.answer_photo(photo=image, caption=text, parse_mode=ParseMode.HTML, reply_markup=_keyboard(pokemon["id"]))
         else:
-            await message.reply_text(text, parse_mode=ParseMode.HTML, reply_markup=_keyboard(pokemon["id"]))
+            await message.answer(text, parse_mode=ParseMode.HTML, reply_markup=_keyboard(pokemon["id"]))
     except HTTPError as error:
         if error.response.status_code == 404:
-            await message.reply_text("Pokémon not found. Check the name or National Pokédex ID.")
+            await message.answer("Pokémon not found. Check the name or National Pokédex ID.")
         else:
-            await message.reply_text("PokéAPI is unavailable. Please try again later.")
+            await message.answer("PokéAPI is unavailable. Please try again later.")
     except (ValueError, KeyError, TypeError):
-        await message.reply_text("PokéAPI returned incomplete data. Please try again later.")
+        await message.answer("PokéAPI returned incomplete data. Please try again later.")
 
 
-async def callback_query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    if not query or not query.data.startswith(f"{CALLBACK_PREFIX}:"):
+async def callback_query_handler(query: CallbackQuery) -> None:
+    if not query.data.startswith(f"{CALLBACK_PREFIX}:"):
         return
     try:
         _, pokemon_id, view, page_text = query.data.split(":", 3)
         pokemon = await get_pokemon(int(pokemon_id))
         text, keyboard = await _render(pokemon, view, int(page_text))
-        if query.message and hasattr(query.message, "edit_caption"):
-            await query.message.edit_caption(text=text, parse_mode=ParseMode.HTML, reply_markup=keyboard)
+        # A photo message is edited through its caption, a text one directly.
+        if query.message.photo:
+            await query.message.edit_caption(
+                text, parse_mode=ParseMode.HTML, reply_markup=keyboard
+            )
+        else:
+            await query.message.edit_text(
+                text, parse_mode=ParseMode.HTML, reply_markup=keyboard
+            )
         await query.answer()
     except HTTPError:
         await query.answer("PokéAPI is unavailable. Please try again later.", show_alert=True)
@@ -237,9 +246,10 @@ async def callback_query_handler(update: Update, context: ContextTypes.DEFAULT_T
 
 # <================================================ HANDLER =======================================================>
 # Add the command and callback query handlers to the dispatcher
-function(CommandHandler("pokedex", pokedex, block=False))
-function(
-    CallbackQueryHandler(callback_query_handler, pattern=rf"^{CALLBACK_PREFIX}:[0-9]+:(info|stats|moves|evolution):[0-9]+$", block=False)
+dp.message.register(chain(pokedex), Command("pokedex"))
+dp.callback_query.register(
+    chain(callback_query_handler),
+    F.data.regexp(rf"^{CALLBACK_PREFIX}:[0-9]+:(info|stats|moves|evolution):[0-9]+$"),
 )
 
 # <================================================ HANDLER =======================================================>

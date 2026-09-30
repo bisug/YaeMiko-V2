@@ -982,36 +982,43 @@ class DatabaseRegressionTests(unittest.TestCase):
                     unstyled.append(f"{path}:{node.lineno}")
         self.assertEqual(unstyled, [])
 
-    def test_telegram_at_constructors_use_ptb_22_8_fields(self):
+    def test_telegram_at_constructors_use_aiogram_31_fields(self):
         # Skipped rather than failed when the pinned client is absent, so a
         # contributor without the dependency still gets a useful suite. CI
-        # installs python-telegram-bot 22.8 and fails if the version differs, so
-        # this assertion always runs there.
+        # installs aiogram 3.31.0 and fails if the version differs, so this
+        # assertion always runs there.
         try:
-            import telegram
+            import aiogram
         except ModuleNotFoundError:
-            self.skipTest("python-telegram-bot is not installed")
+            self.skipTest("aiogram is not installed")
 
-        from telegram import InlineQueryResultArticle, InputTextMessageContent
-        from telegram import MenuButtonWebApp, WebAppInfo
+        from aiogram.types import (
+            InlineQueryResultArticle,
+            InputTextMessageContent,
+            MenuButtonWebApp,
+            WebAppInfo,
+        )
 
-        self.assertEqual(telegram.__version__, "22.8")
+        self.assertEqual(aiogram.__version__, "3.31.0")
 
         result = InlineQueryResultArticle(
             id="article-1",
             title="Article",
             thumbnail_url="https://example.com/thumb.jpg",
-            input_message_content=InputTextMessageContent("text"),
+            input_message_content=InputTextMessageContent(message_text="text"),
         )
         self.assertEqual(result.thumbnail_url, "https://example.com/thumb.jpg")
+        # aiogram makes MenuButtonWebApp.text required; PTB defaulted it.
         self.assertIsInstance(
-            MenuButtonWebApp("Open", WebAppInfo("https://example.com")).web_app,
+            MenuButtonWebApp(
+                text="Open", web_app=WebAppInfo(url="https://example.com")
+            ).web_app,
             WebAppInfo,
         )
 
         chatadmin = (ROOT / "Mikobot/plugins/chatadmin.py").read_text(encoding="utf-8")
         misc = (ROOT / "Mikobot/plugins/helper_funcs/misc.py").read_text(encoding="utf-8")
-        self.assertIn("WebAppInfo(context.args[1])", chatadmin)
+        self.assertIn("MenuButtonWebApp(\n                text=command.args[1],\n                web_app=WebAppInfo(url=command.args[1]),", chatadmin)
         self.assertIn("thumbnail_url=thumb_url", misc)
         self.assertIn("id=str(uuid4())", misc)
         self.assertNotIn("thumb_url=thumb_url", misc)
