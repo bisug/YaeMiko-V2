@@ -534,12 +534,10 @@ class FederationCallbackTests(unittest.IsolatedAsyncioTestCase):
                 "sql": sql,
                 "is_user_fed_owner": lambda *args: True,
                 "ParseMode": SimpleNamespace(MARKDOWN="Markdown"),
-                "Update": object,
-                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
             },
         )
 
-        await delete(SimpleNamespace(callback_query=query), SimpleNamespace())
+        await delete(query)
         self.assertEqual(calls, [])
 
     async def _record_answer(self, *args, **kwargs):
@@ -686,8 +684,8 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
     def test_federation_extractors_are_awaited(self):
         tree = ast.parse((ROOT / "Mikobot/plugins/feds.py").read_text(encoding="utf-8"))
         source = ast.unparse(tree)
-        self.assertIn("await extract_unt_fedban(message, context, args)", source)
-        self.assertIn("await extract_user_fban(message, context, args)", source)
+        self.assertIn("await extract_unt_fedban(message, args)", source)
+        self.assertIn("await extract_user_fban(message, args)", source)
 
     def test_roar_takes_message_and_command(self):
         tree = ast.parse((ROOT / "Mikobot/plugins/ban.py").read_text(encoding="utf-8"))
