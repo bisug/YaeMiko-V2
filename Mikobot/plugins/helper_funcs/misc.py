@@ -1,25 +1,24 @@
 # <============================================== IMPORTS =========================================================>
-from math import ceil
 from functools import wraps
 from html import escape
+from math import ceil
 from typing import Dict, List
 from uuid import uuid4
 
-from telegram import (
-    Bot,
+from aiogram import Bot
+from aiogram.enums import ButtonStyle, ParseMode
+from aiogram.exceptions import TelegramAPIError
+from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     InlineQueryResultArticle,
     InputTextMessageContent,
     LinkPreviewOptions,
-    Update,
+    User,
 )
 
-from telegram.constants import MessageLimit, ParseMode
-from telegram.error import TelegramError
-
 from Mikobot import NO_LOAD, OWNER_ID
-from telegram.constants import KeyboardButtonStyle
+from Mikobot.utils.consts import MessageLimit
 
 # <=======================================================================================================>
 
@@ -71,7 +70,7 @@ def paginate_modules(page_n: int, module_dict: Dict, prefix, chat=None) -> List:
                     callback_data="{}_module({})".format(
                         prefix, x.__mod_name__.lower()
                     ),
-                 style=KeyboardButtonStyle.PRIMARY)
+                 style=ButtonStyle.PRIMARY)
                 for x in module_dict.values()
             ]
         )
@@ -83,7 +82,7 @@ def paginate_modules(page_n: int, module_dict: Dict, prefix, chat=None) -> List:
                     callback_data="{}_module({},{})".format(
                         prefix, chat, x.__mod_name__.lower()
                     ),
-                 style=KeyboardButtonStyle.PRIMARY)
+                 style=ButtonStyle.PRIMARY)
                 for x in module_dict.values()
             ]
         )
@@ -104,18 +103,18 @@ def paginate_modules(page_n: int, module_dict: Dict, prefix, chat=None) -> List:
             (
                 EqInlineKeyboardButton(
                     "◁", callback_data="{}_prev({})".format(prefix, modulo_page)
-                , style=KeyboardButtonStyle.PRIMARY),
+                , style=ButtonStyle.PRIMARY),
                 EqInlineKeyboardButton(
                     "» 𝘽𝘼𝘾𝙆 «", callback_data="extra_command_handler"
-                , style=KeyboardButtonStyle.PRIMARY),
+                , style=ButtonStyle.PRIMARY),
                 EqInlineKeyboardButton(
                     "▷", callback_data="{}_next({})".format(prefix, modulo_page)
-                , style=KeyboardButtonStyle.PRIMARY),
+                , style=ButtonStyle.PRIMARY),
             )
         ]
 
     else:
-        pairs += [[EqInlineKeyboardButton("⇦ 𝘽𝘼𝘾𝙆", callback_data="Miko_back", style=KeyboardButtonStyle.PRIMARY)]]
+        pairs += [[EqInlineKeyboardButton("⇦ 𝘽𝘼𝘾𝙆", callback_data="Miko_back", style=ButtonStyle.PRIMARY)]]
 
     return pairs
 
@@ -154,7 +153,7 @@ async def send_to_list(
                 await bot.send_message(user_id, message, parse_mode=ParseMode.HTML)
             else:
                 await bot.send_message(user_id, message)
-        except TelegramError:
+        except TelegramAPIError:
             pass  # ignore users who fail
 
 
@@ -162,9 +161,9 @@ def build_keyboard(buttons):
     keyb = []
     for btn in buttons:
         if btn.same_line and keyb:
-            keyb[-1].append(InlineKeyboardButton(btn.name, url=btn.url, style=KeyboardButtonStyle.PRIMARY))
+            keyb[-1].append(InlineKeyboardButton(btn.name, url=btn.url, style=ButtonStyle.PRIMARY))
         else:
-            keyb.append([InlineKeyboardButton(btn.name, url=btn.url, style=KeyboardButtonStyle.PRIMARY)])
+            keyb.append([InlineKeyboardButton(btn.name, url=btn.url, style=ButtonStyle.PRIMARY)])
 
     return keyb
 
@@ -186,21 +185,20 @@ def build_keyboard_parser(bot, chat_id, buttons):
         if btn.url == "{rules}":
             btn.url = "http://t.me/{}?start={}".format(bot.username, chat_id)
         if btn.same_line and keyb:
-            keyb[-1].append(InlineKeyboardButton(btn.name, url=btn.url, style=KeyboardButtonStyle.PRIMARY))
+            keyb[-1].append(InlineKeyboardButton(btn.name, url=btn.url, style=ButtonStyle.PRIMARY))
         else:
-            keyb.append([InlineKeyboardButton(btn.name, url=btn.url, style=KeyboardButtonStyle.PRIMARY)])
+            keyb.append([InlineKeyboardButton(btn.name, url=btn.url, style=ButtonStyle.PRIMARY)])
 
     return keyb
 
 
 def user_bot_owner(func):
+    """Only the owner may run this inline-query handler."""
+
     @wraps(func)
-    def is_user_bot_owner(bot: Bot, update: Update, *args, **kwargs):
-        user = update.effective_user
-        if user and user.id == OWNER_ID:
-            return func(bot, update, *args, **kwargs)
-        else:
-            pass
+    async def is_user_bot_owner(from_user: User, bot: Bot, *args, **kwargs):
+        if from_user and from_user.id == OWNER_ID:
+            return await func(from_user, bot, *args, **kwargs)
 
     return is_user_bot_owner
 
@@ -209,9 +207,9 @@ def build_keyboard_alternate(buttons):
     keyb = []
     for btn in buttons:
         if btn[2] and keyb:
-            keyb[-1].append(InlineKeyboardButton(btn[0], url=btn[1], style=KeyboardButtonStyle.PRIMARY))
+            keyb[-1].append(InlineKeyboardButton(btn[0], url=btn[1], style=ButtonStyle.PRIMARY))
         else:
-            keyb.append([InlineKeyboardButton(btn[0], url=btn[1], style=KeyboardButtonStyle.PRIMARY)])
+            keyb.append([InlineKeyboardButton(btn[0], url=btn[1], style=ButtonStyle.PRIMARY)])
 
     return keyb
 

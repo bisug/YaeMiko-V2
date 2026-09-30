@@ -1,9 +1,13 @@
 # <============================================== IMPORTS =========================================================>
 from enum import IntEnum, unique
 
-from telegram import Message
+from aiogram.types import Message
 
-from Mikobot.plugins.helper_funcs.string_handling import button_markdown_parser
+from Mikobot.plugins.helper_funcs.string_handling import (
+    button_markdown_parser,
+    caption_entities_map,
+    entities_map,
+)
 
 # <=======================================================================================================>
 
@@ -38,7 +42,7 @@ def get_note_type(msg: Message):
         )  # set correct offset relative to command + notename
         text, buttons = button_markdown_parser(
             args[2],
-            entities=msg.parse_entities() or msg.parse_caption_entities(),
+            entities=entities_map(msg) or caption_entities_map(msg),
             offset=offset,
         )
         if buttons:
@@ -47,7 +51,7 @@ def get_note_type(msg: Message):
             data_type = Types.TEXT
 
     elif msg.reply_to_message and not msg.reply_to_message.forum_topic_created:
-        entities = msg.reply_to_message.parse_entities()
+        entities = entities_map(msg.reply_to_message)
         msgtext = msg.reply_to_message.text or msg.reply_to_message.caption
         if len(args) >= 2 and msg.reply_to_message.text:  # not caption, text
             text, buttons = button_markdown_parser(msgtext, entities=entities)
@@ -152,13 +156,13 @@ def get_welcome_type(msg: Message):
                 msg.reply_to_message.caption if msg.reply_to_message.caption else ""
             )
             offset = 0  # offset is no need since target was in reply
-            entities = msg.reply_to_message.parse_entities()
+            entities = entities_map(msg.reply_to_message)
         else:
             argumen = args[1]
             offset = len(argumen) - len(
                 msg.text,
             )  # set correct offset relative to command + notename
-            entities = msg.parse_entities()
+            entities = entities_map(msg)
         text, buttons = button_markdown_parser(
             argumen,
             entities=entities,
