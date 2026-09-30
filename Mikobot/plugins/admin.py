@@ -1134,7 +1134,7 @@ for _name, _handler in (
     dp.message.register(
         chain(_handler),
         Command(_name),
-        F.chat.type.in_(ChatType.GROUP, ChatType.SUPERGROUP),
+        F.chat.type.in_({ChatType.GROUP, ChatType.SUPERGROUP}),
     )
 
 dp.message.register(chain(invite), *disableable("invitelink"))

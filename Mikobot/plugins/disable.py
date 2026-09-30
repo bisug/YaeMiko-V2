@@ -73,7 +73,11 @@ if is_module_loaded(FILENAME):
         if admin_ok:
             ADMIN_CMDS.extend(names)
 
-        return Command(names, prefixes=list(CMD_STARTERS)), NotDisabled(admin_ok)
+        # aiogram takes one prefix string and treats each char as a
+        # separate command prefix, so CMD_STARTERS packs into it.
+        return Command(
+            commands=names, prefix="".join(CMD_STARTERS)
+        ), NotDisabled(admin_ok)
 
     def disableable_friendly(friendly: str) -> NotDisabledFriendly:
         DISABLE_OTHER.append(friendly)

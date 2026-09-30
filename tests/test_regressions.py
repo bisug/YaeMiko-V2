@@ -1065,16 +1065,23 @@ class DatabaseRegressionTests(unittest.TestCase):
         self.assertEqual(offenders, [])
 
     def test_command_filters_are_constructed_correctly(self):
-        # Command() takes `commands` keyword-only: a list passed positionally
-        # lands in *values and is rejected as a non-str pattern, which crashed
-        # eight plugins at import. Constructing each filter proves the bot can
-        # import without a live token.
+        # Command() takes `commands` keyword-only. A list or tuple passed
+        # positionally lands in *values and is rejected as a non-string
+        # pattern, which raised ValueError at import and stopped the bot
+        # from starting. This walks every Command() call in Mikobot/ so that
+        # failure is caught by the suite instead of at startup.
         try:
+            import inspect
+
             from aiogram.filters import Command
         except ModuleNotFoundError:
             self.skipTest("aiogram is not installed")
 
         bad = []
+        if not inspect.signature(Command).parameters["commands"].kind.name.endswith(
+            "KEYWORD_ONLY"
+        ):
+            bad.append("Command() no longer takes commands keyword-only")
         for path in sorted((ROOT / "Mikobot").rglob("*.py")):
             if "__pycache__" in path.parts:
                 continue
@@ -1084,19 +1091,19 @@ class DatabaseRegressionTests(unittest.TestCase):
                     continue
                 if not (isinstance(node.func, ast.Name) and node.func.id == "Command"):
                     continue
-                try:
-                    args = [ast.literal_eval(a) for a in node.args]
-                    kwargs = {
-                        kw.arg: ast.literal_eval(kw.value) for kw in node.keywords
-                    }
-                except (ValueError, TypeError, SyntaxError):
-                    # A non-literal argument (a loop variable, say) cannot be
-                    # checked here; the filter is built at import instead.
-                    continue
-                try:
-                    Command(*args, **kwargs)
-                except (ValueError, TypeError) as error:
-                    bad.append(f"{path.relative_to(ROOT)}:{node.lineno} {error}")
+                for arg in node.args:
+                    # The positional forms still accepted are a plain string
+                    # literal and a single Name bound to one (a loop over
+                    # command names). Anything else -- a list or tuple -- is
+                    # the bug.
+                    if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                        continue
+                    if isinstance(arg, ast.Name):
+                        continue
+                    bad.append(
+                        f"{path.relative_to(ROOT)}:{node.lineno} "
+                        "Command() needs commands="
+                    )
         self.assertEqual(bad, [])
 
     def test_note_and_filter_buttons_commit_with_their_parent(self):

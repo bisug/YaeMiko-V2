@@ -35,7 +35,7 @@ from sqlalchemy import (
 )
 
 from Database.sql import BASE, ENGINE, SESSION
-from Mikobot import dispatcher
+from Mikobot import BOT_ID, BOT_USERNAME
 
 
 class Users(BASE):
@@ -102,7 +102,7 @@ INSERTION_LOCK = threading.RLock()
 
 def ensure_bot_in_db():
     with INSERTION_LOCK:
-        bot = Users(dispatcher.bot.id, dispatcher.bot.username)
+        bot = Users(BOT_ID, BOT_USERNAME)
         SESSION.merge(bot)
         SESSION.commit()
 
