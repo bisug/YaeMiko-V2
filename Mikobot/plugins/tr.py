@@ -6,20 +6,21 @@ import re
 from urllib.parse import quote
 
 import requests
+from aiogram.enums import ParseMode
+from aiogram.filters import CommandObject
+from aiogram.types import LinkPreviewOptions, Message
 from emoji import EMOJI_DATA
-from telegram import LinkPreviewOptions
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes, filters
 
-from Mikobot import LOGGER, function
+from Mikobot import LOGGER, dp
 from Mikobot.plugins.anime import (
     DEFAULT_SERVICE_URLS,
     LANGUAGES,
     google_new_transError,
 )
-from Mikobot.plugins.disable import DisableAbleCommandHandler
+from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
+from Mikobot.utils.filters import GROUPS
+from Mikobot.utils.gate import chain
 
 # <=======================================================================================================>
 
@@ -224,18 +225,17 @@ class google_translator:
 
 
 @check_admin(is_user=True)
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    args = update.effective_message.text.split(None, 1)
-    message = update.effective_message
+async def echo(message: Message, command: CommandObject):
+    args = (message.text or "").split(None, 1)
 
     if message.reply_to_message:
-        await message.reply_to_message.reply_text(
+        await message.reply_to_message.answer(
             args[1],
             parse_mode=ParseMode.MARKDOWN,
             link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     else:
-        await message.reply_text(
+        await message.answer(
             args[1],
             do_quote=False,
             parse_mode=ParseMode.MARKDOWN,
@@ -244,8 +244,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await message.delete()
 
 
-async def totranslate(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = update.effective_message
+async def totranslate(message: Message, command: CommandObject):
     problem_lang_code = []
     for key in LANGUAGES:
         if "-" in key:
@@ -256,7 +255,7 @@ async def totranslate(update: Update, context: ContextTypes.DEFAULT_TYPE):
             message.reply_to_message
             and not message.reply_to_message.forum_topic_created
         ):
-            args = update.effective_message.text.split(None, 1)
+            args = (message.text or "").split(None, 1)
             if message.reply_to_message.text:
                 text = message.reply_to_message.text
             elif message.reply_to_message.caption:
@@ -268,7 +267,7 @@ async def totranslate(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 source_lang = "en"
 
         else:
-            args = update.effective_message.text.split(None, 2)
+            args = (message.text or "").split(None, 2)
             text = args[2]
             source_lang = args[1]
 
@@ -303,7 +302,7 @@ async def totranslate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if source_lang is None:
             detection = await asyncio.to_thread(trl.detect, text)
             trans_str = await asyncio.to_thread(trl.translate, text, lang_tgt=dest_lang)
-            return await message.reply_text(
+            return await message.answer(
                 f"📒 *Translated from* `{detection[0]}` to `{dest_lang}`:\n`{trans_str}`",
                 parse_mode=ParseMode.MARKDOWN,
             )
@@ -311,13 +310,13 @@ async def totranslate(update: Update, context: ContextTypes.DEFAULT_TYPE):
             trans_str = await asyncio.to_thread(
                 trl.translate, text, lang_tgt=dest_lang, lang_src=source_lang
             )
-            await message.reply_text(
+            await message.answer(
                 f"📒 *Translated from* `{source_lang}` to `{dest_lang}`:\n`{trans_str}`",
                 parse_mode=ParseMode.MARKDOWN,
             )
 
     except IndexError:
-        await update.effective_message.reply_text(
+        await message.answer(
             "Reply to messages or write messages from other languages ​​for translating into the intended language\n\n"
             "Example: `/tr en-ta` to translate from English to Tamil\n"
             "Or use: `/tr ta` for automatic detection and translating it into Tamil.\n"
@@ -326,7 +325,7 @@ async def totranslate(update: Update, context: ContextTypes.DEFAULT_TYPE):
             link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     except ValueError:
-        await update.effective_message.reply_text("The intended language is not found!")
+        await message.answer("The intended language is not found!")
     else:
         return
 
@@ -346,15 +345,9 @@ __help__ = """
 » /echo < text >: echos the message.
 """
 
-TRANSLATE_HANDLER = DisableAbleCommandHandler(["tr", "tl"], totranslate, block=False)
-ECHO_HANDLER = DisableAbleCommandHandler(
-    "echo", echo, filters=filters.ChatType.GROUPS, block=False
-)
-
-function(TRANSLATE_HANDLER)
-function(ECHO_HANDLER)
+dp.message.register(chain(totranslate), *disableable(["tr", "tl"]))
+dp.message.register(chain(echo), GROUPS, *disableable("echo"))
 
 __mod_name__ = "TRANSLATOR"
 __command_list__ = ["tr", "tl", "echo"]
-__handlers__ = [TRANSLATE_HANDLER]
 # <================================================ END =======================================================>
