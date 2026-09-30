@@ -8,10 +8,10 @@ from urllib.parse import urlparse
 # PROVIDED BY https://t.me/ProjectCodeX
 
 # <============================================== IMPORTS =========================================================>
-from telegram import Update
-from telegram.ext import CommandHandler, ContextTypes
+from aiogram.filters import Command
+from aiogram.types import Message
 
-from Mikobot import function
+from Mikobot import dp
 from Mikobot.state import state
 
 # <=======================================================================================================>
@@ -39,12 +39,11 @@ async def get_cosplay_data() -> str:
     return photo_url
 
 
-async def cosplay(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = update.effective_message
-    status = await message.reply_text("Fetching a cosplay photo...")
+async def cosplay(message: Message):
+    status = await message.answer("Fetching a cosplay photo...")
     try:
         photo_url = await get_cosplay_data()
-        await message.reply_photo(photo=photo_url)
+        await message.answer_photo(photo=photo_url)
     except (httpx.HTTPError, ValueError, KeyError, TypeError):
         await status.edit_text("Unable to fetch a cosplay photo right now. Please try again later.")
         return
@@ -56,5 +55,5 @@ async def cosplay(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # <================================================ HANDLER =======================================================>
-function(CommandHandler("cosplay", cosplay, block=False))
+dp.message.register(cosplay, Command("cosplay"))
 # <================================================ END =======================================================>

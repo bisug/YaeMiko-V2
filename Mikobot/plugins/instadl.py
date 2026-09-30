@@ -3,10 +3,10 @@
 # PROVIDED BY https://t.me/ProjectCodeX
 
 # <============================================== IMPORTS =========================================================>
-from telegram import Update
-from telegram.ext import CommandHandler, ContextTypes
+from aiogram.filters import Command, CommandObject
+from aiogram.types import Message
 
-from Mikobot import LOGGER, function
+from Mikobot import LOGGER, dp
 from Mikobot.state import state
 
 # <=======================================================================================================>
@@ -18,15 +18,15 @@ API_URL = "https://karma-api2.vercel.app/instadl"  # Replace with your actual AP
 
 
 # <================================================ FUNCTION =======================================================>
-async def instadl_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if len(context.args) < 1:
-        await update.message.reply_text("Usage: /instadl [Instagram URL]")
+async def instadl_command_handler(message: Message, command: CommandObject):
+    if len(command.args) < 1:
+        await message.answer("Usage: /instadl [Instagram URL]")
         return
 
-    link = context.args[0]
+    link = command.args[0]
     downloading_sticker = None
     try:
-        downloading_sticker = await update.message.reply_sticker(DOWNLOADING_STICKER_ID)
+        downloading_sticker = await message.answer_sticker(DOWNLOADING_STICKER_ID)
 
         # Make an asynchronous GET request to the API using httpx
         response = await state.get(API_URL, params={"url": link})
@@ -41,19 +41,19 @@ async def instadl_command_handler(update: Update, context: ContextTypes.DEFAULT_
 
             # Reply with either photo or video
             if content_type == "photo":
-                await update.message.reply_photo(content_url)
+                await message.answer_photo(content_url)
             elif content_type == "video":
-                await update.message.reply_video(content_url)
+                await message.answer_video(content_url)
             else:
-                await update.message.reply_text("Unsupported content type.")
+                await message.answer("Unsupported content type.")
         else:
-            await update.message.reply_text(
+            await message.answer(
                 "Unable to fetch content. Please check the Instagram URL or try with another Instagram link."
             )
 
-    except Exception as e:
+    except Exception:
         LOGGER.exception("Instagram download request failed")
-        await update.message.reply_text(
+        await message.answer(
             "An error occurred while processing the request."
         )
 
@@ -65,7 +65,8 @@ async def instadl_command_handler(update: Update, context: ContextTypes.DEFAULT_
                 pass
 
 
-function(
-    CommandHandler(["ig", "instagram", "insta", "instadl"], instadl_command_handler)
+dp.message.register(
+    instadl_command_handler,
+    Command(["ig", "instagram", "insta", "instadl"]),
 )
 # <================================================ END =======================================================>

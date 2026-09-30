@@ -1,14 +1,13 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.constants import ParseMode
-from telegram.ext import CallbackQueryHandler, ContextTypes
+from aiogram import F
+from aiogram.enums import ButtonStyle, ParseMode
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-from Mikobot import DEV_USERS, function
-from Mikobot.plugins.disable import DisableAbleCommandHandler
+from Mikobot import DEV_USERS, dp
+from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
-from telegram.constants import KeyboardButtonStyle
 
 # <=======================================================================================================>
 
@@ -19,28 +18,26 @@ def convert(speed):
 
 
 @check_admin(only_dev=True)
-async def speedtestxyz(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def speedtestxyz(message: Message):
     buttons = [
         [
-            InlineKeyboardButton("Image", callback_data="speedtest_image", style=KeyboardButtonStyle.PRIMARY),
-            InlineKeyboardButton("Text", callback_data="speedtest_text", style=KeyboardButtonStyle.PRIMARY),
+            InlineKeyboardButton("Image", callback_data="speedtest_image", style=ButtonStyle.PRIMARY),
+            InlineKeyboardButton("Text", callback_data="speedtest_text", style=ButtonStyle.PRIMARY),
         ],
     ]
-    await update.effective_message.reply_text(
+    await message.answer(
         "Select SpeedTest Mode",
         reply_markup=InlineKeyboardMarkup(buttons),
     )
 
 
-async def speedtestxyz_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-
+async def speedtestxyz_callback(query: CallbackQuery):
     if query.data not in {"speedtest_image", "speedtest_text"}:
         await query.answer("Invalid selection.", show_alert=True)
         return
 
     if query.from_user.id in DEV_USERS:
-        msg = await update.effective_message.edit_text("Running a speedtest....")
+        msg = await query.message.edit_text("Running a speedtest....")
         import speedtest
 
         speed = await asyncio.to_thread(speedtest.Speedtest)
@@ -51,7 +48,7 @@ async def speedtestxyz_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         if query.data == "speedtest_image":
             speedtest_image = await asyncio.to_thread(speed.results.share)
-            await update.effective_message.reply_photo(
+            await query.message.answer_photo(
                 photo=speedtest_image,
                 caption=replymsg,
             )
@@ -60,7 +57,7 @@ async def speedtestxyz_callback(update: Update, context: ContextTypes.DEFAULT_TY
         elif query.data == "speedtest_text":
             result = await asyncio.to_thread(speed.results.dict)
             replymsg += f"\nDownload: `{convert(result['download'])}Mb/s`\nUpload: `{convert(result['upload'])}Mb/s`\nPing: `{result['ping']}`"
-            await update.effective_message.edit_text(
+            await query.message.edit_text(
                 replymsg, parse_mode=ParseMode.MARKDOWN
             )
         await query.answer("Speedtest complete.")
@@ -69,15 +66,9 @@ async def speedtestxyz_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 
 # <================================================ HANDLER =======================================================>
-SPEED_TEST_HANDLER = DisableAbleCommandHandler("speedtest", speedtestxyz, block=False)
-SPEED_TEST_CALLBACKHANDLER = CallbackQueryHandler(
-    speedtestxyz_callback, pattern="speedtest_.*", block=False
-)
-
-function(SPEED_TEST_HANDLER)
-function(SPEED_TEST_CALLBACKHANDLER)
+dp.message.register(speedtestxyz, *disableable("speedtest"))
+dp.callback_query.register(speedtestxyz_callback, F.data.regexp(r"^speedtest_"))
 
 __mod_name__ = "SpeedTest"
 __command_list__ = ["speedtest"]
-__handlers__ = [SPEED_TEST_HANDLER, SPEED_TEST_CALLBACKHANDLER]
 # <================================================ END =======================================================>

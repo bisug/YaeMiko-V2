@@ -7,7 +7,7 @@ import random
 from sys import version_info
 
 import pyrogram
-import telegram
+import aiogram
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardMarkup, Message
 
@@ -21,7 +21,7 @@ from Mikobot import BOT_NAME, app
 @app.on_message(filters.command("alive"))
 async def alive(_, message: Message):
     library_versions = {
-        "PTB": telegram.__version__,
+        "AIOGRAM": aiogram.__version__,
         "KURIGRAM": pyrogram.__version__,
     }
 
