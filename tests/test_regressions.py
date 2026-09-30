@@ -1967,5 +1967,83 @@ class EnvIntegerParsingTests(unittest.TestCase):
         self.assertEqual(self._env_int({}, "SUPPORT_ID", -100), -100)
 
 
+class ExtractTimeTests(unittest.TestCase):
+    """extract_time feeds until_date, which aiogram strictly validates."""
+
+    def _reply_texts(self):
+        replies = []
+
+        class _Message:
+            async def reply_text(self, text, *args, **kwargs):
+                replies.append(text)
+
+        return _Message(), replies
+
+    def test_valid_durations_return_an_absolute_expiry(self):
+        import time
+
+        from Mikobot.plugins.helper_funcs.string_handling import extract_time
+
+        message, replies = self._reply_texts()
+        for value, seconds in (("30m", 1800), ("2h", 7200), ("1d", 86400)):
+            before = int(time.time())
+            result = asyncio.run(extract_time(message, value))
+            self.assertIsInstance(result, int, value)
+            self.assertGreaterEqual(result, before + seconds)
+        self.assertEqual(replies, [])
+
+    def test_malformed_input_returns_none_not_a_sentinel_string(self):
+        # PTB tolerated "" here; aiogram rejects it as until_date, and
+        # None would mean a permanent ban, so callers guard on falsiness.
+        from Mikobot.plugins.helper_funcs.string_handling import extract_time
+
+        for value in ("abcm", "10x", "", "m"):
+            message, replies = self._reply_texts()
+            result = asyncio.run(extract_time(message, value))
+            self.assertIsNone(result, value)
+
+    def test_returned_value_is_accepted_by_aiogram_until_date(self):
+        from aiogram.methods import BanChatMember
+
+        from Mikobot.plugins.helper_funcs.string_handling import extract_time
+
+        for value in ("10m", "not-a-duration"):
+            message, _ = self._reply_texts()
+            expiry = asyncio.run(extract_time(message, value))
+            if expiry:
+                # Only the success path reaches the API; the failure path
+                # must be skipped by the caller's guard.
+                BanChatMember(chat_id=1, user_id=2, until_date=expiry)
+
+    def test_every_caller_guards_the_result_before_using_it(self):
+        # A ban with until_date=None is permanent, so an unguarded caller
+        # turns a typo'd duration into an indefinite punishment.
+        bad = []
+        for path in sorted((ROOT / "Mikobot").rglob("*.py")):
+            if "__pycache__" in path.parts:
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Await)):
+                    continue
+                call = node.value.value
+                if not (
+                    isinstance(call, ast.Call) and getattr(call.func, "id", "") == "extract_time"
+                ):
+                    continue
+                name = node.targets[0].id
+                guarded = any(
+                    isinstance(n, ast.If)
+                    and isinstance(n.test, ast.UnaryOp)
+                    and isinstance(n.test.op, ast.Not)
+                    and isinstance(n.test.operand, ast.Name)
+                    and n.test.operand.id == name
+                    for n in ast.walk(tree)
+                )
+                if not guarded:
+                    bad.append(f"{path.relative_to(ROOT)}:{node.lineno} {name}")
+        self.assertEqual(bad, [])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -68,11 +68,15 @@ async def check_flood(message: Message):
             tag = "MUTED"
         elif getmode == 4:
             bantime = await extract_time(msg, getvalue)
+            if not bantime:
+                return
             await bot.ban_chat_member(chat.id, user.id, until_date=bantime)
             execstrings = "BANNED for {}".format(getvalue)
             tag = "TBAN"
         elif getmode == 5:
             mutetime = await extract_time(msg, getvalue)
+            if not mutetime:
+                return
             await bot.restrict_chat_member(
                 chat.id,
                 user.id,

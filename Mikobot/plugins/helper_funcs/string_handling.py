@@ -319,12 +319,25 @@ def escape_chars(text: str, to_escape: List[str]) -> str:
 
 
 async def extract_time(message, time_val):
+    """Return an absolute unix expiry, or None if the input was unusable.
+
+    Callers guard on falsiness to skip the ban entirely. PTB tolerated the
+    empty string returned on error, but aiogram validates ``until_date`` and
+    rejects it, so a malformed duration would raise out of the handler
+    instead of quietly not banning anyone.
+    """
+    # The error text below reports time_val[-1], which raises on empty input
+    # such as "/ban @user " with the duration omitted.
+    if not time_val:
+        await message.reply_text("Invalid time type specified. Expected m,h, or d.")
+        return None
+
     if any(time_val.endswith(unit) for unit in ("m", "h", "d")):
         unit = time_val[-1]
         time_num = time_val[:-1]  # type: str
         if not time_num.isdigit():
             await message.reply_text("Invalid time amount specified.")
-            return ""
+            return None
 
         if unit == "m":
             bantime = int(time.time() + int(time_num) * 60)
@@ -334,7 +347,7 @@ async def extract_time(message, time_val):
             bantime = int(time.time() + int(time_num) * 24 * 60 * 60)
         else:
             # how even...?
-            return ""
+            return None
         return bantime
     else:
         await message.reply_text(
@@ -342,7 +355,7 @@ async def extract_time(message, time_val):
                 time_val[-1],
             ),
         )
-        return ""
+        return None
 
 
 def markdown_to_html(text: str) -> str:

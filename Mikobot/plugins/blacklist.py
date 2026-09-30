@@ -428,6 +428,8 @@ async def del_blacklist(message: Message):
                 elif getmode == 6:
                     await message.delete()
                     bantime = await extract_time(message, value)
+                    if not bantime:
+                        return
                     await bot.ban_chat_member(chat.id, user.id, until_date=bantime)
                     await bot.send_message(
                         chat.id,
@@ -440,6 +442,8 @@ async def del_blacklist(message: Message):
                 elif getmode == 7:
                     await message.delete()
                     mutetime = await extract_time(message, value)
+                    if not mutetime:
+                        return
                     await bot.restrict_chat_member(
                         chat.id,
                         user.id,
