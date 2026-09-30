@@ -1,6 +1,6 @@
 import html
+import unicodedata
 
-from alphabet_detector import AlphabetDetector
 from telegram import (
     ChatFullInfo,
     ChatMemberAdministrator,
@@ -22,7 +22,17 @@ from Mikobot.plugins.helper_funcs.alternate import send_message, typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin, is_bot_admin, is_user_admin
 from Mikobot.plugins.log_channel import loggable
 
-ad = AlphabetDetector()
+
+def _has_arabic_script(text: str) -> bool:
+    """True when any letter in text belongs to the Arabic script.
+
+    The rtl lock only needs script detection, so this reads the character name
+    instead of taking a dependency: "ARABIC LETTER BEH" -> ARABIC, while the
+    Arabic-Indic digits stay out of it because they are not letters.
+    """
+    return any(
+        unicodedata.name(char, "").startswith("ARABIC") for char in text if char.isalpha()
+    )
 
 LOCK_TYPES = {
     "audio": filters.AUDIO,
@@ -473,8 +483,7 @@ async def del_lockables(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if lockable == "rtl":
             if getattr(locks, lockable, False):
                 if message.caption:
-                    check = ad.detect_alphabet("{}".format(message.caption))
-                    if "ARABIC" in check:
+                    if _has_arabic_script(message.caption):
                         try:
                             await message.delete()
                         except BadRequest as excp:
@@ -484,8 +493,7 @@ async def del_lockables(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 LOGGER.exception("ERROR in lockables - rtl:caption")
                         break
                 if message.text:
-                    check = ad.detect_alphabet("{}".format(message.text))
-                    if "ARABIC" in check:
+                    if _has_arabic_script(message.text):
                         try:
                             await message.delete()
                         except BadRequest as excp:

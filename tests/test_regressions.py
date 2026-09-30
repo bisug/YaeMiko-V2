@@ -201,6 +201,35 @@ class EnvironmentTests(unittest.TestCase):
         )
         self.assertNotIn("sql.is_locked(chat.id, lockable)", locks_body)
 
+    def test_rtl_lock_detects_arabic_script_without_a_dependency(self):
+        has_arabic = load_function(
+            ROOT / "Mikobot/plugins/locks.py",
+            "_has_arabic_script",
+            {"unicodedata": __import__("unicodedata")},
+        )
+        for text in ("مرحبا بالعالم", "سلام دنیا", "کھیل کا کھیل", "hello مرحبا world", "مُحَمَّد", "ﺁ"):
+            with self.subTest(text=text):
+                self.assertTrue(has_arabic(text))
+        for text in (
+            "hello world",
+            "שלום עולם",
+            "привет мир",
+            "γειά σου κόσμε",
+            "สวัสดีชาวโลก",
+            "नमस्ते दुनिया",
+            "12345",
+            "٣٤٥",
+            "\U0001f600\U0001f389",
+            "",
+        ):
+            with self.subTest(text=text):
+                self.assertFalse(has_arabic(text))
+
+        locks_source = (ROOT / "Mikobot/plugins/locks.py").read_text(encoding="utf-8")
+        self.assertNotIn("alphabet_detector", locks_source)
+        requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+        self.assertNotIn("alphabet-detector", requirements)
+
     def test_kurigram_handlers_pass_callback_before_filter(self):
         tree = ast.parse((ROOT / "Mikobot/events.py").read_text(encoding="utf-8"))
         calls = {

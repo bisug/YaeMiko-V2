@@ -27,7 +27,6 @@ psutil==7.2.2
 opennsfw-onnx==0.1.0
 onnxruntime==1.30.0
 # Utilities
-alphabet-detector==0.0.7
 nekos.py==1.1.0
 pyjokes==0.8.3
 pyrate-limiter==4.5.0

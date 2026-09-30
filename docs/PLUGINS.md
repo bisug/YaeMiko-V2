@@ -106,7 +106,7 @@ name in that list, so dropping a new file into the directory is enough to regist
 | `quotely` | none | Quote generation |
 | `reverse` | none | Reverse image search |
 | `instadl` | none | Instagram media download |
-| `tr` | TRANSLATOR | `echo` translation and `alphabet-detector` language guessing |
+| `tr` | TRANSLATOR | `echo` translation |
 | `bug` | none | `/bug` report relay to the developer chat |
 
 ## Reference data
