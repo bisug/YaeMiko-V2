@@ -373,7 +373,13 @@ _BOT_INFO = None
 
 
 def fetch_bot_info():
-    """Resolve and cache the bot's identity, tolerating an unreachable API."""
+    """Resolve the bot's identity, retrying until the API answers.
+
+    Placeholders are returned when the API cannot be reached, but they are
+    deliberately not cached: BOT_ID=0 makes the admin check pass for nobody
+    and writes a junk row for user 0, so a transient timeout must not lock
+    the bot into a bogus identity for the rest of the process.
+    """
     global _BOT_INFO
     if _BOT_INFO is not None:
         return _BOT_INFO
@@ -383,7 +389,7 @@ def fetch_bot_info():
         _BOT_INFO = (info.id, info.first_name, info.username)
     except Exception:
         LOGGER.warning("Unable to reach the Telegram API for bot info", exc_info=True)
-        _BOT_INFO = (0, "Bot", "")
+        return (0, "Bot", "")
     return _BOT_INFO
 
 

@@ -2045,5 +2045,100 @@ class ExtractTimeTests(unittest.TestCase):
         self.assertEqual(bad, [])
 
 
+class BotIdentityFallbackTests(unittest.TestCase):
+    """A failed getMe must not be cached as a permanent identity."""
+
+    def _fresh_module(self):
+        """Import Mikobot without reaching the real Telegram API.
+
+        Importing Mikobot pulls in Database/sql, which reads BOT_ID and so
+        fires a getMe at import time. A deliberately invalid token makes
+        that call fail fast and locally instead of authenticating.
+        """
+        import importlib
+        import os
+        import sys
+
+        module = sys.modules.get("Mikobot")
+        if module is None:
+            saved_env = os.environ.get("TOKEN")
+            os.environ["TOKEN"] = "0000000000:TESTTOKENPLACEHOLDERnotarealtoken"
+            self.addCleanup(
+                lambda: os.environ.__setitem__("TOKEN", saved_env)
+                if saved_env is not None
+                else os.environ.pop("TOKEN", None)
+            )
+            try:
+                module = importlib.import_module("Mikobot")
+            except Exception:
+                return None, None, None, None
+        saved = {k: getattr(module, k) for k in ("_BOT_INFO", "bot", "loop")}
+        calls = {"count": 0}
+
+        class _User:
+            id, first_name, username = 42, "Name", "name_bot"
+
+        class _StubBot:
+            def __init__(self, fail):
+                self._fail = fail
+
+            async def me(self):
+                calls["count"] += 1
+                if self._fail:
+                    raise RuntimeError("network down")
+                return _User()
+
+        class _Loop:
+            """A real event loop, so the coroutine actually runs."""
+
+            def __init__(self):
+                import asyncio
+
+                self._loop = asyncio.new_event_loop()
+
+            def run_until_complete(self, coro):
+                return self._loop.run_until_complete(coro)
+
+        if saved is not None:
+            module._BOT_INFO = None
+            module.bot = _StubBot(fail=True)
+            module.loop = _Loop()
+        self.addCleanup(self._restore, module, saved)
+        return module, _StubBot, _User, calls
+
+    @staticmethod
+    def _restore(module, saved):
+        if module is None or saved is None:
+            return
+        for key, value in saved.items():
+            setattr(module, key, value)
+
+    def test_a_failed_fetch_is_not_cached(self):
+        # BOT_ID=0 makes the admin-list check fail for everyone and writes a
+        # junk users row, so a transient timeout must be retried later.
+        module, stub_bot, user_cls, calls = self._fresh_module()
+        if module is None:
+            self.skipTest("Mikobot is not importable")
+
+        self.assertEqual(module.fetch_bot_info(), (0, "Bot", ""))
+        self.assertIsNone(module._BOT_INFO, "placeholder was cached")
+
+        # A later attempt must be able to succeed and take over the identity.
+        module.bot = stub_bot(fail=False)
+        self.assertEqual(module.fetch_bot_info(), (42, "Name", "name_bot"))
+        self.assertEqual(module._BOT_INFO, (42, "Name", "name_bot"))
+        self.assertEqual(calls["count"], 2)
+
+    def test_a_successful_fetch_is_cached(self):
+        module, stub_bot, user_cls, calls = self._fresh_module()
+        if module is None:
+            self.skipTest("Mikobot is not importable")
+
+        module.bot = stub_bot(fail=False)
+        self.assertEqual(module.fetch_bot_info(), (42, "Name", "name_bot"))
+        self.assertEqual(module.fetch_bot_info(), (42, "Name", "name_bot"))
+        self.assertEqual(calls["count"], 1, "a resolved identity should not be re-fetched")
+
+
 if __name__ == "__main__":
     unittest.main()
