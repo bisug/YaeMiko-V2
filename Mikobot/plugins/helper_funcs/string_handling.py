@@ -8,13 +8,45 @@ import re
 import time
 from typing import Dict, List
 
+from aiogram.types import Message as AiogramMessage
+from aiogram.types import MessageEntity
 from emoji import unicode_codes
-from telegram import MessageEntity
-from telegram.helpers import escape_markdown
+
+
+def escape_markdown(text: str, version: int = 1, entity_type: str = None) -> str:
+    """Escape Telegram Markdown text.
+
+    PTB shipped this in telegram.helpers; aiogram has no counterpart for the
+    legacy Markdown mode, so the repo's own helper in Mikobot.utils.parser is
+    the base and the v2 sets are reproduced here.
+    """
+    from Mikobot.utils.parser import escape_markdown as escape_markdown_v1
+
+    if int(version) == 1:
+        return escape_markdown_v1(text)
+    if entity_type in ("pre", "code"):
+        return text.replace("`", "\\`")
+    if entity_type in ("text_link", "custom_emoji"):
+        return text.replace(")", "\\)")
+    return re.sub(r"([\\_*\[\]()~`>#+\-=|{}.!])", r"\\\1", text)
+
 
 def escape_markdown_v2(text: str, entity_type: str = None) -> str:
     """Escape Telegram MarkdownV2 text while preserving supported entities."""
     return escape_markdown(text, version=2, entity_type=entity_type)
+
+
+def entities_map(message: AiogramMessage) -> dict:
+    """PTB's Message.parse_entities() as {entity: entity_text}.
+
+    markdown_parser walks an entity/text mapping, so keep that shape and build
+    it from aiogram's entity list instead.
+    """
+    text = message.text or message.caption or ""
+    return {
+        entity: entity.extract_from(text)
+        for entity in (message.entities or [])
+    }
 
 
 
@@ -81,7 +113,7 @@ def markdown_parser(
     Parse a string, escaping all invalid markdown entities.
 
     Escapes URL's so as to avoid URL mangling.
-    Re-adds any telegram code entities obtained from the entities object.
+    Re-adds any Telegram code entities obtained from the entities object.
 
     :param txt: text to parse
     :param entities: dict of message entities in text

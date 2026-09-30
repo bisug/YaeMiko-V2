@@ -4,13 +4,17 @@ import uuid
 from html import escape
 from urllib.parse import urlparse
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Update
-from telegram.constants import ParseMode
-from telegram.ext import CallbackContext, CommandHandler
+from aiogram.enums import ButtonStyle, ParseMode
+from aiogram.filters import Command
+from aiogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    LinkPreviewOptions,
+    Message,
+)
 
-from Mikobot import dispatcher
+from Mikobot import bot, dp
 from Mikobot.state import state
-from telegram.constants import KeyboardButtonStyle
 
 ENDPOINT = "https://sasta-api.vercel.app/googleImageSearch"
 
@@ -31,15 +35,14 @@ def _valid_url(value):
     return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
 
 
-async def reverse_image_search(update: Update, context: CallbackContext):
-    message = update.message
+async def reverse_image_search(message: Message):
     args = message.text.split(None, 1)
     if len(args) > 1:
         image_url = args[1]
         if not _valid_url(image_url):
-            await message.reply_text("Please provide a valid HTTP(S) image URL.")
+            await message.answer("Please provide a valid HTTP(S) image URL.")
             return
-        status_msg = await message.reply_text(STRINGS.REQUESTING_API_SERVER)
+        status_msg = await message.answer(STRINGS.REQUESTING_API_SERVER)
         try:
             response = await state.get(
                 ENDPOINT, params={"image_url": image_url}, timeout=20
@@ -52,7 +55,7 @@ async def reverse_image_search(update: Update, context: CallbackContext):
         for name in ("photo", "sticker", "document")
     ):
         reply = message.reply_to_message
-        status_msg = await message.reply_text(STRINGS.DOWNLOADING_MEDIA)
+        status_msg = await message.answer(STRINGS.DOWNLOADING_MEDIA)
         with tempfile.TemporaryDirectory(prefix="yae-reverse-") as temp_dir:
             file_path = os.path.join(temp_dir, uuid.uuid4().hex)
             try:
@@ -63,8 +66,7 @@ async def reverse_image_search(update: Update, context: CallbackContext):
                     if reply.sticker
                     else reply.document.file_id
                 )
-                file = await context.bot.get_file(file_id)
-                await file.download_to_drive(file_path)
+                await bot.download(file_id, destination=file_path)
                 await status_msg.edit_text(STRINGS.UPLOADING_TO_API_SERVER)
                 with open(file_path, "rb") as image_file:
                     response = await state.post(
@@ -74,7 +76,7 @@ async def reverse_image_search(update: Update, context: CallbackContext):
                 await status_msg.edit_text("The image could not be processed.")
                 return
     else:
-        await message.reply_text("Reply to an image or provide an image URL.")
+        await message.answer("Reply to an image or provide an image URL.")
         return
 
     try:
@@ -92,17 +94,18 @@ async def reverse_image_search(update: Update, context: CallbackContext):
         query=f"<code>{escape(query)}</code>" if query else "<i>Name not found</i>",
         search_url=search_url,
     )
-    await message.reply_text(
+    await message.answer(
         text,
         link_preview_options=LinkPreviewOptions(is_disabled=True),
         reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton(STRINGS.OPEN_SEARCH_PAGE, url=search_url, style=KeyboardButtonStyle.PRIMARY)]]
+            [[InlineKeyboardButton(STRINGS.OPEN_SEARCH_PAGE, url=search_url, style=ButtonStyle.PRIMARY)]]
         ),
         parse_mode=ParseMode.HTML,
     )
     await status_msg.delete()
 
 
-dispatcher.add_handler(
-    CommandHandler(["reverse", "pp", "p", "grs", "sauce"], reverse_image_search)
+dp.message.register(
+    reverse_image_search,
+    Command(["reverse", "pp", "p", "grs", "sauce"]),
 )
