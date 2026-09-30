@@ -5,10 +5,10 @@ import threading
 from sqlalchemy import BigInteger, Boolean, Column, Integer, String, UnicodeText
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from telegram.error import BadRequest, Forbidden
+from aiogram.exceptions import TelegramAPIError
 
 from Database.sql import BASE, ENGINE, SESSION
-from Mikobot import LOGGER, OWNER_ID, dispatcher
+from Mikobot import LOGGER, OWNER_ID, bot
 
 
 class Federations(BASE):
@@ -697,11 +697,9 @@ async def get_fed_log(fed_id):
         return False
     elif fed_setting.get("flog"):
         try:
-            await dispatcher.bot.get_chat(fed_setting.get("flog"))
-        except BadRequest:
-            await asyncio.to_thread(set_fed_log, fed_id, None)
-            return False
-        except Forbidden:
+            await bot.get_chat(fed_setting.get("flog"))
+        except TelegramAPIError:
+            # Chat gone or the bot lost access: drop the stored log channel.
             await asyncio.to_thread(set_fed_log, fed_id, None)
             return False
         return fed_setting.get("flog")

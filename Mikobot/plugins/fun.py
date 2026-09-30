@@ -1,14 +1,15 @@
 # <============================================== IMPORTS =========================================================>
 import random
 
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
+from aiogram.enums import ParseMode
+from aiogram.filters import CommandObject
+from aiogram.types import Message
 
 import Mikobot.utils.fun_strings as fun_strings
-from Mikobot import function
-from Mikobot.plugins.disable import DisableAbleCommandHandler
+from Mikobot import dp
+from Mikobot.plugins.disable import disableable
 from Mikobot.state import state
+from Mikobot.utils.gate import chain
 
 # <=======================================================================================================>
 
@@ -24,73 +25,73 @@ async def make_request(url: str) -> str:
     return question.strip()[:1000]
 
 
-async def truth(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def truth(message: Message):
     try:
         question = await make_request("https://api.truthordarebot.xyz/v1/truth")
     except Exception:
         question = "The truth service is unavailable. Please try again later."
-    await update.effective_message.reply_text(question)
+    await message.answer(question)
 
 
-async def dare(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def dare(message: Message):
     try:
         question = await make_request("https://api.truthordarebot.xyz/v1/dare")
     except Exception:
         question = "The dare service is unavailable. Please try again later."
-    await update.effective_message.reply_text(question)
+    await message.answer(question)
 
 
-async def joke(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def joke(message: Message):
     from pyjokes import get_joke
 
-    await update.effective_message.reply_text(get_joke())
+    await message.answer(get_joke())
 
 
-async def roll(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(random.choice(range(1, 7)))
+async def roll(message: Message):
+    await message.answer(random.choice(range(1, 7)))
 
 
-async def flirt(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.effective_message.reply_text(random.choice(fun_strings.FLIRT))
+async def flirt(message: Message):
+    await message.answer(random.choice(fun_strings.FLIRT))
 
 
-async def toss(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(random.choice(fun_strings.TOSS))
+async def toss(message: Message):
+    await message.answer(random.choice(fun_strings.TOSS))
 
 
-async def shrug(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = update.effective_message
+async def shrug(message: Message):
+    msg = message
     reply_text = (
-        msg.reply_to_message.reply_text if msg.reply_to_message else msg.reply_text
+        msg.reply_to_message.answer if msg.reply_to_message else msg.answer
     )
     await reply_text(r"¯\_(ツ)_/¯")
 
 
-async def bluetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = update.effective_message
+async def bluetext(message: Message):
+    msg = message
     reply_text = (
-        msg.reply_to_message.reply_text if msg.reply_to_message else msg.reply_text
+        msg.reply_to_message.answer if msg.reply_to_message else msg.answer
     )
     await reply_text(
         "/BLUE /TEXT\n/MUST /CLICK\n/I /AM /A /STUPID /ANIMAL /THAT /IS /ATTRACTED /TO /COLORS"
     )
 
 
-async def rlg(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def rlg(message: Message):
     eyes = random.choice(fun_strings.EYES)
     mouth = random.choice(fun_strings.MOUTHS)
     ears = random.choice(fun_strings.EARS)
 
     left, right = (eyes + [eyes[0]])[:2]
     repl = ears[0] + left + mouth[0] + right + ears[1]
-    await update.message.reply_text(repl)
+    await message.answer(repl)
 
 
-async def decide(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def decide(message: Message):
     reply_text = (
-        update.effective_message.reply_to_message.reply_text
-        if update.effective_message.reply_to_message
-        else update.effective_message.reply_text
+        message.reply_to_message.answer
+        if message.reply_to_message
+        else message.answer
     )
     await reply_text(random.choice(fun_strings.DECIDE))
 
@@ -154,15 +155,14 @@ weebyfont = [
 ]
 
 
-async def webify(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    args = context.args
-    message = update.effective_message
+async def webify(message: Message, command: CommandObject):
+    args = command.args
     string = ""
 
     if message.reply_to_message:
         text = message.reply_to_message.text
         if not text:
-            await message.reply_text("Reply to a text message to use /weebify.")
+            await message.answer("Reply to a text message to use /weebify.")
             return
         string = text.lower().replace(" ", "  ")
 
@@ -170,7 +170,7 @@ async def webify(update: Update, context: ContextTypes.DEFAULT_TYPE):
         string = "  ".join(args).lower()
 
     if not string:
-        await message.reply_text(
+        await message.answer(
             "Usage is `/weebify <text>`", parse_mode=ParseMode.MARKDOWN
         )
         return
@@ -183,7 +183,7 @@ async def webify(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if message.reply_to_message:
         await message.reply_to_message.reply_text(string)
     else:
-        await message.reply_text(string)
+        await message.answer(string)
 
 
 # <=================================================== HELP ====================================================>
@@ -214,55 +214,21 @@ __help__ = """
 """
 
 # <================================================ HANDLER =======================================================>
-ROLL_HANDLER = DisableAbleCommandHandler("roll", roll, block=False)
-TOSS_HANDLER = DisableAbleCommandHandler("toss", toss, block=False)
-SHRUG_HANDLER = DisableAbleCommandHandler("shrug", shrug, block=False)
-BLUETEXT_HANDLER = DisableAbleCommandHandler("bluetext", bluetext, block=False)
-RLG_HANDLER = DisableAbleCommandHandler("rlg", rlg, block=False)
-DECIDE_HANDLER = DisableAbleCommandHandler("decide", decide, block=False)
-WEEBIFY_HANDLER = DisableAbleCommandHandler("weebify", webify, block=False)
-FLIRT_HANDLER = DisableAbleCommandHandler("flirt", flirt, block=False)
-TRUTH_HANDLER = DisableAbleCommandHandler("truth", truth, block=False)
-JOKE_HANDLER = DisableAbleCommandHandler("joke", joke, block=False)
-DARE_HANDLER = DisableAbleCommandHandler("dare", dare, block=False)
+# Eleven single-purpose commands; the loop keeps them from needing eleven
+# near-identical registration lines.
+for _name, _callback in (
+    ("roll", roll),
+    ("toss", toss),
+    ("shrug", shrug),
+    ("bluetext", bluetext),
+    ("rlg", rlg),
+    ("decide", decide),
+    ("weebify", webify),
+    ("flirt", flirt),
+    ("truth", truth),
+    ("dare", dare),
+    ("joke", joke),
+):
+    dp.message.register(chain(_callback), *disableable(_name))
 
-function(WEEBIFY_HANDLER)
-function(ROLL_HANDLER)
-function(TOSS_HANDLER)
-function(SHRUG_HANDLER)
-function(BLUETEXT_HANDLER)
-function(RLG_HANDLER)
-function(DECIDE_HANDLER)
-function(FLIRT_HANDLER)
-function(TRUTH_HANDLER)
-function(DARE_HANDLER)
-function(JOKE_HANDLER)
-
-__mod_name__ = "FUN"
-__command_list__ = [
-    "roll",
-    "toss",
-    "shrug",
-    "bluetext",
-    "rlg",
-    "decide",
-    "weebify",
-    "flirt",
-    "truth",
-    "dare",
-    "joke",
-]
-__handlers__ = [
-    ROLL_HANDLER,
-    TOSS_HANDLER,
-    SHRUG_HANDLER,
-    BLUETEXT_HANDLER,
-    RLG_HANDLER,
-    DECIDE_HANDLER,
-    WEEBIFY_HANDLER,
-    FLIRT_HANDLER,
-    TRUTH_HANDLER,
-    DARE_HANDLER,
-    JOKE_HANDLER,
-]
 # <================================================ END =======================================================>
