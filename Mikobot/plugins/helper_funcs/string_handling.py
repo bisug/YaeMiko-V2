@@ -36,16 +36,27 @@ def escape_markdown_v2(text: str, entity_type: str = None) -> str:
     return escape_markdown(text, version=2, entity_type=entity_type)
 
 
-def entities_map(message: AiogramMessage) -> dict:
-    """PTB's Message.parse_entities() as {entity: entity_text}.
+def entities_map(message: AiogramMessage, types: List[str] = None) -> dict:
+    """PTB's Message.parse_entities(types) as {entity: entity_text}.
 
     markdown_parser walks an entity/text mapping, so keep that shape and build
-    it from aiogram's entity list instead.
+    it from aiogram's entity list instead. ``types`` filters the way PTB's did.
     """
     text = message.text or message.caption or ""
     return {
         entity: entity.extract_from(text)
         for entity in (message.entities or [])
+        if types is None or entity.type in types
+    }
+
+
+def caption_entities_map(message: AiogramMessage, types: List[str] = None) -> dict:
+    """Caption counterpart of entities_map, for parse_caption_entities()."""
+    text = message.caption or ""
+    return {
+        entity: entity.extract_from(text)
+        for entity in (message.caption_entities or [])
+        if types is None or entity.type in types
     }
 
 

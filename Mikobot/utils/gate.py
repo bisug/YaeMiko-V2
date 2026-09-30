@@ -11,7 +11,10 @@ Order matters: ``@a`` above ``@b`` must run first, and tags are prepended so the
 list order matches the source order.
 """
 
+from functools import wraps
+
 from aiogram import BaseMiddleware
+from aiogram.dispatcher.event.bases import SkipHandler
 from aiogram.exceptions import TelegramAPIError
 
 
@@ -23,6 +26,29 @@ def requirement(**spec):
         return func
 
     return decorator
+
+
+def chain(func):
+    """Run this handler, then let the next matching handler run as well.
+
+    PTB's ``block=False`` meant "do not stop the chain", and 105 of the bot's
+    handlers used it: one message could hit locks, then flood, then the plugin.
+    aiogram's observer.trigger() returns after the *first* matching handler
+    (dispatcher/event/telegram.py), so without this only one would ever run.
+    Raising SkipHandler from a finally block is what resumes the iteration.
+    """
+    if getattr(func, "_chained", False):
+        return func
+
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        try:
+            return await func(*args, **kwargs)
+        finally:
+            raise SkipHandler()
+
+    wrapper._chained = True
+    return wrapper
 
 
 async def _action_reply(event, text):

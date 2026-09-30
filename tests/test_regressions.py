@@ -1524,6 +1524,75 @@ class MarkdownEscapingTests(unittest.TestCase):
                 self.assertEqual(ours(text), ptb(text, 1))
 
 
+class HandlerChainingTests(unittest.TestCase):
+    """chain() reproduces PTB's block=False. aiogram's observer.trigger() returns
+    after the first matching handler, so 105 handlers that used to share a
+    message with the ones after them would otherwise never run."""
+
+    @staticmethod
+    def _message():
+        from datetime import datetime
+
+        from aiogram.types import Chat, Message, User
+
+        return Message(
+            message_id=1,
+            date=datetime.now(),
+            chat=Chat(id=1, type="private"),
+            from_user=User(id=1, is_bot=False, first_name="x"),
+            text="/cmd",
+        )
+
+    def _router_with(self, handlers):
+        from aiogram import Router
+
+        router = Router()
+        for handler, filters in handlers:
+            router.message.register(handler, *filters)
+        return router
+
+    def test_chained_handlers_all_run(self):
+        from Mikobot.utils.gate import chain
+
+        calls = []
+
+        async def first(message):
+            calls.append("first")
+
+        async def second(message):
+            calls.append("second")
+
+        router = self._router_with([(chain(first), ()), (chain(second), ())])
+        asyncio.run(router.propagate_event("message", self._message()))
+        self.assertEqual(calls, ["first", "second"])
+
+    def test_unchained_handler_stops_propagation(self):
+        from Mikobot.utils.gate import chain
+
+        calls = []
+
+        async def solo(message):
+            calls.append("solo")
+            return "handled"
+
+        async def never(message):
+            calls.append("never")
+
+        router = self._router_with([(solo, ()), (chain(never), ())])
+        result = asyncio.run(router.propagate_event("message", self._message()))
+        self.assertEqual(calls, ["solo"])
+        self.assertEqual(result, "handled")
+
+    def test_chain_is_idempotent(self):
+        from Mikobot.utils.gate import chain
+
+        async def handler(message):
+            return None
+
+        once = chain(handler)
+        self.assertIs(chain(once), once)
+
+
 class GateMiddlewareTests(unittest.TestCase):
     """The gate replaces PTB decorator wrappers. aiogram injects handler arguments
     by name from the inner signature, so the wrappers had to become tags on the
