@@ -304,6 +304,26 @@ bot = Bot(
 )
 dp = Dispatcher(storage=MemoryStorage())
 dispatcher = dp
+
+
+def _install_gates():
+    """Enforce @check_admin and friends; they tag handlers, this applies them."""
+    from Mikobot.plugins.helper_funcs import chat_status
+    from Mikobot.utils.gate import GateMiddleware
+
+    middleware = GateMiddleware(chat_status)
+    for observer in (
+        dp.message,
+        dp.edited_message,
+        dp.callback_query,
+        dp.inline_query,
+        dp.chat_member,
+    ):
+        observer.middleware(middleware)
+
+
+_install_gates()
+
 store = open_store(os.path.join(os.path.dirname(__file__), "..", "ptb_persistence.pickle"))
 chat_data = store.chat_data
 user_data = store.user_data

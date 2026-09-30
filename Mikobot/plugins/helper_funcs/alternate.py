@@ -1,85 +1,38 @@
 # <============================================== IMPORTS =========================================================>
-from functools import wraps
+from aiogram.exceptions import TelegramAPIError
 
-from telegram import Message, Update
-from telegram.constants import ChatAction
-from telegram.error import BadRequest
-from telegram.ext import ContextTypes
+from Mikobot.utils.gate import requirement
 
 # <=======================================================================================================>
 
 
 # <================================================ FUNCTION =======================================================>
-async def send_message(message: Message, text, *args, **kwargs):
+async def send_message(message, text, *args, **kwargs):
+    """answer(), falling back to a plain send when quoting is rejected."""
     try:
-        return await message.reply_text(text, *args, **kwargs)
-    except BadRequest as err:
-        if str(err) == "Reply message not found":
-            return await message.reply_text(text, do_quote=False, *args, **kwargs)
+        return await message.answer(text, *args, **kwargs)
+    except TelegramAPIError:
+        return await message.answer(text, *args, do_quote=False, **kwargs)
 
 
 def typing_action(func):
     """Sends typing action while processing func command."""
-
-    @wraps(func)
-    async def command_func(
-        update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs
-    ):
-        await context.bot.send_chat_action(
-            chat_id=update.effective_chat.id,
-            action=ChatAction.TYPING,
-        )
-        return await func(update, context, *args, **kwargs)
-
-    return command_func
+    return requirement(chat_action="typing")(func)
 
 
 def sticker_action(func):
-    """Sends typing action while processing func command."""
-
-    @wraps(func)
-    async def command_func(
-        update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs
-    ):
-        await context.bot.send_chat_action(
-            chat_id=update.effective_chat.id,
-            action=ChatAction.CHOOSE_STICKER,
-        )
-        return await func(update, context, *args, **kwargs)
-
-    return command_func
+    """Sends the choose-sticker action while processing func command."""
+    return requirement(chat_action="choose_sticker")(func)
 
 
 def document_action(func):
-    """Sends typing action while processing func command."""
-
-    @wraps(func)
-    async def command_func(
-        update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs
-    ):
-        await context.bot.send_chat_action(
-            chat_id=update.effective_chat.id,
-            action=ChatAction.UPLOAD_DOCUMENT,
-        )
-        return await func(update, context, *args, **kwargs)
-
-    return command_func
+    """Sends the upload-document action while processing func command."""
+    return requirement(chat_action="upload_document")(func)
 
 
 def photo_action(func):
-    """Sends typing action while processing func command."""
-
-    @wraps(func)
-    async def command_func(
-        update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs
-    ):
-        await context.bot.send_chat_action(
-            chat_id=update.effective_chat.id,
-            action=ChatAction.UPLOAD_PHOTO,
-        )
-        return await func(update, context, *args, **kwargs)
-
-    return command_func
+    """Sends the upload-photo action while processing func command."""
+    return requirement(chat_action="upload_photo")(func)
 
 
 # <================================================ END =======================================================>

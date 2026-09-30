@@ -1495,14 +1495,155 @@ class ElevatedUserBaselineTests(unittest.TestCase):
 class ChatStatusPrecedenceTests(unittest.TestCase):
     """`else False or user.id in DRAGONS` parses as `else (False or ... in DRAGONS)`.
     An admin lacking the specific permission short-circuits to False and a sudo
-    user is wrongly denied, so the DRAGONS check has to sit outside the ternary."""
+    user is wrongly denied, so the DRAGONS check has to sit outside the ternary.
+    The check now lives in the gate middleware, so it is asserted there."""
 
     def test_sudo_user_is_allowed_even_without_the_permission(self):
-        source = (ROOT / "Mikobot/plugins/helper_funcs/chat_status.py").read_text(
-            encoding="utf-8"
+        gate = (ROOT / "Mikobot/utils/gate.py").read_text(encoding="utf-8")
+        self.assertNotIn("else False or user.id in DRAGONS", gate)
+        self.assertIn("or user_id in status.DRAGONS", gate)
+
+class GateMiddlewareTests(unittest.TestCase):
+    """The gate replaces PTB decorator wrappers. aiogram injects handler arguments
+    by name from the inner signature, so the wrappers had to become tags on the
+    handler plus one middleware; this pins the behaviour those wrappers had."""
+
+    def _middleware(self):
+        from Mikobot.plugins.helper_funcs import chat_status
+        from Mikobot.utils.gate import GateMiddleware
+
+        self.status = chat_status
+        return GateMiddleware(chat_status)
+
+    def _event(self, chat_type="supergroup", user_id=5, text="/cmd"):
+        event = SimpleNamespace(
+            chat=SimpleNamespace(id=-100, type=chat_type),
+            from_user=SimpleNamespace(id=user_id),
+            text=text,
         )
-        self.assertNotIn("else False or user.id in DRAGONS", source)
-        self.assertIn("or user.id in DRAGONS", source)
+        event.replies = []
+        event.deleted = False
+
+        async def answer(text, **kwargs):
+            event.replies.append(text)
+
+        async def delete():
+            event.deleted = True
+
+        event.answer = answer
+        event.delete = delete
+        return event
+
+    def _bot(self, members):
+        bot = SimpleNamespace(id=1)
+        bot.actions = []
+
+        async def get_chat_member(chat_id, user_id):
+            return members.get(user_id)
+
+        async def send_chat_action(chat_id, action):
+            bot.actions.append(action)
+
+        bot.get_chat_member = get_chat_member
+        bot.send_chat_action = send_chat_action
+        return bot
+
+    @staticmethod
+    async def _handler(event, data):
+        return "HANDLED"
+
+    def _run(self, callback, event, bot):
+        middleware = self._middleware()
+        data = {"bot": bot, "event_handler": SimpleNamespace(callback=callback)}
+        return asyncio.run(middleware(self._handler, event, data))
+
+    def test_outermost_decorator_runs_first(self):
+        from Mikobot.plugins.helper_funcs import alternate, chat_status
+
+        @chat_status.check_admin(is_user=True)
+        @alternate.typing_action
+        async def cmd(message):
+            return None
+
+        self.assertEqual(
+            [spec.get("kind") or spec.get("chat_action") for spec in cmd.requirements],
+            ["admin", "typing"],
+        )
+
+    def test_non_admin_is_stopped_before_the_handler(self):
+        from Mikobot.plugins.helper_funcs import alternate, chat_status
+
+        @chat_status.check_admin(is_user=True)
+        @alternate.typing_action
+        async def cmd(message):
+            return None
+
+        event = self._event()
+        bot = self._bot({5: SimpleNamespace(status="member", user=SimpleNamespace(id=5))})
+        self.assertIsNone(self._run(cmd, event, bot))
+        self.assertEqual(event.replies, ["You are not admin here."])
+
+    def test_admin_passes_and_the_chat_action_fires(self):
+        from Mikobot.plugins.helper_funcs import alternate, chat_status
+
+        @chat_status.check_admin(is_user=True)
+        @alternate.typing_action
+        async def cmd(message):
+            return None
+
+        event = self._event()
+        bot = self._bot({5: SimpleNamespace(status="administrator", user=SimpleNamespace(id=5))})
+        self.assertEqual(self._run(cmd, event, bot), "HANDLED")
+        self.assertEqual(event.replies, [])
+        self.assertEqual(bot.actions, ["typing"])
+
+    def test_private_chat_skips_the_permission_gate(self):
+        from Mikobot.plugins.helper_funcs import chat_status
+
+        @chat_status.check_admin(is_user=True)
+        async def cmd(message):
+            return None
+
+        event = self._event(chat_type="private")
+        bot = self._bot({})
+        self.assertEqual(self._run(cmd, event, bot), "HANDLED")
+        self.assertEqual(event.replies, [])
+
+    def test_dev_plus_denies_an_ordinary_user(self):
+        from Mikobot.plugins.helper_funcs import chat_status
+
+        with mock.patch.object(chat_status, "DEV_USERS", [7]), mock.patch.object(
+            chat_status, "DEL_CMDS", False
+        ):
+
+            @chat_status.dev_plus
+            async def cmd(message):
+                return None
+
+            event = self._event()
+            bot = self._bot({})
+            self.assertIsNone(self._run(cmd, event, bot))
+            self.assertEqual(
+                event.replies,
+                [
+                    "This is a developer restricted command. "
+                    "You do not have permissions to run this."
+                ],
+            )
+
+    def test_dev_plus_allows_a_dev(self):
+        from Mikobot.plugins.helper_funcs import chat_status
+
+        with mock.patch.object(chat_status, "DEV_USERS", [7]), mock.patch.object(
+            chat_status, "DRAGONS", [7]
+        ):
+
+            @chat_status.dev_plus
+            async def cmd(message):
+                return None
+
+            event = self._event(user_id=7)
+            self.assertEqual(self._run(cmd, event, self._bot({})), "HANDLED")
 
 
 class EnvIntegerParsingTests(unittest.TestCase):

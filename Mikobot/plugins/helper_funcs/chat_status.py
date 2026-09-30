@@ -1,21 +1,61 @@
 # <============================================== IMPORTS =========================================================>
-from functools import wraps
 from threading import RLock
 from time import perf_counter
 
 from cachetools import TTLCache
-from telegram import Chat, ChatMember, ChatMemberAdministrator, ChatMemberOwner, Update
-from telegram.constants import ChatMemberStatus, ChatType
-from telegram.error import Forbidden
-from telegram.ext import ContextTypes
 
-from Mikobot import DEL_CMDS, DEV_USERS, DRAGONS, LOGGER, SUPPORT_CHAT, dispatcher
+from aiogram.exceptions import TelegramAPIError
+
+from Mikobot import DEL_CMDS, DEV_USERS, DRAGONS, SUPPORT_CHAT, bot
+from Mikobot.utils.gate import requirement
+
+# DEV_USERS, DRAGONS, DEL_CMDS and SUPPORT_CHAT are read off this module by
+# GateMiddleware at request time, so they are re-exported rather than unused.
+__all__ = [
+    "ADMIN_CACHE",
+    "DEL_CMDS",
+    "DEV_USERS",
+    "DRAGONS",
+    "SUPPORT_CHAT",
+    "can_delete",
+    "check_admin",
+    "connection_status",
+    "dev_plus",
+    "granted",
+    "is_admin",
+    "is_bot_admin",
+    "is_owner",
+    "is_sudo_plus",
+    "is_support_plus",
+    "is_user_admin",
+    "is_user_ban_protected",
+    "is_user_in_chat",
+    "is_whitelist_plus",
+    "sudo_plus",
+    "support_plus",
+    "user_not_admin",
+    "whitelist_plus",
+]
 
 # <=======================================================================================================>
 
 # stores admemes in memory for 10 min.
 ADMIN_CACHE = TTLCache(maxsize=512, ttl=60 * 10, timer=perf_counter)
 THREAD_LOCK = RLock()
+
+ADMIN_STATUSES = ("administrator", "creator")
+
+
+def is_admin(member) -> bool:
+    return getattr(member, "status", None) in ADMIN_STATUSES
+
+
+def is_owner(member) -> bool:
+    return getattr(member, "status", None) == "creator"
+
+
+def granted(member, permission: str) -> bool:
+    return bool(getattr(member, permission, False))
 
 
 # <================================================ FUNCTION =======================================================>
@@ -29,7 +69,7 @@ def check_admin(
     only_dev: bool = False,
     no_reply: object = False,
 ) -> object:
-    """Check for permission level to perform some operations
+    """Gate a handler on chat permissions, enforced by GateMiddleware.
 
     Args:
         permission (str, optional): permission type to check. Defaults to None.
@@ -41,170 +81,34 @@ def check_admin(
         only_dev (bool, optional): if only dev users can perform the operation. Defaults to False.
         no_reply (boot, optional): if should not reply. Defaults to False.
     """
-
-    def wrapper(func):
-        @wraps(func)
-        async def wrapped(
-            update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs
-        ):
-            nonlocal permission
-            chat = update.effective_chat
-            user = update.effective_user
-            message = update.effective_message
-
-            if chat.type == ChatType.PRIVATE and not (
-                only_dev or only_sudo or only_owner
-            ):
-                return await func(update, context, *args, **kwargs)
-
-            bot_member = (
-                await chat.get_member(context.bot.id) if is_bot or is_both else None
-            )
-            user_member = await chat.get_member(user.id) if is_user or is_both else None
-
-            if only_owner:
-                if isinstance(user_member, ChatMemberOwner) or user.id in DEV_USERS:
-                    return await func(update, context, *args, **kwargs)
-                else:
-                    return await message.reply_text(
-                        "Only chat owner can perform this action."
-                    )
-            if only_dev:
-                if user.id in DEV_USERS:
-                    return await func(update, context, *args, **kwargs)
-                else:
-                    return await update.effective_message.reply_text(
-                        "Hey little kid"
-                        "\nWho the hell are you to say me what to execute on my server?",
-                    )
-
-            if only_sudo:
-                if user.id in DRAGONS:
-                    return await func(update, context, *args, **kwargs)
-                else:
-                    return await update.effective_message.reply_text(
-                        "Who the hell are you to say me what to do?",
-                    )
-
-            if message.from_user.id == 1087968824:
-                return await func(update, context, *args, **kwargs)
-
-            if permission:
-                no_permission = permission.replace("_", " ").replace("can", "")
-                if is_bot:
-                    if (
-                        getattr(bot_member, permission)
-                        if isinstance(bot_member, ChatMemberAdministrator)
-                        else False
-                    ):
-                        return await func(update, context, *args, **kwargs)
-                    elif no_reply:
-                        return
-                    else:
-                        return await message.reply_text(
-                            f"I don't have permission to {no_permission}."
-                        )
-                if is_user:
-                    if isinstance(user_member, ChatMemberOwner) or user.id in DRAGONS:
-                        return await func(update, context, *args, **kwargs)
-                    elif (
-                        getattr(user_member, permission)
-                        if isinstance(user_member, ChatMemberAdministrator)
-                        else False
-                    ):
-                        return await func(update, context, *args, **kwargs)
-                    elif no_reply:
-                        return
-                    else:
-                        return await message.reply_text(
-                            f"You don't have permission to {no_permission}."
-                        )
-                if is_both:
-                    if (
-                        getattr(bot_member, permission)
-                        if isinstance(bot_member, ChatMemberAdministrator)
-                        else False
-                    ):
-                        pass
-                    elif no_reply:
-                        return
-                    else:
-                        return await message.reply_text(
-                            f"I don't have permission to {no_permission}."
-                        )
-
-                    if (
-                        isinstance(user_member, ChatMemberOwner)
-                        or user.id in DEV_USERS
-                        or user.id in DRAGONS
-                    ):
-                        pass
-                    elif (
-                        getattr(user_member, permission)
-                        if isinstance(user_member, ChatMemberAdministrator)
-                        else False
-                    ):
-                        pass
-                    elif no_reply:
-                        return
-                    else:
-                        return await message.reply_text(
-                            f"You don't have permission to {no_permission}."
-                        )
-                    return await func(update, context, *args, **kwargs)
-            else:
-                if is_bot:
-                    if bot_member.status == ChatMemberStatus.ADMINISTRATOR:
-                        return await func(update, context, *args, **kwargs)
-                    else:
-                        return await message.reply_text("I'm not admin here.")
-                elif is_user:
-                    if user_member.status in [
-                        ChatMemberStatus.ADMINISTRATOR,
-                        ChatMemberStatus.OWNER,
-                    ]:
-                        return await func(update, context, *args, **kwargs)
-                    elif user.id in DRAGONS:
-                        return await func(update, context, *args, **kwargs)
-                    else:
-                        return await message.reply_text("You are not admin here.")
-                elif is_both:
-                    if bot_member.status == ChatMemberStatus.ADMINISTRATOR:
-                        pass
-                    else:
-                        return await message.reply_text("I'm not admin here.")
-
-                    if user_member.status in [
-                        ChatMemberStatus.ADMINISTRATOR,
-                        ChatMemberStatus.OWNER,
-                    ]:
-                        pass
-                    elif user.id in DRAGONS:
-                        pass
-                    else:
-                        return await message.reply_text("You are not admin here.")
-                    return await func(update, context, *args, **kwargs)
-
-        return wrapped
-
-    return wrapper
+    return requirement(
+        kind="admin",
+        permission=permission,
+        is_bot=is_bot,
+        is_user=is_user,
+        is_both=is_both,
+        only_owner=only_owner,
+        only_sudo=only_sudo,
+        only_dev=only_dev,
+        no_reply=no_reply,
+    )
 
 
-def is_whitelist_plus(chat: Chat, user_id: int, member: ChatMember = None) -> bool:
+def is_whitelist_plus(chat, user_id: int, member=None) -> bool:
     return any(user_id in user for user in [DRAGONS, DEV_USERS])
 
 
-def is_support_plus(chat: Chat, user_id: int, member: ChatMember = None) -> bool:
+def is_support_plus(chat, user_id: int, member=None) -> bool:
     return user_id in DRAGONS or user_id in DEV_USERS
 
 
-def is_sudo_plus(chat: Chat, user_id: int, member: ChatMember = None) -> bool:
+def is_sudo_plus(chat, user_id: int, member=None) -> bool:
     return user_id in DRAGONS or user_id in DEV_USERS
 
 
-async def is_user_admin(chat: Chat, user_id: int, member: ChatMember = None) -> bool:
+async def is_user_admin(chat, user_id: int, member=None) -> bool:
     if (
-        chat.type == "private"
+        getattr(chat, "type", None) == "private"
         or user_id in DRAGONS
         or user_id in DEV_USERS
         or user_id in [777000, 1087968824]
@@ -220,38 +124,34 @@ async def is_user_admin(chat: Chat, user_id: int, member: ChatMember = None) -> 
                 # so query bot api again and return user status
                 # while saving it in cache for future usage...
                 try:
-                    chat_admins = await dispatcher.bot.get_chat_administrators(chat.id)
-                except Forbidden:
+                    chat_admins = await bot.get_chat_administrators(chat.id)
+                except TelegramAPIError:
                     return False
                 admin_list = [x.user.id for x in chat_admins]
                 ADMIN_CACHE[chat.id] = admin_list
 
                 return user_id in admin_list
-    else:
-        return member.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER)
+    return is_admin(member)
 
 
-async def is_bot_admin(chat: Chat, bot_id: int, bot_member: ChatMember = None) -> bool:
-    if chat.type == "private":
+async def is_bot_admin(chat, bot_id: int, bot_member=None) -> bool:
+    if getattr(chat, "type", None) == "private":
         return True
 
     if not bot_member:
-        bot_member = await chat.get_member(bot_id)
+        bot_member = await bot.get_chat_member(chat.id, bot_id)
 
-    return bot_member.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER)
-
-
-async def can_delete(chat: Chat, bot_id: int) -> bool:
-    chat_member = await chat.get_member(bot_id)
-    if isinstance(chat_member, ChatMemberAdministrator):
-        return chat_member.can_delete_messages
+    return is_admin(bot_member)
 
 
-async def is_user_ban_protected(
-    chat: Chat, user_id: int, member: ChatMember = None
-) -> bool:
+async def can_delete(chat, bot_id: int) -> bool:
+    chat_member = await bot.get_chat_member(chat.id, bot_id)
+    return bool(getattr(chat_member, "can_delete_messages", False))
+
+
+async def is_user_ban_protected(chat, user_id: int, member=None) -> bool:
     if (
-        chat.type == "private"
+        getattr(chat, "type", None) == "private"
         or user_id in DRAGONS
         or user_id in DEV_USERS
         or user_id in [777000, 1087968824]
@@ -259,166 +159,45 @@ async def is_user_ban_protected(
         return True
 
     if not member:
-        member = await chat.get_member(user_id)
+        member = await bot.get_chat_member(chat.id, user_id)
 
-    return member.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER)
+    return is_admin(member)
 
 
-async def is_user_in_chat(chat: Chat, user_id: int) -> bool:
-    member = await chat.get_member(user_id)
-    return member.status in (
-        ChatMemberStatus.MEMBER,
-        ChatMemberStatus.ADMINISTRATOR,
-        ChatMemberStatus.OWNER,
-        ChatMemberStatus.RESTRICTED,
+async def is_user_in_chat(chat, user_id: int) -> bool:
+    member = await bot.get_chat_member(chat.id, user_id)
+    return getattr(member, "status", None) in (
+        "member",
+        "administrator",
+        "creator",
+        "restricted",
     )
 
 
 def dev_plus(func):
-    @wraps(func)
-    async def is_dev_plus_func(
-        update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs
-    ):
-        user = update.effective_user
-        message = update.effective_message
-
-        if user and user.id in DEV_USERS:
-            return await func(update, context, *args, **kwargs)
-        if DEL_CMDS and message.text and " " not in message.text:
-            try:
-                await message.delete()
-            except Exception:
-                LOGGER.exception("Unable to delete unauthorized command")
-        else:
-            await message.reply_text(
-                "This is a developer restricted command. "
-                "You do not have permissions to run this."
-            )
-
-    return is_dev_plus_func
+    return requirement(kind="dev_plus")(func)
 
 
 def sudo_plus(func):
-    @wraps(func)
-    async def is_sudo_plus_func(
-        update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs
-    ):
-        user = update.effective_user
-        chat = update.effective_chat
-        message = update.effective_message
-
-        if user and is_sudo_plus(chat, user.id):
-            return await func(update, context, *args, **kwargs)
-        if DEL_CMDS and message.text and " " not in message.text:
-            try:
-                await message.delete()
-            except Exception:
-                LOGGER.exception("Unable to delete unauthorized command")
-        else:
-            await message.reply_text(
-                "Who dis non-admin telling me what to do? You want a punch?"
-            )
-
-    return is_sudo_plus_func
+    return requirement(kind="sudo_plus")(func)
 
 
 def support_plus(func):
-    @wraps(func)
-    async def is_support_plus_func(
-        update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs
-    ):
-        user = update.effective_user
-        chat = update.effective_chat
-        message = update.effective_message
-
-        if user and is_support_plus(chat, user.id):
-            return await func(update, context, *args, **kwargs)
-        if DEL_CMDS and message.text and " " not in message.text:
-            try:
-                await message.delete()
-            except Exception:
-                LOGGER.exception("Unable to delete unauthorized command")
-        else:
-            await message.reply_text(
-                "You do not have permission to use this command."
-            )
-
-    return is_support_plus_func
+    return requirement(kind="support_plus")(func)
 
 
 def whitelist_plus(func):
-    @wraps(func)
-    async def is_whitelist_plus_func(
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE,
-        *args,
-        **kwargs,
-    ):
-        bot = context.bot
-        user = update.effective_user
-        chat = update.effective_chat
-
-        if user and is_whitelist_plus(chat, user.id):
-            return await func(update, context, *args, **kwargs)
-        else:
-            await update.effective_message.reply_text(
-                f"You don't have access to use this.\nVisit @{SUPPORT_CHAT}",
-            )
-
-    return is_whitelist_plus_func
+    return requirement(kind="whitelist_plus")(func)
 
 
 def user_not_admin(func):
-    @wraps(func)
-    async def is_not_admin(
-        update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs
-    ):
-        bot = context.bot
-        user = update.effective_user
-        chat = update.effective_chat
-
-        if user and not await is_user_admin(chat, user.id):
-            return await func(update, context, *args, **kwargs)
-        elif not user:
-            pass
-
-    return is_not_admin
+    return requirement(kind="user_not_admin")(func)
 
 
 def connection_status(func):
-    @wraps(func)
-    async def connected_status(
-        update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs
-    ):
-        conn = await connected(
-            context.bot,
-            update,
-            update.effective_chat,
-            update.effective_user.id,
-            need_admin=False,
-        )
-
-        if conn:
-            chat = await dispatcher.bot.get_chat(conn)
-            update.__setattr__("_effective_chat", chat)
-            return await func(update, context, *args, **kwargs)
-        else:
-            if update.effective_message.chat.type == "private":
-                await update.effective_message.reply_text(
-                    "Send /connect in a group that you and I have in common first.",
-                )
-                return connected_status
-
-            return await func(update, context, *args, **kwargs)
-
-    return connected_status
+    """Resolve the linked group; handlers read it from the injected connected_chat."""
+    return requirement(kind="connection_status")(func)
 
 
 # <=======================================================================================================>
-
-# <=======================================================================================================>
-# Workaround for circular import with connection.py
-from Mikobot.plugins import connection
-
-connected = connection.connected
-# <================================================ END =======================================================>
+# <===================================================== END =====================================================>
