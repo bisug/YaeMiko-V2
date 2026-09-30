@@ -1,6 +1,7 @@
 import ast
 import asyncio
 import importlib
+import re
 import sys
 import threading
 import unittest
@@ -1502,6 +1503,26 @@ class ChatStatusPrecedenceTests(unittest.TestCase):
         gate = (ROOT / "Mikobot/utils/gate.py").read_text(encoding="utf-8")
         self.assertNotIn("else False or user.id in DRAGONS", gate)
         self.assertIn("or user_id in status.DRAGONS", gate)
+
+class MarkdownEscapingTests(unittest.TestCase):
+    """telegram.helpers.escape_markdown has no aiogram counterpart for the legacy
+    Markdown mode, so Mikobot/utils/parser.py keeps the escaping. This pins it
+    against PTB's implementation while PTB is still installed."""
+
+    def test_matches_python_telegram_bot(self):
+        try:
+            from telegram.helpers import escape_markdown as ptb
+        except ModuleNotFoundError:
+            self.skipTest("python-telegram-bot is not installed")
+        ours = load_function(
+            ROOT / "Mikobot/utils/parser.py",
+            "escape_markdown",
+            {"sub": re.sub},
+        )
+        for text in ("a_b*c`d[e]f", "plain text", "_*`["):
+            with self.subTest(text=text):
+                self.assertEqual(ours(text), ptb(text, 1))
+
 
 class GateMiddlewareTests(unittest.TestCase):
     """The gate replaces PTB decorator wrappers. aiogram injects handler arguments
