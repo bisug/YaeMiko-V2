@@ -181,9 +181,12 @@ class EnvironmentTests(unittest.TestCase):
             if isinstance(node, ast.AsyncFunctionDef) and node.name == "enforce_gban"
         )
         gban_body = ast.get_source_segment(gban_source, enforce_gban)
+        # The cheap per-chat setting read must come before asking Telegram
+        # whether this bot may restrict, or every group message costs an API
+        # call even in chats that opted out.
         self.assertLess(
             gban_body.index("if not sql.does_chat_gban(chat.id):"),
-            gban_body.index("await chat.get_member(bot.id)"),
+            gban_body.index("await bot.get_chat_member(chat.id, bot.id)"),
         )
 
         locks_source = (ROOT / "Mikobot/plugins/locks.py").read_text(encoding="utf-8")
