@@ -6,14 +6,16 @@ import tempfile
 from typing import Optional
 
 import Mikobot
-from telegram import Update
-from telegram.ext import CommandHandler
-from telegram.helpers import mention_html
+from aiogram.enums import ChatType
+from aiogram.filters import Command, CommandObject
+from aiogram.types import Message
 
-from Mikobot import dispatcher
+from Mikobot import bot, dp
 from Mikobot.plugins.helper_funcs.chat_status import dev_plus, sudo_plus
 from Mikobot.plugins.helper_funcs.extraction import extract_user
 from Mikobot.plugins.log_channel import gloggable
+from Mikobot.utils.gate import chain
+from Mikobot.utils.parser import mention_html
 
 # Resolve relative to this file, not the process working directory, so the bot
 # finds the same file regardless of where it was launched from.
@@ -91,17 +93,16 @@ def apply_elevated_users(data):
     )
 
 
-async def add_disaster_level(update: Update, level: str, context) -> str:
-    message = update.effective_message
-    user = update.effective_user
-    chat = update.effective_chat
-    args = context.args
-    user_id = await extract_user(message, context, args)
+async def add_disaster_level(message: Message, level: str, command: CommandObject) -> str:
+    user = message.from_user
+    chat = message.chat
+    args = command.args
+    user_id = await extract_user(message, args)
     reply = await check_user_id(user_id)
     if reply:
-        await message.reply_text(reply)
+        await message.answer(reply)
         return ""
-    if user_id == int(context.bot.id):
+    if user_id == int(bot.id):
         return ""
     target_name = str(user_id)
     rt = ""
@@ -112,7 +113,7 @@ async def add_disaster_level(update: Update, level: str, context) -> str:
 
         target_key = DISASTER_LEVELS[level]
         if user_id in data[target_key]:
-            await message.reply_text(f"This user is already a {level} Disaster.")
+            await message.answer(f"This user is already a {level} Disaster.")
             return ""
 
         for disaster_level, disaster_users in DISASTER_LEVELS.items():
@@ -124,7 +125,7 @@ async def add_disaster_level(update: Update, level: str, context) -> str:
         update_elevated_users(data)
         apply_elevated_users(data)
 
-    await message.reply_text(
+    await message.answer(
         rt + f"\nSuccessfully set Disaster level of {target_name} to {level}!"
     )
 
@@ -134,54 +135,41 @@ async def add_disaster_level(update: Update, level: str, context) -> str:
         f"<b>User:</b> {mention_html(user_id, target_name)}"
     )
 
-    if chat.type != "private":
+    if chat.type != ChatType.PRIVATE:
         log_message = f"<b>{html.escape(chat.title)}:</b>\n" + log_message
 
-    await update.effective_message.reply_text(log_message)
+    await message.answer(log_message)
 
 
 @dev_plus
 @gloggable
-async def addsudo(update: Update, context) -> str:
-    await add_disaster_level(update, "Dragon", context)
+async def addsudo(message: Message, command: CommandObject) -> str:
+    await add_disaster_level(message, "Dragon", command)
 
 
 @sudo_plus
 @gloggable
-async def addsupport(update: Update, context) -> str:
-    await add_disaster_level(update, "Demon", context)
+async def addsupport(message: Message, command: CommandObject) -> str:
+    await add_disaster_level(message, "Demon", command)
 
 
 @sudo_plus
 @gloggable
-async def addwhitelist(update: Update, context) -> str:
-    await add_disaster_level(update, "Wolf", context)
+async def addwhitelist(message: Message, command: CommandObject) -> str:
+    await add_disaster_level(message, "Wolf", command)
 
 
 @sudo_plus
 @gloggable
-async def addtiger(update: Update, context) -> str:
-    await add_disaster_level(update, "Tiger", context)
+async def addtiger(message: Message, command: CommandObject) -> str:
+    await add_disaster_level(message, "Tiger", command)
 
 
 # Other functions can be refactored similarly...
 
-SUDO_HANDLER = CommandHandler("addsudo", addsudo, block=False)
-SUPPORT_HANDLER = CommandHandler(("addsupport", "adddemon"), addsupport, block=False)
-TIGER_HANDLER = CommandHandler("addtiger", addtiger, block=False)
-WHITELIST_HANDLER = CommandHandler(
-    ("addwhitelist", "addwolf"), addwhitelist, block=False
-)
-
-dispatcher.add_handler(SUDO_HANDLER)
-dispatcher.add_handler(SUPPORT_HANDLER)
-dispatcher.add_handler(TIGER_HANDLER)
-dispatcher.add_handler(WHITELIST_HANDLER)
+dp.message.register(chain(addsudo), Command("addsudo"))
+dp.message.register(chain(addsupport), Command(("addsupport", "adddemon")))
+dp.message.register(chain(addtiger), Command("addtiger"))
+dp.message.register(chain(addwhitelist), Command(("addwhitelist", "addwolf")))
 
 __mod_name__ = "Devs"
-__handlers__ = [
-    SUDO_HANDLER,
-    SUPPORT_HANDLER,
-    TIGER_HANDLER,
-    WHITELIST_HANDLER,
-]

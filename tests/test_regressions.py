@@ -853,7 +853,7 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
     def test_confirmed_undefined_runtime_names_are_resolved(self):
         expected_imports = {
             "Mikobot/plugins/welcome.py": {("Mikobot", "SUPPORT_STAFF")},
-            "Mikobot/plugins/disasters.py": {("telegram.helpers", "mention_html")},
+            "Mikobot/plugins/disasters.py": {("Mikobot.utils.parser", "mention_html")},
             "Mikobot/plugins/tr.py": {("Mikobot.plugins.anime", "google_new_transError")},
         }
         for relative, required in expected_imports.items():
@@ -1346,17 +1346,22 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
 
 
     async def test_numeric_whispers_compare_the_stored_id(self):
+        # The recipient is matched by id, not by username: an @alice with a
+        # different numeric id must still see the whisper.
         answers = []
 
-        async def answer_callback_query(*args, **kwargs):
-            answers.append((args, kwargs))
+        class CallbackQuery:
+            id = "1"
+            data = "whisper_x"
+            from_user = SimpleNamespace(id=2, username="alice")
+
+            async def answer(self, text, **kwargs):
+                answers.append((text, kwargs))
 
         show_whisper = load_function(
             ROOT / "Mikobot/plugins/whispers.py",
             "showWhisper",
             {
-                "Update": object,
-                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
                 "Whispers": SimpleNamespace(
                     del_whisper=lambda whisper_id: asyncio.sleep(0),
                     get_whisper=lambda whisper_id: asyncio.sleep(
@@ -1371,19 +1376,8 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
                 )
             },
         )
-        await show_whisper(
-            SimpleNamespace(
-                callback_query=SimpleNamespace(
-                    id="1",
-                    data="whisper_x",
-                    from_user=SimpleNamespace(id=2, username="alice"),
-                )
-            ),
-            SimpleNamespace(
-                bot=SimpleNamespace(answer_callback_query=answer_callback_query)
-            ),
-        )
-        self.assertEqual(answers[0][0][1], "secret")
+        await show_whisper(CallbackQuery())
+        self.assertEqual(answers[0][0], "secret")
 
     async def test_overlong_inline_whispers_are_answered(self):
         answers = []
@@ -1401,16 +1395,9 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
         mainwhisper = load_function(
             ROOT / "Mikobot/plugins/whispers.py",
             "mainwhisper",
-            {
-                "Update": object,
-                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
-                "parse_user_message": parse_user_message,
-            },
+            {"parse_user_message": parse_user_message},
         )
-        await mainwhisper(
-            SimpleNamespace(inline_query=InlineQuery()),
-            SimpleNamespace(bot=SimpleNamespace(answer_inline_query=lambda *args: None)),
-        )
+        await mainwhisper(InlineQuery())
         self.assertEqual(len(answers), 1)
 
     def test_ptb_permission_calls_use_supported_fields(self):
