@@ -194,9 +194,11 @@ class EnvironmentTests(unittest.TestCase):
             if isinstance(node, ast.AsyncFunctionDef) and node.name == "del_lockables"
         )
         locks_body = ast.get_source_segment(locks_source, del_lockables)
+        # The cheap lock-table read must come before the API call for the bot's
+        # own membership, or every message pays a round trip.
         self.assertLess(
             locks_body.index("locks = sql.get_locks(chat.id)"),
-            locks_body.index("await chat.get_member(context.bot.id)"),
+            locks_body.index("await bot.get_chat_member(chat.id, bot.id)"),
         )
         self.assertNotIn("sql.is_locked(chat.id, lockable)", locks_body)
 
@@ -1544,6 +1546,110 @@ class MarkdownEscapingTests(unittest.TestCase):
         for text in ("a_b*c`d[e]f", "plain text", "_*`["):
             with self.subTest(text=text):
                 self.assertEqual(ours(text), ptb(text, 1))
+
+
+class LockPredicateTests(unittest.TestCase):
+    """del_lockables() deletes messages, so each LOCK_TYPES entry must match
+    only its own content. They are plain callables, not aiogram magic filters:
+    F.<attr>(event) composes a filter rather than evaluating one, which would
+    have made every lockable match every message."""
+
+    def _locks(self):
+        source = (ROOT / "Mikobot/plugins/locks.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        wanted = {"_has_entity", "_is_command", "LOCK_TYPES"}
+        body = [
+            node
+            for node in tree.body
+            if (isinstance(node, ast.FunctionDef) and node.name in wanted)
+            or (
+                isinstance(node, ast.Assign)
+                and getattr(node.targets[0], "id", None) in wanted
+            )
+        ]
+        namespace = {}
+        exec(
+            compile(ast.fix_missing_locations(ast.Module(body=body, type_ignores=[])), "locks", "exec"),
+            namespace,
+        )
+        return namespace["LOCK_TYPES"]
+
+    @staticmethod
+    def _message(**kwargs):
+        base = dict(
+            text=None,
+            caption=None,
+            entities=None,
+            caption_entities=None,
+            audio=None,
+            voice=None,
+            document=None,
+            video=None,
+            contact=None,
+            photo=None,
+            forward_date=None,
+            game=None,
+            location=None,
+            dice=None,
+            video_note=None,
+            sticker=None,
+        )
+        base.update(kwargs)
+        return SimpleNamespace(**base)
+
+    def test_each_lockable_matches_only_its_own_content(self):
+        entity = lambda kind: SimpleNamespace(type=kind, offset=0, length=1)
+        locks = self._locks()
+        cases = [
+            ("audio", self._message(audio=1), True),
+            ("audio", self._message(text="hi"), False),
+            ("photo", self._message(photo=[1]), True),
+            ("photo", self._message(text="hi"), False),
+            ("url", self._message(text="x", entities=[entity("url")]), True),
+            ("url", self._message(caption="x", caption_entities=[entity("url")]), True),
+            ("url", self._message(text="no link"), False),
+            ("phone", self._message(text="x", entities=[entity("phone_number")]), True),
+            ("phone", self._message(text="555"), False),
+            ("email", self._message(caption="a@b.co", caption_entities=[entity("email")]), True),
+            ("command", self._message(text="/lock url"), True),
+            ("command", self._message(text="lock url"), False),
+            ("forward", self._message(forward_date=1), True),
+            ("forward", self._message(text="x"), False),
+            ("videonote", self._message(video_note=1), True),
+            ("videonote", self._message(video=1), False),
+            ("egame", self._message(dice=1), True),
+            ("emojicustom", self._message(text="x", entities=[entity("custom_emoji")]), True),
+            (
+                "stickerpremium",
+                self._message(sticker=SimpleNamespace(premium=True)),
+                True,
+            ),
+            (
+                "stickerpremium",
+                self._message(sticker=SimpleNamespace(premium=False)),
+                False,
+            ),
+            (
+                "stickeranimated",
+                self._message(sticker=SimpleNamespace(is_animated=True)),
+                True,
+            ),
+            (
+                "stickeranimated",
+                self._message(sticker=SimpleNamespace(is_animated=False)),
+                False,
+            ),
+        ]
+        for name, message, expected in cases:
+            with self.subTest(lock=name):
+                self.assertEqual(bool(locks[name](message)), expected)
+
+    def test_manually_handled_locks_are_not_predicates(self):
+        # These have dedicated branches in del_lockables and must not be called.
+        for name in ("bots", "rtl", "button", "inline", "anonchannel",
+                     "forwardchannel", "forwardbot"):
+            with self.subTest(lock=name):
+                self.assertIsInstance(self._locks()[name], str)
 
 
 class HandlerChainingTests(unittest.TestCase):
