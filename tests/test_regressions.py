@@ -679,14 +679,15 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("await extract_unt_fedban(message, context, args)", source)
         self.assertIn("await extract_user_fban(message, context, args)", source)
 
-    def test_roar_uses_ptb_argument_order(self):
+    def test_roar_takes_message_and_command(self):
         tree = ast.parse((ROOT / "Mikobot/plugins/ban.py").read_text(encoding="utf-8"))
         function = next(
             node
             for node in tree.body
             if isinstance(node, ast.AsyncFunctionDef) and node.name == "selfunban"
         )
-        self.assertEqual([arg.arg for arg in function.args.args], ["update", "context"])
+        # aiogram injects by name, so the parameters are part of the contract.
+        self.assertEqual([arg.arg for arg in function.args.args], ["message", "command"])
 
     def test_rules_error_path_does_not_use_failed_chat(self):
         tree = ast.parse((ROOT / "Mikobot/plugins/rules.py").read_text(encoding="utf-8"))
@@ -1213,9 +1214,9 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
             ROOT / "Mikobot/plugins/ban.py",
             "bans_callback",
             {
-                "Update": object,
-                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
-                "ChatMemberAdministrator": type("Administrator", (), {}),
+                "ChatMemberStatus": SimpleNamespace(
+                    ADMINISTRATOR="administrator", CREATOR="creator"
+                ),
                 "DRAGONS": [],
                 "DEV_USERS": [],
                 "OWNER_ID": 1,
@@ -1229,7 +1230,11 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
                 ),
                 "is_user_ban_protected": lambda *args: asyncio.sleep(0, False),
                 "is_user_in_chat": lambda *args: asyncio.sleep(0, False),
-                "BadRequest": Exception,
+                "TelegramAPIError": Exception,
+                "bot": SimpleNamespace(id=77),
+                "chat_data": {"anon_ban_token": {}},
+                "store": SimpleNamespace(save=lambda: None),
+                "F": SimpleNamespace(),
             },
         )
         unban_calls = []
@@ -1243,15 +1248,24 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
             title = "Chat"
             is_forum = False
 
-            async def get_member(self, user_id):
-                return SimpleNamespace(status="member", user=SimpleNamespace(id=user_id))
-
-            async def unban_member(self, user_id):
-                unban_calls.append(user_id)
-
         class Message:
+            chat = Chat()
+            message_id = 1
+            message_thread_id = None
+
             async def edit_text(self, *args, **kwargs):
                 pass
+
+        class FakeBot:
+            id = 77
+
+            async def get_chat_member(self, chat_id, user_id):
+                return SimpleNamespace(status="member", user=SimpleNamespace(id=user_id))
+
+            async def unban_chat_member(self, chat_id, user_id):
+                unban_calls.append(user_id)
+
+        bans_callback.__globals__["bot"] = FakeBot()
 
         query = SimpleNamespace(
             data="bans_99=unban=123=token",
@@ -1259,48 +1273,55 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
             message=Message(),
             answer=answer_query,
         )
-        await bans_callback(
-            SimpleNamespace(
-                callback_query=query,
-                effective_chat=Chat(),
-                effective_message=Message(),
-            ),
-            SimpleNamespace(
-                args=[],
-                bot=SimpleNamespace(id=77),
-                chat_data={"anon_ban_token": {}},
-            ),
-        )
+        await bans_callback(query)
         self.assertEqual(unban_calls, [])
 
     async def test_malformed_ptb_callbacks_are_answered_without_crashing(self):
         async def answer_query(*args, **kwargs):
             return None
 
-        callbacks = [
-            (
-                "admin_callback",
-                {"Update": object, "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object), "loggable": lambda function: function},
-                "admin_",
-            ),
-            (
-                "bans_callback",
-                {"Update": object, "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object), "loggable": lambda function: function},
-                "bans_",
-            ),
-        ]
-        for name, dependencies, data in callbacks:
-            callback = load_function(ROOT / f"Mikobot/plugins/{'admin' if name == 'admin_callback' else 'ban'}.py", name, dependencies)
-            await callback(
-                SimpleNamespace(
-                    callback_query=SimpleNamespace(
-                        data=data, from_user=SimpleNamespace(id=1), answer=answer_query
-                    ),
-                    effective_chat=None,
-                    effective_message=None,
+        # Malformed callback data must be answered, not raised. admin.py is
+        # still on PTB and takes (update, context); ban.py has moved to
+        # aiogram and takes the CallbackQuery directly.
+        ptb_callback = load_function(
+            ROOT / "Mikobot/plugins/admin.py",
+            "admin_callback",
+            {
+                "Update": object,
+                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
+                "loggable": lambda function: function,
+            },
+        )
+        await ptb_callback(
+            SimpleNamespace(
+                callback_query=SimpleNamespace(
+                    data="admin_", from_user=SimpleNamespace(id=1), answer=answer_query
                 ),
-                SimpleNamespace(args=[], bot=SimpleNamespace(), chat_data={}),
-            )
+                effective_chat=None,
+                effective_message=None,
+            ),
+            SimpleNamespace(args=[], bot=SimpleNamespace(), chat_data={}),
+        )
+
+        bans_callback = load_function(
+            ROOT / "Mikobot/plugins/ban.py",
+            "bans_callback",
+            {
+                "loggable": lambda function: function,
+                "chat_data": {},
+                "store": SimpleNamespace(save=lambda: None),
+            },
+        )
+        await bans_callback(
+            SimpleNamespace(
+                data="bans_",
+                from_user=SimpleNamespace(id=1),
+                message=SimpleNamespace(
+                    chat=SimpleNamespace(id=5, type="group", title="c", is_forum=False)
+                ),
+                answer=answer_query,
+            ),
+        )
 
         user_button = load_function(
             ROOT / "Mikobot/plugins/welcome.py",
@@ -1401,7 +1422,7 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn("can_send_media_messages", source, relative)
             self.assertNotIn("can_send_invite_users", source, relative)
         self.assertIn('is_silent = parts[3] == "1"', (ROOT / "Mikobot/plugins/admin.py").read_text(encoding="utf-8"))
-        self.assertIn("context.chat_data.pop", (ROOT / "Mikobot/plugins/ban.py").read_text(encoding="utf-8"))
+        self.assertIn('chat_data.pop(f"anon_ban_{parts[3]}", None)', (ROOT / "Mikobot/plugins/ban.py").read_text(encoding="utf-8"))
         self.assertIn("Contact me in PM to get your current settings.", (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8"))
 
 

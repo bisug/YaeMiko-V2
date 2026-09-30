@@ -1,21 +1,29 @@
 import html
 from uuid import uuid4
 
-
-
-from telegram import (
-    ChatMemberAdministrator,
+from aiogram import F
+from aiogram.enums import ButtonStyle, ChatMemberStatus, ParseMode
+from aiogram.exceptions import TelegramAPIError
+from aiogram.filters import CommandObject
+from aiogram.types import (
+    CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    Update,
+    Message,
 )
-from telegram.constants import ParseMode
-from telegram.error import BadRequest
-from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, filters
-from telegram.helpers import mention_html
 
-from Mikobot import BAN_STICKER, DEV_USERS, DRAGONS, LOGGER, OWNER_ID, function
-from Mikobot.plugins.disable import DisableAbleCommandHandler
+from Mikobot import (
+    BAN_STICKER,
+    DEV_USERS,
+    DRAGONS,
+    LOGGER,
+    OWNER_ID,
+    bot,
+    chat_data,
+    dp,
+    store,
+)
+from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.chat_status import (
     can_delete,
     check_admin,
@@ -28,29 +36,30 @@ from Mikobot.plugins.helper_funcs.extraction import extract_user_and_text
 from Mikobot.plugins.helper_funcs.misc import mention_username
 from Mikobot.plugins.helper_funcs.string_handling import extract_time
 from Mikobot.plugins.log_channel import gloggable, loggable
-from telegram.constants import KeyboardButtonStyle
+from Mikobot.utils.consts import ChatID
+from Mikobot.utils.filters import GROUPS
+from Mikobot.utils.gate import chain
+from Mikobot.utils.parser import mention_html
 
 __mod_name__ = "BAN"
 @loggable
 
 
 @check_admin(permission="can_restrict_members", is_both=True)
-async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    chat = update.effective_chat
-    user = update.effective_user
-    message = update.effective_message
+async def ban(message: Message, command: CommandObject) -> str:
+    chat = message.chat
+    user = message.from_user
     log_message = ""
-    bot = context.bot
-    args = context.args
-    user_id, reason = await extract_user_and_text(message, context, args)
+    args = command.args
+    user_id, reason = await extract_user_and_text(message, args)
 
-    member = await chat.get_member(user.id)
+    member = await bot.get_chat_member(chat.id, user.id)
     SILENT = bool(True if message.text.startswith("/s") else False)
 
     # if update is coming from anonymous admin then send button and return.
-    if message.from_user.id == 1087968824:
+    if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
         if SILENT:
-            await message.reply_text("Currently /sban won't work for anoymous admins.")
+            await message.answer("Currently /sban won't work for anoymous admins.")
             return log_message
         # Need chat title to be forwarded on callback data to mention channel after banning.
         try:
@@ -58,11 +67,11 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         except AttributeError:
             chat_title = None
         action_token = uuid4().hex[:8]
-        context.chat_data[f"anon_ban_{action_token}"] = {
+        chat_data[f"anon_ban_{action_token}"] = {
             "reason": reason,
             "chat_title": chat_title,
         }
-        await update.effective_message.reply_text(
+        await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -70,7 +79,7 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                         InlineKeyboardButton(
                             text="Click to prove Admin.",
                             callback_data=f"bans_{chat.id}=ban={user_id}={action_token}",
-                         style=KeyboardButtonStyle.DANGER),
+                         style=ButtonStyle.DANGER),
                     ],
                 ]
             ),
@@ -80,21 +89,20 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     elif (
         not (
             (
-                member.can_restrict_members
-                if isinstance(member, ChatMemberAdministrator)
-                else None
+                member.status == ChatMemberStatus.ADMINISTRATOR
+                and member.can_restrict_members
             )
-            or member.status == "creator"
+            or member.status == ChatMemberStatus.CREATOR
         )
         and user.id not in DRAGONS
     ):
-        await update.effective_message.reply_text(
+        await message.answer(
             "Sorry son, but you're not worthy to wield the banhammer.",
         )
         return log_message
 
     if user_id == bot.id:
-        await message.reply_text("Oh yeah, ban myself, noob!")
+        await message.answer("Oh yeah, ban myself, noob!")
         return log_message
 
     if user_id is not None and user_id < 0:
@@ -103,33 +111,33 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     else:
         CHAT_SENDER = False
         try:
-            member = await chat.get_member(user_id)
-        except BadRequest as excp:
-            if excp.message == "User not found":
+            member = await bot.get_chat_member(chat.id, user_id)
+        except TelegramAPIError as excp:
+            if "user not found" in str(excp.message or excp).lower():
                 raise
-            elif excp == "Invalid user_id specified":
-                await message.reply_text("I Doubt that's a user.")
-            await message.reply_text("Can't find this person here.")
+            elif "invalid user_id" in str(excp.message or excp).lower():
+                await message.answer("I Doubt that's a user.")
+            await message.answer("Can't find this person here.")
             return log_message
 
         if await is_user_ban_protected(chat, user_id, member) and user not in DEV_USERS:
             if user_id == OWNER_ID:
-                await message.reply_text(
+                await message.answer(
                     "Trying to put me against a God level disaster huh?"
                 )
             elif user_id in DEV_USERS:
-                await message.reply_text("I can't act against our own.")
+                await message.answer("I can't act against our own.")
             elif user_id in DRAGONS:
-                await message.reply_text(
+                await message.answer(
                     "Fighting this Dragon here will put me and my people's at risk.",
                 )
             else:
-                await message.reply_text("This user has immunity and cannot be banned.")
+                await message.answer("This user has immunity and cannot be banned.")
             return log_message
 
     if SILENT:
         silent = True
-        if not await can_delete(chat, context.bot.id):
+        if not await can_delete(chat, bot.id):
             return ""
     else:
         silent = False
@@ -155,9 +163,9 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     try:
         if CHAT_SENDER:
-            await chat.ban_sender_chat(sender_chat_id=chat_sender.id)
+            await bot.ban_chat_sender_chat(chat.id, chat_sender.id)
         else:
-            await chat.ban_member(user_id)
+            await bot.ban_chat_member(chat.id, user_id)
 
         if silent:
             if message.reply_to_message:
@@ -181,12 +189,12 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         )
         return log
 
-    except BadRequest as excp:
-        if excp.message == "Reply message not found":
+    except TelegramAPIError as excp:
+        if "reply message not found" in str(excp.message or excp).lower():
             # Do not reply
             if silent:
                 return log
-            await message.reply_text("Banned!", do_quote=False)
+            await message.answer("Banned!", do_quote=False)
             return log
         else:
             LOGGER.exception(
@@ -194,9 +202,9 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                 user_id,
                 chat.title,
                 chat.id,
-                excp.message,
+                excp,
             )
-            await message.reply_text("Uhm...that didn't work...")
+            await message.answer("Uhm...that didn't work...")
 
     return log_message
 
@@ -204,35 +212,34 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 @connection_status
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
-async def temp_ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    chat = update.effective_chat
-    user = update.effective_user
-    message = update.effective_message
+async def temp_ban(message: Message, command: CommandObject) -> str:
+    chat = message.chat
+    user = message.from_user
     log_message = ""
-    bot, args = context.bot, context.args
-    user_id, reason = await extract_user_and_text(message, context, args)
+    args = command.args
+    user_id, reason = await extract_user_and_text(message, args)
 
     if not user_id:
-        await message.reply_text("I doubt that's a user.")
+        await message.answer("I doubt that's a user.")
         return log_message
 
     try:
-        member = await chat.get_member(user_id)
-    except BadRequest as excp:
-        if excp.message != "User not found":
+        member = await bot.get_chat_member(chat.id, user_id)
+    except TelegramAPIError as excp:
+        if "user not found" not in str(excp.message or excp).lower():
             raise
-        await message.reply_text("I can't seem to find this user.")
+        await message.answer("I can't seem to find this user.")
         return log_message
     if user_id == bot.id:
-        await message.reply_text("I'm not gonna BAN myself, are you crazy?")
+        await message.answer("I'm not gonna BAN myself, are you crazy?")
         return log_message
 
     if await is_user_ban_protected(chat, user_id, member):
-        await message.reply_text("I don't feel like it.")
+        await message.answer("I don't feel like it.")
         return log_message
 
     if not reason:
-        await message.reply_text("You haven't specified a time to ban this user for!")
+        await message.answer("You haven't specified a time to ban this user for!")
         return log_message
 
     split_reason = reason.split(None, 1)
@@ -270,10 +277,10 @@ async def temp_ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         )
         return log
 
-    except BadRequest as excp:
-        if excp.message == "Reply message not found":
+    except TelegramAPIError as excp:
+        if "reply message not found" in str(excp.message or excp).lower():
             # Do not reply
-            await message.reply_text(
+            await message.answer(
                 f"Banned! User will be banned for {time_val}.",
                 do_quote=False,
             )
@@ -284,9 +291,9 @@ async def temp_ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                 user_id,
                 chat.title,
                 chat.id,
-                excp.message,
+                excp,
             )
-            await message.reply_text("Well damn, I can't ban that user.")
+            await message.answer("Well damn, I can't ban that user.")
 
     return log_message
 
@@ -294,32 +301,31 @@ async def temp_ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 @connection_status
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
-async def kick(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    chat = update.effective_chat
-    user = update.effective_user
-    message = update.effective_message
+async def kick(message: Message, command: CommandObject) -> str:
+    chat = message.chat
+    user = message.from_user
     log_message = ""
-    bot, args = context.bot, context.args
-    user_id, reason = await extract_user_and_text(message, context, args)
+    args = command.args
+    user_id, reason = await extract_user_and_text(message, args)
 
     if not user_id:
-        await message.reply_text("I doubt that's a user.")
+        await message.answer("I doubt that's a user.")
         return log_message
 
     try:
-        member = await chat.get_member(user_id)
-    except BadRequest as excp:
-        if excp.message != "User not found":
+        member = await bot.get_chat_member(chat.id, user_id)
+    except TelegramAPIError as excp:
+        if "user not found" not in str(excp.message or excp).lower():
             raise
 
-        await message.reply_text("I can't seem to find this user.")
+        await message.answer("I can't seem to find this user.")
         return log_message
     if user_id == bot.id:
-        await message.reply_text("Yeahhh I'm not gonna do that.")
+        await message.answer("Yeahhh I'm not gonna do that.")
         return log_message
 
     if await is_user_ban_protected(chat, user_id):
-        await message.reply_text("I really wish I could kick this user....")
+        await message.answer("I really wish I could kick this user....")
         return log_message
 
     res = chat.unban_member(user_id)  # unban on current user = kick
@@ -347,55 +353,56 @@ async def kick(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         return log
 
     else:
-        await message.reply_text("Well damn, I can't kick that user.")
+        await message.answer("Well damn, I can't kick that user.")
 
     return log_message
 
 
 @check_admin(permission="can_restrict_members", is_bot=True)
-async def kickme(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_message.from_user.id
-    if await is_user_admin(update.effective_chat, user_id):
-        await update.effective_message.reply_text(
+async def kickme(message: Message):
+    user_id = message.from_user.id
+    if await is_user_admin(message.chat, user_id):
+        await message.answer(
             "I wish I could... but you're an admin."
         )
         return
 
-    res = await update.effective_chat.unban_member(
-        user_id
-    )  # unban on current user = kick
-    # BUG: parsing not working
-    if res:
-        await update.effective_message.reply_text(
-            html.escape("You got the Devil's Kiss, Now die in peace"), parse_mode="html"
-        )
-    else:
-        await update.effective_message.reply_text("Huh? I can't :/")
+    # unban on current user = kick
+    try:
+        await bot.unban_chat_member(message.chat.id, user_id)
+    except TelegramAPIError:
+        await message.answer("Huh? I can't :/")
+        return
+
+    await message.answer(
+        html.escape("You got the Devil's Kiss, Now die in peace"),
+        parse_mode=ParseMode.HTML,
+    )
 
 
 @connection_status
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
-async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    message = update.effective_message
-    user = update.effective_user
-    chat = update.effective_chat
+async def unban(message: Message, command: CommandObject) -> str:
+    message = message
+    user = message.from_user
+    chat = message.chat
     log_message = ""
-    bot, args = context.bot, context.args
-    user_id, reason = await extract_user_and_text(message, context, args)
+    args = command.args
+    user_id, reason = await extract_user_and_text(message, args)
 
-    if message.from_user.id == 1087968824:
+    if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
         try:
             chat_title = message.reply_to_message.sender_chat.title
         except AttributeError:
             chat_title = None
 
         action_token = uuid4().hex[:8]
-        context.chat_data[f"anon_ban_{action_token}"] = {
+        chat_data[f"anon_ban_{action_token}"] = {
             "reason": reason,
             "chat_title": chat_title,
         }
-        await message.reply_text(
+        await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -403,7 +410,7 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                         InlineKeyboardButton(
                             text="Click to prove Admin.",
                             callback_data=f"bans_{chat.id}=unban={user_id}={action_token}",
-                         style=KeyboardButtonStyle.SUCCESS),
+                         style=ButtonStyle.SUCCESS),
                     ],
                 ]
             ),
@@ -412,11 +419,11 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         return log_message
 
     if not user_id:
-        await message.reply_text("I doubt that's a user.")
+        await message.answer("I doubt that's a user.")
         return log_message
 
     if user_id == bot.id:
-        await message.reply_text("How would I unban myself if I wasn't here...?")
+        await message.answer("How would I unban myself if I wasn't here...?")
         return log_message
 
     if user_id is not None and user_id < 0:
@@ -425,22 +432,22 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     else:
         CHAT_SENDER = False
         try:
-            member = await chat.get_member(user_id)
+            member = await bot.get_chat_member(chat.id, user_id)
 
-            if isinstance(member, ChatMemberAdministrator):
-                await message.reply_text(
+            if member.status == ChatMemberStatus.ADMINISTRATOR:
+                await message.answer(
                     "This person is an admin here, Are you drunk???"
                 )
                 return log_message
 
-        except BadRequest as excp:
-            if excp.message != "User not found":
+        except TelegramAPIError as excp:
+            if "user not found" not in str(excp.message or excp).lower():
                 raise
-            await message.reply_text("I can't seem to find this user.")
+            await message.answer("I can't seem to find this user.")
             return log_message
 
         if await is_user_in_chat(chat, user_id):
-            await message.reply_text("Isn't this person already here??")
+            await message.answer("Isn't this person already here??")
             return log_message
 
     log = (
@@ -451,12 +458,12 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     if CHAT_SENDER:
         log += f"<b>User:</b> {mention_username(chat_sender.id, html.escape(chat_sender.title))}"
-        await chat.unban_sender_chat(chat_sender.id)
-        await message.reply_text("Yeah, this channel can speak again.")
+        await bot.unban_chat_sender_chat(chat.id, chat_sender.id)
+        await message.answer("Yeah, this channel can speak again.")
     else:
         log += f"<b>User:</b> {mention_html(member.user.id, html.escape(member.user.first_name))}"
-        await chat.unban_member(user_id)
-        await message.reply_text("Yeah, this user can join!")
+        await bot.unban_chat_member(chat.id, user_id)
+        await message.answer("Yeah, this user can join!")
 
     if reason:
         log += f"\n<b>Reason:</b> {reason}"
@@ -467,36 +474,36 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 @connection_status
 @gloggable
 @check_admin(permission="can_restrict_members", is_bot=True)
-async def selfunban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    message = update.effective_message
-    user = update.effective_user
-    bot, args = context.bot, context.args
+async def selfunban(message: Message, command: CommandObject) -> str:
+    message = message
+    user = message.from_user
+    args = command.args
     if user.id not in DRAGONS:
         return
 
     try:
         chat_id = int(args[0])
-    except (BadRequest, IndexError, ValueError, TypeError):
-        await message.reply_text("Give a valid chat ID.")
+    except (TelegramAPIError, IndexError, ValueError, TypeError):
+        await message.answer("Give a valid chat ID.")
         return
 
     chat = await bot.get_chat(chat_id)
 
     try:
-        member = await chat.get_member(user.id)
-    except BadRequest as excp:
-        if excp.message == "User not found":
-            await message.reply_text("I can't seem to find this user.")
+        member = await bot.get_chat_member(chat.id, user.id)
+    except TelegramAPIError as excp:
+        if "user not found" in str(excp.message or excp).lower():
+            await message.answer("I can't seem to find this user.")
             return
         else:
             raise
 
     if await is_user_in_chat(chat, user.id):
-        await message.reply_text("Aren't you already in the chat??")
+        await message.answer("Aren't you already in the chat??")
         return
 
-    await chat.unban_member(user.id)
-    await message.reply_text("Yep, I have unbanned you.")
+    await bot.unban_chat_member(chat.id, user.id)
+    await message.answer("Yep, I have unbanned you.")
 
     log = (
         f"<b>{html.escape(chat.title)}:</b>\n"
@@ -508,12 +515,9 @@ async def selfunban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
 
 @loggable
-async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    bot = context.bot
-    chat = update.effective_chat
-    message = update.effective_message
-    args = context.args
+async def bans_callback(query: CallbackQuery):
+    message = query.message
+    chat = message.chat
     log_message = ""
     parts = query.data.removeprefix("bans_").split("=")
     if len(parts) != 4 or parts[1] not in {"ban", "unban"}:
@@ -523,18 +527,15 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     log_message = ""
     admin_user = query.from_user
     action = parts[1]
-    pending = context.chat_data.get(f"anon_ban_{parts[3]}")
+    pending = chat_data.get(f"anon_ban_{parts[3]}")
     if not pending:
         await query.answer("This action has expired.", show_alert=True)
         return log_message
-    member = await chat.get_member(admin_user.id)
+    member = await bot.get_chat_member(chat.id, admin_user.id)
 
     if (
-        (
-            isinstance(member, ChatMemberAdministrator)
-            and member.can_restrict_members
-        )
-        or member.status in {"creator", "owner"}
+        (member.status == ChatMemberStatus.ADMINISTRATOR and member.can_restrict_members)
+        or member.status == ChatMemberStatus.CREATOR
         or admin_user.id in DRAGONS
     ):
         pass
@@ -545,7 +546,8 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return log_message
 
-    context.chat_data.pop(f"anon_ban_{parts[3]}", None)
+    chat_data.pop(f"anon_ban_{parts[3]}", None)
+    store.save()
     if action == "ban":
         # workaround for checking user admin status
         try:
@@ -569,11 +571,11 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             CHAT_SENDER = False
             try:
-                member = await chat.get_member(user_id)
-            except BadRequest as excp:
+                member = await bot.get_chat_member(chat.id, user_id)
+            except TelegramAPIError as excp:
                 if excp.message == "User not found.":
                     raise
-                elif excp == "Invalid user_id specified":
+                elif "invalid user_id" in str(excp.message or excp).lower():
                     await message.edit_text("I Doubt that's a user.")
                 await message.edit_text("Can't find this person here.")
 
@@ -620,9 +622,9 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         try:
             if CHAT_SENDER:
-                await chat.ban_sender_chat(sender_chat_id=user_id)
+                await bot.ban_chat_sender_chat(chat.id, user_id)
             else:
-                await chat.ban_member(user_id)
+                await bot.ban_chat_member(chat.id, user_id)
 
             await bot.send_sticker(
                 chat.id,
@@ -641,8 +643,8 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.answer(f"Done Banned User.")
             return log
 
-        except BadRequest as excp:
-            if excp.message == "Reply message not found":
+        except TelegramAPIError as excp:
+            if "reply message not found" in str(excp.message or excp).lower():
                 # Do not reply
                 await message.edit_text("Banned!")
                 return log
@@ -651,7 +653,7 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 user_id,
                 chat.title,
                 chat.id,
-                excp.message,
+                excp,
             )
             await message.edit_text("Uhm...that didn't work...")
 
@@ -680,9 +682,9 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             CHAT_SENDER = False
 
             try:
-                member = await chat.get_member(user_id)
-            except BadRequest as excp:
-                if excp.message != "User not found":
+                member = await bot.get_chat_member(chat.id, user_id)
+            except TelegramAPIError as excp:
+                if "user not found" not in str(excp.message or excp).lower():
                     raise
                 await message.edit_text("I can't seem to find this user.")
                 return log_message
@@ -699,12 +701,12 @@ async def bans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if CHAT_SENDER:
             log += f"<b>User:</b> {html.escape(chat_title)}"
-            await chat.unban_sender_chat(user_id)
-            await message.reply_text("Yeah, this channel can speak again.")
+            await bot.unban_chat_sender_chat(chat.id, user_id)
+            await message.answer("Yeah, this channel can speak again.")
         else:
             log += f"<b>User:</b> {mention_html(member.user.id, html.escape(member.user.first_name))}"
-            await chat.unban_member(user_id)
-            await message.reply_text("Yeah, this user can join!")
+            await bot.unban_chat_member(chat.id, user_id)
+            await message.answer("Yeah, this user can join!")
 
         if reason:
             log += f"\n<b>Reason:</b> {reason}"
@@ -731,35 +733,12 @@ __help__ = """
     Banning or UnBanning channels only work if you reply to their message, so don't use their username to ban/unban.
 """
 
-BAN_HANDLER = CommandHandler(["ban", "sban"], ban, block=False)
-TEMPBAN_HANDLER = CommandHandler(["tban"], temp_ban, block=False)
-KICK_HANDLER = CommandHandler("kick", kick, block=False)
-UNBAN_HANDLER = CommandHandler("unban", unban, block=False)
-ROAR_HANDLER = CommandHandler("roar", selfunban, block=False)
-KICKME_HANDLER = DisableAbleCommandHandler(
-    "kickme", kickme, filters=filters.ChatType.GROUPS, block=False
+dp.message.register(chain(ban), *disableable(["ban", "sban"]))
+dp.message.register(chain(temp_ban), *disableable(["tban"]))
+dp.message.register(chain(kick), *disableable("kick"))
+dp.message.register(chain(unban), *disableable("unban"))
+dp.message.register(chain(selfunban), *disableable("roar"))
+dp.message.register(chain(kickme), GROUPS, *disableable("kickme"))
+dp.callback_query.register(
+    chain(bans_callback), F.data.regexp(r"^bans_-?\d+=(?:ban|unban)=-?\d+=[0-9a-f]{8}$")
 )
-BAN_CALLBACK_HANDLER = CallbackQueryHandler(
-    bans_callback,
-    block=False,
-    pattern=r"^bans_-?\d+=(?:ban|unban)=-?\d+=[0-9a-f]{8}$",
-)
-
-function(BAN_HANDLER)
-function(TEMPBAN_HANDLER)
-function(KICK_HANDLER)
-function(UNBAN_HANDLER)
-function(ROAR_HANDLER)
-function(KICKME_HANDLER)
-function(BAN_CALLBACK_HANDLER)
-
-__mod_name__ = "BAN"
-__handlers__ = [
-    BAN_HANDLER,
-    TEMPBAN_HANDLER,
-    KICK_HANDLER,
-    UNBAN_HANDLER,
-    ROAR_HANDLER,
-    KICKME_HANDLER,
-    BAN_CALLBACK_HANDLER,
-]
