@@ -364,23 +364,25 @@ class StartupTests(unittest.TestCase):
         self.assertIn("HELP_STRINGS = f", karma)
         self.assertIn("escape_markdown(BOT_NAME)", karma)
         self.assertIn("escape(BOT_NAME)", info)
-        self.assertIn("Client(BOT_USERNAME", init)
+        # The Client name comes from the resolved identity, not a literal.
+        self.assertIn("fetch_bot_info()[2]", init)
         for hardcoded_name in ("ɪ ᴀᴍ ᴍɪᴋᴏ", "Yae-Miko", "Yae Miko Bot"):
             self.assertNotIn(hardcoded_name, karma + info)
 
     def test_startup_fetches_and_displays_bot_identity(self):
         source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
-        self.assertIn("bot_info = loop.run_until_complete(bot.me())", source)
+        # The fetch happens inside fetch_bot_info(), not at import: a network
+        # failure at import used to fail the whole test suite.
+        self.assertIn("info = loop.run_until_complete(bot.me())", source)
         self.assertLess(
             source.index('LOGGER.info("Getting bot information")'),
-            source.index("bot_info = loop.run_until_complete(bot.me())"),
+            source.index("info = loop.run_until_complete(bot.me())"),
         )
-        self.assertIn("BOT_ID = bot_info.id", source)
-        self.assertIn("BOT_NAME = bot_info.first_name", source)
-        self.assertIn("BOT_USERNAME = bot_info.username", source)
-        self.assertIn("escape(BOT_NAME)", source)
-        self.assertIn("escape(BOT_USERNAME)", source)
-        self.assertIn("{BOT_ID}", source)
+        for name in ('if name == "BOT_ID":', 'if name == "BOT_NAME":', 'if name == "BOT_USERNAME":'):
+            self.assertIn(name, source)
+        self.assertIn("escape(bot_name)", source)
+        self.assertIn("escape(bot_username)", source)
+        self.assertIn("{bot_id}", source)
 
 
 

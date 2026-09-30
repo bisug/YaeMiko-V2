@@ -348,7 +348,7 @@ async def send_booting_message():
         await bot.send_photo(
             chat_id=SUPPORT_ID,
             photo=str(choice(ALIVE_IMG)),
-            caption=ALIVE_MSG,
+            caption=alive_msg(),
             parse_mode=ParseMode.HTML,
         )
     except Exception:
@@ -363,14 +363,45 @@ async def send_booting_message():
 
 # <================================================= EXTBOT ======================================================>
 # <=============================================== GETTING BOT INFO ========================================================>
-LOGGER.info("Getting bot information")
-bot_info = loop.run_until_complete(bot.me())
-BOT_ID = bot_info.id
-BOT_NAME = bot_info.first_name
-BOT_USERNAME = bot_info.username
-ALIVE_MSG = f"""
-💫 <b>{escape(BOT_NAME)}</b> (<code>@{escape(BOT_USERNAME)}</code>) is starting.
-<b>Bot ID:</b> <code>{BOT_ID}</code>
+# The identity is resolved on first use rather than at import. Importing Mikobot
+# must not need the network: a dropped connection to api.telegram.org used to
+# take the whole test suite down. Plugins read BOT_ID/BOT_NAME/BOT_USERNAME as
+# module attributes, so PEP 562 __getattr__ keeps `from Mikobot import BOT_NAME`
+# working while the fetch happens once, later, and a failure degrades to
+# placeholders instead of crashing the import.
+_BOT_INFO = None
+
+
+def fetch_bot_info():
+    """Resolve and cache the bot's identity, tolerating an unreachable API."""
+    global _BOT_INFO
+    if _BOT_INFO is not None:
+        return _BOT_INFO
+    LOGGER.info("Getting bot information")
+    try:
+        info = loop.run_until_complete(bot.me())
+        _BOT_INFO = (info.id, info.first_name, info.username)
+    except Exception:
+        LOGGER.warning("Unable to reach the Telegram API for bot info", exc_info=True)
+        _BOT_INFO = (0, "Bot", "")
+    return _BOT_INFO
+
+
+def __getattr__(name):
+    if name == "BOT_ID":
+        return fetch_bot_info()[0]
+    if name == "BOT_NAME":
+        return fetch_bot_info()[1]
+    if name == "BOT_USERNAME":
+        return fetch_bot_info()[2]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def alive_msg() -> str:
+    bot_id, bot_name, bot_username = fetch_bot_info()
+    return f"""
+💫 <b>{escape(bot_name)}</b> (<code>@{escape(bot_username)}</code>) is starting.
+<b>Bot ID:</b> <code>{bot_id}</code>
 
 ⏳ <i>Please wait for startup to complete. If commands do not work, check the logs.</i>
 """
@@ -378,8 +409,12 @@ ALIVE_MSG = f"""
 
 # <=============================================== CLIENT SETUP ========================================================>
 # Create the Kurigram client instance
-app = Client(BOT_USERNAME, api_id=API_ID, api_hash=API_HASH, bot_token=TOKEN)
-loop.run_until_complete(send_booting_message())
+app = Client(
+    fetch_bot_info()[2] or "bot",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    bot_token=TOKEN,
+)
 # <=======================================================================================================>
 
 # <================================================== CONVERT LISTS =====================================================>

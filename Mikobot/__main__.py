@@ -52,6 +52,7 @@ from Mikobot import (
     dispatcher,
     function,
     loop,
+    send_booting_message,
 )
 from Mikobot.plugins import ALL_MODULES
 from Mikobot.plugins.helper_funcs.chat_status import is_user_admin
@@ -897,6 +898,8 @@ def main():
     if ACTIVITY_LOG:
         dispatcher.add_handler(TypeHandler(Update, log_activity), group=-100)
         app.add_handler(RawUpdateHandler(log_kurigram_activity))
+
+    loop.run_until_complete(send_booting_message())
 
     LOGGER.info("Mikobot is starting >> Using long polling.")
     dispatcher.run_polling(drop_pending_updates=False, close_loop=False)

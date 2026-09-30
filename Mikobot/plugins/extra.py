@@ -1,14 +1,21 @@
 # <============================================== IMPORTS =========================================================>
 from time import gmtime, strftime, time
 
+from aiogram import F
+from aiogram.enums import ButtonStyle
+from aiogram.filters import Command
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 from pyrogram import filters
-from pyrogram.types import Message
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Update
-from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
+from pyrogram.types import LinkPreviewOptions
 
-from Mikobot import LOGGER, app, function
+from Mikobot import LOGGER, app, bot, dp, store, user_data
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
-from telegram.constants import KeyboardButtonStyle
+from Mikobot.utils.gate import chain
 
 # <=======================================================================================================>
 
@@ -69,36 +76,36 @@ async def _id(client, message):
 
 # Function to handle the "logs" command
 @check_admin(only_dev=True)
-async def logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
+async def logs(message: Message):
     with open("Logs.txt", "rb") as f:
         caption = "Here is your log"
         reply_markup = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Close", callback_data="close", style=KeyboardButtonStyle.PRIMARY)]]
+            [[InlineKeyboardButton("Close", callback_data="close", style=ButtonStyle.PRIMARY)]]
         )
-        message = await context.bot.send_document(
+        sent = await bot.send_document(
             document=f,
             filename=f.name,
             caption=caption,
             reply_markup=reply_markup,
-            chat_id=user.id,
+            chat_id=message.from_user.id,
         )
 
         # Store the message ID for later reference
-        context.user_data["log_message_id"] = message.message_id
+        user_data[message.from_user.id]["log_message_id"] = sent.message_id
+        store.save()
 
 
 # Asynchronous callback query handler for the "close" button
 @check_admin(only_dev=True)
-async def close_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    message_id = context.user_data.get("log_message_id")
+async def close_callback(query: CallbackQuery):
+    message_id = user_data.get(query.from_user.id, {}).get("log_message_id")
     if message_id:
         try:
-            await context.bot.delete_message(
-                chat_id=query.message.chat_id, message_id=message_id
+            await bot.delete_message(
+                chat_id=query.message.chat.id, message_id=message_id
             )
-            context.user_data.pop("log_message_id", None)
+            user_data[query.from_user.id].pop("log_message_id", None)
+            store.save()
             await query.answer()
         except Exception:
             await query.answer("Unable to close this log.", show_alert=True)
@@ -128,8 +135,8 @@ async def ping(_, m: Message):
 
 
 # <================================================ HANDLER =======================================================>
-function(CommandHandler("logs", logs, block=False))
-function(CallbackQueryHandler(close_callback, pattern="^close$", block=False))
+dp.message.register(chain(logs), Command("logs"))
+dp.callback_query.register(chain(close_callback), F.data == "close")
 
 # <================================================= HELP ======================================================>
 __help__ = """
