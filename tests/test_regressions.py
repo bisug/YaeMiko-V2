@@ -147,7 +147,7 @@ class EnvironmentTests(unittest.TestCase):
             if isinstance(node, ast.ImportFrom) and node.module
             for alias in node.names
         }
-        self.assertIn(("telegram.helpers", "escape_markdown"), imports)
+        self.assertIn(("Mikobot.utils.parser", "escape_markdown"), imports)
 
     def test_ptb_updates_are_processed_concurrently(self):
         source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
@@ -588,33 +588,38 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         warnings = []
         errors = []
 
-        class TelegramError(Exception):
+        class TelegramAPIError(Exception):
             pass
 
-        class Update:
+        class CallbackQuery:
             def __init__(self):
-                self.callback_query = SimpleNamespace(
-                    id="callback-1",
-                    answer=self.record_answer,
+                self.id = "callback-1"
+                self.message = SimpleNamespace(
+                    chat=SimpleNamespace(id=42),
                 )
-                self.effective_chat = SimpleNamespace(id=42)
+                self.answer = self.record_answer
 
             async def record_answer(self, *args, **kwargs):
                 answers.append((args, kwargs))
+
+        class Update:
+            def __init__(self):
+                self.event = CallbackQuery()
+                self.exception = TelegramAPIError("failed")
 
         error_callback = load_function(
             ROOT / "Mikobot/__main__.py",
             "error_callback",
             {
                 "Update": Update,
-                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
-                "Forbidden": TelegramError,
-                "BadRequest": TelegramError,
-                "TimedOut": TelegramError,
-                "NetworkError": TelegramError,
-                "TelegramError": TelegramError,
-                "ChatMigrated": type("ChatMigrated", (TelegramError,), {}),
-                "_activity_summary": lambda update: "callback user=1 chat=42",
+                "CallbackQuery": CallbackQuery,
+                "TelegramAPIError": TelegramAPIError,
+                "TelegramForbiddenError": TelegramAPIError,
+                "TelegramServerError": TelegramAPIError,
+                "TelegramNetworkError": TelegramAPIError,
+                "TelegramRetryAfter": TelegramAPIError,
+                "TelegramMigrateToChat": type("TelegramMigrateToChat", (TelegramAPIError,), {}),
+                "_activity_summary": lambda event: "callback user=1 chat=42",
                 "LOGGER": SimpleNamespace(
                     warning=lambda *args, **kwargs: warnings.append((args, kwargs)),
                     info=lambda *args, **kwargs: None,
@@ -624,7 +629,7 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
             },
         )
 
-        await error_callback(Update(), SimpleNamespace(error=TelegramError("failed")))
+        await error_callback(Update())
         self.assertEqual(len(answers), 1)
         self.assertTrue(answers[0][1]["show_alert"])
         self.assertEqual(len(warnings), 1)
@@ -871,8 +876,8 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
 
         main_source = (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8")
         self.assertNotIn("traceback.format_exception", main_source)
-        self.assertIn("await update.callback_query.answer(", main_source)
-        self.assertIn("_activity_summary(update)", main_source)
+        self.assertIn("await failed.answer(", main_source)
+        self.assertIn("_activity_summary(event)", main_source)
         for relative in (".gitignore", ".dockerignore"):
             self.assertIn("Logs.txt*", (ROOT / relative).read_text(encoding="utf-8"))
         init_source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
