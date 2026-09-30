@@ -4,16 +4,22 @@ import asyncio
 import re
 import time
 
-from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.constants import ParseMode
-from telegram.error import BadRequest, Forbidden
-from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
+from aiogram import Bot, F
+from aiogram.enums import ButtonStyle, ChatType, ParseMode
+from aiogram.exceptions import TelegramAPIError
+from aiogram.filters import Command, CommandObject
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 import Database.sql.connection_sql as sql
-from Mikobot import DEV_USERS, DRAGONS, dispatcher, function
+from Mikobot import DEV_USERS, DRAGONS, bot, dp
 from Mikobot.plugins.helper_funcs import chat_status
 from Mikobot.plugins.helper_funcs.alternate import send_message, typing_action
-from telegram.constants import KeyboardButtonStyle
+from Mikobot.utils.gate import chain
 
 # <=======================================================================================================>
 
@@ -23,11 +29,11 @@ check_admin = chat_status.check_admin
 # <================================================ FUNCTION =======================================================>
 @check_admin(is_user=True)
 @typing_action
-async def allow_connections(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat = update.effective_chat
-    args = context.args
+async def allow_connections(message: Message, command: CommandObject):
+    chat = message.chat
+    args = command.args
 
-    if chat.type != chat.PRIVATE:
+    if chat.type != ChatType.PRIVATE:
         if len(args) >= 1:
             var = args[0]
             if var == "no":
@@ -35,7 +41,7 @@ async def allow_connections(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     sql.set_allow_connect_to_chat, chat.id, False
                 )
                 await send_message(
-                    update.effective_message,
+            message,
                     "Connection has been disabled for this chat.",
                 )
             elif var == "yes":
@@ -43,12 +49,12 @@ async def allow_connections(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     sql.set_allow_connect_to_chat, chat.id, True
                 )
                 await send_message(
-                    update.effective_message,
+            message,
                     "Connection has been enabled for this chat.",
                 )
             else:
                 await send_message(
-                    update.effective_message,
+            message,
                     "Please enter 'yes' or 'no'!",
                     parse_mode=ParseMode.MARKDOWN,
                 )
@@ -58,75 +64,78 @@ async def allow_connections(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             if get_settings:
                 await send_message(
-                    update.effective_message,
+            message,
                     "Connections to this group are *allowed* for members!",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             else:
                 await send_message(
-                    update.effective_message,
+            message,
                     "Connection to this group is *not allowed* for members!",
                     parse_mode=ParseMode.MARKDOWN,
                 )
     else:
         await send_message(
-            update.effective_message,
+            message,
             "This command is for groups only, not in PM!",
         )
 
 
 @typing_action
-async def connection_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat = update.effective_chat
-    user = update.effective_user
+async def connection_chat(message: Message, command: CommandObject):
+    chat = message.chat
+    user = message.from_user
 
-    conn = await connected(context.bot, update, chat, user.id, need_admin=True)
+    conn = await connected(bot, message, chat, user.id, need_admin=True)
 
     if conn:
-        chat = await dispatcher.bot.get_chat(conn)
-        chat_obj = await dispatcher.bot.get_chat(conn)
+        chat = await bot.get_chat(conn)
+        chat_obj = await bot.get_chat(conn)
         chat_name = chat_obj.title
     else:
-        if update.effective_message.chat.type != "private":
+        if message.chat.type != ChatType.PRIVATE:
             return
-        chat = update.effective_chat
-        chat_name = update.effective_message.chat.title
+        chat = message.chat
+        chat_name = message.chat.title
 
     if conn:
         message = "You are currently connected to {}.\n".format(chat_name)
     else:
         message = "You are currently not connected in any group.\n"
-    await send_message(update.effective_message, message, parse_mode=ParseMode.MARKDOWN)
+    await send_message(
+            message, message, parse_mode=ParseMode.MARKDOWN)
 
 
 @typing_action
-async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat = update.effective_chat
-    user = update.effective_user
-    args = context.args
+async def connect_chat(message: Message, command: CommandObject):
+    chat = message.chat
+    user = message.from_user
+    args = command.args
 
-    if update.effective_chat.type == "private":
+    if message.chat.type == ChatType.PRIVATE:
         if args and len(args) >= 1:
             try:
                 connect_chat = int(args[0])
-                getstatusadmin = await context.bot.get_chat_member(
+                getstatusadmin = await bot.get_chat_member(
                     connect_chat,
-                    update.effective_message.from_user.id,
+                    message.from_user.id,
                 )
             except ValueError:
                 try:
                     connect_chat = str(args[0])
-                    get_chat = await context.bot.get_chat(connect_chat)
+                    get_chat = await bot.get_chat(connect_chat)
                     connect_chat = get_chat.id
-                    getstatusadmin = await context.bot.get_chat_member(
+                    getstatusadmin = await bot.get_chat_member(
                         connect_chat,
-                        update.effective_message.from_user.id,
+                        message.from_user.id,
                     )
-                except BadRequest:
-                    await send_message(update.effective_message, "Invalid Chat ID!")
+                except TelegramAPIError:
+                    await send_message(
+            message, "Invalid Chat ID!")
                     return
-            except BadRequest:
-                await send_message(update.effective_message, "Invalid Chat ID!")
+            except TelegramAPIError:
+                await send_message(
+            message, "Invalid Chat ID!")
                 return
 
             isadmin = getstatusadmin.status in ("administrator", "creator")
@@ -138,17 +147,17 @@ async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if (isadmin) or (isallow and ismember) or (user.id in DRAGONS):
                 connection_status = await asyncio.to_thread(
                     sql.connect,
-                    update.effective_message.from_user.id,
+                    message.from_user.id,
                     connect_chat,
                 )
                 if connection_status:
                     conn = await connected(
-                        context.bot, update, chat, user.id, need_admin=False
+                        bot, message, chat, user.id, need_admin=False
                     )
-                    conn_chat = await dispatcher.bot.get_chat(conn)
+                    conn_chat = await bot.get_chat(conn)
                     chat_name = conn_chat.title
                     await send_message(
-                        update.effective_message,
+            message,
                         "Successfully connected to *{}*. Use /helpconnect to check available commands.".format(
                             chat_name,
                         ),
@@ -158,10 +167,11 @@ async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         sql.add_history_conn, user.id, str(conn_chat.id), chat_name
                     )
                 else:
-                    await send_message(update.effective_message, "Connection failed!")
+                    await send_message(
+            message, "Connection failed!")
             else:
                 await send_message(
-                    update.effective_message,
+            message,
                     "Connection to this chat is not allowed!",
                 )
         else:
@@ -171,17 +181,17 @@ async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardButton(
                         text="❎ Close Button",
                         callback_data="connect_close",
-                     style=KeyboardButtonStyle.SUCCESS),
+                     style=ButtonStyle.SUCCESS),
                     InlineKeyboardButton(
                         text="🧹 Clear History",
                         callback_data="connect_clear",
-                     style=KeyboardButtonStyle.DANGER),
+                     style=ButtonStyle.DANGER),
                 ]
             else:
                 buttons = []
-            conn = await connected(context.bot, update, chat, user.id, need_admin=False)
+            conn = await connected(bot, message, chat, user.id, need_admin=False)
             if conn:
-                connectedchat = await dispatcher.bot.get_chat(conn)
+                connectedchat = await bot.get_chat(conn)
                 text = "You are currently connected to *{}* (`{}`)".format(
                     connectedchat.title,
                     conn,
@@ -190,7 +200,7 @@ async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardButton(
                         text="🔌 Disconnect",
                         callback_data="connect_disconnect",
-                     style=KeyboardButtonStyle.DANGER),
+                     style=ButtonStyle.DANGER),
                 )
             else:
                 text = "Write the chat ID or tag to connect!"
@@ -221,7 +231,7 @@ async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 callback_data="connect({})".format(
                                     history["chat_id"],
                                 ),
-                             style=KeyboardButtonStyle.SUCCESS),
+                             style=ButtonStyle.SUCCESS),
                         ],
                     )
                 text += "╘══「 Total {} Chats 」".format(
@@ -237,29 +247,29 @@ async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 conn_hist = None
             await send_message(
-                update.effective_message,
+            message,
                 text,
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=conn_hist,
             )
 
     else:
-        getstatusadmin = await context.bot.get_chat_member(
+        getstatusadmin = await bot.get_chat_member(
             chat.id,
-            update.effective_message.from_user.id,
+            message.from_user.id,
         )
         isadmin = getstatusadmin.status in ("administrator", "creator")
         ismember = getstatusadmin.status in ("member")
         isallow = await asyncio.to_thread(sql.allow_connect_to_chat, chat.id)
         if (isadmin) or (isallow and ismember) or (user.id in DRAGONS):
             connection_status = await asyncio.to_thread(
-                sql.connect, update.effective_message.from_user.id, chat.id
+                sql.connect, message.from_user.id, chat.id
             )
             if connection_status:
-                chat_obj = await dispatcher.bot.get_chat(chat.id)
+                chat_obj = await bot.get_chat(chat.id)
                 chat_name = chat_obj.title
                 await send_message(
-                    update.effective_message,
+            message,
                     "Successfully connected to *{}*.".format(chat_name),
                     parse_mode=ParseMode.MARKDOWN,
                 )
@@ -267,48 +277,51 @@ async def connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await asyncio.to_thread(
                         sql.add_history_conn, user.id, str(chat.id), chat_name
                     )
-                    await context.bot.send_message(
-                        update.effective_message.from_user.id,
+                    await bot.send_message(
+                        message.from_user.id,
                         "You are connected to *{}*. \nUse `/helpconnect` to check available commands.".format(
                             chat_name,
                         ),
                         parse_mode=ParseMode.MARKDOWN,
                     )
-                except BadRequest:
+                except TelegramAPIError:
                     pass
-                except Forbidden:
+                except TelegramAPIError:
                     pass
             else:
-                await send_message(update.effective_message, "ᴄᴏɴɴᴇᴄᴛɪᴏɴ ғᴀɪʟᴇᴅ!")
+                await send_message(
+            message, "ᴄᴏɴɴᴇᴄᴛɪᴏɴ ғᴀɪʟᴇᴅ!")
         else:
             await send_message(
-                update.effective_message,
+            message,
                 "Connection to this chat is not allowed!",
             )
 
 
-async def disconnect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_chat.type == "private":
+async def disconnect_chat(message: Message, command: CommandObject):
+    if message.chat.type == ChatType.PRIVATE:
         disconnection_status = await asyncio.to_thread(
-            sql.disconnect, update.effective_message.from_user.id
+            sql.disconnect, message.from_user.id
         )
         if disconnection_status:
             sql.disconnected_chat = await send_message(
-                update.effective_message,
+            message,
                 "Disconnected from chat!",
             )
         else:
-            await send_message(update.effective_message, "You're not connected!")
+            await send_message(
+            message, "You're not connected!")
     else:
         await send_message(
-            update.effective_message, "This command is only available in PM."
+            message, "This command is only available in PM."
         )
 
 
-async def connected(bot: Bot, update: Update, chat, user_id, need_admin=True):
-    user = update.effective_user
+async def connected(bot: Bot, message: Message, chat, user_id, need_admin=True):
+    """Resolve the caller's linked chat, replying and disconnecting when not allowed."""
+    user = message.from_user
 
-    if chat.type != chat.PRIVATE:
+    if chat.type != ChatType.PRIVATE:
         return False
 
     connection = await asyncio.to_thread(sql.get_connected_chat, user_id)
@@ -316,7 +329,7 @@ async def connected(bot: Bot, update: Update, chat, user_id, need_admin=True):
         conn_id = connection.chat_id
         getstatusadmin = await bot.get_chat_member(
             conn_id,
-            update.effective_message.from_user.id,
+            message.from_user.id,
         )
         isadmin = getstatusadmin.status in ("administrator", "creator")
         ismember = getstatusadmin.status in ("member")
@@ -337,14 +350,14 @@ async def connected(bot: Bot, update: Update, chat, user_id, need_admin=True):
                     return conn_id
                 else:
                     await send_message(
-                        update.effective_message,
+            message,
                         "You must be an admin in the connected group!",
                     )
             else:
                 return conn_id
         else:
             await send_message(
-                update.effective_message,
+            message,
                 "The group changed the connection rights or you are no longer an admin.\nI've disconnected you.",
             )
             await asyncio.to_thread(sql.disconnect, user_id)
@@ -365,20 +378,20 @@ Actions are available with connected groups:
  """
 
 
-async def help_connect_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_message.chat.type != "private":
+async def help_connect_chat(message: Message, command: CommandObject):
+    if message.chat.type != ChatType.PRIVATE:
         await send_message(
-            update.effective_message, "PM me with that command to get help."
+            message, "PM me with that command to get help."
         )
         return
     else:
-        await send_message(update.effective_message, CONN_HELP, parse_mode=ParseMode.MARKDOWN)
+        await send_message(
+            message, CONN_HELP, parse_mode=ParseMode.MARKDOWN)
 
 
-async def connect_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    chat = update.effective_chat
-    user = update.effective_user
+async def connect_button(query: CallbackQuery):
+    chat = query.message.chat
+    user = query.from_user
 
     connect_match = re.match(r"connect\((.+?)\)", query.data)
     disconnect_match = query.data == "connect_disconnect"
@@ -387,7 +400,7 @@ async def connect_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if connect_match:
         target_chat = connect_match.group(1)
-        getstatusadmin = await context.bot.get_chat_member(
+        getstatusadmin = await bot.get_chat_member(
             target_chat, query.from_user.id
         )
         isadmin = getstatusadmin.status in ("administrator", "creator")
@@ -401,9 +414,9 @@ async def connect_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             if connection_status:
                 conn = await connected(
-                    context.bot, update, chat, user.id, need_admin=False
+                    bot, query.message, chat, user.id, need_admin=False
                 )
-                conn_chat = await dispatcher.bot.get_chat(conn)
+                conn_chat = await bot.get_chat(conn)
                 chat_name = conn_chat.title
                 await query.message.edit_text(
                     "Successfully connected to *{}*. Use `/helpconnect` to check available commands.".format(
@@ -419,7 +432,7 @@ async def connect_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.message.edit_text("Connection failed!")
                 await query.answer("Connection failed.", show_alert=True)
         else:
-            await context.bot.answer_callback_query(
+            await bot.answer_callback_query(
                 query.id,
                 "Connection to this chat is not allowed!",
                 show_alert=True,
@@ -434,7 +447,7 @@ async def connect_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             await query.answer()
         else:
-            await context.bot.answer_callback_query(
+            await bot.answer_callback_query(
                 query.id,
                 "You're not connected!",
                 show_alert=True,
@@ -447,7 +460,7 @@ async def connect_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.edit_text("Closed. To open again, type /connect")
         await query.answer()
     else:
-        await context.bot.answer_callback_query(
+        await bot.answer_callback_query(
             query.id, "Invalid callback data.", show_alert=True
         )
 
@@ -472,16 +485,12 @@ __help__ = """
 """
 
 # <================================================ HANDLER =======================================================>
-function(CommandHandler("connect", connect_chat, block=False))
-function(CommandHandler("connection", connection_chat, block=False))
-function(CommandHandler("disconnect", disconnect_chat, block=False))
-function(CommandHandler("allowconnect", allow_connections, block=False))
-function(CommandHandler("helpconnect", help_connect_chat, block=False))
-function(
-    CallbackQueryHandler(
-        connect_button,
-        pattern=r"^(?:connect\(-?\d+\)|connect_(?:disconnect|clear|close))$",
-        block=False,
-    )
+dp.message.register(chain(connect_chat), Command("connect"))
+dp.message.register(chain(connection_chat), Command("connection"))
+dp.message.register(chain(disconnect_chat), Command("disconnect"))
+dp.message.register(chain(allow_connections), Command("allowconnect"))
+dp.message.register(chain(help_connect_chat), Command("helpconnect"))
+dp.callback_query.register(
+    chain(connect_button), F.data.regexp(r"^(?:connect\(-?\d+\)|connect_(?:disconnect|clear|close))$")
 )
 # <================================================ END =======================================================>
