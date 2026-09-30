@@ -5,27 +5,24 @@ from threading import RLock
 from time import monotonic
 from typing import Union
 
+from aiogram.enums import ChatMemberStatus, ParseMode
+from aiogram.exceptions import TelegramAPIError, TelegramForbiddenError
+from aiogram.filters import Command
+from aiogram.types import LinkPreviewOptions, Message
 from cachetools import TTLCache
-
 from pyrogram import Client
 from pyrogram import filters as fil
-from pyrogram.types import Message
-from telegram import ChatMemberAdministrator, LinkPreviewOptions, Update
-from telegram.constants import ParseMode
-from telegram.error import BadRequest, Forbidden, TelegramError
-from telegram.ext import CommandHandler, ContextTypes, MessageHandler, filters
-from telegram.helpers import escape_markdown
 
 import Database.sql.users_sql as sql
 from Database.sql.users_sql import get_all_users
-from Mikobot import DEV_USERS, LOGGER, OWNER_ID, app, dispatcher, function
+from Mikobot import DEV_USERS, LOGGER, OWNER_ID, app, bot, dp
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.plugins.helper_funcs.string_handling import escape_markdown_v2
+from Mikobot.utils.consts import ChatID
+from Mikobot.utils.filters import GROUPS
+from Mikobot.utils.gate import chain
 
 # <=======================================================================================================>
-
-USERS_GROUP = 4
-CHAT_GROUP = 5
 
 BROADCAST_TARGETS = {"-all", "-group", "-user"}
 
@@ -56,7 +53,7 @@ def parse_broadcast_request(text: str, has_reply: bool = False):
 # <================================================ FUNCTION =======================================================>
 # Broadcast Function
 @app.on_message(fil.command("gcast"))
-async def broadcast_cmd(client: Client, message: Message):
+async def broadcast_cmd(client: Client, message):  # kurigram handler
     user_id = message.from_user.id
 
     if user_id not in [OWNER_ID] + DEV_USERS:
@@ -145,8 +142,8 @@ async def get_user_id(username: str) -> Union[int, None]:
     return None
 
 
-async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    to_send = update.effective_message.text.split(None, 1)
+async def broadcast(message: Message):
+    to_send = (message.text or "").split(None, 1)
 
     if len(to_send) >= 2:
         to_group = False
@@ -164,28 +161,28 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if to_group:
             for chat in chats:
                 try:
-                    await context.bot.send_message(
+                    await bot.send_message(
                         int(chat.chat_id),
                         escape_markdown_v2(to_send[1]),
                         parse_mode=ParseMode.MARKDOWN_V2,
                         link_preview_options=LinkPreviewOptions(is_disabled=True),
                     )
                     await asyncio.sleep(1)
-                except TelegramError:
+                except TelegramAPIError:
                     failed += 1
         if to_user:
             for user in users:
                 try:
-                    await context.bot.send_message(
+                    await bot.send_message(
                         int(user.user_id),
                         escape_markdown_v2(to_send[1]),
                         parse_mode=ParseMode.MARKDOWN_V2,
                         link_preview_options=LinkPreviewOptions(is_disabled=True),
                     )
                     await asyncio.sleep(1)
-                except TelegramError:
+                except TelegramAPIError:
                     failed_user += 1
-        await update.effective_message.reply_text(
+        await message.answer(
             f"Broadcast complete.\nGroups failed: {failed}.\nUsers failed: {failed_user}.",
         )
 
@@ -206,9 +203,9 @@ def _mark_user_db_fresh(user_id, username, chat_id, chat_name):
         USER_DB_CACHE[(user_id, chat_id)] = (username, chat_name)
 
 
-async def log_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat = update.effective_chat
-    msg = update.effective_message
+async def log_user(message: Message):
+    chat = message.chat
+    msg = message
 
     if msg.from_user and not _user_db_is_fresh(
         msg.from_user.id, msg.from_user.username, chat.id, chat.title
@@ -249,14 +246,14 @@ async def log_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 @check_admin(only_dev=True)
-async def chats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def chats(message: Message):
     all_chats = await asyncio.to_thread(sql.get_all_chats) or []
     chatfile = "List of chats.\n0. Chat Name | Chat ID | Members Count\n"
     P = 1
     for chat in all_chats:
         try:
-            curr_chat = await context.bot.get_chat(chat.chat_id)
-            chat_members = await context.bot.get_chat_member_count(chat.chat_id)
+            curr_chat = await bot.get_chat(chat.chat_id)
+            chat_members = await bot.get_chat_member_count(chat.chat_id)
             chatfile += "{}. {} | {} | {}\n".format(
                 P,
                 chat.chat_name,
@@ -269,32 +266,31 @@ async def chats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     with BytesIO(str.encode(chatfile)) as output:
         output.name = "groups_list.txt"
-        await update.effective_message.reply_document(
+        await message.answer_document(
             document=output,
             filename="groups_list.txt",
             caption="Here be the list of groups in my database.",
         )
 
 
-async def chat_checker(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    bot = context.bot
-    chat_id = update.effective_chat.id
+async def chat_checker(message: Message):
+    chat_id = message.chat.id
     if chat_id in BOT_STATUS_CACHE:
         return
     try:
-        bot_admin = await update.effective_message.chat.get_member(bot.id)
+        bot_admin = await bot.get_chat_member(chat_id, bot.id)
         BOT_STATUS_CACHE[chat_id] = True
-        if isinstance(bot_admin, ChatMemberAdministrator):
+        if bot_admin.status == ChatMemberStatus.ADMINISTRATOR:
             if bot_admin.can_post_messages is False:
                 await bot.leave_chat(chat_id)
-    except Forbidden:
+    except TelegramForbiddenError:
         BOT_STATUS_CACHE[chat_id] = True
 
 
 def __user_info__(user_id):
-    if user_id in [777000, 1087968824]:
+    if user_id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN):
         return """Groups Count: ???"""
-    if user_id == dispatcher.bot.id:
+    if user_id == bot.id:
         return """Groups Count: ???"""
     num_chats = sql.get_user_num_chats(user_id)
     return f"""Groups Count: {num_chats}"""
@@ -312,19 +308,11 @@ def __migrate__(old_chat_id, new_chat_id):
 # BROADCAST_HANDLER = CommandHandler(
 # ["broadcastall", "broadcastusers", "broadcastgroups"], broadcast, block=False
 # )
-USER_HANDLER = MessageHandler(
-    filters.ALL & filters.ChatType.GROUPS, log_user, block=False
-)
-CHAT_CHECKER_HANDLER = MessageHandler(
-    filters.ALL & filters.ChatType.GROUPS, chat_checker, block=False
-)
-CHATLIST_HANDLER = CommandHandler("groups", chats, block=False)
-
-function(USER_HANDLER, USERS_GROUP)
-# function(BROADCAST_HANDLER)
-function(CHATLIST_HANDLER)
-function(CHAT_CHECKER_HANDLER, CHAT_GROUP)
+# log_user and chat_checker see every group message, so they register first,
+# matching PTB's groups 4 and 5.
+dp.message.register(chain(log_user), GROUPS)
+dp.message.register(chain(chat_checker), GROUPS)
+dp.message.register(chain(chats), Command("groups"))
 
 __mod_name__ = "USERS"
-__handlers__ = [(USER_HANDLER, USERS_GROUP), CHATLIST_HANDLER]
 # <================================================ END =======================================================>
