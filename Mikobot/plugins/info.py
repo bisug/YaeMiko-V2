@@ -4,36 +4,30 @@ import re
 from html import escape
 from random import choice
 
-from telegram import (
-    ChatMemberAdministrator,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    Update,
-)
-from telegram.constants import ChatID, ChatType, ParseMode
-from telegram.error import BadRequest
-from telegram.ext import CommandHandler, ContextTypes
-from telegram.helpers import mention_html
+from aiogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
+from aiogram.exceptions import TelegramAPIError
+from aiogram.filters import Command, CommandObject
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from Database.sql.approve_sql import is_approved
 from Infamous.karma import START_IMG
-from Mikobot import BOT_NAME, DEV_USERS, DRAGONS, INFOPIC, OWNER_ID, function
+from Mikobot import BOT_NAME, DEV_USERS, DRAGONS, INFOPIC, OWNER_ID, bot, dp
 from Mikobot.plugins.helper_funcs.chat_status import support_plus
 from Mikobot.plugins.users import get_user_id
-from telegram.constants import KeyboardButtonStyle
+from Mikobot.utils.consts import ChatID
+from Mikobot.utils.gate import chain
+from Mikobot.utils.parser import mention_html
 
 # <=======================================================================================================>
 
 
 # <================================================ FUNCTION =======================================================>
-async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat = update.effective_chat
-    message = update.effective_message
-    args = context.args
-    bot = context.bot
+async def info(message: Message, command: CommandObject):
+    chat = message.chat
+    args = command.args
 
     def reply_with_text(text):
-        return message.reply_text(text, parse_mode=ParseMode.HTML)
+        return message.answer(text, parse_mode=ParseMode.HTML)
 
     head = ""
     premium = False
@@ -52,7 +46,7 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try:
                 chat_obj = await bot.get_chat(user_name)
                 userid = chat_obj.id
-            except BadRequest:
+            except TelegramAPIError:
                 await reply_with_text(
                     "I can't get information about this user/channel/group."
                 )
@@ -79,7 +73,7 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         chat_obj = await bot.get_chat(userid)
-    except (BadRequest, UnboundLocalError):
+    except (TelegramAPIError, UnboundLocalError):
         await reply_with_text("I can't get information about this user/channel/group.")
         return
 
@@ -103,8 +97,8 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if chat_obj.bio:
             head += f"\n\n<b>➲ Bio:</b> {chat_obj.bio}"
 
-        chat_member = await chat.get_member(chat_obj.id)
-        if isinstance(chat_member, ChatMemberAdministrator):
+        chat_member = await bot.get_chat_member(chat.id, chat_obj.id)
+        if chat_member.status == ChatMemberStatus.ADMINISTRATOR:
             head += f"\n➲ <b>Presence:</b> {chat_member.status}"
             if chat_member.custom_title:
                 head += f"\n➲ <b>Admin Title:</b> {chat_member.custom_title}"
@@ -179,9 +173,10 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if INFOPIC:
         try:
             if chat_obj.photo:
-                _file = await chat_obj.photo.get_big_file()
-                await _file.download_to_drive(f"{chat_obj.id}.png")
-                await message.reply_photo(
+                await bot.download(
+                    chat_obj.photo[-1].file_id, destination=f"{chat_obj.id}.png"
+                )
+                await message.answer_photo(
                     photo=open(f"{chat_obj.id}.png", "rb"),
                     caption=(head),
                     parse_mode=ParseMode.HTML,
@@ -195,7 +190,7 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 @support_plus
-async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def stats(message: Message):
     from Mikobot.__main__ import STATS
 
     stats = f"📊 <b>{escape(BOT_NAME)}'s Statistics:</b>\n\n" + "\n".join(
@@ -206,14 +201,16 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [
             InlineKeyboardButton(
-                "㊋ Infamous • Hydra", url="https://t.me/Infamous_Hydra"
-            , style=KeyboardButtonStyle.PRIMARY),
+                "㊋ Infamous • Hydra",
+                url="https://t.me/Infamous_Hydra",
+                style=ButtonStyle.PRIMARY,
+            ),
         ]
     ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.effective_message.reply_photo(
+    await message.answer_photo(
         photo=str(choice(START_IMG)),
         caption=result,
         parse_mode=ParseMode.HTML,
@@ -233,13 +230,9 @@ __help__ = """
 """
 
 # <================================================ HANDLER =======================================================>
-STATS_HANDLER = CommandHandler(["stats", "gstats"], stats, block=False)
-INFO_HANDLER = CommandHandler(("info", "book"), info, block=False)
-
-function(STATS_HANDLER)
-function(INFO_HANDLER)
+dp.message.register(chain(stats), Command(["stats", "gstats"]))
+dp.message.register(chain(info), Command(("info", "book")))
 
 __mod_name__ = "INFO"
 __command_list__ = ["info"]
-__handlers__ = [INFO_HANDLER, STATS_HANDLER]
 # <================================================ END =======================================================>
