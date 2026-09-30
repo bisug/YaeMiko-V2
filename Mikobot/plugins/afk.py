@@ -4,28 +4,30 @@ import random
 from datetime import datetime
 
 import humanize
-from telegram import MessageEntity, Update
-from telegram.error import BadRequest
-from telegram.ext import ContextTypes, MessageHandler, filters
+from aiogram import F
+from aiogram.enums import ParseMode
+from aiogram.exceptions import TelegramAPIError
+from aiogram.types import Message
 
 from Database.sql import afk_sql as sql
-from Mikobot import LOGGER, function
-from Mikobot.plugins.disable import DisableAbleCommandHandler, DisableAbleMessageHandler
+from Mikobot import dp
+from Mikobot.plugins.disable import disableable, disableable_friendly
+from Mikobot.plugins.helper_funcs.string_handling import entities_map
 from Mikobot.plugins.users import get_user_id
+from Mikobot.utils.filters import GROUPS
+from Mikobot.utils.gate import chain
 
 # <=======================================================================================================>
 
-AFK_GROUP = 7
-AFK_REPLY_GROUP = 8
+MENTION_ENTITIES = ["text_mention", "mention"]
 
 
 # <================================================ FUNCTION =======================================================>
-async def afk(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_message.text:
-        args = update.effective_message.text.split(None, 1)
-    else:
+async def afk(message: Message):
+    if not message.text:
         return
-    user = update.effective_user
+    args = message.text.split(None, 1)
+    user = message.from_user
 
     if not user:  # ignore channels
         return
@@ -39,25 +41,22 @@ async def afk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         reason = ""
 
-    sql.set_afk(update.effective_user.id, reason)
-    fname = update.effective_user.first_name
+    sql.set_afk(user.id, reason)
+    fname = user.first_name
     try:
         if reason:
-            await update.effective_message.reply_text(
+            await message.answer(
                 f"➲ {fname} is now away! \n\n➦ Reason: <code>{reason}</code> \n {notice}",
-                parse_mode="html",
+                parse_mode=ParseMode.HTML,
             )
         else:
-            await update.effective_message.reply_text(
-                "➲ {} is now away!{}".format(fname, notice),
-            )
-    except BadRequest:
+            await message.answer("➲ {} is now away!{}".format(fname, notice))
+    except TelegramAPIError:
         pass
 
 
-async def no_longer_afk(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    message = update.effective_message
+async def no_longer_afk(message: Message):
+    user = message.from_user
 
     if not user:  # ignore channels
         return
@@ -71,7 +70,7 @@ async def no_longer_afk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if res:
         if message.new_chat_members:  # dont say msg
             return
-        firstname = update.effective_user.first_name
+        firstname = user.first_name
         try:
             options = [
                 "➲ {} is here!",
@@ -83,39 +82,33 @@ async def no_longer_afk(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "➲ Welcome back! {}",
             ]
             chosen_option = random.choice(options)
-            await update.effective_message.reply_text(
+            await message.answer(
                 chosen_option.format(firstname)
                 + f"\n\nYou were AFK for: <code>{time}</code>",
-                parse_mode="html",
+                parse_mode=ParseMode.HTML,
             )
-        except:
+        except TelegramAPIError:
             return
 
 
-async def reply_afk(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = update.effective_message
-    userc = update.effective_user
+async def reply_afk(message: Message):
+    userc = message.from_user
     userc_id = userc.id
-    if message.entities and message.parse_entities(
-        [MessageEntity.TEXT_MENTION, MessageEntity.MENTION],
-    ):
-        entities = message.parse_entities(
-            [MessageEntity.TEXT_MENTION, MessageEntity.MENTION],
-        )
+    chk_users = []
 
-        chk_users = []
-        for ent in entities:
-            if ent.type == MessageEntity.TEXT_MENTION:
-                user_id = ent.user.id
-                fst_name = ent.user.first_name
+    if message.entities and entities_map(message, MENTION_ENTITIES):
+        entities = list(entities_map(message, MENTION_ENTITIES))
+        ent = entities[0] if entities else None
+        if ent.type == "text_mention":
+            user_id = ent.user.id
+            fst_name = ent.user.first_name
 
-                if user_id in chk_users:
-                    return
-                chk_users.append(user_id)
-
-            if ent.type != MessageEntity.MENTION:
+            if user_id in chk_users:
                 return
-
+            chk_users.append(user_id)
+        elif ent.type != "mention":
+            return
+        else:
             user_id = await get_user_id(
                 message.text[ent.offset : ent.offset + ent.length],
             )
@@ -127,17 +120,16 @@ async def reply_afk(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chk_users.append(user_id)
 
             fst_name = message.text[ent.offset : ent.offset + ent.length].lstrip("@")
-            await check_afk(update, context, user_id, fst_name, userc_id)
+            await check_afk(message, user_id, fst_name, userc_id)
 
     elif message.reply_to_message:
         user_id = message.reply_to_message.from_user.id
         fst_name = message.reply_to_message.from_user.first_name
-        await check_afk(update, context, user_id, fst_name, userc_id)
+        await check_afk(message, user_id, fst_name, userc_id)
 
 
 async def check_afk(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
+    message: Message,
     user_id: int,
     fst_name: str,
     userc_id: int,
@@ -155,7 +147,7 @@ async def check_afk(
                 fst_name,
                 time,
             )
-            await update.effective_message.reply_text(res)
+            await message.answer(res)
         else:
             res = (
                 "➲ {} is afk.\n\n➦ Reason: <code>{}</code>\n➦ Last seen {} ago.".format(
@@ -164,7 +156,7 @@ async def check_afk(
                     time,
                 )
             )
-            await update.effective_message.reply_text(res, parse_mode="html")
+            await message.answer(res, parse_mode=ParseMode.HTML)
 
 
 # <=================================================== HELP ====================================================>
@@ -185,28 +177,17 @@ __help__ = """
 """
 
 # <================================================ HANDLER =======================================================>
-AFK_HANDLER = DisableAbleCommandHandler("afk", afk, block=False)
-AFK_REGEX_HANDLER = DisableAbleMessageHandler(
-    filters.Regex(r"^(?i:(brb|!afk))( .*)?$"), afk, friendly="afk", block=False
+# Every one of these matched a message in PTB and all of them ran, so each is
+# chained; otherwise the first match would swallow the rest.
+dp.message.register(chain(afk), *disableable("afk"))
+dp.message.register(
+    chain(afk),
+    disableable_friendly("afk"),
+    F.text.regexp(r"^(?i:(brb|!afk))( .*)?$"),
 )
-NO_AFK_HANDLER = MessageHandler(
-    filters.ALL & filters.ChatType.GROUPS, no_longer_afk, block=False
-)
-AFK_REPLY_HANDLER = MessageHandler(
-    filters.ALL & filters.ChatType.GROUPS, reply_afk, block=False
-)
-
-function(AFK_HANDLER, AFK_GROUP)
-function(AFK_REGEX_HANDLER, AFK_GROUP)
-function(NO_AFK_HANDLER, AFK_GROUP)
-function(AFK_REPLY_HANDLER, AFK_REPLY_GROUP)
+dp.message.register(chain(no_longer_afk), GROUPS)
+dp.message.register(chain(reply_afk), GROUPS)
 
 __mod_name__ = "AFK"
 __command_list__ = ["afk"]
-__handlers__ = [
-    (AFK_HANDLER, AFK_GROUP),
-    (AFK_REGEX_HANDLER, AFK_GROUP),
-    (NO_AFK_HANDLER, AFK_GROUP),
-    (AFK_REPLY_HANDLER, AFK_REPLY_GROUP),
-]
 # <================================================ END =======================================================>

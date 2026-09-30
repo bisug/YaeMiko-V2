@@ -3,14 +3,15 @@ import os
 from functools import partial
 from urllib.parse import quote
 
+from aiogram import F
+from aiogram.enums import ButtonStyle, ParseMode
+from aiogram.filters import Command, CommandObject
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from httpx import HTTPError
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.constants import ParseMode
-from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
 
-from Mikobot import function
+from Mikobot import dp
 from Mikobot.state import state
-from telegram.constants import KeyboardButtonStyle
+from Mikobot.utils.gate import chain
 
 SPORTDB_KEY = os.getenv("SPORTDB_API_KEY", "123")
 SPORTDB_URL = f"https://www.thesportsdb.com/api/v1/json/{SPORTDB_KEY}"
@@ -68,53 +69,55 @@ def _league_keyboard(sport: str, leagues: list[dict]) -> InlineKeyboardMarkup:
             InlineKeyboardButton(
                 _escape(item.get("strLeague"), 35),
                 callback_data=f"sport_league:{sport}:{item['idLeague']}",
-             style=KeyboardButtonStyle.PRIMARY)
+                style=ButtonStyle.PRIMARY,
+            )
         ]
         for item in leagues
     ]
     return InlineKeyboardMarkup(rows)
 
 
-async def _show_leagues(update: Update, sport: str) -> None:
-    message = update.effective_message
+def _back_keyboard(sport: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("⬅️ Leagues", callback_data=f"sport_menu:{sport}", style=ButtonStyle.PRIMARY)]]
+    )
+
+
+async def _show_leagues(message: Message, sport: str) -> None:
     try:
         leagues = await get_leagues(sport)
         if not leagues:
-            await message.reply_text(f"No {sport} leagues are currently available.")
+            await message.answer(f"No {sport} leagues are currently available.")
             return
-        await message.reply_text(
+        await message.answer(
             f"Select a {sport} league:",
             reply_markup=_league_keyboard(sport, leagues),
         )
     except HTTPError:
-        await message.reply_text("TheSportsDB is unavailable. Please try again later.")
+        await message.answer("TheSportsDB is unavailable. Please try again later.")
     except (ValueError, TypeError, KeyError):
-        await message.reply_text("TheSportsDB returned incomplete league data.")
+        await message.answer("TheSportsDB returned incomplete league data.")
 
 
-async def _send_league_message(message, sport: str, league_id: str) -> None:
+async def _send_league_message(message: Message, sport: str, league_id: str) -> None:
     try:
         matches = await get_matches(league_id)
         if not matches:
-            await message.reply_text(f"No upcoming {sport} matches found.")
+            await message.answer(f"No upcoming {sport} matches found.")
             return
         text = "\n\n".join(_format_match(match, sport) for match in matches[:10])
-        await message.reply_text(
+        await message.answer(
             text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("⬅️ Leagues", callback_data=f"sport_menu:{sport}", style=KeyboardButtonStyle.PRIMARY)]]
-            ),
+            reply_markup=_back_keyboard(sport),
         )
     except HTTPError:
-        await message.reply_text("TheSportsDB is unavailable. Please try again later.")
+        await message.answer("TheSportsDB is unavailable. Please try again later.")
     except (ValueError, TypeError, KeyError):
-        await message.reply_text("TheSportsDB returned incomplete match data.")
+        await message.answer("TheSportsDB returned incomplete match data.")
 
 
-
-async def _send_league(update: Update, sport: str, league_id: str) -> None:
-    query = update.callback_query
+async def _send_league(query: CallbackQuery, sport: str, league_id: str) -> None:
     await query.answer()
     try:
         matches = await get_matches(league_id)
@@ -125,9 +128,7 @@ async def _send_league(update: Update, sport: str, league_id: str) -> None:
         await query.message.edit_text(
             text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("⬅️ Leagues", callback_data=f"sport_menu:{sport}", style=KeyboardButtonStyle.PRIMARY)]]
-            ),
+            reply_markup=_back_keyboard(sport),
         )
     except HTTPError:
         await query.message.edit_text("TheSportsDB is unavailable. Please try again later.")
@@ -135,8 +136,7 @@ async def _send_league(update: Update, sport: str, league_id: str) -> None:
         await query.message.edit_text("TheSportsDB returned incomplete match data.")
 
 
-async def _show_menu(update: Update, sport: str) -> None:
-    query = update.callback_query
+async def _show_menu(query: CallbackQuery, sport: str) -> None:
     await query.answer()
     try:
         leagues = await get_leagues(sport)
@@ -153,32 +153,33 @@ async def _show_menu(update: Update, sport: str) -> None:
         await query.message.edit_text("TheSportsDB returned incomplete league data.")
 
 
-async def get_sport_matches(update: Update, context: ContextTypes.DEFAULT_TYPE, sport: str) -> None:
-    if not update.effective_message:
-        return
-    if len(context.args) == 1 and context.args[0].isdigit():
-        await _send_league_message(update.effective_message, sport, context.args[0])
+async def get_sport_matches(message: Message, command: CommandObject, sport: str) -> None:
+    if len(command.args) == 1 and command.args[0].isdigit():
+        await _send_league_message(message, sport, command.args[0])
     else:
-        await _show_leagues(update, sport)
+        await _show_leagues(message, sport)
 
 
-async def sport_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    if not query or not query.data.startswith("sport_"):
+async def sport_callback(query: CallbackQuery) -> None:
+    if not query.data.startswith("sport_"):
         return
     parts = query.data.split(":")
     try:
         if parts[1] == "menu":
-            await _show_menu(update, parts[2])
+            await _show_menu(query, parts[2])
         else:
-            await _send_league(update, parts[1], parts[2])
+            await _send_league(query, parts[1], parts[2])
     except (IndexError, ValueError):
         await query.answer("Invalid selection.", show_alert=True)
 
 
-function(CommandHandler("cricket", partial(get_sport_matches, sport="cricket")))
-function(CommandHandler("football", partial(get_sport_matches, sport="football")))
-function(CallbackQueryHandler(sport_callback, pattern=r"^sport_(?:league|menu):", block=False))
+dp.message.register(
+    partial(get_sport_matches, sport="cricket"), Command("cricket")
+)
+dp.message.register(
+    partial(get_sport_matches, sport="football"), Command("football")
+)
+dp.callback_query.register(chain(sport_callback), F.data.regexp(r"^sport_(?:league|menu):"))
 
 __help__ = """
 🏅 <b>Sports schedules</b>
