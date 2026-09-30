@@ -114,33 +114,27 @@ class EnvironmentTests(unittest.TestCase):
     def test_ptb_application_is_imported(self):
         source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
         tree = ast.parse(source)
-        self.assertIn(
-            ("telegram.ext", "Application"),
-            {
-                (node.module, alias.name)
-                for node in tree.body
-                if isinstance(node, ast.ImportFrom) and node.module
-                for alias in node.names
-            },
-        )
-
-    def test_ptb_persistence_is_configured_for_context_data(self):
-        source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
-        tree = ast.parse(source)
         imports = {
             (node.module, alias.name)
             for node in tree.body
             if isinstance(node, ast.ImportFrom) and node.module
             for alias in node.names
         }
-        self.assertIn(("telegram.ext", "PicklePersistence"), imports)
-        self.assertIn(("telegram.ext", "PersistenceInput"), imports)
-        self.assertIn("PicklePersistence(", source)
-        self.assertIn(".persistence(persistence)", source)
-        self.assertIn("chat_data=True", source)
-        self.assertIn("user_data=True", source)
-        self.assertIn("bot_data=False", source)
-        self.assertIn("callback_data=False", source)
+        self.assertIn(("aiogram", "Bot"), imports)
+        self.assertIn(("aiogram", "Dispatcher"), imports)
+        self.assertIn("Dispatcher(storage=MemoryStorage())", source)
+
+    def test_ptb_persistence_is_configured_for_context_data(self):
+        source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
+        self.assertIn("open_store(", source)
+        self.assertIn("chat_data = store.chat_data", source)
+        self.assertIn("user_data = store.user_data", source)
+        persistence = (ROOT / "Mikobot/utils/persistence.py").read_text(encoding="utf-8")
+        self.assertIn("def chat_data", persistence)
+        self.assertIn("def user_data", persistence)
+        self.assertIn("os.replace(tmp, self.filepath)", persistence)
+        gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+        self.assertIn("ptb_persistence.pickle", gitignore)
         gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
         self.assertIn("ptb_persistence.pickle", gitignore)
 
@@ -156,11 +150,15 @@ class EnvironmentTests(unittest.TestCase):
 
     def test_ptb_updates_are_processed_concurrently(self):
         source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
-        self.assertIn(".concurrent_updates(64)", source)
-        self.assertIn("from telegram.ext import AIORateLimiter, Application", source)
-        self.assertIn(".rate_limiter(AIORateLimiter())", source)
+        self.assertIn("session=ThrottledSession()", source)
+        throttle = (ROOT / "Mikobot/utils/throttle.py").read_text(encoding="utf-8")
+        self.assertIn("class ThrottledSession(AiohttpSession)", throttle)
+        self.assertIn("async def make_request", throttle)
+        jobs = (ROOT / "Mikobot/utils/jobs.py").read_text(encoding="utf-8")
+        self.assertIn("AsyncIOScheduler", jobs)
         requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
-        self.assertIn("python-telegram-bot[rate-limiter,job-queue]==22.8", requirements)
+        self.assertIn("aiogram==3.31.0", requirements)
+        self.assertNotIn("python-telegram-bot", requirements)
 
     def test_disabled_antiflood_skips_admin_lookup(self):
         source = (ROOT / "Mikobot/plugins/flood.py").read_text(encoding="utf-8")
@@ -371,9 +369,10 @@ class StartupTests(unittest.TestCase):
 
     def test_startup_fetches_and_displays_bot_identity(self):
         source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
+        self.assertIn("bot_info = loop.run_until_complete(bot.me())", source)
         self.assertLess(
-            source.index("dispatcher.bot.initialize()"),
-            source.index("dispatcher.bot.get_me()"),
+            source.index('LOGGER.info("Getting bot information")'),
+            source.index("bot_info = loop.run_until_complete(bot.me())"),
         )
         self.assertIn("BOT_ID = bot_info.id", source)
         self.assertIn("BOT_NAME = bot_info.first_name", source)

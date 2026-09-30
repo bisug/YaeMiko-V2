@@ -12,17 +12,18 @@ import logging.handlers
 
 import logging
 import os
-import sys
 import time
 from html import escape
 from random import choice
 
-import telegram
-import telegram.ext as tg
-from pyrogram import Client, errors
-from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.constants import ParseMode
-from telegram.ext import AIORateLimiter, Application, PersistenceInput, PicklePersistence
+from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.fsm.storage.memory import MemoryStorage
+from pyrogram import Client
+
+from Mikobot.utils.persistence import open_store
+from Mikobot.utils.throttle import ThrottledSession
 
 # <=======================================================================================================>
 
@@ -149,15 +150,6 @@ def _configure_logging():
 
 _configure_logging()
 LOGGER = logging.getLogger(__name__)
-
-# <================================================ SYS =======================================================>
-# Check Python version
-if sys.version_info < (3, 6):
-    LOGGER.error(
-        "You MUST have a Python version of at least 3.6! Multiple features depend on this. Bot quitting."
-    )
-    sys.exit(1)
-# <=======================================================================================================>
 
 # <================================================ ENV VARIABLES =======================================================>
 # Determine whether the bot is running in an environment with environment variables or not
@@ -304,25 +296,17 @@ CONFIG_TIGERS = set(TIGERS)
 # <=======================================================================================================>
 
 # <============================================== INITIALIZE APPLICATION =========================================================>
-# Initialize the application builder and add a handler
-persistence = PicklePersistence(
-    filepath=os.path.join(os.path.dirname(__file__), "..", "ptb_persistence.pickle"),
-    store_data=PersistenceInput(
-        bot_data=False,
-        chat_data=True,
-        user_data=True,
-        callback_data=False,
-    ),
+# Initialize the bot and dispatcher, then add handlers
+bot = Bot(
+    token=TOKEN,
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    session=ThrottledSession(),
 )
-dispatcher = (
-    Application.builder()
-    .token(TOKEN)
-    .concurrent_updates(64)
-    .rate_limiter(AIORateLimiter())
-    .persistence(persistence)
-    .build()
-)
-function = dispatcher.add_handler
+dp = Dispatcher(storage=MemoryStorage())
+dispatcher = dp
+store = open_store(os.path.join(os.path.dirname(__file__), "..", "ptb_persistence.pickle"))
+chat_data = store.chat_data
+user_data = store.user_data
 # <=======================================================================================================>
 
 # <================================================ BOOT MESSAGE=======================================================>
@@ -340,8 +324,6 @@ ALIVE_IMG = [
 
 # <==================================================== BOOT FUNCTION ===================================================>
 async def send_booting_message():
-    bot = dispatcher.bot
-
     try:
         await bot.send_photo(
             chat_id=SUPPORT_ID,
@@ -360,11 +342,9 @@ async def send_booting_message():
 
 
 # <================================================= EXTBOT ======================================================>
-loop.run_until_complete(dispatcher.bot.initialize())
-
 # <=============================================== GETTING BOT INFO ========================================================>
 LOGGER.info("Getting bot information")
-bot_info = loop.run_until_complete(dispatcher.bot.get_me())
+bot_info = loop.run_until_complete(bot.me())
 BOT_ID = bot_info.id
 BOT_NAME = bot_info.first_name
 BOT_USERNAME = bot_info.username
