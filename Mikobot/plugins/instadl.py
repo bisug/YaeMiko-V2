@@ -67,6 +67,6 @@ async def instadl_command_handler(message: Message, command: CommandObject):
 
 dp.message.register(
     instadl_command_handler,
-    Command(["ig", "instagram", "insta", "instadl"]),
+    Command(commands=["ig", "instagram", "insta", "instadl"]),
 )
 # <================================================ END =======================================================>

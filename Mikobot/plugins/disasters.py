@@ -168,8 +168,8 @@ async def addtiger(message: Message, command: CommandObject) -> str:
 # Other functions can be refactored similarly...
 
 dp.message.register(chain(addsudo), Command("addsudo"))
-dp.message.register(chain(addsupport), Command(("addsupport", "adddemon")))
+dp.message.register(chain(addsupport), Command(commands=("addsupport", "adddemon")))
 dp.message.register(chain(addtiger), Command("addtiger"))
-dp.message.register(chain(addwhitelist), Command(("addwhitelist", "addwolf")))
+dp.message.register(chain(addwhitelist), Command(commands=("addwhitelist", "addwolf")))
 
 __mod_name__ = "Devs"

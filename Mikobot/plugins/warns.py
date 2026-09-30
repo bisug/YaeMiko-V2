@@ -515,11 +515,11 @@ be a sentence, encompass it with quotes, as such: `/addwarn "very angry" This is
 # The filter matcher sees every group text message, so it registers first,
 # matching PTB's group 9 ordering.
 dp.message.register(chain(reply_filter), GROUPS, F.text)
-dp.message.register(chain(warn_user), GROUPS, Command(["warn", "dwarn"]))
-dp.message.register(chain(reset_warns), GROUPS, Command(["resetwarn", "resetwarns"]))
+dp.message.register(chain(warn_user), GROUPS, Command(commands=["warn", "dwarn"]))
+dp.message.register(chain(reset_warns), GROUPS, Command(commands=["resetwarn", "resetwarns"]))
 dp.message.register(chain(warns), GROUPS, *disableable("warns"))
 dp.message.register(chain(add_warn_filter), GROUPS, Command("addwarn"))
-dp.message.register(chain(remove_warn_filter), GROUPS, Command(["nowarn", "stopwarn"]))
+dp.message.register(chain(remove_warn_filter), GROUPS, Command(commands=["nowarn", "stopwarn"]))
 dp.message.register(
     chain(list_warn_filters),
     GROUPS,

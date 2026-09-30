@@ -557,6 +557,6 @@ dp.message.register(
 )
 dp.message.register(chain(add_blackliststicker), *disableable("addblsticker"))
 dp.message.register(
-    chain(unblackliststicker), Command(["unblsticker", "rmblsticker"])
+    chain(unblackliststicker), Command(commands=["unblsticker", "rmblsticker"])
 )
 dp.message.register(chain(blacklist_mode), Command("blstickermode"))

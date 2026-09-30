@@ -11,6 +11,7 @@ import time
 from platform import python_version
 from random import choice
 
+import aiogram
 import psutil
 import pyrogram
 from aiogram import F
@@ -471,7 +472,7 @@ async def help_button(query: CallbackQuery):
 
         await query.answer()
 
-    except BadRequest:
+    except TelegramAPIError:
         pass
 
 
@@ -786,7 +787,7 @@ async def settings_button(query: CallbackQuery):
         # ensure no spinny white circle
         await query.answer()
         await query.message.delete()
-    except BadRequest as excp:
+    except TelegramAPIError as excp:
         if excp.message not in [
             "Message is not modified",
             "Query_id_invalid",

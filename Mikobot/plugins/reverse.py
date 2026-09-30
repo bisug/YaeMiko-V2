@@ -107,5 +107,5 @@ async def reverse_image_search(message: Message):
 
 dp.message.register(
     reverse_image_search,
-    Command(["reverse", "pp", "p", "grs", "sauce"]),
+    Command(commands=["reverse", "pp", "p", "grs", "sauce"]),
 )

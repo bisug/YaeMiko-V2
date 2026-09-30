@@ -230,8 +230,8 @@ __help__ = """
 """
 
 # <================================================ HANDLER =======================================================>
-dp.message.register(chain(stats), Command(["stats", "gstats"]))
-dp.message.register(chain(info), Command(("info", "book")))
+dp.message.register(chain(stats), Command(commands=["stats", "gstats"]))
+dp.message.register(chain(info), Command(commands=("info", "book")))
 
 __mod_name__ = "INFO"
 __command_list__ = ["info"]

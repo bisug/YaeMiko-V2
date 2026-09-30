@@ -238,6 +238,6 @@ __help__ = """
 
 dp.message.register(chain(mute), Command("mute"))
 dp.message.register(chain(unmute), Command("unmute"))
-dp.message.register(chain(temp_mute), Command(["tmute", "tempmute"]))
+dp.message.register(chain(temp_mute), Command(commands=["tmute", "tempmute"]))
 
 __mod_name__ = "MUTE"

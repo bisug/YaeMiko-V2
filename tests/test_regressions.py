@@ -1064,6 +1064,41 @@ class DatabaseRegressionTests(unittest.TestCase):
                         )
         self.assertEqual(offenders, [])
 
+    def test_command_filters_are_constructed_correctly(self):
+        # Command() takes `commands` keyword-only: a list passed positionally
+        # lands in *values and is rejected as a non-str pattern, which crashed
+        # eight plugins at import. Constructing each filter proves the bot can
+        # import without a live token.
+        try:
+            from aiogram.filters import Command
+        except ModuleNotFoundError:
+            self.skipTest("aiogram is not installed")
+
+        bad = []
+        for path in sorted((ROOT / "Mikobot").rglob("*.py")):
+            if "__pycache__" in path.parts:
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                if not (isinstance(node.func, ast.Name) and node.func.id == "Command"):
+                    continue
+                try:
+                    args = [ast.literal_eval(a) for a in node.args]
+                    kwargs = {
+                        kw.arg: ast.literal_eval(kw.value) for kw in node.keywords
+                    }
+                except (ValueError, TypeError, SyntaxError):
+                    # A non-literal argument (a loop variable, say) cannot be
+                    # checked here; the filter is built at import instead.
+                    continue
+                try:
+                    Command(*args, **kwargs)
+                except (ValueError, TypeError) as error:
+                    bad.append(f"{path.relative_to(ROOT)}:{node.lineno} {error}")
+        self.assertEqual(bad, [])
+
     def test_note_and_filter_buttons_commit_with_their_parent(self):
         for relative, names in {
             "Database/sql/notes_sql.py": {"add_note_to_db"},
