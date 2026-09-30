@@ -211,7 +211,7 @@ async def temp_mute(message: Message, command: CommandObject) -> str:
     except TelegramAPIError as excp:
         if "reply message not found" in str(excp.message or excp).lower():
             # Do not reply
-            await message.answer(f"Muted for {time_val}!", do_quote=False)
+            await message.answer(f"Muted for {time_val}!")
             return log
         else:
             LOGGER.exception(

@@ -130,7 +130,7 @@ async def warn(
                 reply,
                 reply_markup=keyboard,
                 parse_mode=ParseMode.HTML,
-                do_quote=False,
+
             )
         else:
             raise

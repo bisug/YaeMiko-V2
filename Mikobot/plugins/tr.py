@@ -237,7 +237,7 @@ async def echo(message: Message, command: CommandObject):
     else:
         await message.answer(
             args[1],
-            do_quote=False,
+
             parse_mode=ParseMode.MARKDOWN,
             link_preview_options=LinkPreviewOptions(is_disabled=True),
         )

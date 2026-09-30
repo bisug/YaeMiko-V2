@@ -1031,6 +1031,41 @@ class DatabaseRegressionTests(unittest.TestCase):
         self.assertIn("id=str(uuid4())", misc)
         self.assertNotIn("thumb_url=thumb_url", misc)
 
+    def test_no_ptb_only_keyword_arguments_survive(self):
+        # PTB reply helpers took do_quote=; neither aiogram nor kurigram
+        # accepts it, so any survivor raises TypeError at call time rather
+        # than at import. Eleven of these were live across the migrated
+        # plugins, so this checks every send/reply call site.
+        removed = {"do_quote", "quote"}
+        offenders = []
+        for path in ROOT.rglob("*.py"):
+            if "__pycache__" in path.parts:
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                func = node.func
+                if not isinstance(func, ast.Attribute) or func.attr not in {
+                    "answer",
+                    "reply",
+                    "reply_text",
+                    "send_message",
+                    "send_photo",
+                    "send_document",
+                    "send_video",
+                    "send_audio",
+                    "send_voice",
+                    "send_sticker",
+                }:
+                    continue
+                for keyword in node.keywords:
+                    if keyword.arg in removed:
+                        offenders.append(
+                            f"{path.relative_to(ROOT)}:{node.lineno} {func.attr}({keyword.arg}=...)"
+                        )
+        self.assertEqual(offenders, [])
+
     def test_note_and_filter_buttons_commit_with_their_parent(self):
         for relative, names in {
             "Database/sql/notes_sql.py": {"add_note_to_db"},
@@ -1297,9 +1332,8 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
         async def answer_query(*args, **kwargs):
             return None
 
-        # Malformed callback data must be answered, not raised. admin.py and
-        # ban.py take the CallbackQuery directly; welcome.py is still on PTB
-        # and takes (update, context).
+        # Malformed callback data must be answered, not raised. All three
+        # now take the CallbackQuery directly.
         admin_callback = load_function(
             ROOT / "Mikobot/plugins/admin.py",
             "admin_callback",
@@ -1340,19 +1374,16 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
             ROOT / "Mikobot/plugins/welcome.py",
             "user_button",
             {
-                "Update": object,
-                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
                 "re": __import__("re"),
             },
         )
         await user_button(
             SimpleNamespace(
-                callback_query=SimpleNamespace(data="user_join_invalid", answer=answer_query),
-                effective_chat=None,
-                effective_user=SimpleNamespace(id=1),
-                effective_message=None,
+                data="user_join_invalid",
+                from_user=SimpleNamespace(id=1),
+                message=SimpleNamespace(chat=SimpleNamespace(id=5)),
+                answer=answer_query,
             ),
-            SimpleNamespace(bot=SimpleNamespace()),
         )
 
 

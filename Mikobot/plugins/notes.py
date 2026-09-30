@@ -418,7 +418,7 @@ async def list_notes(message: Message):
             await message.reply_text("No notes in this chat!")
         except TelegramAPIError:
             await message.reply_text(
-                "No notes in this chat!", do_quote=False
+                "No notes in this chat!"
             )
 
     elif len(msg) != 0:

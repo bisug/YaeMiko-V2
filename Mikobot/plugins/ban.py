@@ -194,7 +194,7 @@ async def ban(message: Message, command: CommandObject) -> str:
             # Do not reply
             if silent:
                 return log
-            await message.answer("Banned!", do_quote=False)
+            await message.answer("Banned!")
             return log
         else:
             LOGGER.exception(
@@ -282,7 +282,7 @@ async def temp_ban(message: Message, command: CommandObject) -> str:
             # Do not reply
             await message.answer(
                 f"Banned! User will be banned for {time_val}.",
-                do_quote=False,
+
             )
             return log
         else:

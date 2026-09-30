@@ -12,7 +12,7 @@ async def send_message(message, text, *args, **kwargs):
     try:
         return await message.answer(text, *args, **kwargs)
     except TelegramAPIError:
-        return await message.answer(text, *args, do_quote=False, **kwargs)
+        return await message.answer(text, *args, **kwargs)
 
 
 def typing_action(func):

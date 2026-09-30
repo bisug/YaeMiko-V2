@@ -9,6 +9,8 @@ from Database.mongodb.sangmata_db import (
     sangmata_off,
     sangmata_on,
 )
+from pyrogram.types import ReplyParameters
+
 from Mikobot import app
 from Mikobot.utils.can_restrict import can_restrict
 from Mikobot.utils.custom_filters import PREFIX_HANDLER
@@ -76,7 +78,14 @@ async def cek_mataa(_, ctx: Message, strings):
             ctx.from_user.last_name,
         )
     if msg != "":
-        await ctx.reply(msg, do_quote=False)
+        # kurigram's ctx.reply() always quotes; an empty ReplyParameters is
+        # how it is told not to.
+        await app.send_message(
+            chat_id=ctx.chat.id,
+            message_thread_id=getattr(ctx, "message_thread_id", None),
+            text=msg,
+            reply_parameters=ReplyParameters(),
+        )
 
 
 @app.on_message(
