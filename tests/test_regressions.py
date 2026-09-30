@@ -1297,27 +1297,23 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
         async def answer_query(*args, **kwargs):
             return None
 
-        # Malformed callback data must be answered, not raised. admin.py is
-        # still on PTB and takes (update, context); ban.py has moved to
-        # aiogram and takes the CallbackQuery directly.
-        ptb_callback = load_function(
+        # Malformed callback data must be answered, not raised. admin.py and
+        # ban.py take the CallbackQuery directly; welcome.py is still on PTB
+        # and takes (update, context).
+        admin_callback = load_function(
             ROOT / "Mikobot/plugins/admin.py",
             "admin_callback",
             {
-                "Update": object,
-                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
                 "loggable": lambda function: function,
             },
         )
-        await ptb_callback(
+        await admin_callback(
             SimpleNamespace(
-                callback_query=SimpleNamespace(
-                    data="admin_", from_user=SimpleNamespace(id=1), answer=answer_query
-                ),
-                effective_chat=None,
-                effective_message=None,
+                data="admin_",
+                from_user=SimpleNamespace(id=1),
+                message=SimpleNamespace(chat=SimpleNamespace(id=5)),
+                answer=answer_query,
             ),
-            SimpleNamespace(args=[], bot=SimpleNamespace(), chat_data={}),
         )
 
         bans_callback = load_function(

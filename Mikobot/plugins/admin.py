@@ -2,19 +2,20 @@
 import html
 from uuid import uuid4
 
-from telegram import (
+from aiogram import F
+from aiogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
+from aiogram.exceptions import TelegramAPIError
+from aiogram.filters import Command, CommandObject
+from aiogram.types import (
+    CallbackQuery,
     ChatMemberAdministrator,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    Update,
+    Message,
 )
-from telegram.constants import ChatID, ChatMemberStatus, ChatType, ParseMode
-from telegram.error import BadRequest
-from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, filters
-from telegram.helpers import mention_html
 
-from Mikobot import DRAGONS, LOGGER, function
-from Mikobot.plugins.disable import DisableAbleCommandHandler
+from Mikobot import DRAGONS, LOGGER, bot, chat_data, dp
+from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.alternate import send_message
 from Mikobot.plugins.helper_funcs.chat_status import (
     ADMIN_CACHE,
@@ -23,7 +24,9 @@ from Mikobot.plugins.helper_funcs.chat_status import (
 )
 from Mikobot.plugins.helper_funcs.extraction import extract_user, extract_user_and_text
 from Mikobot.plugins.log_channel import loggable
-from telegram.constants import KeyboardButtonStyle
+from Mikobot.utils.consts import ChatID
+from Mikobot.utils.gate import chain
+from Mikobot.utils.parser import mention_html
 
 # <=======================================================================================================>
 
@@ -32,19 +35,17 @@ from telegram.constants import KeyboardButtonStyle
 @connection_status
 @loggable
 @check_admin(permission="can_promote_members", is_both=True)
-async def promote(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    bot = context.bot
-    args = context.args
+async def promote(message: Message, command: CommandObject):
+    args = command.args
 
-    message = update.effective_message
-    chat = update.effective_chat
-    user = update.effective_user
+    chat = message.chat
+    user = message.from_user
 
-    user_id = await extract_user(message, context, args)
+    user_id = await extract_user(message, args)
     await chat.get_member(user.id)
 
     if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
-        await message.reply_text(
+        await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -52,7 +53,7 @@ async def promote(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardButton(
                             text="Click to promote admin.",
                             callback_data=f"admin_=promote={user_id}",
-                         style=KeyboardButtonStyle.PRIMARY),
+                         style=ButtonStyle.PRIMARY),
                     ],
                 ],
             ),
@@ -61,7 +62,7 @@ async def promote(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not user_id:
-        await message.reply_text(
+        await message.answer(
             "You don't seem to be referring to a user, or the ID specified is incorrect.",
         )
         return
@@ -75,11 +76,11 @@ async def promote(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_member.status == ChatMemberStatus.ADMINISTRATOR
         or user_member.status == ChatMemberStatus.OWNER
     ):
-        await message.reply_text("How can I promote someone who is already an admin?")
+        await message.answer("How can I promote someone who is already an admin?")
         return
 
     if user_id == bot.id:
-        await message.reply_text(
+        await message.answer(
             "I can't promote myself! Get an admin to do it for me."
         )
         return
@@ -103,13 +104,13 @@ async def promote(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 can_manage_video_chats=bot_member.can_manage_video_chats,
                 can_manage_topics=bot_member.can_manage_topics,
             )
-        except BadRequest as err:
+        except TelegramAPIError as err:
             if err.message == "User_not_mutual_contact":
-                await message.reply_text(
+                await message.answer(
                     "I can't promote someone who isn't in the group."
                 )
             else:
-                await message.reply_text("An error occurred while promoting.")
+                await message.answer("An error occurred while promoting.")
             return
 
     await bot.send_message(
@@ -132,19 +133,17 @@ async def promote(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @connection_status
 @loggable
 @check_admin(permission="can_promote_members", is_both=True)
-async def fullpromote(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    bot = context.bot
-    args = context.args
+async def fullpromote(message: Message, command: CommandObject):
+    args = command.args
 
-    message = update.effective_message
-    chat = update.effective_chat
-    user = update.effective_user
+    chat = message.chat
+    user = message.from_user
 
-    user_id = await extract_user(message, context, args)
+    user_id = await extract_user(message, args)
     await chat.get_member(user.id)
 
     if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
-        await message.reply_text(
+        await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -152,7 +151,7 @@ async def fullpromote(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardButton(
                             text="Click to promote admin.",
                             callback_data=f"admin_=promote={user_id}",
-                         style=KeyboardButtonStyle.PRIMARY),
+                         style=ButtonStyle.PRIMARY),
                     ],
                 ],
             ),
@@ -161,7 +160,7 @@ async def fullpromote(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not user_id:
-        await message.reply_text(
+        await message.answer(
             "You don't seem to be referring to a user, or the ID specified is incorrect.",
         )
         return
@@ -175,11 +174,11 @@ async def fullpromote(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_member.status == ChatMemberStatus.ADMINISTRATOR
         or user_member.status == ChatMemberStatus.OWNER
     ):
-        await message.reply_text("How can I promote someone who is already an admin?")
+        await message.answer("How can I promote someone who is already an admin?")
         return
 
     if user_id == bot.id:
-        await message.reply_text(
+        await message.answer(
             "I can't promote myself! Get an admin to do it for me."
         )
         return
@@ -204,13 +203,13 @@ async def fullpromote(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 can_manage_video_chats=bot_member.can_manage_video_chats,
                 can_manage_topics=bot_member.can_manage_topics,
             )
-        except BadRequest as err:
+        except TelegramAPIError as err:
             if err.message == "User_not_mutual_contact":
-                await message.reply_text(
+                await message.answer(
                     "I can't promote someone who isn't in the group."
                 )
             else:
-                await message.reply_text("An error occurred while promoting.")
+                await message.answer("An error occurred while promoting.")
             return
 
     await bot.send_message(
@@ -233,19 +232,17 @@ async def fullpromote(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @connection_status
 @loggable
 @check_admin(permission="can_promote_members", is_both=True)
-async def demote(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    bot = context.bot
-    args = context.args
+async def demote(message: Message, command: CommandObject):
+    args = command.args
 
-    chat = update.effective_chat
-    message = update.effective_message
-    user = update.effective_user
+    chat = message.chat
+    user = message.from_user
 
-    user_id = await extract_user(message, context, args)
+    user_id = await extract_user(message, args)
     await chat.get_member(user.id)
 
     if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
-        await message.reply_text(
+        await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -253,7 +250,7 @@ async def demote(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardButton(
                             text="Click to prove admin.",
                             callback_data=f"admin_=demote={user_id}",
-                         style=KeyboardButtonStyle.DANGER),
+                         style=ButtonStyle.DANGER),
                     ],
                 ],
             ),
@@ -262,32 +259,32 @@ async def demote(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not user_id:
-        await message.reply_text(
+        await message.answer(
             "You don't seem to be referring to a user or the id specified is incorrect..",
         )
         return
 
     try:
         user_member = await chat.get_member(user_id)
-    except BadRequest as exc:
+    except TelegramAPIError as exc:
         LOGGER.warning(
             "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
         )
-        await message.reply_text("I can't find this user.")
+        await message.answer("I can't find this user.")
         return
 
     if user_member.status == ChatMemberStatus.OWNER:
-        await message.reply_text(
+        await message.answer(
             "This person created the chat, How could i demote him?"
         )
         return
 
     if not user_member.status == ChatMemberStatus.ADMINISTRATOR:
-        await message.reply_text("Can't demote who isn't promoted!")
+        await message.answer("Can't demote who isn't promoted!")
         return
 
     if user_id == bot.id:
-        await message.reply_text("I can't demote myself!.")
+        await message.answer("I can't demote myself!.")
         return
 
     try:
@@ -322,8 +319,8 @@ async def demote(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         return log_message
-    except BadRequest:
-        await message.reply_text(
+    except TelegramAPIError:
+        await message.answer(
             "Could not demote. I might not be admin or the admin status was appointed by another"
             "Its a User, So I can't act upon them!",
         )
@@ -331,34 +328,32 @@ async def demote(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 @check_admin(is_user=True)
-async def refresh_admin(update, _):
+async def refresh_admin(message: Message):
     try:
-        ADMIN_CACHE.pop(update.effective_chat.id)
+        ADMIN_CACHE.pop(message.chat.id)
     except KeyError:
         pass
 
-    await update.effective_message.reply_text("Admins cache refreshed!")
+    await message.answer("Admins cache refreshed!")
 
 
 @connection_status
 @check_admin(permission="can_promote_members", is_both=True)
-async def set_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    bot = context.bot
-    args = context.args
+async def set_title(message: Message, command: CommandObject):
+    args = command.args
 
-    chat = update.effective_chat
-    message = update.effective_message
+    chat = message.chat
 
-    user_id, title = await extract_user_and_text(message, context, args)
+    user_id, title = await extract_user_and_text(message, args)
 
-    if message.from_user.id == 1087968824:
+    if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
         action_token = uuid4().hex[:8]
-        context.chat_data[f"anon_admin_{action_token}"] = {
+        chat_data[f"anon_admin_{action_token}"] = {
             "user_id": user_id,
             "title": title,
         }
 
-        await message.reply_text(
+        await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -366,7 +361,7 @@ async def set_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardButton(
                             text="Click to prove admin.",
                             callback_data=f"admin_=title={action_token}",
-                         style=KeyboardButtonStyle.SUCCESS),
+                         style=ButtonStyle.SUCCESS),
                     ],
                 ],
             ),
@@ -375,51 +370,51 @@ async def set_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not user_id:
-        await message.reply_text(
+        await message.answer(
             "You don't seem to be referring to a user or the ID specified is incorrect..",
         )
         return
 
     try:
         user_member = await chat.get_member(user_id)
-    except BadRequest as exc:
+    except TelegramAPIError as exc:
         LOGGER.warning(
             "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
         )
-        await message.reply_text("I can't find this user.")
+        await message.answer("I can't find this user.")
         return
 
     if user_member.status == ChatMemberStatus.OWNER:
-        await message.reply_text(
+        await message.answer(
             "This person CREATED the chat, how can I set custom title for him?",
         )
         return
 
     if user_member.status != ChatMemberStatus.ADMINISTRATOR:
-        await message.reply_text(
+        await message.answer(
             "Can't set title for non-admins!\nPromote them first to set custom title!",
         )
         return
 
     if user_id == bot.id:
-        await message.reply_text(
+        await message.answer(
             "I can't set my own title myself! Get the one who made me admin to do it for me.",
         )
         return
 
     if not title:
-        await message.reply_text("Setting a blank title doesn't do anything!")
+        await message.answer("Setting a blank title doesn't do anything!")
         return
 
     if len(title) > 16:
-        await message.reply_text(
+        await message.answer(
             "The title length is longer than 16 characters.\nTruncating it to 16 characters.",
         )
 
     try:
         await bot.set_chat_administrator_custom_title(chat.id, user_id, title)
-    except BadRequest:
-        await message.reply_text(
+    except TelegramAPIError:
+        await message.answer(
             "Either they aren't promoted by me or you set a title text that is impossible to set."
         )
         raise
@@ -435,16 +430,14 @@ async def set_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @loggable
 @check_admin(permission="can_pin_messages", is_both=True)
-async def pin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    bot = context.bot
-    args = context.args
+async def pin(message: Message, command: CommandObject) -> None:
+    args = command.args
 
-    user = update.effective_user
-    chat = update.effective_chat
-    message = update.effective_message
+    user = message.from_user
+    chat = message.chat
 
     is_group = chat.type != "private" and chat.type != "channel"
-    prev_message = update.effective_message.reply_to_message
+    prev_message = message.reply_to_message
 
     is_silent = True
     if len(args) >= 1:
@@ -455,11 +448,11 @@ async def pin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
     if not prev_message:
-        await message.reply_text("Please reply to message which you want to pin.")
+        await message.answer("Please reply to message which you want to pin.")
         return
 
-    if message.from_user.id == 1087968824:
-        await message.reply_text(
+    if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+        await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -467,7 +460,7 @@ async def pin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                         InlineKeyboardButton(
                             text="Click to prove admin.",
                             callback_data=f"admin_=pin={prev_message.message_id}={int(is_silent)}",
-                         style=KeyboardButtonStyle.PRIMARY),
+                         style=ButtonStyle.PRIMARY),
                     ],
                 ],
             ),
@@ -482,7 +475,7 @@ async def pin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 prev_message.message_id,
                 disable_notification=is_silent,
             )
-        except BadRequest as excp:
+        except TelegramAPIError as excp:
             if excp.message == "Chat_not_modified":
                 pass
             else:
@@ -498,14 +491,12 @@ async def pin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 @loggable
 @check_admin(permission="can_pin_messages", is_both=True)
-async def unpin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    bot = context.bot
-    chat = update.effective_chat
-    user = update.effective_user
-    message = update.effective_message
+async def unpin(message: Message, command: CommandObject):
+    chat = message.chat
+    user = message.from_user
 
-    if message.from_user.id == 1087968824:
-        await message.reply_text(
+    if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+        await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -513,7 +504,7 @@ async def unpin(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardButton(
                             text="Click to prove Admin.",
                             callback_data=f"admin_=unpin",
-                         style=KeyboardButtonStyle.DANGER),
+                         style=ButtonStyle.DANGER),
                     ],
                 ],
             ),
@@ -523,11 +514,11 @@ async def unpin(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         await bot.unpin_chat_message(chat.id)
-    except BadRequest as excp:
+    except TelegramAPIError as excp:
         if excp.message == "Chat_not_modified":
             pass
         elif excp.message == "Message to unpin not found":
-            await message.reply_text("No pinned message found")
+            await message.answer("No pinned message found")
             return
         else:
             raise
@@ -543,15 +534,13 @@ async def unpin(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @loggable
 @check_admin(permission="can_pin_messages", is_both=True)
-async def unpinall(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    bot = context.bot
-    chat = update.effective_chat
-    user = update.effective_user
-    message = update.effective_message
+async def unpinall(message: Message, command: CommandObject):
+    chat = message.chat
+    user = message.from_user
     admin_member = await chat.get_member(user.id)
 
-    if message.from_user.id == 1087968824:
-        await message.reply_text(
+    if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+        await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -559,7 +548,7 @@ async def unpinall(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardButton(
                             text="Click to prove admin.",
                             callback_data=f"admin_=unpinall",
-                         style=KeyboardButtonStyle.DANGER),
+                         style=ButtonStyle.DANGER),
                     ],
                 ],
             ),
@@ -567,7 +556,7 @@ async def unpinall(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
     elif not admin_member.status == ChatMemberStatus.OWNER and user.id not in DRAGONS:
-        await message.reply_text("Only chat OWNER can unpin all messages.")
+        await message.answer("Only chat OWNER can unpin all messages.")
         return
 
     try:
@@ -575,7 +564,7 @@ async def unpinall(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await bot.unpin_all_forum_topic_messages(chat.id, message.message_thread_id)
         else:
             await bot.unpin_all_chat_messages(chat.id)
-    except BadRequest as excp:
+    except TelegramAPIError as excp:
         if excp.message == "Chat_not_modified":
             pass
         else:
@@ -592,12 +581,11 @@ async def unpinall(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @connection_status
 @check_admin(permission="can_invite_users", is_bot=True)
-async def invite(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    bot = context.bot
-    chat = update.effective_chat
+async def invite(message: Message, command: CommandObject):
+    chat = message.chat
 
     if chat.username:
-        await update.effective_message.reply_text(f"https://t.me/{chat.username}")
+        await message.answer(f"https://t.me/{chat.username}")
     elif chat.type in [ChatType.SUPERGROUP, ChatType.CHANNEL]:
         bot_member = await chat.get_member(bot.id)
         if (
@@ -606,42 +594,41 @@ async def invite(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else None
         ):
             invitelink = await bot.export_chat_invite_link(chat.id)
-            await update.effective_message.reply_text(invitelink)
+            await message.answer(invitelink)
         else:
-            await update.effective_message.reply_text(
+            await message.answer(
                 "I don't have access to the invite link, try changing my permissions!",
             )
     else:
-        await update.effective_message.reply_text(
+        await message.answer(
             "I can only give you invite links for supergroups and channels, sorry!",
         )
 
 
 @connection_status
-async def adminlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat = update.effective_chat  # type: Optional[Chat]
-    user = update.effective_user  # type: Optional[User]
-    args = context.args
-    bot = context.bot
-    if update.effective_message.chat.type == "private":
+async def adminlist(message: Message, command: CommandObject):
+    chat = message.chat  # type: Optional[Chat]
+    user = message.from_user  # type: Optional[User]
+    args = command.args
+    if message.chat.type == "private":
         await send_message(
-            update.effective_message, "This command only works in Groups."
+            message, "This command only works in Groups."
         )
         return
-    chat = update.effective_chat
-    chat_id = update.effective_chat.id
-    chat_name = update.effective_message.chat.title
+    chat = message.chat
+    chat_id = message.chat.id
+    chat_name = message.chat.title
     try:
-        msg = await update.effective_message.reply_text(
+        msg = await message.answer(
             "Fetching group admins...", parse_mode=ParseMode.HTML
         )
-    except BadRequest:
-        msg = await update.effective_message.reply_text(
+    except TelegramAPIError:
+        msg = await message.answer(
             "Fetching group admins...", do_quote=False, parse_mode=ParseMode.HTML
         )
     administrators = await bot.get_chat_administrators(chat_id)
     administrators_list = list(administrators)  # Convert to a list
-    text = "「 𝗔𝗗𝗠𝗜𝗡𝗦 𝗜𝗡 <b>{}</b>:".format(html.escape(update.effective_chat.title))
+    text = "「 𝗔𝗗𝗠𝗜𝗡𝗦 𝗜𝗡 <b>{}</b>:".format(html.escape(message.chat.title))
     bot_admin_list = []
     for admin in administrators_list:
         user = admin.user
@@ -706,16 +693,16 @@ async def adminlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text += "\n<code> ╰─➽ </code>{}".format(each_bot)
     try:
         await msg.edit_text(text, parse_mode=ParseMode.HTML)
-    except BadRequest:  # if the original message is deleted
+    except TelegramAPIError:  # if the original message is deleted
         return
 
 
 @loggable
-async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    bot = context.bot
-    message = update.effective_message
-    chat = update.effective_chat
+async def admin_callback(query: CallbackQuery):
+    # PTB's update.effective_message on a callback query is the message the
+    # query is attached to; aiogram exposes it on the query itself.
+    message = query.message
+    chat = message.chat
     admin_user = query.from_user
 
     parts = query.data.split("=")
@@ -743,7 +730,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if action == "title":
         pending_token = payload
-        pending = context.chat_data.get(f"anon_admin_{pending_token}")
+        pending = chat_data.get(f"anon_admin_{pending_token}")
         if not pending:
             await query.answer("This title request has expired.", show_alert=True)
             return
@@ -773,7 +760,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         try:
             user_member = await chat.get_member(user_id)
-        except BadRequest as exc:
+        except TelegramAPIError as exc:
             LOGGER.warning(
                 "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
             )
@@ -806,7 +793,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     can_manage_chat=bot_member.can_manage_chat,
                     can_manage_video_chats=bot_member.can_manage_video_chats,
                 )
-            except BadRequest as err:
+            except TelegramAPIError as err:
                 if err.message == "User_not_mutual_contact":
                     await message.edit_text(
                         "I can't promote someone who isn't in the group"
@@ -847,7 +834,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         try:
             user_member = await chat.get_member(user_id)
-        except BadRequest as exc:
+        except TelegramAPIError as exc:
             LOGGER.warning(
                 "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
             )
@@ -900,7 +887,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
             return log_message
-        except BadRequest:
+        except TelegramAPIError:
             await message.edit_text(
                 "Could not demote. I might not be admin, or the admin status was appointed by another"
                 " user, so I can't act upon them!"
@@ -908,7 +895,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
     elif action == "title":
-        context.chat_data.pop(f"anon_admin_{pending_token}", None)
+        chat_data.pop(f"anon_admin_{pending_token}", None)
         title = pending_title
 
         admin_member = await chat.get_member(admin_user.id)
@@ -931,7 +918,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         try:
             user_member = await chat.get_member(user_id)
-        except BadRequest as exc:
+        except TelegramAPIError as exc:
             LOGGER.warning(
                 "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
             )
@@ -967,7 +954,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         try:
             await bot.set_chat_administrator_custom_title(chat.id, user_id, title)
-        except BadRequest:
+        except TelegramAPIError:
             await message.edit_text(
                 "Either they aren't promoted by me or you set a title text that is impossible to set."
             )
@@ -1015,7 +1002,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     message_id,
                     disable_notification=is_silent,
                 )
-            except BadRequest as excp:
+            except TelegramAPIError as excp:
                 if excp.message == "Chat_not_modified":
                     pass
                 else:
@@ -1054,7 +1041,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         try:
             await bot.unpin_chat_message(chat.id)
-        except BadRequest as excp:
+        except TelegramAPIError as excp:
             if excp.message == "Chat_not_modified":
                 pass
             elif excp.message == "Message_to_unpin_not_found":
@@ -1089,7 +1076,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             else:
                 await bot.unpin_all_chat_messages(chat.id)
-        except BadRequest as excp:
+        except TelegramAPIError as excp:
             if excp.message == "Chat_not_modified":
                 pass
             else:
@@ -1134,41 +1121,35 @@ __help__ = """
 """
 
 # <================================================ HANDLER =======================================================>
-ADMINLIST_HANDLER = DisableAbleCommandHandler("adminlist", adminlist, block=False)
+dp.message.register(chain(adminlist), *disableable("adminlist"))
 
-PIN_HANDLER = CommandHandler("pin", pin, filters=filters.ChatType.GROUPS, block=False)
-UNPIN_HANDLER = CommandHandler(
-    "unpin", unpin, filters=filters.ChatType.GROUPS, block=False
+# pin/unpin/unpinall/admincache were group-only in PTB via
+# filters.ChatType.GROUPS; ChatType.SUPERGROUP is the aiogram equivalent.
+for _name, _handler in (
+    ("pin", pin),
+    ("unpin", unpin),
+    ("unpinall", unpinall),
+    ("admincache", refresh_admin),
+):
+    dp.message.register(
+        chain(_handler),
+        Command(_name),
+        F.chat.type.in_(ChatType.GROUP, ChatType.SUPERGROUP),
+    )
+
+dp.message.register(chain(invite), *disableable("invitelink"))
+
+dp.message.register(chain(promote), *disableable("promote"))
+dp.message.register(chain(fullpromote), *disableable("fullpromote"))
+dp.message.register(chain(demote), *disableable("demote"))
+
+dp.message.register(chain(set_title), Command("title"))
+dp.callback_query.register(
+    chain(admin_callback),
+    F.data.regexp(
+        r"^admin_=(?:promote|demote|title|pin|unpin|unpinall)(?:=.*)?$"
+    ),
 )
-UNPINALL_HANDLER = CommandHandler(
-    "unpinall", unpinall, filters=filters.ChatType.GROUPS, block=False
-)
-
-INVITE_HANDLER = DisableAbleCommandHandler("invitelink", invite, block=False)
-
-PROMOTE_HANDLER = DisableAbleCommandHandler("promote", promote, block=False)
-FULLPROMOTE_HANDLER = DisableAbleCommandHandler("fullpromote", fullpromote, block=False)
-DEMOTE_HANDLER = DisableAbleCommandHandler("demote", demote, block=False)
-
-SET_TITLE_HANDLER = CommandHandler("title", set_title, block=False)
-ADMIN_REFRESH_HANDLER = CommandHandler(
-    "admincache", refresh_admin, filters=filters.ChatType.GROUPS, block=False
-)
-ADMIN_CALLBACK_HANDLER = CallbackQueryHandler(
-    admin_callback, block=False, pattern=r"^admin_=(?:promote|demote|title|pin|unpin|unpinall)(?:=.*)?$"
-)
-
-function(ADMINLIST_HANDLER)
-function(PIN_HANDLER)
-function(UNPIN_HANDLER)
-function(UNPINALL_HANDLER)
-function(INVITE_HANDLER)
-function(PROMOTE_HANDLER)
-function(FULLPROMOTE_HANDLER)
-function(DEMOTE_HANDLER)
-function(SET_TITLE_HANDLER)
-function(ADMIN_REFRESH_HANDLER)
-function(ADMIN_CALLBACK_HANDLER)
 
 __mod_name__ = "ADMIN"
 __command_list__ = [
@@ -1181,15 +1162,5 @@ __command_list__ = [
     "fullpromote",
     "setgpic",
     "delgpic",
-]
-__handlers__ = [
-    ADMINLIST_HANDLER,
-    PIN_HANDLER,
-    UNPIN_HANDLER,
-    INVITE_HANDLER,
-    PROMOTE_HANDLER,
-    DEMOTE_HANDLER,
-    SET_TITLE_HANDLER,
-    ADMIN_REFRESH_HANDLER,
 ]
 # <================================================ END =======================================================>
