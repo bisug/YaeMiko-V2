@@ -1,13 +1,13 @@
 import html
 from typing import Union
 
-from telegram import Bot, Chat, ChatMember, ChatPermissions, Update
-from telegram.constants import ParseMode
-from telegram.error import BadRequest
-from telegram.ext import CommandHandler, ContextTypes
-from telegram.helpers import mention_html
+from aiogram import Bot
+from aiogram.enums import ChatMemberStatus, ParseMode
+from aiogram.exceptions import TelegramAPIError
+from aiogram.filters import Command, CommandObject
+from aiogram.types import Chat, ChatPermissions, Message
 
-from Mikobot import LOGGER, function
+from Mikobot import LOGGER, bot, dp
 from Mikobot.plugins.helper_funcs.chat_status import (
     check_admin,
     connection_status,
@@ -16,6 +16,11 @@ from Mikobot.plugins.helper_funcs.chat_status import (
 from Mikobot.plugins.helper_funcs.extraction import extract_user, extract_user_and_text
 from Mikobot.plugins.helper_funcs.string_handling import extract_time
 from Mikobot.plugins.log_channel import loggable
+from Mikobot.utils.gate import chain
+from Mikobot.utils.parser import mention_html
+
+RESTRICTED_OR_MEMBER = (ChatMemberStatus.RESTRICTED, ChatMemberStatus.MEMBER)
+LEFT_OR_BANNED = ("left", "kicked")
 
 
 async def check_user(user_id: int, bot: Bot, chat: Chat) -> Union[str, None]:
@@ -24,13 +29,9 @@ async def check_user(user_id: int, bot: Bot, chat: Chat) -> Union[str, None]:
         return reply
 
     try:
-        member = await chat.get_member(user_id)
-    except BadRequest as excp:
-        if excp.message == "User not found":
-            reply = "I can't seem to find this user"
-            return reply
-        else:
-            raise
+        member = await bot.get_chat_member(chat.id, user_id)
+    except TelegramAPIError:
+        return "I can't seem to find this user"
 
     if user_id == bot.id:
         reply = "I'm not gonna MUTE myself, How high are you?"
@@ -46,22 +47,18 @@ async def check_user(user_id: int, bot: Bot, chat: Chat) -> Union[str, None]:
 @connection_status
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
-async def mute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    bot = context.bot
-    args = context.args
+async def mute(message: Message, command: CommandObject) -> str:
+    chat = message.chat
+    user = message.from_user
 
-    chat = update.effective_chat
-    user = update.effective_user
-    message = update.effective_message
-
-    user_id, reason = await extract_user_and_text(message, context, args)
+    user_id, reason = await extract_user_and_text(message, command.args)
     reply = await check_user(user_id, bot, chat)
 
     if reply:
-        await message.reply_text(reply)
+        await message.answer(reply)
         return ""
 
-    member = await chat.get_member(user_id)
+    member = await bot.get_chat_member(chat.id, user_id)
 
     log = (
         f"<b>{html.escape(chat.title)}:</b>\n"
@@ -73,7 +70,7 @@ async def mute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     if reason:
         log += f"\n<b>Reason:</b> {reason}"
 
-    if member.status in [ChatMember.RESTRICTED, ChatMember.MEMBER]:
+    if member.status in RESTRICTED_OR_MEMBER:
         chat_permissions = ChatPermissions(can_send_messages=False)
         await bot.restrict_chat_member(chat.id, user_id, chat_permissions)
         await bot.send_message(
@@ -85,7 +82,7 @@ async def mute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         return log
 
     else:
-        await message.reply_text("This user is already muted!")
+        await message.answer("This user is already muted!")
 
     return ""
 
@@ -93,24 +90,22 @@ async def mute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 @connection_status
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
-async def unmute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    bot, args = context.bot, context.args
-    chat = update.effective_chat
-    user = update.effective_user
-    message = update.effective_message
+async def unmute(message: Message, command: CommandObject) -> str:
+    chat = message.chat
+    user = message.from_user
 
-    user_id = await extract_user(message, context, args)
+    user_id = await extract_user(message, command.args)
     if not user_id:
-        await message.reply_text(
+        await message.answer(
             "You'll need to either give me a username to unmute, or reply to someone to be unmuted.",
         )
         return ""
 
-    member = await chat.get_member(int(user_id))
+    member = await bot.get_chat_member(chat.id, int(user_id))
 
-    if member.status not in [ChatMember.LEFT, ChatMember.BANNED]:
-        if member.status != ChatMember.RESTRICTED:
-            await message.reply_text("This user already has the right to speak.")
+    if member.status not in LEFT_OR_BANNED:
+        if member.status != ChatMemberStatus.RESTRICTED:
+            await message.answer("This user already has the right to speak.")
         else:
             chat_permissions = ChatPermissions(
                 can_send_messages=True,
@@ -128,7 +123,7 @@ async def unmute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             )
             try:
                 await bot.restrict_chat_member(chat.id, int(user_id), chat_permissions)
-            except BadRequest:
+            except TelegramAPIError:
                 pass
             await bot.send_message(
                 chat.id,
@@ -143,7 +138,7 @@ async def unmute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                 f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
             )
     else:
-        await message.reply_text(
+        await message.answer(
             "This user isn't even in the chat, unmuting them won't make them talk more than they "
             "already do!",
         )
@@ -154,23 +149,21 @@ async def unmute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 @connection_status
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
-async def temp_mute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    bot, args = context.bot, context.args
-    chat = update.effective_chat
-    user = update.effective_user
-    message = update.effective_message
+async def temp_mute(message: Message, command: CommandObject) -> str:
+    chat = message.chat
+    user = message.from_user
 
-    user_id, reason = await extract_user_and_text(message, context, args)
+    user_id, reason = await extract_user_and_text(message, command.args)
     reply = await check_user(user_id, bot, chat)
 
     if reply:
-        await message.reply_text(reply)
+        await message.answer(reply)
         return ""
 
-    member = await chat.get_member(user_id)
+    member = await bot.get_chat_member(chat.id, user_id)
 
     if not reason:
-        await message.reply_text("You haven't specified a time to mute this user for!")
+        await message.answer("You haven't specified a time to mute this user for!")
         return ""
 
     split_reason = reason.split(None, 1)
@@ -197,7 +190,7 @@ async def temp_mute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         log += f"\n<b>Reason:</b> {reason}"
 
     try:
-        if member.status in [ChatMember.RESTRICTED, ChatMember.MEMBER]:
+        if member.status in RESTRICTED_OR_MEMBER:
             chat_permissions = ChatPermissions(can_send_messages=False)
             await bot.restrict_chat_member(
                 chat.id,
@@ -213,12 +206,12 @@ async def temp_mute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             )
             return log
         else:
-            await message.reply_text("This user is already muted.")
+            await message.answer("This user is already muted.")
 
-    except BadRequest as excp:
-        if excp.message == "Reply message not found":
+    except TelegramAPIError as excp:
+        if "reply message not found" in str(excp.message or excp).lower():
             # Do not reply
-            await message.reply_text(f"Muted for {time_val}!", do_quote=False)
+            await message.answer(f"Muted for {time_val}!", do_quote=False)
             return log
         else:
             LOGGER.exception(
@@ -226,9 +219,9 @@ async def temp_mute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
                 user_id,
                 chat.title,
                 chat.id,
-                excp.message,
+                excp,
             )
-            await message.reply_text("Well damn, I can't mute that user.")
+            await message.answer("Well damn, I can't mute that user.")
 
     return ""
 
@@ -243,13 +236,8 @@ __help__ = """
 » /unmute <userhandle>: unmutes a user. Can also be used as a reply, muting the replied to user.
 """
 
-MUTE_HANDLER = CommandHandler("mute", mute, block=False)
-UNMUTE_HANDLER = CommandHandler("unmute", unmute, block=False)
-TEMPMUTE_HANDLER = CommandHandler(["tmute", "tempmute"], temp_mute, block=False)
-
-function(MUTE_HANDLER)
-function(UNMUTE_HANDLER)
-function(TEMPMUTE_HANDLER)
+dp.message.register(chain(mute), Command("mute"))
+dp.message.register(chain(unmute), Command("unmute"))
+dp.message.register(chain(temp_mute), Command(["tmute", "tempmute"]))
 
 __mod_name__ = "MUTE"
-__handlers__ = [MUTE_HANDLER, UNMUTE_HANDLER, TEMPMUTE_HANDLER]

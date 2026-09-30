@@ -2,40 +2,35 @@
 from datetime import datetime, timezone
 from functools import wraps
 
-from telegram import LinkPreviewOptions
-from telegram.constants import ChatType
-from telegram.ext import ContextTypes
+from aiogram.enums import ChatType, ParseMode
+from aiogram.exceptions import TelegramAPIError
+from aiogram.filters import Command
+from aiogram.types import LinkPreviewOptions, Message
 
-from Mikobot import function
+from Mikobot import dp
 from Mikobot.plugins.helper_funcs.misc import is_module_loaded
 
 FILENAME = __name__.rsplit(".", 1)[-1]
 
 if is_module_loaded(FILENAME):
-    from telegram import Update
-    from telegram.constants import ParseMode
-    from telegram.error import BadRequest, Forbidden, TelegramError
-    from telegram.ext import CommandHandler
-    from telegram.helpers import escape_markdown
+    from Mikobot import bot
 
     from Database.sql import log_channel_sql as sql
-    from Mikobot import EVENT_LOGS, LOGGER, dispatcher
+    from Mikobot import EVENT_LOGS, LOGGER
     from Mikobot.plugins.helper_funcs.chat_status import check_admin
+    from Mikobot.utils.gate import chain
+    from Mikobot.utils.parser import escape_markdown
 
     # <=======================================================================================================>
     # <================================================ FUNCTION =======================================================>
     def loggable(func):
-        @wraps(func)
-        async def log_action(
-            update: Update,
-            context: ContextTypes.DEFAULT_TYPE,
-            *args,
-            **kwargs,
-        ):
-            result = await func(update, context, *args, **kwargs)
+        """Post the handler's return value to the chat's log channel."""
 
-            chat = update.effective_chat
-            message = update.effective_message
+        @wraps(func)
+        async def log_action(message: Message, *args, **kwargs):
+            result = await func(message, *args, **kwargs)
+
+            chat = message.chat
 
             if result and isinstance(result, str):
                 datetime_fmt = "%H:%M - %d-%m-%Y"
@@ -44,14 +39,12 @@ if is_module_loaded(FILENAME):
                 if chat.is_forum and chat.username:
                     result += f"\nLink: https://t.me/{chat.username}/{message.message_thread_id}/{message.message_id}"
 
-                if message.chat.type == chat.SUPERGROUP and message.chat.username:
-                    result += (
-                        f"\nLink: https://t.me/{chat.username}/{message.message_id}"
-                    )
+                if chat.type == ChatType.SUPERGROUP and chat.username:
+                    result += f"\nLink: https://t.me/{chat.username}/{message.message_id}"
                 log_chat = sql.get_chat_log_channel(chat.id)
                 if log_chat:
                     try:
-                        await send_log(context, log_chat, chat.id, result)
+                        await send_log(log_chat, chat.id, result)
                     except Exception:
                         LOGGER.exception(
                             "Unable to deliver per-chat log for chat %s to channel %s",
@@ -64,26 +57,23 @@ if is_module_loaded(FILENAME):
         return log_action
 
     def gloggable(func):
+        """Post the handler's return value to the global event log channel."""
+
         @wraps(func)
-        async def glog_action(
-            update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs
-        ):
-            result = await func(update, context, *args, **kwargs)
-            chat = update.effective_chat
-            message = update.effective_message
+        async def glog_action(message: Message, *args, **kwargs):
+            result = await func(message, *args, **kwargs)
+            chat = message.chat
 
             if result:
                 datetime_fmt = "%H:%M - %d-%m-%Y"
                 result += f"\nEvent stamp: {datetime.now(timezone.utc).strftime(datetime_fmt)}"
                 if chat.is_forum and chat.username:
                     result += f"\nLink: https://t.me/{chat.username}/{message.message_thread_id}/{message.message_id}"
-                elif message.chat.type == chat.SUPERGROUP and message.chat.username:
-                    result += (
-                        f"\nLink: https://t.me/{chat.username}/{message.message_id}"
-                    )
+                elif chat.type == ChatType.SUPERGROUP and chat.username:
+                    result += f"\nLink: https://t.me/{chat.username}/{message.message_id}"
                 if EVENT_LOGS:
                     try:
-                        await send_log(context, EVENT_LOGS, chat.id, result)
+                        await send_log(EVENT_LOGS, chat.id, result)
                     except Exception:
                         LOGGER.exception(
                             "Unable to deliver global log for chat %s to channel %s",
@@ -95,13 +85,7 @@ if is_module_loaded(FILENAME):
 
         return glog_action
 
-    async def send_log(
-        context: ContextTypes.DEFAULT_TYPE,
-        log_chat_id: str,
-        orig_chat_id: str,
-        result: str,
-    ):
-        bot = context.bot
+    async def send_log(log_chat_id: str, orig_chat_id: str, result: str):
         is_chat_log = log_chat_id == sql.get_chat_log_channel(orig_chat_id)
         try:
             await bot.send_message(
@@ -110,8 +94,8 @@ if is_module_loaded(FILENAME):
                 parse_mode=ParseMode.HTML,
                 link_preview_options=LinkPreviewOptions(is_disabled=True),
             )
-        except BadRequest as excp:
-            if excp.message == "Chat not found":
+        except TelegramAPIError as excp:
+            if "chat not found" in str(excp.message or excp).lower():
                 if not is_chat_log:
                     LOGGER.warning(
                         "Global log channel %s is unavailable; per-chat logging is unchanged",
@@ -124,7 +108,7 @@ if is_module_loaded(FILENAME):
                         "This log channel has been deleted - unsetting.",
                         message_thread_id=1,
                     )
-                except BadRequest:
+                except TelegramAPIError:
                     await bot.send_message(
                         orig_chat_id,
                         "This log channel has been deleted - unsetting.",
@@ -140,7 +124,7 @@ if is_module_loaded(FILENAME):
                         result
                         + "\n\nFormatting has been disabled due to an unexpected error.",
                     )
-                except TelegramError:
+                except TelegramAPIError:
                     LOGGER.warning(
                         "Unable to deliver unformatted audit log to channel %s",
                         log_chat_id,
@@ -148,27 +132,21 @@ if is_module_loaded(FILENAME):
                     )
 
     @check_admin(is_user=True)
-    async def logging(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        bot = context.bot
-        message = update.effective_message
-        chat = update.effective_chat
-
-        log_channel = sql.get_chat_log_channel(chat.id)
+    async def logging(message: Message):
+        log_channel = sql.get_chat_log_channel(message.chat.id)
         if log_channel:
             log_channel_info = await bot.get_chat(log_channel)
-            await message.reply_text(
+            await message.answer(
                 f"This group has all its logs sent to: {escape_markdown(log_channel_info.title)} (`{log_channel}`)",
                 parse_mode=ParseMode.MARKDOWN,
             )
 
         else:
-            await message.reply_text("No log channel has been set for this group!")
+            await message.answer("No log channel has been set for this group!")
 
     @check_admin(is_user=True)
-    async def setlog(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        bot = context.bot
-        message = update.effective_message
-        chat = update.effective_chat
+    async def setlog(message: Message):
+        chat = message.chat
         if chat.type == ChatType.CHANNEL:
             await bot.send_message(
                 chat.id,
@@ -183,18 +161,8 @@ if is_module_loaded(FILENAME):
                     message.forward_from_chat.id,
                     f"This channel has been set as the log channel for {chat.title or chat.first_name}.",
                 )
-            except Forbidden as excp:
-                if excp.message == "Forbidden: Bot is not a member of the channel chat":
-                    if chat.is_forum:
-                        await bot.send_message(
-                            chat.id,
-                            "Successfully set log channel!",
-                            message_thread_id=message.message_thread_id,
-                        )
-                    else:
-                        await bot.send_message(chat.id, "Successfully set log channel!")
-                else:
-                    LOGGER.exception("Error in setting the log channel.")
+            except TelegramAPIError:
+                LOGGER.exception("Error in setting the log channel.")
 
             if chat.is_forum:
                 await bot.send_message(
@@ -206,7 +174,7 @@ if is_module_loaded(FILENAME):
                 await bot.send_message(chat.id, "Successfully set log channel!")
 
         else:
-            await message.reply_text(
+            await message.answer(
                 "The steps to set a log channel are:\n"
                 " - Add bot to the desired channel (as an admin!)\n"
                 " - Send /setlog in the channel\n"
@@ -214,10 +182,8 @@ if is_module_loaded(FILENAME):
             )
 
     @check_admin(is_user=True)
-    async def unsetlog(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        bot = context.bot
-        message = update.effective_message
-        chat = update.effective_chat
+    async def unsetlog(message: Message):
+        chat = message.chat
 
         log_channel = sql.stop_chat_logging(chat.id)
         if log_channel:
@@ -225,10 +191,10 @@ if is_module_loaded(FILENAME):
                 log_channel,
                 f"Channel has been unlinked from {chat.title}",
             )
-            await message.reply_text("Log channel has been un-set.")
+            await message.answer("Log channel has been un-set.")
 
         else:
-            await message.reply_text("No log channel is set yet!")
+            await message.answer("No log channel is set yet!")
 
     def __stats__():
         return f"• {sql.num_logchannels()} log channels set."
@@ -239,14 +205,14 @@ if is_module_loaded(FILENAME):
     async def __chat_settings__(chat_id, user_id):
         log_channel = sql.get_chat_log_channel(chat_id)
         if log_channel:
-            log_channel_info = await dispatcher.bot.get_chat(log_channel)
+            log_channel_info = await bot.get_chat(log_channel)
             return f"This group has all its logs sent to: {escape_markdown(log_channel_info.title)} (`{log_channel}`)"
         return "No log channel is set for this group!"
 
     # <=================================================== HELP ====================================================>
 
     __help__ = """
-➠ *Admins Only*:
+➠ *Admins Only*
 
 » /logchannel: Get log channel info.
 
@@ -264,9 +230,9 @@ if is_module_loaded(FILENAME):
     __mod_name__ = "LOG-SET"
 
     # <================================================ HANDLER =======================================================>
-    function(CommandHandler("logchannel", logging, block=False))
-    function(CommandHandler("setlog", setlog, block=False))
-    function(CommandHandler("unsetlog", unsetlog, block=False))
+    dp.message.register(chain(logging), Command("logchannel"))
+    dp.message.register(chain(setlog), Command("setlog"))
+    dp.message.register(chain(unsetlog), Command("unsetlog"))
 
 else:
     # run anyway if module not loaded

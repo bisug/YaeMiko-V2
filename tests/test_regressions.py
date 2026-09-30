@@ -545,7 +545,7 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
     async def test_global_log_failure_preserves_chat_logging(self):
         stopped = []
 
-        class BadRequest(Exception):
+        class TelegramAPIError(Exception):
             def __init__(self, message):
                 self.message = message
                 super().__init__(message)
@@ -553,18 +553,21 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         class Bot:
             async def send_message(self, chat_id, *args, **kwargs):
                 if chat_id == "-100":
-                    raise BadRequest("Chat not found")
+                    raise TelegramAPIError("Chat not found")
                 return SimpleNamespace()
 
         send_log = load_nested_function(
             ROOT / "Mikobot/plugins/log_channel.py",
             "send_log",
             {
-                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
-                "BadRequest": BadRequest,
+                "TelegramAPIError": TelegramAPIError,
                 "ParseMode": SimpleNamespace(HTML="HTML"),
                 "LinkPreviewOptions": SimpleNamespace,
-                "LOGGER": SimpleNamespace(warning=lambda *args, **kwargs: None),
+                "bot": Bot(),
+                "LOGGER": SimpleNamespace(
+                    warning=lambda *args, **kwargs: None,
+                    exception=lambda *args, **kwargs: None,
+                ),
                 "sql": SimpleNamespace(
                     get_chat_log_channel=lambda chat_id: "per-chat",
                     stop_chat_logging=lambda chat_id: stopped.append(chat_id),
@@ -572,7 +575,7 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
             },
         )
 
-        await send_log(SimpleNamespace(bot=Bot()), "-100", 42, "event")
+        await send_log("-100", 42, "event")
         self.assertEqual(stopped, [])
 
     async def test_error_handler_answers_failed_callback(self):
@@ -625,7 +628,7 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         async def failing_send_log(*args, **kwargs):
             raise RuntimeError("log delivery failed")
 
-        async def successful_action(update, context):
+        async def successful_action(message):
             return "event"
 
         loggable = load_nested_function(
@@ -633,8 +636,7 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
             "loggable",
             {
                 "wraps": __import__("functools").wraps,
-                "Update": object,
-                "ContextTypes": SimpleNamespace(DEFAULT_TYPE=object),
+                "ChatType": SimpleNamespace(SUPERGROUP="supergroup"),
                 "send_log": failing_send_log,
                 "sql": SimpleNamespace(get_chat_log_channel=lambda chat_id: -100),
                 "LOGGER": SimpleNamespace(exception=lambda *args, **kwargs: None),
@@ -642,16 +644,13 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
                 "timezone": __import__("datetime").timezone,
             },
         )
-        update = SimpleNamespace(
-            effective_chat=SimpleNamespace(
-                id=42, is_forum=False, username=None, SUPERGROUP="supergroup"
-            ),
-            effective_message=SimpleNamespace(
-                chat=SimpleNamespace(type="private"), message_id=1, message_thread_id=None
-            ),
+        message = SimpleNamespace(
+            chat=SimpleNamespace(id=42, is_forum=False, username=None, type="private"),
+            message_id=1,
+            message_thread_id=None,
         )
         wrapped = loggable(successful_action)
-        result = await wrapped(update, SimpleNamespace())
+        result = await wrapped(message)
         self.assertTrue(result.startswith("event\nEvent stamp:"))
 
     def test_federation_ban_functions_use_single_rollback_transaction(self):
