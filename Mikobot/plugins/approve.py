@@ -13,7 +13,7 @@ from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.plugins.helper_funcs.extraction import extract_user
 from Mikobot.plugins.log_channel import loggable
 from Mikobot.utils.gate import chain
-from Mikobot.utils.parser import mention_html
+from Mikobot.utils.parser import escape_markdown, mention_html
 
 ADMIN_OR_OWNER = (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR)
 
@@ -43,13 +43,13 @@ async def approve(message: Message, command: CommandObject):
         return ""
     if sql.is_approved(message.chat_id, user_id):
         await message.answer(
-            f"[{member.user.first_name}](tg://user?id={member.user.id}) is already approved in {chat_title}",
+            f"[{escape_markdown(member.user.first_name)}](tg://user?id={member.user.id}) is already approved in {escape_markdown(chat_title)}",
             parse_mode=ParseMode.MARKDOWN,
         )
         return ""
     sql.approve(message.chat_id, user_id)
     await message.answer(
-        f"[{member.user.first_name}](tg://user?id={member.user.id}) has been approved in {chat_title}! They will now be ignored by automated admin actions like locks, blocklists, and antiflood.",
+        f"[{escape_markdown(member.user.first_name)}](tg://user?id={member.user.id}) has been approved in {escape_markdown(chat_title)}! They will now be ignored by automated admin actions like locks, blocklists, and antiflood.",
         parse_mode=ParseMode.MARKDOWN,
     )
     log_message = (
@@ -84,11 +84,11 @@ async def disapprove(message: Message, command: CommandObject):
         await message.answer("This user is an admin, they can't be unapproved.")
         return ""
     if not sql.is_approved(message.chat_id, user_id):
-        await message.answer(f"{member.user.first_name} isn't approved yet!")
+        await message.answer(f"{html.escape(member.user.first_name)} isn't approved yet!")
         return ""
     sql.disapprove(message.chat_id, user_id)
     await message.answer(
-        f"{member.user.first_name} is no longer approved in {chat_title}.",
+        f"{html.escape(member.user.first_name)} is no longer approved in {html.escape(chat_title)}.",
     )
     log_message = (
         f"<b>{html.escape(chat.title)}:</b>\n"
@@ -150,7 +150,7 @@ async def unapproveall(message: Message):
     approved_users = sql.list_approved(chat.id)
     if not approved_users:
         await message.reply_text(
-            f"No users are approved in {chat.title}."
+            f"No users are approved in {html.escape(chat.title)}."
         )
         return
 
@@ -176,7 +176,7 @@ async def unapproveall(message: Message):
             ],
         )
         await message.reply_text(
-            f"Are you sure you would like to unapprove ALL users in {chat.title}? This action cannot be undone.",
+            f"Are you sure you would like to unapprove ALL users in {escape_markdown(chat.title)}? This action cannot be undone.",
             reply_markup=buttons,
             parse_mode=ParseMode.MARKDOWN,
         )

@@ -13,6 +13,8 @@ from Mikobot.plugins.helper_funcs.misc import is_module_loaded
 FILENAME = __name__.rsplit(".", 1)[-1]
 
 if is_module_loaded(FILENAME):
+    import html
+
     from Mikobot import bot
 
     from Database.sql import log_channel_sql as sql
@@ -179,7 +181,7 @@ if is_module_loaded(FILENAME):
             try:
                 await bot.send_message(
                     message.forward_from_chat.id,
-                    f"This channel has been set as the log channel for {chat.title or chat.first_name}.",
+                    f"This channel has been set as the log channel for {html.escape(chat.title or chat.first_name)}.",
                 )
             except TelegramAPIError:
                 LOGGER.exception("Error in setting the log channel.")
@@ -209,7 +211,7 @@ if is_module_loaded(FILENAME):
         if log_channel:
             await bot.send_message(
                 log_channel,
-                f"Channel has been unlinked from {chat.title}",
+                f"Channel has been unlinked from {html.escape(chat.title)}",
             )
             await message.answer("Log channel has been un-set.")
 

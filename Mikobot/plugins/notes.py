@@ -357,7 +357,7 @@ async def clearall(message: Message):
             ],
         )
         await message.reply_text(
-            f"Are you sure you would like to clear ALL notes in {chat.title}? This action cannot be undone.",
+            f"Are you sure you would like to clear ALL notes in {escape_markdown(chat.title)}? This action cannot be undone.",
             reply_markup=buttons,
             parse_mode=ParseMode.MARKDOWN,
         )

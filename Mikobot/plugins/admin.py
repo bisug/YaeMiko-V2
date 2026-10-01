@@ -115,7 +115,7 @@ async def promote(message: Message, command: CommandObject):
 
     await bot.send_message(
         chat.id,
-        f"Successfully promoted {user_member.user.first_name or user_id}!",
+        f"Successfully promoted {html.escape(user_member.user.first_name or str(user_id))}!",
         parse_mode=ParseMode.HTML,
         message_thread_id=message.message_thread_id if chat.is_forum else None,
     )
@@ -214,7 +214,7 @@ async def fullpromote(message: Message, command: CommandObject):
 
     await bot.send_message(
         chat.id,
-        f"Successfully promoted {user_member.user.first_name or user_id}!",
+        f"Successfully promoted {html.escape(user_member.user.first_name or str(user_id))}!",
         parse_mode=ParseMode.HTML,
         message_thread_id=message.message_thread_id if chat.is_forum else None,
     )
@@ -306,7 +306,7 @@ async def demote(message: Message, command: CommandObject):
 
         await bot.send_message(
             chat.id,
-            f"SUCCESSFULLY DEMOTED <b>{user_member.user.first_name or user_id}</b>!",
+            f"SUCCESSFULLY DEMOTED <b>{html.escape(user_member.user.first_name or str(user_id))}</b>!",
             parse_mode=ParseMode.HTML,
             message_thread_id=message.message_thread_id if chat.is_forum else None,
         )
@@ -803,7 +803,7 @@ async def admin_callback(query: CallbackQuery):
                 return
 
         await message.edit_text(
-            f"Successfully promoted <b>{user_member.user.first_name or user_id}</b>!",
+            f"Successfully promoted <b>{html.escape(user_member.user.first_name or str(user_id))}</b>!",
             parse_mode=ParseMode.HTML,
         )
         await query.answer("Done")
@@ -874,7 +874,7 @@ async def admin_callback(query: CallbackQuery):
             )
 
             await message.edit_text(
-                f"Successfully demoted <b>{user_member.user.first_name or user_id}</b>!",
+                f"Successfully demoted <b>{html.escape(user_member.user.first_name or str(user_id))}</b>!",
                 parse_mode=ParseMode.HTML,
             )
             await query.answer("Done")

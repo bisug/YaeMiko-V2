@@ -592,7 +592,7 @@ async def rmall_filters(message: Message):
             ],
         )
         await message.reply_text(
-            f"Are you sure you would like to stop ALL filters in {chat.title}? This action cannot be undone.",
+            f"Are you sure you would like to stop ALL filters in {escape_markdown(chat.title)}? This action cannot be undone.",
             reply_markup=buttons,
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -619,7 +619,7 @@ async def rmall_callback(query: CallbackQuery):
             for i in filterlist:
                 sql.remove_filter(chat.id, i)
 
-            await msg.edit_text(f"Cleaned {count} filters in {chat.title}")
+            await msg.edit_text(f"Cleaned {count} filters in {escape(chat.title)}")
             await query.answer("All filters removed.")
 
         if member.status == ChatMemberStatus.ADMINISTRATOR:

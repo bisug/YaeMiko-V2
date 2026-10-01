@@ -395,7 +395,7 @@ async def del_blacklist(message: Message):
                     )
                     await bot.send_message(
                         chat.id,
-                        f"Muted {user.first_name} for using Blacklisted word: {trigger}!",
+                        f"Muted {html.escape(user.first_name)} for using Blacklisted word: {html.escape(trigger)}!",
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -408,7 +408,7 @@ async def del_blacklist(message: Message):
                     await bot.unban_chat_member(chat.id, user.id)
                     await bot.send_message(
                         chat.id,
-                        f"Kicked {user.first_name} for using Blacklisted word: {trigger}!",
+                        f"Kicked {html.escape(user.first_name)} for using Blacklisted word: {html.escape(trigger)}!",
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -419,7 +419,7 @@ async def del_blacklist(message: Message):
                     await bot.ban_chat_member(chat.id, user.id)
                     await bot.send_message(
                         chat.id,
-                        f"Banned {user.first_name} for using Blacklisted word: {trigger}",
+                        f"Banned {html.escape(user.first_name)} for using Blacklisted word: {html.escape(trigger)}",
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -433,7 +433,7 @@ async def del_blacklist(message: Message):
                     await bot.ban_chat_member(chat.id, user.id, until_date=bantime)
                     await bot.send_message(
                         chat.id,
-                        f"Banned {user.first_name} until '{value}' for using Blacklisted word: {trigger}!",
+                        f"Banned {html.escape(user.first_name)} until '{html.escape(value)}' for using Blacklisted word: {html.escape(trigger)}!",
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -452,7 +452,7 @@ async def del_blacklist(message: Message):
                     )
                     await bot.send_message(
                         chat.id,
-                        f"Muted {user.first_name} until '{value}' for using Blacklisted word: {trigger}!",
+                        f"Muted {html.escape(user.first_name)} until '{html.escape(value)}' for using Blacklisted word: {html.escape(trigger)}!",
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
