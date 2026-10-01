@@ -262,7 +262,7 @@ def remove_filter(chat_id, keyword):
 
 
 def get_chat_triggers(chat_id):
-    return CHAT_FILTERS.get(str(chat_id), set())
+    return set(CHAT_FILTERS.get(str(chat_id), set()))
 
 
 def get_chat_filters(chat_id):

@@ -106,7 +106,7 @@ def rm_from_stickers(chat_id, trigger):
 
 
 def get_chat_stickers(chat_id):
-    return CHAT_STICKERS.get(str(chat_id), set())
+    return set(CHAT_STICKERS.get(str(chat_id), set()))
 
 
 def num_stickers_filters():

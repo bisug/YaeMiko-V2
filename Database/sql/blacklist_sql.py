@@ -146,7 +146,7 @@ def rm_from_blacklist(chat_id, trigger):
 
 
 def get_chat_blacklist(chat_id):
-    return CHAT_BLACKLISTS.get(str(chat_id), set())
+    return set(CHAT_BLACKLISTS.get(str(chat_id), set()))
 
 
 def num_blacklist_filters():

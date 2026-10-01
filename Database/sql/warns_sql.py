@@ -245,6 +245,15 @@ def get_warn_setting(chat_id):
         SESSION.close()
 
 
+def get_all_warns_for_chat(chat_id) -> dict:
+    """user_id -> warn count, so a chat's whole warn state can be exported."""
+    try:
+        rows = SESSION.query(Warns).filter(Warns.chat_id == str(chat_id)).all()
+        return {str(row.user_id): row.num_warns for row in rows if row.num_warns}
+    finally:
+        SESSION.close()
+
+
 def num_warns():
     try:
         return SESSION.query(func.sum(Warns.num_warns)).scalar() or 0

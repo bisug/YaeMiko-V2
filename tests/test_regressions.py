@@ -3449,5 +3449,108 @@ class LockAllowlistTests(unittest.TestCase):
         self.assertIn("_is_allowlisted", source)
 
 
+class SettingsExportTests(unittest.TestCase):
+    """The import hooks existed with no way to feed them anything."""
+
+    def test_export_and_import_commands_are_registered(self):
+        found = _registered_commands(
+            ROOT / "Mikobot" / "plugins" / "settings_export.py"
+        )
+        for command in ("export", "import", "reset"):
+            self.assertIn(command, found, command)
+
+    def test_import_hooks_exist_without_this_module(self):
+        # __import_data__ was already present in these modules; what was
+        # missing was the export side and the command that drives them.
+        for module in ("blacklist", "rules", "notes", "locks", "warns"):
+            source = (ROOT / "Mikobot" / "plugins" / f"{module}.py").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("async def __import_data__", source, module)
+
+    def test_export_data_is_json_serialisable_in_shape(self):
+        tree = ast.parse(
+            (ROOT / "Mikobot" / "plugins" / "settings_export.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        func = next(
+            n for n in tree.body
+            if isinstance(n, ast.FunctionDef) and n.name == "__export_data__"
+        )
+        keys = {
+            key.value
+            for node in ast.walk(func)
+            if isinstance(node, ast.Dict)
+            for key in node.keys
+            if isinstance(key, ast.Constant)
+        }
+        # These are the keys the __import_data__ hooks read back.
+        for expected in ("blacklist", "sticker_blacklist", "locks", "notes", "warns"):
+            self.assertIn(expected, keys, expected)
+
+    def test_import_and_reset_are_owner_only(self):
+        tree = ast.parse(
+            (ROOT / "Mikobot" / "plugins" / "settings_export.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        for name in ("import_settings", "reset"):
+            func = next(
+                n for n in tree.body
+                if isinstance(n, ast.AsyncFunctionDef) and n.name == name
+            )
+            source = ast.unparse(func)
+            self.assertIn("need_owner=True", source, name)
+        # The guard itself has to be creator-only.
+        self.assertIn("ChatMemberStatus.CREATOR", ast.unparse(tree))
+
+    def test_reset_is_confirmed_before_it_deletes(self):
+        source = (ROOT / "Mikobot" / "plugins" / "settings_export.py").read_text(
+            encoding="utf-8"
+        )
+        # The destructive call must live in the callback, not in the command.
+        cmd = next(
+            ast.unparse(n)
+            for n in ast.walk(ast.parse(source))
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "reset"
+        )
+        self.assertNotIn("_reset(", cmd)
+        self.assertIn("settings_reset_", cmd)
+
+
+class LiveCacheTests(unittest.TestCase):
+    """Cache getters handed out the live set, so callers could corrupt it."""
+
+    def test_getters_return_a_copy(self):
+        for path, func, cache in (
+            ("Database/sql/blacklist_sql.py", "get_chat_blacklist", "CHAT_BLACKLISTS"),
+            ("Database/sql/cust_filters_sql.py", "get_chat_triggers", "CHAT_FILTERS"),
+            ("Database/sql/blsticker_sql.py", "get_chat_stickers", "CHAT_STICKERS"),
+        ):
+            tree = ast.parse((ROOT / path).read_text(encoding="utf-8"))
+            node = next(
+                n for n in tree.body
+                if isinstance(n, ast.FunctionDef) and n.name == func
+            )
+            body = ast.unparse(node)
+            self.assertIn(
+                f"return set({cache}.get(", body,
+                f"{func} must copy: iterating the live set while removing raises "
+                f"'Set changed size during iteration'",
+            )
+
+    def test_no_caller_still_expects_identity(self):
+        # A copy is still iterable and still supports `in`, which is all the
+        # existing callers do with it.
+        source = ""
+        for module in ("blacklist", "blacklist_stickers", "cust_filters"):
+            source += (ROOT / "Mikobot" / "plugins" / f"{module}.py").read_text(
+                encoding="utf-8"
+            )
+        self.assertNotIn("get_chat_blacklist(chat_id).add", source)
+        self.assertNotIn("get_chat_triggers(chat_id).add", source)
+
+
 if __name__ == "__main__":
     unittest.main()
