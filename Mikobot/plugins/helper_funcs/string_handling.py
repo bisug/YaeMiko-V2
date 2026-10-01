@@ -329,10 +329,10 @@ async def extract_time(message, time_val):
     # The error text below reports time_val[-1], which raises on empty input
     # such as "/ban @user " with the duration omitted.
     if not time_val:
-        await message.reply_text("Invalid time type specified. Expected m,h, or d.")
+        await message.reply_text("Invalid time type specified. Expected m, h, d, or w.")
         return None
 
-    if any(time_val.endswith(unit) for unit in ("m", "h", "d")):
+    if any(time_val.endswith(unit) for unit in ("m", "h", "d", "w")):
         unit = time_val[-1]
         time_num = time_val[:-1]  # type: str
         if not time_num.isdigit():
@@ -345,13 +345,15 @@ async def extract_time(message, time_val):
             bantime = int(time.time() + int(time_num) * 60 * 60)
         elif unit == "d":
             bantime = int(time.time() + int(time_num) * 24 * 60 * 60)
+        elif unit == "w":
+            bantime = int(time.time() + int(time_num) * 7 * 24 * 60 * 60)
         else:
             # how even...?
             return None
         return bantime
     else:
         await message.reply_text(
-            "Invalid time type specified. Expected m,h, or d, got: {}".format(
+            "Invalid time type specified. Expected m, h, d, or w, got: {}".format(
                 time_val[-1],
             ),
         )

@@ -25,7 +25,7 @@ Back to [README](../README.md).
 `LOAD` and `NO_LOAD`, and exports the result as `ALL_MODULES`. `Mikobot/__main__.py` imports every
 name in that list, so dropping a new file into the directory is enough to register it.
 
-57 modules are shipped. Names below are file names without the `.py` suffix, which is what `LOAD` and
+56 modules are shipped. Names below are file names without the `.py` suffix, which is what `LOAD` and
 `NO_LOAD` expect. The display name in `/help` comes from each module's `__mod_name__`.
 
 ## Moderation
@@ -37,6 +37,7 @@ name in that list, so dropping a new file into the directory is enough to regist
 | `gban` | ANTI-SPAM | `antispam`, `gban`, `gbanlist`, `ungban` |
 | `flood` | ANTI-FLOOD | `flood`, `setflood`, `setfloodmode` |
 | `locks` | LOCKS | `lock`, `unlock`, `locks`, `locktypes` |
+| `antiraid` | ANTIRAID | `antiraid`, `raidtime`, `raidactiontime`, `autoantiraid` |
 | `mute` | MUTE | `mute`, `unmute` |
 | `warns` | WARN | `warns`, `addwarn`, `strongwarn`, `warnlimit` |
 | `purge` | PURGE | Bulk message deletion |

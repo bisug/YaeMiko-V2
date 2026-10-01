@@ -3013,5 +3013,112 @@ class PluginModNameTests(unittest.TestCase):
         )
 
 
+class AntiRaidTests(unittest.TestCase):
+    """AntiRaid bans joiners for a window that has to expire on its own."""
+
+    def test_raid_state_expires_without_a_background_task(self):
+        # is_raid compares against the clock rather than trusting a stored
+        # flag, so a raid still ends if the process restarted after it was set.
+        source = (ROOT / "Database" / "sql" / "raid_sql.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        func = next(
+            n for n in tree.body
+            if isinstance(n, ast.FunctionDef) and n.name == "is_raid"
+        )
+        self.assertTrue(
+            any(
+                isinstance(n, ast.Compare) and isinstance(n.ops[0], ast.Gt)
+                for n in ast.walk(func)
+            ),
+            "is_raid must compare raid_until against the current time",
+        )
+
+    def test_defaults_match_the_documented_windows(self):
+        # Read the constants instead of re-executing the module: loading
+        # raid_sql a second time would declare raid_chats twice against the
+        # shared MetaData and break every other SQL test in the process.
+        # The values are written as arithmetic, which literal_eval rejects.
+        source = (ROOT / "Database" / "sql" / "raid_sql.py").read_text(encoding="utf-8")
+        wanted = ("DEF_RAID_TIME", "DEF_ACTION_TIME", "DEF_AUTO_ANTIRAID")
+        constants = {}
+        for node in ast.parse(source).body:
+            if isinstance(node, ast.Assign):
+                name = getattr(node.targets[0], "id", "")
+                if name in wanted:
+                    constants[name] = eval(
+                        ast.unparse(node.value), {"__builtins__": {}}, {}
+                    )
+        self.assertEqual(constants["DEF_RAID_TIME"], 6 * 60 * 60)
+        self.assertEqual(constants["DEF_ACTION_TIME"], 60 * 60)
+        self.assertEqual(constants["DEF_AUTO_ANTIRAID"], 0)
+
+    def test_every_documented_command_is_registered(self):
+        source = (ROOT / "Mikobot" / "plugins" / "antiraid.py").read_text(
+            encoding="utf-8"
+        )
+        for command in ("antiraid", "raidtime", "raidactiontime", "autoantiraid"):
+            self.assertIn(f'disableable("{command}")', source, command)
+
+    def test_on_off_words_match_the_documented_forms(self):
+        tree = ast.parse((ROOT / "Mikobot" / "plugins" / "antiraid.py").read_text(encoding="utf-8"))
+        words = {}
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and isinstance(node.value, ast.Tuple):
+                name = getattr(node.targets[0], "id", "")
+                if name in ("ON_WORDS", "OFF_WORDS"):
+                    words[name] = set(ast.literal_eval(node.value))
+        self.assertEqual(words["ON_WORDS"], {"on", "yes", "true", "enable", "1"})
+        self.assertEqual(words["OFF_WORDS"], {"off", "no", "false", "disable", "0"})
+
+    def test_join_handler_cannot_ban_an_admin_or_a_bot(self):
+        source = (ROOT / "Mikobot" / "plugins" / "antiraid.py").read_text(encoding="utf-8")
+        self.assertIn("new_user.is_bot", source)
+        self.assertIn("ChatMemberStatus.ADMINISTRATOR", source)
+        self.assertIn("ChatID.ANONYMOUS_ADMIN", source)
+        self.assertIn("is_approved", source)
+
+    def test_duration_formatting_round_trips_through_the_time_parser(self):
+        import asyncio as _asyncio
+
+        from Mikobot.plugins.antiraid import format_duration
+        from Mikobot.plugins.helper_funcs.string_handling import extract_time
+
+        class _Msg:
+            async def reply_text(self, text, *a, **k):
+                return None
+
+        for seconds in (90 * 60, 12 * 3600, 3 * 86400, 2 * 604800):
+            shown = format_duration(seconds)
+            expiry = _asyncio.run(extract_time(_Msg(), shown))
+            self.assertIsNotNone(expiry, shown)
+            self.assertAlmostEqual(expiry - int(__import__("time").time()), seconds, delta=5)
+
+    def test_extract_time_accepts_weeks(self):
+        # The documented duration table includes weeks; the shared parser is
+        # the only place a duration is turned into an absolute expiry.
+        import time as _time
+
+        from Mikobot.plugins.helper_funcs.string_handling import extract_time
+
+        class _Msg:
+            async def reply_text(self, text, *a, **k):
+                return None
+
+        expiry = asyncio.run(extract_time(_Msg(), "2w"))
+        self.assertIsNotNone(expiry)
+        self.assertAlmostEqual(expiry - int(_time.time()), 2 * 7 * 86400, delta=5)
+
+    def test_log_messages_escape_the_chat_title(self):
+        tree = ast.parse((ROOT / "Mikobot" / "plugins" / "antiraid.py").read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.JoinedStr):
+                blob = ast.unparse(node)
+                if "chat.title" in blob:
+                    self.assertIn(
+                        "html.escape(chat.title)", blob,
+                        "log_channel output is HTML; an unescaped title is spoofable",
+                    )
+
+
 if __name__ == "__main__":
     unittest.main()
