@@ -64,7 +64,7 @@ def paginate_modules(page_n: int, module_dict: Dict, prefix, chat=None) -> List:
         modules = sorted(
             [
                 EqInlineKeyboardButton(
-                    x.__mod_name__,
+                    text=x.__mod_name__,
                     callback_data="{}_module({})".format(
                         prefix, x.__mod_name__.lower()
                     ),
@@ -76,7 +76,7 @@ def paginate_modules(page_n: int, module_dict: Dict, prefix, chat=None) -> List:
         modules = sorted(
             [
                 EqInlineKeyboardButton(
-                    x.__mod_name__,
+                    text=x.__mod_name__,
                     callback_data="{}_module({},{})".format(
                         prefix, chat, x.__mod_name__.lower()
                     ),
@@ -100,19 +100,19 @@ def paginate_modules(page_n: int, module_dict: Dict, prefix, chat=None) -> List:
         pairs = pairs[modulo_page * 6 : 6 * (modulo_page + 1)] + [
             (
                 EqInlineKeyboardButton(
-                    "◁", callback_data="{}_prev({})".format(prefix, modulo_page)
+                    text="◁", callback_data="{}_prev({})".format(prefix, modulo_page)
                 , style=ButtonStyle.PRIMARY),
                 EqInlineKeyboardButton(
-                    "» 𝘽𝘼𝘾𝙆 «", callback_data="extra_command_handler"
+                    text="» 𝘽𝘼𝘾𝙆 «", callback_data="extra_command_handler"
                 , style=ButtonStyle.PRIMARY),
                 EqInlineKeyboardButton(
-                    "▷", callback_data="{}_next({})".format(prefix, modulo_page)
+                    text="▷", callback_data="{}_next({})".format(prefix, modulo_page)
                 , style=ButtonStyle.PRIMARY),
             )
         ]
 
     else:
-        pairs += [[EqInlineKeyboardButton("⇦ 𝘽𝘼𝘾𝙆", callback_data="Miko_back", style=ButtonStyle.PRIMARY)]]
+        pairs += [[EqInlineKeyboardButton(text="⇦ 𝘽𝘼𝘾𝙆", callback_data="Miko_back", style=ButtonStyle.PRIMARY)]]
 
     return pairs
 

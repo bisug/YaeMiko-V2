@@ -2501,6 +2501,20 @@ class AiogramModelKeywordTests(unittest.TestCase):
     )
 
     def test_no_aiogram_model_is_built_with_a_positional_argument(self):
+        # Subclasses count too: EqInlineKeyboardButton subclasses
+        # InlineKeyboardButton to give it value equality, and a positional
+        # call on it failed the same way.
+        names = set(self.NAMES)
+        for path in sorted((ROOT / "Mikobot").rglob("*.py")):
+            if "__pycache__" in path.parts:
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef) and any(
+                    isinstance(b, ast.Name) and b.id in names for b in node.bases
+                ):
+                    names.add(node.name)
+
         bad = []
         for path in sorted((ROOT / "Mikobot").rglob("*.py")):
             if "__pycache__" in path.parts:
@@ -2510,7 +2524,7 @@ class AiogramModelKeywordTests(unittest.TestCase):
                 if not (
                     isinstance(node, ast.Call)
                     and isinstance(node.func, ast.Name)
-                    and node.func.id in self.NAMES
+                    and node.func.id in names
                 ):
                     continue
                 if node.args:
