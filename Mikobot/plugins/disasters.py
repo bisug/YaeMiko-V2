@@ -131,7 +131,7 @@ async def add_disaster_level(message: Message, level: str, command: CommandObjec
 
     log_message = (
         f"#{level.upper()}\n"
-        f"<b>Admin:</b> {mention_html(user.id, html.escape(user.first_name))}\n"
+        f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
         f"<b>User:</b> {mention_html(user_id, target_name)}"
     )
 

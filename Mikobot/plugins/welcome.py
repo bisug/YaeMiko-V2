@@ -476,7 +476,7 @@ async def new_member(message: Message, command: CommandObject):
                     else:
                         fullname = escape_markdown(first_name)
                     count = await chat.get_member_count()
-                    mention = mention_markdown(new_mem.id, escape_markdown(first_name))
+                    mention = mention_markdown(new_mem.id, first_name)
                     if new_mem.username:
                         username = "@{}".format(escape_markdown(new_mem.username))
                     else:

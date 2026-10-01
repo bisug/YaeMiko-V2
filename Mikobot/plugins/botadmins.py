@@ -26,14 +26,14 @@ async def get_users_info(user_ids):
 
 async def get_users_list(user_ids):
     return [
-        f"• {await mention_html(name, user_id)} (<code>{user_id}</code>)"
+        f"• {mention_html(user_id, name)} (<code>{user_id}</code>)"
         for name, user_id in await get_users_info(user_ids)
     ]
 
 
 @support_plus
 async def botstaff(message: Message):
-    owner_info = await mention_html("Owner", OWNER_ID)
+    owner_info = mention_html(OWNER_ID, "Owner")
     reply = f"✪ <b>OWNER :</b> {owner_info} (<code>{OWNER_ID}</code>)\n"
 
     true_dev = list(set(DEV_USERS) - {OWNER_ID})

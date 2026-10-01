@@ -97,7 +97,7 @@ async def check_flood(message: Message):
             "\nFlooded the group.".format(
                 tag,
                 html.escape(chat.title),
-                mention_html(user.id, html.escape(user.first_name)),
+                mention_html(user.id, user.first_name),
             )
         )
 
@@ -142,7 +142,7 @@ async def flood_button(query: CallbackQuery):
             ),
         )
         await message.edit_text(
-            f"Unmuted by {mention_html(user.id, html.escape(user.first_name))}.",
+            f"Unmuted by {mention_html(user.id, user.first_name)}.",
             parse_mode="HTML",
         )
     except Exception:
@@ -202,7 +202,7 @@ async def set_flood(message: Message, command: CommandObject):
                     "\n<b>Admin:</b> {}"
                     "\nDisable Antiflood.".format(
                         html.escape(chat_name),
-                        mention_html(user.id, html.escape(user.first_name)),
+                        mention_html(user.id, user.first_name),
                     )
                 )
 
@@ -232,7 +232,7 @@ async def set_flood(message: Message, command: CommandObject):
                     "\n<b>Admin:</b> {}"
                     "\nSet Antiflood to <code>{}</code>.".format(
                         html.escape(chat_name),
-                        mention_html(user.id, html.escape(user.first_name)),
+                        mention_html(user.id, user.first_name),
                         amount,
                     )
                 )
@@ -374,7 +374,7 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
             "Has changed antiflood mode. User will {}.".format(
                 settypeflood,
                 html.escape(chat.title),
-                mention_html(user.id, html.escape(user.first_name)),
+                mention_html(user.id, user.first_name),
             )
         )
     else:

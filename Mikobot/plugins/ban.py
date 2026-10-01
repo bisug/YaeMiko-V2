@@ -147,7 +147,7 @@ async def ban(message: Message, command: CommandObject) -> str:
     log = (
         f"<b>{html.escape(chat.title)}:</b>\n"
         f"#{'S' if silent else ''}BANNED\n"
-        f"<b>Admin:</b> {mention_html(user.id, html.escape(user.first_name))}\n"
+        f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
     )
 
     reply = f"<code>❕</code><b>Ban Event</b>\n"
@@ -157,8 +157,8 @@ async def ban(message: Message, command: CommandObject) -> str:
         reply += f"<code> </code><b>•  Channel:</b> {mention_username(chat_sender.username, html.escape(chat_sender.title))}"
 
     else:
-        log += f"<b>User:</b> {mention_html(member.user.id, html.escape(member.user.first_name))}"
-        reply += f"<code> </code><b>•  User:</b> {mention_html(member.user.id, html.escape(member.user.first_name))}"
+        log += f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
+        reply += f"<code> </code><b>•  User:</b> {mention_html(member.user.id, member.user.first_name)}"
 
     if reason:
         log += "\n<b>Reason:</b> {}".format(reason)
@@ -258,8 +258,8 @@ async def temp_ban(message: Message, command: CommandObject) -> str:
     log = (
         f"<b>{html.escape(chat.title)}:</b>\n"
         "#TEMP BANNED\n"
-        f"<b>Admin:</b> {mention_html(user.id, html.escape(user.first_name))}\n"
-        f"<b>User:</b> {mention_html(member.user.id, html.escape(member.user.first_name))}\n"
+        f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
+        f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}\n"
         f"<b>Time:</b> {time_val}"
     )
     if reason:
@@ -274,7 +274,7 @@ async def temp_ban(message: Message, command: CommandObject) -> str:
         )  # banhammer marie sticker
         await bot.send_message(
             chat.id,
-            f"Banned! User {mention_html(member.user.id, html.escape(member.user.first_name))} "
+            f"Banned! User {mention_html(member.user.id, member.user.first_name)} "
             f"will be banned for {time_val}.",
             parse_mode=ParseMode.HTML,
             message_thread_id=message.message_thread_id if chat.is_forum else None,
@@ -343,15 +343,15 @@ async def kick(message: Message, command: CommandObject) -> str:
         )  # banhammer marie sticker
         await bot.send_message(
             chat.id,
-            f"Capitain I have kicked, {mention_html(member.user.id, html.escape(member.user.first_name))}.",
+            f"Capitain I have kicked, {mention_html(member.user.id, member.user.first_name)}.",
             parse_mode=ParseMode.HTML,
             message_thread_id=message.message_thread_id if chat.is_forum else None,
         )
         log = (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#KICKED\n"
-            f"<b>Admin:</b> {mention_html(user.id, html.escape(user.first_name))}\n"
-            f"<b>User:</b> {mention_html(member.user.id, html.escape(member.user.first_name))}"
+            f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
+            f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
         )
         if reason:
             log += f"\n<b>Reason:</b> {reason}"
@@ -461,7 +461,7 @@ async def unban(message: Message, command: CommandObject) -> str:
     log = (
         f"<b>{html.escape(chat.title)}:</b>\n"
         f"#UNBANNED\n"
-        f"<b>Admin:</b> {mention_html(user.id, html.escape(user.first_name))}\n"
+        f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
     )
 
     if CHAT_SENDER:
@@ -469,7 +469,7 @@ async def unban(message: Message, command: CommandObject) -> str:
         await bot.unban_chat_sender_chat(chat.id, chat_sender.id)
         await message.answer("Yeah, this channel can speak again.")
     else:
-        log += f"<b>User:</b> {mention_html(member.user.id, html.escape(member.user.first_name))}"
+        log += f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
         await bot.unban_chat_member(chat.id, user_id)
         await message.answer("Yeah, this user can join!")
 
@@ -516,7 +516,7 @@ async def selfunban(message: Message, command: CommandObject) -> str:
     log = (
         f"<b>{html.escape(chat.title)}:</b>\n"
         f"#UNBANNED\n"
-        f"<b>User:</b> {mention_html(member.user.id, html.escape(member.user.first_name))}"
+        f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
     )
 
     return log
@@ -612,7 +612,7 @@ async def bans_callback(query: CallbackQuery):
         log = (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#BANNED\n"
-            f"<b>Admin:</b> {mention_html(admin_user.id, html.escape(admin_user.first_name))}\n"
+            f"<b>Admin:</b> {mention_html(admin_user.id, admin_user.first_name)}\n"
         )
 
         reply = f"<code>❕</code><b>Ban Event</b>\n"
@@ -622,8 +622,8 @@ async def bans_callback(query: CallbackQuery):
             reply += f"<code> </code><b>•  Channel:</b> {html.escape(chat_name)}"
 
         else:
-            log += f"<b>User:</b> {mention_html(member.user.id, html.escape(member.user.first_name))}"
-            reply += f"<code> </code><b>•  User:</b> {mention_html(member.user.id, html.escape(member.user.first_name))}"
+            log += f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
+            reply += f"<code> </code><b>•  User:</b> {mention_html(member.user.id, member.user.first_name)}"
 
         if reason:
             log += "\n<b>Reason:</b> {}".format(reason)
@@ -704,7 +704,7 @@ async def bans_callback(query: CallbackQuery):
         log = (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#UNBANNED\n"
-            f"<b>Admin:</b> {mention_html(admin_user.id, html.escape(admin_user.first_name))}\n"
+            f"<b>Admin:</b> {mention_html(admin_user.id, admin_user.first_name)}\n"
         )
 
         if CHAT_SENDER:
@@ -712,7 +712,7 @@ async def bans_callback(query: CallbackQuery):
             await bot.unban_chat_sender_chat(chat.id, user_id)
             await message.answer("Yeah, this channel can speak again.")
         else:
-            log += f"<b>User:</b> {mention_html(member.user.id, html.escape(member.user.first_name))}"
+            log += f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
             await bot.unban_chat_member(chat.id, user_id)
             await message.answer("Yeah, this user can join!")
 

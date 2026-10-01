@@ -308,7 +308,7 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
             "<b>Admin:</b> {}\n"
             "Changed the blacklist mode. will {}.".format(
                 html.escape(chat.title),
-                mention_html(user.id, html.escape(user.first_name)),
+                mention_html(user.id, user.first_name),
                 settypeblacklist,
             )
         )
@@ -378,7 +378,7 @@ async def del_blacklist(message: Message):
                         await message.delete()
                     except TelegramAPIError:
                         pass
-                    warn(
+                    await warn(
                         user,
                         chat,
                         ("Using blacklisted trigger: {}".format(trigger)),

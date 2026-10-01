@@ -19,14 +19,20 @@ def escape_markdown(text: str) -> str:
     return sub(r"([%s])" % escape_chars, r"\\\1", text)
 
 
-async def mention_html(name: str, user_id: int) -> str:
-    """Mention user in html format."""
-    name = escape(name)
-    return f'<a href="tg://user?id={user_id}">{name}</a>'
+def mention_html(user_id: int, name: str) -> str:
+    """Mention user in html format.
+
+    Synchronous and id-first because every caller builds log and chat text by
+    interpolating the result: PTB's `await mention_html(name, user_id)` was
+    ported to a plain call with the arguments transposed, which both dropped the
+    await and fed the id into escape(). The name is escaped here, so callers
+    must pass it raw.
+    """
+    return f'<a href="tg://user?id={user_id}">{escape(name)}</a>'
 
 
-async def mention_markdown(name: str, user_id: int) -> str:
-    """Mention user in markdown format."""
+def mention_markdown(user_id: int, name: str) -> str:
+    """Mention user in markdown format. Escapes the name; callers pass it raw."""
     return f"[{escape_markdown(name)}](tg://user?id={user_id})"
 
 

@@ -639,7 +639,7 @@ async def adminlist(message: Message, command: CommandObject):
         else:
             name = "{}".format(
                 mention_html(
-                    user.id, html.escape(user.first_name + " " + (user.last_name or ""))
+                    user.id, user.first_name + " " + (user.last_name or "")
                 )
             )
         if user.is_bot:
@@ -663,7 +663,7 @@ async def adminlist(message: Message, command: CommandObject):
         else:
             name = "{}".format(
                 mention_html(
-                    user.id, html.escape(user.first_name + " " + (user.last_name or ""))
+                    user.id, user.first_name + " " + (user.last_name or "")
                 )
             )
         if status == "administrator":
@@ -1014,7 +1014,7 @@ async def admin_callback(query: CallbackQuery):
             log_message = (
                 f"<b>{html.escape(chat.title)}</b>\n"
                 f"#PINNED\n"
-                f"<b>Admin:</b> {mention_html(admin_user.id, html.escape(admin_user.first_name))}"
+                f"<b>Admin:</b> {mention_html(admin_user.id, admin_user.first_name)}"
             )
 
             return log_message
@@ -1053,7 +1053,7 @@ async def admin_callback(query: CallbackQuery):
         log_message = (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#UNPINNED\n"
-            f"<b>Admin:</b> {mention_html(admin_user.id, html.escape(admin_user.first_name))}"
+            f"<b>Admin:</b> {mention_html(admin_user.id, admin_user.first_name)}"
         )
         await query.answer("Done")
 
@@ -1087,7 +1087,7 @@ async def admin_callback(query: CallbackQuery):
         log_message = (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#UNPINNED-ALL\n"
-            f"<b>ADMIN:</b> {mention_html(admin_user.id, html.escape(admin_user.first_name))}"
+            f"<b>ADMIN:</b> {mention_html(admin_user.id, admin_user.first_name)}"
         )
 
         return log_message

@@ -360,7 +360,7 @@ async def blacklist_mode(message: Message, command: CommandObject):
             "<b>Admin:</b> {}\n"
             "Changed sticker blacklist mode. users will be {}.".format(
                 html.escape(chat.title),
-                mention_html(user.id, html.escape(user.first_name)),
+                mention_html(user.id, user.first_name),
                 settypeblacklist,
             )
         )
@@ -418,7 +418,7 @@ async def del_blackliststicker(message: Message):
                     await message.delete()
                 elif getmode == 2:
                     await message.delete()
-                    warn(
+                    await warn(
                         user,
                         chat,
                         "Using sticker '{}' which in blacklist stickers".format(
