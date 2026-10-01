@@ -2548,5 +2548,40 @@ class AiogramModelKeywordTests(unittest.TestCase):
         self.assertNotIn("event", ErrorEvent.model_fields)
 
 
+class UnresolvedTargetTests(unittest.TestCase):
+    """An unresolvable target must not reach a Bot API call as None.
+
+    extract_user* return None when the username is unknown. PTB sent that to
+    Telegram and caught the API error; aiogram validates the argument
+    client-side and raises ValidationError, which is not a TelegramAPIError,
+    so it escaped the handlers' except clauses.
+    """
+
+    def test_ban_guards_a_none_target(self):
+        import ast
+
+        source = (ROOT / "Mikobot/plugins/ban.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        guarded = 0
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.AsyncFunctionDef):
+                continue
+            body = ast.unparse(node)
+            if "extract_user_and_text" not in body:
+                continue
+            if "if user_id is None:" in body:
+                guarded += 1
+        self.assertEqual(guarded, 4, "every ban-family handler must guard a None target")
+
+    def test_aiogram_rejects_a_none_user_id(self):
+        try:
+            from aiogram.methods import GetChatMember
+        except ModuleNotFoundError:
+            self.skipTest("aiogram is not installed")
+
+        with self.assertRaises(Exception):
+            GetChatMember(chat_id=1, user_id=None)
+
+
 if __name__ == "__main__":
     unittest.main()

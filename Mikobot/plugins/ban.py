@@ -52,6 +52,8 @@ async def ban(message: Message, command: CommandObject) -> str:
     log_message = ""
     args = command.args or []
     user_id, reason = await extract_user_and_text(message, args)
+    if user_id is None:
+        return await message.answer("That looks like an invalid User ID to me.")
 
     member = await bot.get_chat_member(chat.id, user.id)
     SILENT = bool(True if message.text.startswith("/s") else False)
@@ -218,6 +220,8 @@ async def temp_ban(message: Message, command: CommandObject) -> str:
     log_message = ""
     args = command.args or []
     user_id, reason = await extract_user_and_text(message, args)
+    if user_id is None:
+        return await message.answer("That looks like an invalid User ID to me.")
 
     if not user_id:
         await message.answer("I doubt that's a user.")
@@ -307,6 +311,8 @@ async def kick(message: Message, command: CommandObject) -> str:
     log_message = ""
     args = command.args or []
     user_id, reason = await extract_user_and_text(message, args)
+    if user_id is None:
+        return await message.answer("That looks like an invalid User ID to me.")
 
     if not user_id:
         await message.answer("I doubt that's a user.")
@@ -390,6 +396,8 @@ async def unban(message: Message, command: CommandObject) -> str:
     log_message = ""
     args = command.args or []
     user_id, reason = await extract_user_and_text(message, args)
+    if user_id is None:
+        return await message.answer("That looks like an invalid User ID to me.")
 
     if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
         try:
