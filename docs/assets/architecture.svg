@@ -75,7 +75,7 @@
   <rect class="accent-orange" x="620" y="600" width="280" height="96"/>
   <text class="head" x="644" y="630">External HTTP APIs</text>
   <text class="sub" x="644" y="652">Shared httpx client, HTTP/2, 20s timeout</text>
-  <text class="sub" x="644" y="674">Gemini, Openverse, HN Algolia, DuckDuckGo</text>
+  <text class="sub" x="644" y="674">Openverse, HN Algolia, DuckDuckGo</text>
 
   <rect class="accent-red" x="920" y="600" width="340" height="96"/>
   <text class="head" x="944" y="630">Supporting services</text>

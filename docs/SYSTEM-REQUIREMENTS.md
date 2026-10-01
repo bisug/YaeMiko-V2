@@ -48,7 +48,7 @@ Being precise about this, because the numbers below drive real hosting choices.
 | --- | --- |
 | Repository size, 9.2 MB without `.git` | `du -sh --exclude=.git .` on this checkout |
 | 129 Python files, 38,708 lines | `find ... | wc -l` on this checkout |
-| 65.4 MB of direct dependency wheels | wheel sizes read from the PyPI JSON API for every pin in `requirements.txt` |
+| 64.3 MB of direct dependency wheels | wheel sizes read from the PyPI JSON API for every pin in `requirements.txt` |
 | ONNX Runtime 1.30.0 wheel, 22.5 MB | `https://pypi.org/pypi/onnxruntime/1.30.0/json` |
 | opennsfw-onnx 0.1.0 wheel, 20.9 MB | same API, the wheel ships the model |
 | Pillow 12.3.0 wheel, 6.8 MB | same API |
@@ -183,11 +183,10 @@ Measured wheel sizes for the dependencies that actually matter:
 | Kurigram | 5.8 MB | MTProto implementation |
 | SQLAlchemy | 4.6 MB | Includes the native C extensions |
 | pymongo | 1.1 MB | BSON and the wire protocol |
-| google-genai | 1.1 MB | The AI client and its models |
 | python-telegram-bot | 0.7 MB | Pure Python, small |
-| All 24 direct dependencies | 65.4 MB | Download size, excluding transitive dependencies |
+| All 23 direct dependencies | 64.3 MB | Download size, excluding transitive dependencies |
 
-So the install is roughly 65 MB of wheels plus transitive dependencies, and the runtime memory is
+So the install is roughly 64 MB of wheels plus transitive dependencies, and the runtime memory is
 dominated by two things: the ONNX session and the two concurrent clients, PTB and Kurigram, each
 holding its own connection state.
 
@@ -232,12 +231,10 @@ If you are over budget, in order of impact:
    heaviest are `sangmata` (Pillow plus image work), `cosplay` (image search and download),
    `imagegen` (image generation, currently flagged off in the module display name) and `reverse`
    (reverse image search). See [PLUGINS.md](PLUGINS.md) for what each one pulls in.
-2. Set `GEMINI_API_KEY` to empty. The AI client and its transitive dependencies are no longer
-   imported.
-3. Set `LOGGER=False` and `LOG_LEVEL=WARNING`. The rotating file handler stops writing.
-4. Lower `concurrent_updates` in `Mikobot/__init__.py` from 64 to 16. Fewer updates in flight means a
+2. Set `LOGGER=False` and `LOG_LEVEL=WARNING`. The rotating file handler stops writing.
+3. Lower `concurrent_updates` in `Mikobot/__init__.py` from 64 to 16. Fewer updates in flight means a
    smaller working set under burst.
-5. Move PostgreSQL to a managed instance. The local server process and its page cache are otherwise
+4. Move PostgreSQL to a managed instance. The local server process and its page cache are otherwise
    counted against the same vCPU and RAM as the bot.
 
 ## Troubleshooting resource problems

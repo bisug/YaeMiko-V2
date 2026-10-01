@@ -77,6 +77,6 @@
   <rect class="panel" x="40" y="524" width="1200" height="110"/>
   <text class="head" x="64" y="554">Where the weight sits, measured from PyPI wheel sizes</text>
   <text class="sub" x="64" y="580">onnxruntime 22.5 MB, opennsfw-onnx 20.9 MB, Pillow 6.8 MB, Kurigram 5.8 MB, SQLAlchemy 4.6 MB, pymongo 1.1 MB, python-telegram-bot 0.7 MB</text>
-  <text class="sub" x="64" y="602">24 direct dependencies total 65.4 MB of wheels. The ONNX session is lazy, it loads only when an anti-NSFW check runs.</text>
+  <text class="sub" x="64" y="602">23 direct dependencies total 64.3 MB of wheels. The ONNX session is lazy, it loads only when an anti-NSFW check runs.</text>
   <text class="sub" x="64" y="624">RAM figures are estimates. Measure your own instance with VmHWM in /proc, see docs/SYSTEM-REQUIREMENTS.md.</text>
 </svg>

@@ -177,8 +177,6 @@ if ENV:
     SUPPORT_CHAT = os.environ.get("SUPPORT_CHAT", "Ecstasy_Realm")
     TEMP_DOWNLOAD_DIRECTORY = os.environ.get("TEMP_DOWNLOAD_DIRECTORY", "./")
     TOKEN = os.environ.get("TOKEN", None)
-    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
     # Read and validate integer variables
     OWNER_ID = env_int(
@@ -234,8 +232,6 @@ else:
     SUPPORT_CHAT = Config.SUPPORT_CHAT
     TEMP_DOWNLOAD_DIRECTORY = Config.TEMP_DOWNLOAD_DIRECTORY
     TOKEN = Config.TOKEN
-    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", Config.GEMINI_API_KEY)
-    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", Config.GEMINI_MODEL)
 
     # Read and validate integer variables
     try:
@@ -270,10 +266,6 @@ else:
         raise Exception("Your whitelisted users list does not contain valid integers.")
 
 # <======================================================================================================>
-
-if GEMINI_MODEL == "gemini-2.5-flash-lite":
-    LOGGER.warning("Replacing retired Gemini model with gemini-3.5-flash-lite")
-    GEMINI_MODEL = "gemini-3.5-flash-lite"
 
 # <================================================= SETS =====================================================>
 ELEVATED_USERS = _load_elevated_users()

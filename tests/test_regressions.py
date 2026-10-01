@@ -893,22 +893,8 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("psycopg[binary,pool]==3.3.6", requirements)
         self.assertNotIn("psycopg2-binary", requirements)
 
-        ai_source = (ROOT / "Mikobot/plugins/ai.py").read_text(encoding="utf-8")
-        self.assertIn('LOGGER.exception("Gemini request failed")', ai_source)
-        self.assertIn("AutomaticFunctionCallingConfig", ai_source)
-        self.assertIn("disable=True", ai_source)
         main_source = (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8")
         self.assertNotIn("markdownhelp", main_source)
-
-        for relative in ("Mikobot/__init__.py", "variables.py", "app.json"):
-            source = (ROOT / relative).read_text(encoding="utf-8")
-            self.assertIn("gemini-3.5-flash-lite", source)
-            if relative == "Mikobot/__init__.py":
-                self.assertIn(
-                    'if GEMINI_MODEL == "gemini-2.5-flash-lite"', source
-                )
-            else:
-                self.assertNotIn("gemini-2.5-flash-lite", source)
 
     def test_confirmed_undefined_runtime_names_are_resolved(self):
         expected_imports = {
@@ -2602,8 +2588,7 @@ class PluginModNameTests(unittest.TestCase):
 
     Mikobot/__main__.py aborts the whole bot with "Can't have two modules with
     the same name!" on a duplicate, so a collision is a total startup failure,
-    not a degraded feature. palmchat.py has held "CHATBOT" since it landed, and
-    porting chatbot.py back in with the same name took production down.
+    not a degraded feature. It took production down once already.
     """
 
     def _mod_names(self):
@@ -2634,22 +2619,6 @@ class PluginModNameTests(unittest.TestCase):
             {},
             "duplicate __mod_name__ would abort startup in Mikobot/__main__.py",
         )
-
-    def test_chatbot_plugin_does_not_shadow_palmchat(self):
-        import ast
-
-        source = (ROOT / "Mikobot/plugins/chatbot.py").read_text(encoding="utf-8")
-        declared = [
-            node.value.value
-            for node in ast.walk(ast.parse(source))
-            if isinstance(node, ast.Assign)
-            and any(
-                isinstance(t, ast.Name) and t.id == "__mod_name__"
-                for t in node.targets
-            )
-            and isinstance(node.value, ast.Constant)
-        ]
-        self.assertEqual(declared, ["KUKI"])
 
 
 if __name__ == "__main__":

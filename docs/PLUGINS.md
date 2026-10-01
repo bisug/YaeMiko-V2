@@ -100,8 +100,6 @@ name in that list, so dropping a new file into the directory is enough to regist
 
 | Module | Display name | Commands |
 | --- | --- | --- |
-| `ai` | none | `askai`, `palm`, both routed through `google-genai` |
-| `palmchat` | CHATBOT | Gemini backed chat |
 | `search` | SEARCH | DuckDuckGo instant answers and Hacker News search |
 | `quotely` | none | Quote generation |
 | `reverse` | none | Reverse image search |
@@ -124,11 +122,12 @@ name in that list, so dropping a new file into the directory is enough to regist
 | --- | --- |
 | `imagegen` | `__mod_name__` is `IMAGE GENERATION DISABLED`, so it is skipped in the help listing until re-enabled |
 
-The disabled `chatbot.py.txt` and `getreaction.py.txt` stubs were removed. `chatbot` is now a
-working aiogram plugin backed by the same Gemini client as the `ai` plugin, instead of the
-`api.brainshop.ai` echo service it used to call. `getreaction` was dropped rather than ported:
-Kurigram reactions have no Bot API equivalent, and Telegram's own client already shows that
-list.
+The AI and chatbot plugins were removed along with their Gemini configuration. `ai` (`/askai`,
+`/palm`), `palmchat` (`Miko <question>`), the per-chat chatbot and the `kuki_chats` table are
+gone; `google-genai` is no longer a dependency. Two older stubs were retired earlier: the
+PTB `chatbot.py.txt`, which called the defunct `api.brainshop.ai` echo service, and
+`getreaction.py.txt`, dropped rather than ported because Kurigram reactions have no Bot API
+equivalent and Telegram's own client already shows that list.
 
 ## Writing a plugin
 

@@ -168,7 +168,6 @@ execution. Persistence, reply construction and error handling surround that spin
 | Component | Version | Purpose | Link |
 | --- | --- | --- | --- |
 | httpx with HTTP/2 | 0.28.1 | Shared async HTTP client | [PyPI](https://pypi.org/project/httpx/) |
-| google-genai | latest | `/askai` and `/palm` | [Gemini API](https://ai.google.dev/gemini-api) |
 | Pillow | 12.3.0 | Image composition and text rendering | [PyPI](https://pypi.org/project/pillow/) |
 | ONNX Runtime | 1.30.0 | NSFW detection inference | [PyPI](https://pypi.org/project/onnxruntime/) |
 | opennsfw-onnx | 0.1.0 | Pre trained NSFW classifier | [PyPI](https://pypi.org/project/opennsfw-onnx/) |
@@ -238,7 +237,7 @@ Where the memory and disk go, measured from PyPI wheel sizes for the pinned depe
 | Pillow | 6.8 MB | Image buffers |
 | Kurigram | 5.8 MB | MTProto client |
 | SQLAlchemy | 4.6 MB | Native extensions |
-| All 24 direct dependencies | 65.4 MB | Install footprint before transitive dependencies |
+| All 23 direct dependencies | 64.3 MB | Install footprint before transitive dependencies |
 
 The RAM figures are estimates, not measurements of a live bot. To size your own instance, read the
 peak rather than the current usage:
@@ -307,7 +306,7 @@ YaeMiko/
 | Welcome and identity | `afk`, `newuserinfo`, `notes`, `users`, `welcome`, `whispers` |
 | Fun and media | `cosplay`, `couple`, `fun`, `hyperlink`, `imagegen`, `sangmata`, `stickers`, `telegraph` |
 | Information | `alive`, `info`, `karma`, `log_channel`, `ping`, `speedtest` |
-| Search, AI and translation | `ai`, `bug`, `instadl`, `palmchat`, `pkang`, `quotely`, `reverse`, `search`, `tr` |
+| Search and translation | `bug`, `instadl`, `pkang`, `quotely`, `reverse`, `search`, `tr` |
 | Reference data | `anime`, `disasters`, `pokedex`, `sports` |
 
 `LOAD` forces a start order and `NO_LOAD` skips modules entirely. Both accept a space separated list
@@ -364,8 +363,6 @@ Full reference with defaults and elevated user ranks:
 | `LOG_LEVEL` | `INFO` | Root log level |
 | `ACTIVITY_LOG` | `False` | Log every incoming update summary |
 | `BAN_STICKER` | empty | Sticker file ID banned in all groups |
-| `GEMINI_API_KEY` | empty | Enables `/askai` and `/palm` |
-| `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Gemini model id |
 | `TEMP_DOWNLOAD_DIRECTORY` | `./` | Scratch directory for media |
 
 Never commit a filled `.env`. The file is already listed in `.gitignore`.
@@ -595,7 +592,6 @@ button an explicit `style`.
 ### External data sources
 
 - [Openverse](https://openverse.org/) for openly licensed image search
-- [Google Gemini API](https://ai.google.dev/gemini-api) for AI chat
 - [Hacker News Algolia API](https://hn.algolia.com/api) for technology news search
 - [DuckDuckGo Instant Answer API](https://duckduckgo.com/duckduckgo-help-pages/results/duckduckgo-instant-answer-api)
   for quick web answers

@@ -104,11 +104,6 @@ contains the complete Telegram API URL with the token in the path.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `GEMINI_API_KEY` | empty | Enables `/askai` and `/palm`. Empty means the commands reply with a configuration notice. |
-| `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Model id passed to `google-genai` |
-
-A retired `gemini-2.5-flash-lite` value is replaced with `gemini-3.5-flash-lite` and a warning is
-logged at import time.
 
 ## Where each value is read
 

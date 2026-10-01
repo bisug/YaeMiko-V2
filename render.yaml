@@ -85,12 +85,6 @@ services:
       - key: TEMP_DOWNLOAD_DIRECTORY
         value: ./
 
-      # Optional AI features. Leave GEMINI_API_KEY empty to disable /askai and /palm.
-      - key: GEMINI_API_KEY
-        sync: false
-      - key: GEMINI_MODEL
-        value: gemini-3.5-flash-lite
-
 databases:
   - name: yaemiko-db
     plan: free

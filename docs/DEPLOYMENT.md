@@ -99,7 +99,7 @@ Render asks for every variable marked `sync: false`. Paste the values you gather
 ```text
 API_ID, API_HASH, TOKEN, OWNER_ID,
 SUPPORT_CHAT, SUPPORT_ID, EVENT_LOGS, MESSAGE_DUMP,
-MONGO_DB_URI, GEMINI_API_KEY (optional),
+MONGO_DB_URI,
 DEV_USERS, DRAGONS, DEMONS, WOLVES, TIGERS, BL_CHATS (optional, space separated IDs)
 ```
 
@@ -152,7 +152,6 @@ SUPPORT_ID       = <-100...>
 DEL_CMDS         = True
 STRICT_GBAN      = True
 LOGGER           = True
-GEMINI_API_KEY   = <optional>
 ```
 
 ### Step 4: deploy

@@ -240,10 +240,9 @@ async def extra_command_handlered(message: Message, command: CommandObject):
     keyboard = [
         [
             InlineKeyboardButton(text="MANAGEMENT", callback_data="help_back", style=ButtonStyle.PRIMARY),
-            InlineKeyboardButton(text="AI", callback_data="ai_command_handler", style=ButtonStyle.PRIMARY),
+            InlineKeyboardButton(text="ANIME", callback_data="anime_command_handler", style=ButtonStyle.PRIMARY),
         ],
         [
-            InlineKeyboardButton(text="ANIME", callback_data="anime_command_handler", style=ButtonStyle.PRIMARY),
             InlineKeyboardButton(text="GENSHIN", callback_data="genshin_command_handler", style=ButtonStyle.PRIMARY),
         ],
         [
@@ -269,7 +268,6 @@ async def extra_command_callback(query: CallbackQuery):
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(text="MANAGEMENT", callback_data="help_back", style=ButtonStyle.PRIMARY),
-                        InlineKeyboardButton(text="AI", callback_data="ai_command_handler", style=ButtonStyle.PRIMARY),
                     ],
                     [
                         InlineKeyboardButton(
@@ -285,34 +283,6 @@ async def extra_command_callback(query: CallbackQuery):
                 ]
             ),
             parse_mode=ParseMode.MARKDOWN,  # Added this line to explicitly specify Markdown parsing
-        )
-
-
-async def ai_command(message: Message, command: CommandObject):
-    await message.answer(
-        "🧠 *AI commands:*\n\n➽ /askai <question>\n➽ /palm <question>\n➽ Miko <question>\n\nPowered by Google Gemini.",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="AI", callback_data="ai_handler", style=ButtonStyle.PRIMARY)]]),
-        parse_mode=ParseMode.MARKDOWN,
-    )
-
-
-async def ai_command_callback(query: CallbackQuery):
-    if query.data == "ai_command_handler":
-        await query.answer()
-        await query.message.edit_text(
-            "🧠 *AI commands:*\n\n➽ /askai <question>\n➽ /palm <question>\n➽ Miko <question>\n\nPowered by Google Gemini.",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="AI", callback_data="ai_handler", style=ButtonStyle.PRIMARY)], [InlineKeyboardButton(text="» 𝘽𝘼𝘾𝙆 «", callback_data="extra_command_handler", style=ButtonStyle.PRIMARY)]]),
-            parse_mode=ParseMode.MARKDOWN,
-        )
-
-
-async def ai_handler_callback(query: CallbackQuery):
-    if query.data == "ai_handler":
-        await query.answer()
-        await query.message.edit_text(
-            "🧠 *AI commands:*\n\n➽ /askai <question>\n➽ /palm <question>\n➽ Miko <question>\n\nPowered by Google Gemini.",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⇦ BACK", callback_data="ai_command_handler", style=ButtonStyle.PRIMARY)]]),
-            parse_mode=ParseMode.MARKDOWN,
         )
 
 
@@ -859,7 +829,6 @@ def main():
     dp.message.register(chain(extra_command_handlered), Command("help"))
     dp.message.register(chain(get_settings), Command("settings"))
     dp.message.register(chain(repo), Command("repo"))
-    dp.message.register(chain(ai_command), Command("ai"))
     dp.message.register(chain(migrate_chats), F.update.migrate)
 
     for _prefix, _callback in (
@@ -868,8 +837,6 @@ def main():
         ("Miko_", Miko_about_callback),
         ("git_source", gitsource_callback),
         ("insider_", stats_back),
-        ("ai_handler", ai_handler_callback),
-        ("ai_command_handler", ai_command_callback),
         ("anime_command_handler", anime_command_callback),
         ("extra_command_handler", extra_command_callback),
         ("genshin_command_handler", genshin_command_callback),

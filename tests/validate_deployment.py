@@ -31,7 +31,6 @@ SECRETS = {
     "WOLVES",
     "TIGERS",
     "BL_CHATS",
-    "GEMINI_API_KEY",
 }
 
 
