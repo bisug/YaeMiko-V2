@@ -123,7 +123,12 @@ name in that list, so dropping a new file into the directory is enough to regist
 | Module | State |
 | --- | --- |
 | `imagegen` | `__mod_name__` is `IMAGE GENERATION DISABLED`, so it is skipped in the help listing until re-enabled |
-| `chatbot.py.txt`, `getreaction.py.txt` | Renamed to `.txt`, so `glob` does not pick them up. Restore the `.py` extension to enable |
+
+The disabled `chatbot.py.txt` and `getreaction.py.txt` stubs were removed. `chatbot` is now a
+working aiogram plugin backed by the same Gemini client as the `ai` plugin, instead of the
+`api.brainshop.ai` echo service it used to call. `getreaction` was dropped rather than ported:
+Kurigram reactions have no Bot API equivalent, and Telegram's own client already shows that
+list.
 
 ## Writing a plugin
 
