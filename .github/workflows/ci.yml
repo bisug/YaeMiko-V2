@@ -17,6 +17,27 @@ jobs:
     name: Validate
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # The SQL layer is only exercised against a real PostgreSQL; without one
+    # those tests skip and a broken column type or query would go unnoticed.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      DB_NAME: MIKO_DB
+      # Placeholder so importing Mikobot does not need a real token.
+      TOKEN: "0000000000:CIPLACEHOLDERNOTAREALTOKEN"
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -31,6 +52,13 @@ jobs:
       # passes on a machine that happens to have the dependency installed.
       - name: Install the Telegram client under test
         run: python -m pip install --disable-pip-version-check "aiogram==3.31.0"
+
+      # Pinned to the versions in requirements.txt; the SQL-layer tests need
+      # a real driver to reach the postgres service above.
+      - name: Install database drivers
+        run: |
+          python -m pip install --disable-pip-version-check \
+            "SQLAlchemy==2.1.1" "psycopg[binary,pool]==3.3.6"
 
       - name: Verify the installed version
         run: |

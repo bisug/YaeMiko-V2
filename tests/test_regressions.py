@@ -2207,5 +2207,145 @@ class GateMiddlewareHandlerKeyTests(unittest.TestCase):
         self.assertIn('data["handler"]', source_gate)
 
 
+class SqlLayerDatabaseTests(unittest.TestCase):
+    """Execute the SQL layer against a real PostgreSQL when one is available.
+
+    The rest of this file only reads Database/sql sources as text, so nothing
+    here would catch a broken column type or a query that no longer matches
+    the schema. Skipped when no database is configured or reachable.
+    """
+
+    UID = 900000001
+    CID = -100900000001
+
+    @classmethod
+    def setUpClass(cls):
+        import os
+        import socket
+        from urllib.parse import urlparse
+
+        url = os.environ.get("DATABASE_URL")
+        if not url:
+            raise unittest.SkipTest("DATABASE_URL is not set")
+        host = urlparse(url).hostname
+        if host:
+            try:
+                socket.getaddrinfo(host, None)
+            except socket.gaierror:
+                raise unittest.SkipTest(f"database host {host} does not resolve")
+
+        import importlib
+        import pkgutil
+        import sys
+
+        sys.path.insert(0, str(ROOT))
+        try:
+            import sqlalchemy  # noqa: F401
+        except ImportError:
+            raise unittest.SkipTest("sqlalchemy is not installed")
+
+        import Database.sql as dbsql
+
+        for module in pkgutil.iter_modules(dbsql.__path__):
+            if module.name.endswith("_sql"):
+                importlib.import_module(f"Database.sql.{module.name}")
+        try:
+            from Database.sql import start
+        except Exception as error:  # pragma: no cover - environment specific
+            raise unittest.SkipTest(f"cannot open the database: {error}")
+        # staticmethod keeps this a plain function; a bare assignment would
+        # bind it as a method and start() takes no arguments.
+        cls._start = staticmethod(start)
+
+    def setUp(self):
+        try:
+            self._start()
+        except Exception as error:
+            self.skipTest(f"cannot open the database: {error}")
+        self._clear_probe_state()
+
+    def _clear_probe_state(self):
+        # These helpers are not idempotent (approve inserts unconditionally),
+        # so a rerun against the same database would trip the primary key.
+        from Database.sql import approve_sql, blacklist_sql, disable_sql, warns_sql
+
+        for call in (
+            lambda: approve_sql.disapprove(self.CID, self.UID),
+            lambda: blacklist_sql.rm_from_blacklist(self.CID, "sql_layer_probe"),
+            lambda: disable_sql.enable_command(self.CID, "sql_layer_probe"),
+            warns_sql.reset_warns(self.UID, self.CID),
+        ):
+            try:
+                call()
+            except Exception:
+                pass  # nothing to remove on a first run
+
+    def test_warns_round_trips_through_the_array_column(self):
+        from Database.sql import warns_sql
+
+        warns_sql.reset_warns(self.UID, self.CID)
+        warns_sql.warn_user(self.UID, self.CID, "first")
+        warns_sql.warn_user(self.UID, self.CID, "second")
+        count, reasons = warns_sql.get_warns(self.UID, self.CID)
+        self.assertEqual(count, 2)
+        self.assertEqual(set(reasons), {"first", "second"})
+        self.assertTrue(warns_sql.remove_warn(self.UID, self.CID))
+        warns_sql.reset_warns(self.UID, self.CID)
+
+    def test_ensure_bot_in_db_is_idempotent(self):
+        # Startup calls this on every boot; a second call must not duplicate.
+        from Database.sql import users_sql
+
+        users_sql.ensure_bot_in_db()
+        users_sql.ensure_bot_in_db()
+        # merge() keyed on the user id, so one row survives both calls.
+        from Mikobot import BOT_ID
+
+        self.assertIsNotNone(users_sql.get_name_by_userid(BOT_ID))
+
+    def test_user_round_trip(self):
+        from Database.sql import users_sql
+
+        users_sql.update_user(self.UID, "sql_layer_probe")
+        self.assertEqual(users_sql.get_name_by_userid(self.UID).username, "sql_layer_probe")
+
+    def test_blacklist_round_trip(self):
+        from Database.sql import blacklist_sql
+
+        blacklist_sql.add_to_blacklist(self.CID, "sql_layer_probe")
+        self.assertIn("sql_layer_probe", blacklist_sql.get_chat_blacklist(self.CID))
+        self.assertTrue(blacklist_sql.rm_from_blacklist(self.CID, "sql_layer_probe"))
+        self.assertNotIn("sql_layer_probe", blacklist_sql.get_chat_blacklist(self.CID))
+
+    def test_disabled_command_round_trip(self):
+        from Database.sql import disable_sql
+
+        disable_sql.disable_command(self.CID, "sql_layer_probe")
+        self.assertTrue(disable_sql.is_command_disabled(self.CID, "sql_layer_probe"))
+        self.assertTrue(disable_sql.enable_command(self.CID, "sql_layer_probe"))
+        self.assertFalse(disable_sql.is_command_disabled(self.CID, "sql_layer_probe"))
+
+    def test_lock_and_restriction_round_trip(self):
+        from Database.sql import locks_sql
+
+        locks_sql.update_lock(self.CID, "sticker", True)
+        # is_locked returns False, not None, when the chat is not locked.
+        self.assertTrue(locks_sql.is_locked(self.CID, "sticker"))
+        # update_restriction only handles these types; "sticker" is a lock,
+        # not a restriction, and would silently do nothing.
+        locks_sql.update_restriction(self.CID, "messages", True)
+        self.assertTrue(locks_sql.is_restr_locked(self.CID, "messages"))
+
+    def test_approval_round_trip(self):
+        from Database.sql import approve_sql
+
+        approve_sql.approve(self.CID, self.UID)
+        self.assertIsNotNone(approve_sql.is_approved(self.CID, self.UID))
+        # list_approved returns ORM rows, not bare ids.
+        self.assertIn(self.UID, [row.user_id for row in approve_sql.list_approved(self.CID)])
+        self.assertTrue(approve_sql.disapprove(self.CID, self.UID))
+        self.assertIsNone(approve_sql.is_approved(self.CID, self.UID))
+
+
 if __name__ == "__main__":
     unittest.main()
