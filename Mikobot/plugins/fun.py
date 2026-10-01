@@ -156,7 +156,7 @@ weebyfont = [
 
 
 async def webify(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     string = ""
 
     if message.reply_to_message:

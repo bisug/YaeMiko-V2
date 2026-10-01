@@ -1078,7 +1078,7 @@ class DatabaseRegressionTests(unittest.TestCase):
 
         chatadmin = (ROOT / "Mikobot/plugins/chatadmin.py").read_text(encoding="utf-8")
         misc = (ROOT / "Mikobot/plugins/helper_funcs/misc.py").read_text(encoding="utf-8")
-        self.assertIn("MenuButtonWebApp(\n                text=command.args[1],\n                web_app=WebAppInfo(url=command.args[1]),", chatadmin)
+        self.assertIn("MenuButtonWebApp(\n                text=args[1],\n                web_app=WebAppInfo(url=args[1]),", chatadmin)
         self.assertIn("thumbnail_url=thumb_url", misc)
         self.assertIn("id=str(uuid4())", misc)
         self.assertNotIn("thumb_url=thumb_url", misc)

@@ -24,7 +24,7 @@ from Mikobot.utils.parser import mention_html
 # <================================================ FUNCTION =======================================================>
 async def info(message: Message, command: CommandObject):
     chat = message.chat
-    args = command.args or []
+    args = command.args.split() if command.args else []
 
     def reply_with_text(text):
         return message.answer(text, parse_mode=ParseMode.HTML)

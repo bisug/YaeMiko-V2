@@ -820,7 +820,7 @@ async def left_member(message: Message):
 
 @check_admin(is_user=True)
 async def welcome(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     if not args or args[0].lower() == "noformat":
         noformat = True
@@ -886,7 +886,7 @@ async def welcome(message: Message, command: CommandObject):
 
 @check_admin(is_user=True)
 async def goodbye(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
 
     if not args or args[0] == "noformat":
@@ -1038,7 +1038,7 @@ async def reset_goodbye(message: Message, command: CommandObject) -> str:
 @check_admin(is_user=True)
 @loggable
 async def welcomemute(message: Message, command: CommandObject) -> str:
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
     msg = message
@@ -1100,7 +1100,7 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
 @check_admin(is_user=True)
 @loggable
 async def clean_welcome(message: Message, command: CommandObject) -> str:
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
 
@@ -1151,9 +1151,9 @@ async def clean_welcome(message: Message, command: CommandObject) -> str:
 
 @check_admin(is_user=True)
 async def cleanservice(message: Message, command: CommandObject) -> str:
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat  # type: Optional[Chat]
-    if chat.type != chat.PRIVATE:
+    if chat.type != ChatType.PRIVATE:
         if len(args) >= 1:
             var = args[0]
             if var in ("no", "off"):
@@ -1215,7 +1215,7 @@ async def user_button(query: CallbackQuery):
         waitlist_key = (chat.id, user.id)
         member_dict = VERIFIED_USER_WAITLIST.pop(waitlist_key, None)
         if not member_dict:
-            return await query.answer(text="This verification has expired.", alert=True)
+            return await query.answer(text="This verification has expired.", show_alert=True)
         member_dict["status"] = True
         VERIFIED_USER_WAITLIST[waitlist_key] = member_dict
         await query.answer(text="Yeet! You're a human, unmuted!")

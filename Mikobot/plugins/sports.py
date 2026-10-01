@@ -154,8 +154,9 @@ async def _show_menu(query: CallbackQuery, sport: str) -> None:
 
 
 async def get_sport_matches(message: Message, command: CommandObject, sport: str) -> None:
-    if len(command.args or []) == 1 and command.args[0].isdigit():
-        await _send_league_message(message, sport, command.args[0])
+    args = command.args.split() if command.args else []
+    if len(args) == 1 and args[0].isdigit():
+        await _send_league_message(message, sport, args[0])
     else:
         await _show_leagues(message, sport)
 

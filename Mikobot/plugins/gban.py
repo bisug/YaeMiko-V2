@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timezone
 from io import BytesIO
 
-from aiogram.enums import ChatMemberStatus, ParseMode
+from aiogram.enums import ChatMemberStatus, ChatType, ParseMode
 from aiogram.exceptions import TelegramAPIError, TelegramForbiddenError
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
@@ -68,7 +68,7 @@ UNGBAN_ERRORS = {
 # <================================================ FUNCTION =======================================================>
 @support_plus
 async def gban(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     user = message.from_user
     chat = message.chat
     log_message = ""
@@ -152,7 +152,7 @@ async def gban(message: Message, command: CommandObject):
     )
 
     if reason:
-        if chat.type == chat.SUPERGROUP and chat.username:
+        if chat.type == ChatType.SUPERGROUP and chat.username:
             log_message += f'\n<b>Reason:</b> <a href="https://telegram.me/{chat.username}/{message.message_id}">{reason}</a>'
         else:
             log_message += f"\n<b>Reason:</b> <code>{reason}</code>"
@@ -247,7 +247,7 @@ async def gban(message: Message, command: CommandObject):
 
 @support_plus
 async def ungban(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     user = message.from_user
     chat = message.chat
     log_message = ""
@@ -432,7 +432,7 @@ async def enforce_gban(msg: Message):
 
 @check_admin(is_user=True)
 async def gbanstat(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     if len(args) > 0:
         if args[0].lower() in ["on", "yes"]:
             sql.enable_gbans(message.chat.id)

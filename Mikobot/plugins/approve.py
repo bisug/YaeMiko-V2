@@ -24,7 +24,7 @@ async def approve(message: Message, command: CommandObject):
     message = message
     chat_title = message.chat.title
     chat = message.chat
-    args = command.args or []
+    args = command.args.split() if command.args else []
     user = message.from_user
     user_id = await extract_user(message, args)
     if not user_id:
@@ -68,7 +68,7 @@ async def disapprove(message: Message, command: CommandObject):
     message = message
     chat_title = message.chat.title
     chat = message.chat
-    args = command.args or []
+    args = command.args.split() if command.args else []
     user = message.from_user
     user_id = await extract_user(message, args)
     if not user_id:
@@ -123,7 +123,7 @@ async def approved(message: Message):
 @check_admin(is_user=True)
 async def approval(message: Message, command: CommandObject):
     chat = message.chat
-    args = command.args or []
+    args = command.args.split() if command.args else []
     user_id = await extract_user(message, args)
 
     if not user_id:

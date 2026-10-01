@@ -31,7 +31,7 @@ check_admin = chat_status.check_admin
 @typing_action
 async def allow_connections(message: Message, command: CommandObject):
     chat = message.chat
-    args = command.args or []
+    args = command.args.split() if command.args else []
 
     if chat.type != ChatType.PRIVATE:
         if len(args) >= 1:
@@ -110,7 +110,7 @@ async def connection_chat(message: Message, command: CommandObject):
 async def connect_chat(message: Message, command: CommandObject):
     chat = message.chat
     user = message.from_user
-    args = command.args or []
+    args = command.args.split() if command.args else []
 
     if message.chat.type == ChatType.PRIVATE:
         if args and len(args) >= 1:

@@ -72,8 +72,8 @@ async def zombies_callback(_, callback):
         await callback.message.delete()
         return
     if not await is_administrator(callback.from_user.id, callback.message):
-        return await callback.answer("You need admin permission.", alert=True)
-    await callback.answer("Removing deleted accounts…", alert=True)
+        return await callback.answer("You need admin permission.", show_alert=True)
+    await callback.answer("Removing deleted accounts…", show_alert=True)
     status = await callback.message.edit("Removing deleted accounts…")
     await _remove_deleted(callback.message, status)
 

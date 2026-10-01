@@ -16,7 +16,7 @@ import psutil
 import pyrogram
 from aiogram import F
 from aiogram.dispatcher.event.bases import SkipHandler
-from aiogram.enums import ButtonStyle, ParseMode
+from aiogram.enums import ButtonStyle, ChatType, ParseMode
 from aiogram.exceptions import (
     TelegramAPIError,
     TelegramForbiddenError,
@@ -176,7 +176,7 @@ async def send_help(chat_id, text, keyboard=None):
 
 
 async def start(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     message = message
     uptime = get_readable_time((time.time() - StartTime))
     if message.chat.type == "private":
@@ -205,7 +205,7 @@ async def start(message: Message, command: CommandObject):
                     await send_settings(match.group(1), message.from_user.id, True)
 
             elif args[0][1:].isdigit() and "rules" in IMPORTED:
-                await IMPORTED["rules"].send_rules(update, args[0], from_pm=True)
+                await IMPORTED["rules"].send_rules(message, args[0], from_pm=True)
 
         else:
             first_name = message.from_user.first_name
@@ -604,7 +604,7 @@ async def get_help(message: Message, command: CommandObject):
     args = (message.text or "").split(None, 1)
 
     # ONLY send help in PM
-    if chat.type != chat.PRIVATE:
+    if chat.type != ChatType.PRIVATE:
         if len(args) >= 2 and any(args[1].lower() == x for x in HELPABLE):
             module = args[1].lower()
             await message.answer(
@@ -723,7 +723,7 @@ async def settings_button(query: CallbackQuery):
     try:
         chat = await bot.get_chat(chat_id)
         if not await is_user_admin(chat, user.id):
-            await query.answer("You are no longer an administrator of this chat.", alert=True)
+            await query.answer("You are no longer an administrator of this chat.", show_alert=True)
             return
         if mod_match:
             chat_id = mod_match.group(1)
@@ -805,7 +805,7 @@ async def get_settings(message: Message, command: CommandObject):
     msg = message
 
     # ONLY send settings in PM
-    if chat.type != chat.PRIVATE:
+    if chat.type != ChatType.PRIVATE:
         if await is_user_admin(chat, user.id):
             text = "Click here to get this chat's settings, as well as yours."
             await msg.reply_text(
@@ -880,11 +880,15 @@ def main():
 
     dp.errors.register(error_callback)
     if ACTIVITY_LOG:
-        # Ran first in PTB (group -100) so activity is recorded before any
-        # other handler can respond.
-        dp.update.outer_middleware.register(
-            lambda handler, event, data: log_activity(event) or handler(event, data)
-        )
+        # PTB ran this in group -100, first, so activity is recorded before
+        # any handler can respond. aiogram passes every handler to this
+        # middleware, so it must return the handler's result: a middleware
+        # that returns anything else silently drops every update.
+        async def _activity(handler, event, data):
+            await log_activity(event)
+            return await handler(event, data)
+
+        dp.update.outer_middleware.register(_activity)
         app.add_handler(RawUpdateHandler(log_kurigram_activity))
 
     loop.run_until_complete(send_booting_message())

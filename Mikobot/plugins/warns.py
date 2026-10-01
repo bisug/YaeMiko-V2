@@ -183,7 +183,7 @@ async def button(query: CallbackQuery) -> str:
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
 async def warn_user(message: Message, command: CommandObject) -> str:
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat: Optional[Chat] = message.chat
     warner: Optional[User] = message.from_user
 
@@ -217,7 +217,7 @@ async def warn_user(message: Message, command: CommandObject) -> str:
 @loggable
 @check_admin(is_both=True)
 async def reset_warns(message: Message, command: CommandObject) -> str:
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat: Optional[Chat] = message.chat
     user: Optional[User] = message.from_user
 
@@ -239,7 +239,7 @@ async def reset_warns(message: Message, command: CommandObject) -> str:
 
 
 async def warns(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat: Optional[Chat] = message.chat
     user_id = await extract_user(message, args) or message.from_user.id
     result = sql.get_warns(user_id, chat.id)
@@ -390,7 +390,7 @@ async def reply_filter(message: Message) -> str:
 @check_admin(is_user=True)
 @loggable
 async def set_warn_limit(message: Message, command: CommandObject) -> str:
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat: Optional[Chat] = message.chat
     user: Optional[User] = message.from_user
     user: Optional[User] = message.from_user
@@ -420,7 +420,7 @@ async def set_warn_limit(message: Message, command: CommandObject) -> str:
 
 @check_admin(is_user=True)
 async def set_warn_strength(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat: Optional[Chat] = message.chat
     user: Optional[User] = message.from_user
     msg: Optional[Message] = message

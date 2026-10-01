@@ -240,7 +240,7 @@ async def get(
 
 @connection_status
 async def cmd_get(message: Message, command: CommandObject, connected_chat=None):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     if len(args) >= 2 and args[1].lower() == "noformat":
         await get(message, args[0].lower(), show_none=True, no_format=True, connected_chat=connected_chat)
     elif len(args) >= 1:
@@ -274,7 +274,7 @@ async def slash_get(msg: Message, connected_chat=None):
 @check_admin(is_user=True)
 async def save(msg: Message, command: CommandObject):
     chat_id = msg.chat.id
-    if len(command.args or []) < 1:
+    if len(command.args.split() if command.args else []) < 1:
         await msg.answer("You should give the note a name.")
         return
 
@@ -323,7 +323,7 @@ async def save(msg: Message, command: CommandObject):
 @connection_status
 @check_admin(is_user=True)
 async def clear(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat_id = message.chat.id
     if len(args) >= 1:
         notename = args[0].lower()

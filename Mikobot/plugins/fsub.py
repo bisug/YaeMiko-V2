@@ -125,13 +125,13 @@ async def force_subscribe_new_message(_, message):
 async def unmute_force_subscribe(client, callback):
     user_id = int(callback.matches[0].group(1))
     if callback.from_user.id != user_id:
-        return await callback.answer("This is not meant for you.", alert=True)
+        return await callback.answer("This is not meant for you.", show_alert=True)
     settings = await db.fs_settings(callback.message.chat.id)
     if not settings:
-        return await callback.answer("Force subscribe is disabled.", alert=True)
+        return await callback.answer("Force subscribe is disabled.", show_alert=True)
     channel = settings["channel"]
     if not await participant_check(channel, user_id):
-        return await callback.answer("You have to join the channel first, to get unmuted!", alert=True)
+        return await callback.answer("You have to join the channel first, to get unmuted!", show_alert=True)
     await app.restrict_chat_member(callback.message.chat.id, user_id, ChatPermissions(can_send_messages=True))
     await callback.answer("You are unmuted.")
     await callback.message.delete()

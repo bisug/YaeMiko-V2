@@ -96,7 +96,7 @@ def apply_elevated_users(data):
 async def add_disaster_level(message: Message, level: str, command: CommandObject) -> str:
     user = message.from_user
     chat = message.chat
-    args = command.args or []
+    args = command.args.split() if command.args else []
     user_id = await extract_user(message, args)
     reply = await check_user_id(user_id)
     if reply:

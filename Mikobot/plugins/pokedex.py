@@ -205,7 +205,8 @@ async def pokedex(message: Message, command: CommandObject) -> None:
         await message.answer("Usage: <code>/pokedex &lt;name or ID&gt;</code>")
         return
     try:
-        pokemon = await get_pokemon(" ".join(command.args))
+        # Joined back into one string: the name may be several words.
+        pokemon = await get_pokemon(command.args)
         species, _ = await get_pokemon_details(pokemon)
         text, image = _overview(pokemon, species)
         if image:

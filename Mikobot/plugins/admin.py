@@ -36,7 +36,7 @@ from Mikobot.utils.parser import mention_html
 @loggable
 @check_admin(permission="can_promote_members", is_both=True)
 async def promote(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
 
     chat = message.chat
     user = message.from_user
@@ -134,7 +134,7 @@ async def promote(message: Message, command: CommandObject):
 @loggable
 @check_admin(permission="can_promote_members", is_both=True)
 async def fullpromote(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
 
     chat = message.chat
     user = message.from_user
@@ -233,7 +233,7 @@ async def fullpromote(message: Message, command: CommandObject):
 @loggable
 @check_admin(permission="can_promote_members", is_both=True)
 async def demote(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
 
     chat = message.chat
     user = message.from_user
@@ -340,7 +340,7 @@ async def refresh_admin(message: Message):
 @connection_status
 @check_admin(permission="can_promote_members", is_both=True)
 async def set_title(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
 
     chat = message.chat
 
@@ -431,7 +431,7 @@ async def set_title(message: Message, command: CommandObject):
 @loggable
 @check_admin(permission="can_pin_messages", is_both=True)
 async def pin(message: Message, command: CommandObject) -> None:
-    args = command.args or []
+    args = command.args.split() if command.args else []
 
     user = message.from_user
     chat = message.chat
@@ -609,7 +609,7 @@ async def invite(message: Message, command: CommandObject):
 async def adminlist(message: Message, command: CommandObject):
     chat = message.chat  # type: Optional[Chat]
     user = message.from_user  # type: Optional[User]
-    args = command.args or []
+    args = command.args.split() if command.args else []
     if message.chat.type == "private":
         await send_message(
             message, "This command only works in Groups."

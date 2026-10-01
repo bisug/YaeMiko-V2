@@ -129,7 +129,7 @@ async def new_fed(message: Message, command: CommandObject):
 
 
 async def del_fed(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
     if chat.type != "private":
@@ -198,7 +198,7 @@ async def rename_fed(message: Message, command: CommandObject):
 
 
 async def fed_chat(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
     fed_id = sql.get_fed_id(chat.id)
@@ -227,7 +227,7 @@ async def fed_chat(message: Message, command: CommandObject):
 
 
 async def join_fed(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
 
@@ -292,7 +292,7 @@ async def join_fed(message: Message, command: CommandObject):
 
 
 async def leave_fed(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
 
@@ -341,7 +341,7 @@ async def leave_fed(message: Message, command: CommandObject):
 
 
 async def user_join_fed(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
     msg = message
@@ -400,7 +400,7 @@ async def user_join_fed(message: Message, command: CommandObject):
 
 
 async def user_demote_fed(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
 
@@ -453,7 +453,7 @@ async def user_demote_fed(message: Message, command: CommandObject):
 
 
 async def fed_info(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
     if args:
@@ -509,7 +509,7 @@ async def fed_info(message: Message, command: CommandObject):
 
 
 async def fed_admin(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
 
@@ -558,7 +558,7 @@ async def fed_admin(message: Message, command: CommandObject):
 
 
 async def fed_ban(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
 
@@ -945,7 +945,7 @@ async def fed_ban(message: Message, command: CommandObject):
 
 
 async def unfban(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
 
@@ -1142,7 +1142,7 @@ async def unfban(message: Message, command: CommandObject):
 
 
 async def set_frules(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
 
@@ -1206,7 +1206,7 @@ async def set_frules(message: Message, command: CommandObject):
 
 
 async def get_frules(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
 
     if chat.type == "private":
@@ -1230,7 +1230,7 @@ async def get_frules(message: Message, command: CommandObject):
 
 
 async def fed_broadcast(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     msg = message
     user = message.from_user
     chat = message.chat
@@ -1299,7 +1299,7 @@ async def fed_broadcast(message: Message, command: CommandObject):
 
 
 async def fed_ban_list(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
 
@@ -1486,7 +1486,7 @@ async def fed_ban_list(message: Message, command: CommandObject):
 
 
 async def fed_notif(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
     msg = message
@@ -1520,7 +1520,7 @@ async def fed_notif(message: Message, command: CommandObject):
 
 
 async def fed_chats(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
 
@@ -1880,7 +1880,7 @@ async def del_fed_button(query: CallbackQuery):
 
 
 async def fed_stat_user(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     msg = message
 
     if len(args) >= 2 and args[0].isdigit():
@@ -1925,7 +1925,7 @@ async def fed_stat_user(message: Message, command: CommandObject):
 
 
 async def set_fed_log(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
     msg = message
@@ -1969,7 +1969,7 @@ async def set_fed_log(message: Message, command: CommandObject):
 
 
 async def unset_fed_log(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
     msg = message
@@ -2013,7 +2013,7 @@ async def unset_fed_log(message: Message, command: CommandObject):
 
 
 async def subs_feds(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
     msg = message
@@ -2089,7 +2089,7 @@ async def subs_feds(message: Message, command: CommandObject):
 
 
 async def unsubs_feds(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
     msg = message
@@ -2165,7 +2165,7 @@ async def unsubs_feds(message: Message, command: CommandObject):
 
 
 async def get_myfedsubs(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
     msg = message
@@ -2259,7 +2259,7 @@ def is_user_fed_owner(fed_id, user_id):
 
 
 async def welcome_fed(message: Message, command: CommandObject):
-    args = command.args or []
+    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
     fed_id = sql.get_fed_id(chat.id)

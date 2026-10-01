@@ -73,7 +73,7 @@ async def members(message: Message, command: CommandObject) -> None:
 async def invite_manage(message: Message, command: CommandObject) -> None:
     if not _group_only(message):
         return await message.answer("Use this command in a group or supergroup.")
-    chat_id, args = message.chat.id, command.args
+    chat_id, args = message.chat.id, command.args.split() if command.args else []
     if not args or args[0].lower() == "export":
         await message.answer(await bot.export_chat_invite_link(chat_id))
         return
@@ -96,10 +96,11 @@ async def invite_manage(message: Message, command: CommandObject) -> None:
 @connection_status
 @check_admin(permission="can_invite_users", is_both=True)
 async def join_requests(message: Message, command: CommandObject) -> None:
-    if len(command.args or []) != 2 or command.args[0].lower() not in {"approve", "decline"}:
+    args = command.args.split() if command.args else []
+    if len(args) != 2 or args[0].lower() not in {"approve", "decline"}:
         return await message.answer("Usage: /joins approve|decline <user_id>")
     try:
-        user_id, action = _user_id(command.args[1]), command.args[0].lower()
+        user_id, action = _user_id(args[1]), args[0].lower()
         method = bot.approve_chat_join_request if action == "approve" else bot.decline_chat_join_request
         await method(message.chat.id, user_id)
         await message.answer(f"Join request {action}d.")
@@ -111,7 +112,7 @@ async def join_requests(message: Message, command: CommandObject) -> None:
 @connection_status
 @check_admin(permission="can_change_info", is_both=True)
 async def set_chat_metadata(message: Message, command: CommandObject) -> None:
-    args = command.args or []
+    args = command.args.split() if command.args else []
     if not args:
         return await message.answer("Usage: /setchat <title|description|description-> [text]")
     try:
@@ -149,7 +150,7 @@ async def delete_chat_photo(message: Message, command: CommandObject) -> None:
 @connection_status
 @check_admin(permission="can_manage_topics", is_both=True)
 async def topics(message: Message, command: CommandObject) -> None:
-    chat, args = message.chat, command.args
+    chat, args = message.chat, command.args.split() if command.args else []
     if not chat.is_forum:
         return await message.answer("This chat is not a forum.")
     if not args:
@@ -183,23 +184,24 @@ async def topics(message: Message, command: CommandObject) -> None:
 @connection_status
 async def menu_button(message: Message, command: CommandObject) -> None:
     chat_id = message.chat.id
-    if not command.args:
+    args = command.args.split() if command.args else []
+    if not args:
         button = await bot.get_chat_menu_button(chat_id)
         await message.answer(f"Menu button: {button.model_dump() if button else 'None'}")
         return
-    action = command.args[0].lower()
+    action = args[0].lower()
     if action == "commands":
         await bot.set_chat_menu_button(chat_id, MenuButtonCommands())
     elif action == "default":
         await bot.set_chat_menu_button(chat_id, MenuButtonDefault())
-    elif action == "webapp" and len(command.args or []) > 1:
+    elif action == "webapp" and len(args) > 1:
         await bot.set_chat_menu_button(
             chat_id,
             # aiogram requires text on MenuButtonWebApp; PTB defaulted it to
             # the URL, so keep that rather than inventing a label.
             MenuButtonWebApp(
-                text=command.args[1],
-                web_app=WebAppInfo(url=command.args[1]),
+                text=args[1],
+                web_app=WebAppInfo(url=args[1]),
             ),
         )
     else:
@@ -211,10 +213,11 @@ async def menu_button(message: Message, command: CommandObject) -> None:
 @connection_status
 @check_admin(permission="can_manage_topics", is_both=True)
 async def sticker_set(message: Message, command: CommandObject) -> None:
-    if len(command.args or []) == 2 and command.args[0].lower() == "set":
-        await bot.set_chat_sticker_set(message.chat.id, command.args[1])
+    args = command.args.split() if command.args else []
+    if len(args) == 2 and args[0].lower() == "set":
+        await bot.set_chat_sticker_set(message.chat.id, args[1])
         await message.answer("Sticker set updated.")
-    elif command.args and command.args[0].lower() == "delete":
+    elif args and args[0].lower() == "delete":
         await bot.delete_chat_sticker_set(message.chat.id)
         await message.answer("Sticker set deleted.")
     else:
@@ -243,12 +246,13 @@ async def delete_reaction(message: Message, command: CommandObject) -> None:
         return await message.answer(
             "Reply to a message and optionally provide a user ID to remove their reaction."
         )
-    if len(command.args or []) > 1:
+    args = command.args.split() if command.args else []
+    if len(args) > 1:
         return await message.answer("Usage: /deletereaction [user_id]")
     user_id = None
-    if command.args:
+    if args:
         try:
-            user_id = _user_id(command.args[0])
+            user_id = _user_id(args[0])
         except ValueError as error:
             await _reply_error(message, error)
             return
@@ -268,11 +272,12 @@ async def delete_reaction(message: Message, command: CommandObject) -> None:
 @connection_status
 @check_admin(permission="can_manage_topics", is_both=True)
 async def member_tag(message: Message, command: CommandObject) -> None:
-    if len(command.args or []) not in {1, 2}:
+    args = command.args.split() if command.args else []
+    if len(args) not in {1, 2}:
         return await message.answer("Usage: /membertag <user_id> [tag|remove]")
     try:
-        user_id = _user_id(command.args[0])
-        tag = None if len(command.args or []) == 1 or command.args[1].lower() == "remove" else command.args[1]
+        user_id = _user_id(args[0])
+        tag = None if len(args) == 1 or args[1].lower() == "remove" else args[1]
         await bot.set_chat_member_tag(message.chat.id, user_id, tag)
         await message.answer("Member tag updated.")
     except (ValueError, TelegramAPIError) as error:

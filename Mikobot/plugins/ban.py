@@ -50,7 +50,7 @@ async def ban(message: Message, command: CommandObject) -> str:
     chat = message.chat
     user = message.from_user
     log_message = ""
-    args = command.args or []
+    args = command.args.split() if command.args else []
     user_id, reason = await extract_user_and_text(message, args)
     if user_id is None:
         return await message.answer("That looks like an invalid User ID to me.")
@@ -218,7 +218,7 @@ async def temp_ban(message: Message, command: CommandObject) -> str:
     chat = message.chat
     user = message.from_user
     log_message = ""
-    args = command.args or []
+    args = command.args.split() if command.args else []
     user_id, reason = await extract_user_and_text(message, args)
     if user_id is None:
         return await message.answer("That looks like an invalid User ID to me.")
@@ -309,7 +309,7 @@ async def kick(message: Message, command: CommandObject) -> str:
     chat = message.chat
     user = message.from_user
     log_message = ""
-    args = command.args or []
+    args = command.args.split() if command.args else []
     user_id, reason = await extract_user_and_text(message, args)
     if user_id is None:
         return await message.answer("That looks like an invalid User ID to me.")
@@ -394,7 +394,7 @@ async def unban(message: Message, command: CommandObject) -> str:
     user = message.from_user
     chat = message.chat
     log_message = ""
-    args = command.args or []
+    args = command.args.split() if command.args else []
     user_id, reason = await extract_user_and_text(message, args)
     if user_id is None:
         return await message.answer("That looks like an invalid User ID to me.")
@@ -485,7 +485,7 @@ async def unban(message: Message, command: CommandObject) -> str:
 async def selfunban(message: Message, command: CommandObject) -> str:
     message = message
     user = message.from_user
-    args = command.args or []
+    args = command.args.split() if command.args else []
     if user.id not in DRAGONS:
         return
 

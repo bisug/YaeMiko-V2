@@ -89,7 +89,7 @@ if is_module_loaded(FILENAME):
     @connection_status
     @check_admin(is_user=True)
     async def disable(message: Message, command: CommandObject):
-        args = command.args or []
+        args = command.args.split() if command.args else []
         if len(args) >= 1:
             disable_cmd = args[0]
             if disable_cmd.startswith(CMD_STARTERS):
@@ -110,7 +110,7 @@ if is_module_loaded(FILENAME):
     @connection_status
     @check_admin(is_user=True)
     async def disable_module(message: Message, command: CommandObject) -> None:
-        args = command.args or []
+        args = command.args.split() if command.args else []
         if len(args) >= 1:
             module_path = "Mikobot.plugins." + args[0].rsplit(".", 1)[0]
 
@@ -159,7 +159,7 @@ if is_module_loaded(FILENAME):
     @connection_status
     @check_admin(is_user=True)
     async def enable(message: Message, command: CommandObject):
-        args = command.args or []
+        args = command.args.split() if command.args else []
         if len(args) >= 1:
             enable_cmd = args[0]
             if enable_cmd.startswith(CMD_STARTERS):
@@ -179,7 +179,7 @@ if is_module_loaded(FILENAME):
     @connection_status
     @check_admin(is_user=True)
     async def enable_module(message: Message, command: CommandObject):
-        args = command.args or []
+        args = command.args.split() if command.args else []
 
         if len(args) >= 1:
             module_path = "Mikobot.plugins." + args[0].rsplit(".", 1)[0]
