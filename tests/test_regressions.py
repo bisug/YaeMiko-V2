@@ -3552,5 +3552,79 @@ class LiveCacheTests(unittest.TestCase):
         self.assertNotIn("get_chat_triggers(chat_id).add", source)
 
 
+class EchoImpersonationTests(unittest.TestCase):
+    """/echo and /broadcast speak with the bot's authority.
+
+    In a group the bot reads as an authority, so a command that puts words in
+    its mouth is a forgery tool if left open. Both are owner-only, and neither
+    may send anything before that check has passed.
+    """
+
+    PATH = ROOT / "Mikobot" / "plugins" / "echo.py"
+
+    def test_commands_are_registered(self):
+        found = _registered_commands(self.PATH)
+        for command in ("echo", "say", "broadcast"):
+            self.assertIn(command, found, command)
+
+    def test_both_entry_points_are_owner_gated(self):
+        tree = ast.parse(self.PATH.read_text(encoding="utf-8"))
+        gated = []
+        for node in tree.body:
+            if not isinstance(node, ast.AsyncFunctionDef):
+                continue
+            if node.name not in ("_send_echo", "_broadcast"):
+                continue
+            source = ast.unparse(node)
+            # The check has to come before any send.
+            self.assertIn("_is_bot_staff", source, node.name)
+            self.assertLess(
+                source.index("_is_bot_staff"),
+                min(
+                    (source.index(call) for call in ("copy(", "send_message(") if call in source),
+                    default=len(source),
+                ),
+                f"{node.name} must authorise before sending",
+            )
+            gated.append(node.name)
+        self.assertEqual(sorted(gated), ["_broadcast", "_send_echo"])
+
+    def test_owner_test_covers_owner_and_developers(self):
+        tree = ast.parse(self.PATH.read_text(encoding="utf-8"))
+        func = next(
+            n for n in tree.body
+            if isinstance(n, ast.FunctionDef) and n.name == "_is_bot_staff"
+        )
+        source = ast.unparse(func)
+        self.assertIn("OWNER_ID", source)
+        self.assertIn("DEV_USERS", source)
+
+    def test_broadcast_is_rate_limited(self):
+        # A fan-out with no delay is exactly what trips the Bot API rate limit.
+        source = self.PATH.read_text(encoding="utf-8")
+        self.assertIn("BROADCAST_DELAY", source)
+        self.assertIn("await asyncio.sleep(BROADCAST_DELAY)", source)
+
+    def test_one_failing_chat_does_not_abort_the_broadcast(self):
+        tree = ast.parse(self.PATH.read_text(encoding="utf-8"))
+        func = next(
+            n for n in tree.body
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "_broadcast"
+        )
+        loop = next(
+            n for n in ast.walk(func)
+            if isinstance(n, ast.For)
+        )
+        handlers = [
+            ast.unparse(h.type) for h in ast.walk(loop)
+            if isinstance(h, ast.ExceptHandler)
+        ]
+        self.assertTrue(
+            any("TelegramAPIError" in h for h in handlers)
+            and any("Exception" in h for h in handlers),
+            "both API errors and unexpected ones must be counted, not raised",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
