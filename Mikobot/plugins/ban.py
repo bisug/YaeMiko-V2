@@ -57,6 +57,11 @@ async def ban(message: Message, command: CommandObject) -> str:
 
     member = await bot.get_chat_member(chat.id, user.id)
     SILENT = bool(True if message.text.startswith("/s") else False)
+    # /dban is the delete-then-act shortcut: the offending message goes too.
+    DELETE_MESSAGE = bool(True if message.text.startswith("/d") else False)
+    if DELETE_MESSAGE and not message.reply_to_message:
+        await message.answer("Reply to the message you want deleted with that.")
+        return ""
 
     # if update is coming from anonymous admin then send button and return.
     if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
@@ -168,6 +173,12 @@ async def ban(message: Message, command: CommandObject) -> str:
             await bot.ban_chat_sender_chat(chat.id, chat_sender.id)
         else:
             await bot.ban_chat_member(chat.id, user_id)
+
+        if DELETE_MESSAGE and message.reply_to_message:
+            try:
+                await message.reply_to_message.delete()
+            except TelegramAPIError:
+                pass
 
         if silent:
             if message.reply_to_message:
@@ -310,6 +321,10 @@ async def kick(message: Message, command: CommandObject) -> str:
     user = message.from_user
     log_message = ""
     args = command.args.split() if command.args else []
+    DELETE_MESSAGE = bool(True if message.text.startswith("/d") else False)
+    if DELETE_MESSAGE and not message.reply_to_message:
+        await message.answer("Reply to the message you want deleted with that.")
+        return ""
     user_id, reason = await extract_user_and_text(message, args)
     if user_id is None:
         return await message.answer("That looks like an invalid User ID to me.")
@@ -334,7 +349,22 @@ async def kick(message: Message, command: CommandObject) -> str:
         await message.answer("I really wish I could kick this user....")
         return log_message
 
-    res = chat.unban_member(user_id)  # unban on current user = kick
+    # Unban on the current user = kick. This must be awaited: aiogram returns
+    # a coroutine, so the un-awaited call left `res` permanently truthy and
+    # the failure branch below was unreachable, reporting every kick as a
+    # success even when Telegram refused it.
+    try:
+        await bot.unban_chat_member(chat.id, user_id)
+        res = True
+    except TelegramAPIError:
+        res = False
+
+    if DELETE_MESSAGE and message.reply_to_message:
+        try:
+            await message.reply_to_message.delete()
+        except TelegramAPIError:
+            pass
+
     if res:
         await bot.send_sticker(
             chat.id,
@@ -731,6 +761,10 @@ __help__ = """
 
 » /sban <userhandle>: Silently ban a user. Deletes command, Replied message and doesn't reply. (via handle, or reply)
 
+» /dban <userhandle>: Delete the replied message and ban the user. Must be a reply.
+
+» /dkick <userhandle>: Delete the replied message and kick the user. Must be a reply.
+
 » /tban <userhandle> x(m/h/d): bans a user for `x` time. (via handle, or reply). `m` = `minutes`, `h` = `hours`, `d` = `days`.
 
 » /unban <userhandle>: unbans a user/channel. (via handle, or reply)
@@ -741,9 +775,9 @@ __help__ = """
     Banning or UnBanning channels only work if you reply to their message, so don't use their username to ban/unban.
 """
 
-dp.message.register(chain(ban), *disableable(["ban", "sban"]))
+dp.message.register(chain(ban), *disableable(["ban", "sban", "dban"]))
 dp.message.register(chain(temp_ban), *disableable(["tban"]))
-dp.message.register(chain(kick), *disableable("kick"))
+dp.message.register(chain(kick), *disableable(["kick", "dkick"]))
 dp.message.register(chain(unban), *disableable("unban"))
 dp.message.register(chain(selfunban), *disableable("roar"))
 dp.message.register(chain(kickme), GROUPS, *disableable("kickme"))

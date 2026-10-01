@@ -44,12 +44,38 @@ async def check_user(user_id: int, bot: Bot, chat: Chat) -> Union[str, None]:
     return None
 
 
+async def _delete_replied(message: Message, command: CommandObject) -> None:
+    """Remove the offending message for the /d-prefixed variants.
+
+    These are reply-only shortcuts, so without a reply there is nothing to
+    delete and the caller should stop before acting on the wrong message.
+    """
+    if not command.command or not command.command.startswith("d"):
+        return
+    if not message.reply_to_message:
+        await message.answer("Reply to the message you want deleted with that.")
+        raise _StopCommand
+    try:
+        await message.reply_to_message.delete()
+    except TelegramAPIError:
+        pass
+
+
+class _StopCommand(Exception):
+    """Raised to abandon a command once its precondition fails."""
+
+
 @connection_status
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
 async def mute(message: Message, command: CommandObject) -> str:
     chat = message.chat
     user = message.from_user
+
+    try:
+        await _delete_replied(message, command)
+    except _StopCommand:
+        return ""
 
     user_id, reason = await extract_user_and_text(message, command.args.split() if command.args else [])
     reply = await check_user(user_id, bot, chat)
@@ -153,6 +179,11 @@ async def temp_mute(message: Message, command: CommandObject) -> str:
     chat = message.chat
     user = message.from_user
 
+    try:
+        await _delete_replied(message, command)
+    except _StopCommand:
+        return ""
+
     user_id, reason = await extract_user_and_text(message, command.args.split() if command.args else [])
     reply = await check_user(user_id, bot, chat)
 
@@ -232,12 +263,16 @@ __help__ = """
 » /mute <userhandle>: silences a user. Can also be used as a reply, muting the replied to user.
 
 » /tmute <userhandle> x(m/h/d): mutes a user for x time. (via handle, or reply). `m` = `minutes`, `h` = `hours`, `d` = `days`.
+» /dmute <userhandle>: Delete the replied message and mute the user. Must be a reply.
+» /dtmute <userhandle> x(m/h/d): Same as above, but mutes temporarily.
 
 » /unmute <userhandle>: unmutes a user. Can also be used as a reply, muting the replied to user.
 """
 
-dp.message.register(chain(mute), Command("mute"))
+dp.message.register(chain(mute), Command(commands=["mute", "dmute"]))
 dp.message.register(chain(unmute), Command("unmute"))
-dp.message.register(chain(temp_mute), Command(commands=["tmute", "tempmute"]))
+dp.message.register(
+    chain(temp_mute), Command(commands=["tmute", "tempmute", "dtmute"])
+)
 
 __mod_name__ = "MUTE"

@@ -3121,16 +3121,55 @@ class AntiRaidTests(unittest.TestCase):
 
 
 def _registered_commands(path: Path) -> set:
-    """Every Command("x") literal in a module, regardless of wrapping."""
+    """Every command name a module registers, in any of the three idioms.
+
+    The repo uses Command("x"), Command(commands=["x", "y"]), and a tuple loop
+    that builds a name per iteration, so all three have to be collected for
+    this to mean anything.
+    """
     found = set()
     for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
-        if (
-            isinstance(node, ast.Call)
-            and getattr(node.func, "id", "") == "Command"
-            and node.args
-            and isinstance(node.args[0], ast.Constant)
-        ):
-            found.add(node.args[0].value)
+        if not isinstance(node, ast.Call):
+            continue
+        if getattr(node.func, "id", "") == "Command":
+            for arg in list(node.args) + [
+                kw.value for kw in node.keywords if kw.arg == "commands"
+            ]:
+                if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                    found.add(arg.value)
+                elif isinstance(arg, (ast.List, ast.Tuple)):
+                    found.update(
+                        element.value
+                        for element in ast.walk(arg)
+                        if isinstance(element, ast.Constant)
+                        and isinstance(element.value, str)
+                    )
+        elif getattr(node.func, "id", "") == "disableable":
+            for arg in node.args:
+                if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                    found.add(arg.value)
+                elif isinstance(arg, (ast.List, ast.Tuple)):
+                    found.update(
+                        element.value
+                        for element in ast.walk(arg)
+                        if isinstance(element, ast.Constant)
+                        and isinstance(element.value, str)
+                    )
+        elif getattr(node.func, "id", "") == "chain":
+            # ("name", handler) tuples, registered in a loop below.
+            continue
+    # tuple loop: for _name, _handler in (("cleanservice", f), ...)
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.For) and isinstance(node.iter, (ast.Tuple, ast.List)):
+            for element in ast.walk(node.iter):
+                if (
+                    isinstance(element, ast.Tuple)
+                    and element.elts
+                    and isinstance(element.elts[0], ast.Constant)
+                    and isinstance(element.elts[0].value, str)
+                ):
+                    found.add(element.elts[0].value)
     return found
 
 
@@ -3257,6 +3296,63 @@ class BlocklistModeTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("get_chat_log_channel", source)
+
+
+class DeleteThenActTests(unittest.TestCase):
+    """/dban, /dmute and /dkick remove the offending message as well.
+
+    The /d form is reply-only: there is no message to delete otherwise, so
+    acting anyway would punish the wrong thing.
+    """
+
+    def test_delete_variants_are_registered(self):
+        for module, expected in (
+            ("ban", {"dban", "dkick"}),
+            ("mute", {"dmute", "dtmute"}),
+        ):
+            found = _registered_commands(ROOT / "Mikobot" / "plugins" / f"{module}.py")
+            self.assertTrue(expected.issubset(found), f"{module}: {expected - found}")
+
+    def test_delete_variants_require_a_reply(self):
+        for module in ("ban", "mute"):
+            source = (ROOT / "Mikobot" / "plugins" / f"{module}.py").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("not message.reply_to_message", source, module)
+
+    def test_kick_awaits_the_unban_call(self):
+        # PTB's unban_member returned a truthy value; aiogram returns a
+        # coroutine. Un-awaited, every kick reported success even when
+        # Telegram had refused it and the failure branch was unreachable.
+        source = (ROOT / "Mikobot" / "plugins" / "ban.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("res = chat.unban_member(user_id)", source)
+        self.assertIn("await bot.unban_chat_member(chat.id, user_id)", source)
+
+
+class CleanServiceTests(unittest.TestCase):
+    """Service cleaning can target specific types instead of all of them."""
+
+    def test_documented_types_are_offered(self):
+        source = (ROOT / "Mikobot" / "plugins" / "welcome.py").read_text(
+            encoding="utf-8"
+        )
+        for name in ("join", "leave", "pin", "photo", "title", "videochat", "other"):
+            self.assertIn(f'"{name}"', source, name)
+
+    def test_commands_are_registered(self):
+        found = _registered_commands(ROOT / "Mikobot" / "plugins" / "welcome.py")
+        for command in ("cleanservice", "nocleanservice", "cleanservicetypes"):
+            self.assertIn(command, found, command)
+
+    def test_type_list_is_consulted_before_deleting(self):
+        source = (ROOT / "Mikobot" / "plugins" / "welcome.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("get_service_types", source)
+        # An empty list must keep the original delete-everything behaviour.
+        self.assertIn("if not wanted:", source)
 
 
 if __name__ == "__main__":

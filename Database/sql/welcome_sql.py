@@ -26,7 +26,16 @@ import random
 import threading
 from typing import Union
 
-from sqlalchemy import BigInteger, Boolean, Column, Integer, String, UnicodeText
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    Integer,
+    String,
+    UnicodeText,
+    inspect,
+    text,
+)
 
 from Database.sql import BASE, ENGINE, SESSION
 from Mikobot.plugins.helper_funcs.msg_types import Types
@@ -130,9 +139,14 @@ class CleanServiceSetting(BASE):
     __tablename__ = "clean_service"
     chat_id = Column(String(14), primary_key=True)
     clean_service = Column(Boolean, default=True)
+    # Comma separated service types to remove, e.g. "join,leave,pin". An empty
+    # value keeps the original all-or-nothing behaviour, so a chat that has
+    # never used /cleanservice <type> is unaffected by this column.
+    service_types = Column(UnicodeText, default="")
 
     def __init__(self, chat_id):
         self.chat_id = str(chat_id)
+        self.service_types = ""
 
     def __repr__(self):
         return "<ᴄʜᴀᴛ ᴜsᴇᴅ ᴄʟᴇᴀɴ sᴇʀᴠɪᴄᴇ ({})>".format(self.chat_id)
@@ -160,6 +174,26 @@ GoodbyeButtons.__table__.create(bind=ENGINE, checkfirst=True)
 WelcomeMute.__table__.create(bind=ENGINE, checkfirst=True)
 WelcomeMuteUsers.__table__.create(bind=ENGINE, checkfirst=True)
 CleanServiceSetting.__table__.create(bind=ENGINE, checkfirst=True)
+
+
+def _ensure_clean_service_columns() -> None:
+    """Add service_types to a clean_service table made by an older build."""
+    inspector = inspect(ENGINE)
+    if "clean_service" not in inspector.get_table_names():
+        return
+    present = {c["name"] for c in inspector.get_columns("clean_service")}
+    if "service_types" in present:
+        return
+    with ENGINE.begin() as connection:
+        connection.execute(
+            text(
+                'ALTER TABLE clean_service ADD COLUMN "service_types" '
+                f"{CleanServiceSetting.__table__.c.service_types.type.compile(dialect=ENGINE.dialect)}"
+            )
+        )
+
+
+_ensure_clean_service_columns()
 RaidMode.__table__.create(bind=ENGINE, checkfirst=True)
 
 INSERTION_LOCK = threading.RLock()
@@ -435,6 +469,26 @@ def set_clean_service(chat_id: Union[int, str], setting: bool):
         chat_setting.clean_service = setting
         SESSION.add(chat_setting)
         SESSION.commit()
+
+
+def set_service_types(chat_id: Union[int, str], types_csv: str):
+    """Replace the set of service message types this chat deletes."""
+    with CS_LOCK:
+        chat_setting = SESSION.get(CleanServiceSetting, str(chat_id))
+        if not chat_setting:
+            chat_setting = CleanServiceSetting(chat_id)
+        chat_setting.service_types = types_csv
+        SESSION.add(chat_setting)
+        SESSION.commit()
+
+
+def get_service_types(chat_id: Union[int, str]) -> set:
+    try:
+        chat_setting = SESSION.get(CleanServiceSetting, str(chat_id))
+        raw = getattr(chat_setting, "service_types", "") or ""
+        return {part for part in raw.split(",") if part}
+    finally:
+        SESSION.close()
 
 
 def migrate_chat(old_chat_id, new_chat_id):

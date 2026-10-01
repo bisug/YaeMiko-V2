@@ -46,6 +46,8 @@ from Mikobot import (
     bot,
     dp,
 )
+from Mikobot.plugins.connection import connected
+from Mikobot.plugins.helper_funcs.alternate import typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin, is_user_ban_protected
 from Mikobot.plugins.helper_funcs.misc import build_keyboard, revert_buttons
 from Mikobot.plugins.helper_funcs.msg_types import get_welcome_type
@@ -220,10 +222,57 @@ async def disable_welcome(_, message: Message):
 # <=======================================================================================================>
 
 
+# The service message types Telegram sends into a group, as named by the docs.
+SERVICE_TYPES = (
+    "join",     # a user joined or was added
+    "leave",    # a user left or was removed
+    "pin",      # a message was pinned
+    "photo",    # the chat photo changed
+    "title",    # the chat title changed
+    "videochat",  # a video chat started, ended or gained members
+    "other",    # payments, proximity alerts, webapps, auto-delete changes
+)
+
+
+def _service_type_of(message: Message):
+    """Which service type this message is, or None when it is not one."""
+    if message.new_chat_member is not None:
+        return "join"
+    if message.left_chat_member is not None:
+        return "leave"
+    if message.new_chat_title is not None:
+        return "title"
+    if message.new_chat_photo is not None:
+        return "photo"
+    if message.pinned_message is not None or (
+        message.message_thread_id is not None and message.pinned_message
+    ):
+        return "pin"
+    if (
+        getattr(message, "video_chat_started", None)
+        or getattr(message, "video_chat_ended", None)
+        or getattr(message, "video_chat_members_invited", None)
+        or getattr(message, "video_chat_scheduled", None)
+    ):
+        return "videochat"
+    return "other"
+
+
+async def _should_clean(chat_id, message: Message) -> bool:
+    """Whether this service message should be deleted for this chat."""
+    if not await asyncio.to_thread(sql.clean_service, chat_id):
+        return False
+    wanted = await asyncio.to_thread(sql.get_service_types, chat_id)
+    if not wanted:
+        # No type list set: the original all-or-nothing behaviour.
+        return True
+    return _service_type_of(message) in wanted
+
+
 # <================================================ NORMAL WELCOME FUNCTION =======================================================>
 async def send(source_message, message, keyboard, backup_message):
     chat = source_message.chat
-    cleanserv = await asyncio.to_thread(sql.clean_service, chat.id)
+    cleanserv = await _should_clean(chat.id, message)
     reply = message.message_id
     if cleanserv:
         try:
@@ -358,7 +407,7 @@ async def new_member(message: Message, command: CommandObject):
 
         if should_welc:
             reply = message.message_id
-            cleanserv = await asyncio.to_thread(sql.clean_service, chat.id)
+            cleanserv = await _should_clean(chat.id, message)
             if cleanserv:
                 try:
                     await bot.delete_message(
@@ -732,7 +781,7 @@ async def left_member(message: Message):
 
     if should_goodbye:
         reply = message.message_id
-        cleanserv = await asyncio.to_thread(sql.clean_service, chat.id)
+        cleanserv = await _should_clean(chat.id, message)
         if cleanserv:
             try:
                 await bot.delete_message(chat.id, message.message_id)
@@ -1150,48 +1199,157 @@ async def clean_welcome(message: Message, command: CommandObject) -> str:
 
 
 @check_admin(is_user=True)
-async def cleanservice(message: Message, command: CommandObject) -> str:
+async def _service_target(message: Message, command: CommandObject):
+    """(chat_id, chat) for a service-cleaning command, honouring connections."""
     args = command.args.split() if command.args else []
-    chat = message.chat  # type: Optional[Chat]
-    if chat.type != ChatType.PRIVATE:
-        if len(args) >= 1:
-            var = args[0]
-            if var in ("no", "off"):
-                await asyncio.to_thread(
-                    sql.set_clean_service, chat.id, False
-                )
-                await message.answer(
-                    "Welcome clean service is : off"
-                )
-            elif var in ("yes", "on"):
-                await asyncio.to_thread(
-                    sql.set_clean_service, chat.id, True
-                )
-                await message.answer(
-                    "Welcome clean service is : on"
-                )
-            else:
-                await message.answer(
-                    "Invalid option",
-                    parse_mode=ParseMode.HTML,
-                )
-        else:
-            await message.answer(
-                "Usage is <code>on</code>/<code>yes</code> or <code>off</code>/<code>no</code>",
-                parse_mode=ParseMode.HTML,
+    conn = await connected(bot, message, message.chat, message.from_user.id, need_admin=True)
+    if conn:
+        chat = await bot.get_chat(conn)
+        return conn, chat, args
+    if message.chat.type == ChatType.PRIVATE:
+        await message.answer("This command is meant to use in a group.")
+        return None, None, args
+    return message.chat.id, message.chat, args
+
+
+@check_admin(permission="can_delete_messages", is_both=True)
+@typing_action
+async def cleanservice(message: Message, command: CommandObject) -> str:
+    """Enable service-message cleaning, optionally for specific types only."""
+    chat_id, chat, args = await _service_target(message, command)
+    if chat_id is None:
+        return ""
+
+    if not args:
+        await message.answer(
+            "Clean service is <code>{}</code>. Types: <code>{}</code>".format(
+                "on" if await asyncio.to_thread(sql.clean_service, chat_id) else "off",
+                ", ".join(sorted(await asyncio.to_thread(sql.get_service_types, chat_id)))
+                or "all",
+            ),
+            parse_mode=ParseMode.HTML,
+        )
+        return ""
+
+    first = args[0].lower()
+
+    if first in ("on", "yes", "true", "1", "all"):
+        await asyncio.to_thread(sql.set_clean_service, chat_id, True)
+        # "all" means every type, so clear any narrower list.
+        types = set(SERVICE_TYPES) if first == "all" else await asyncio.to_thread(
+            sql.get_service_types, chat_id
+        )
+        await asyncio.to_thread(sql.set_service_types, chat_id, ",".join(sorted(types)))
+        await message.answer(
+            "Clean service is now <code>on</code> for: <code>{}</code>".format(
+                ", ".join(sorted(types)) or "all"
+            ),
+            parse_mode=ParseMode.HTML,
+        )
+        return (
+            f"<b>{html.escape(chat.title)}:</b>\n"
+            f"#CLEANSERVICE\n"
+            f"<b>Admin:</b> {mention_html(message.from_user.id, message.from_user.first_name)}\n"
+            f"Clean service is now <b>on</b> for <code>{', '.join(sorted(types)) or 'all'}</code>."
+        )
+
+    if first in ("off", "no", "false", "0"):
+        await asyncio.to_thread(sql.set_clean_service, chat_id, False)
+        await asyncio.to_thread(sql.set_service_types, chat_id, "")
+        await message.answer("Clean service is now <code>off</code>.", parse_mode=ParseMode.HTML)
+        return (
+            f"<b>{html.escape(chat.title)}:</b>\n"
+            f"#CLEANSERVICE\n"
+            f"<b>Admin:</b> {mention_html(message.from_user.id, message.from_user.first_name)}\n"
+            f"Clean service is now <b>off</b>."
+        )
+
+    wanted = {arg.lower() for arg in args}
+    unknown = wanted - set(SERVICE_TYPES)
+    if unknown:
+        await message.answer(
+            "Unknown service type(s): <code>{}</code>".format(", ".join(sorted(unknown))),
+            parse_mode=ParseMode.HTML,
+        )
+        return ""
+
+    await asyncio.to_thread(sql.set_clean_service, chat_id, True)
+    merged = set(await asyncio.to_thread(sql.get_service_types, chat_id)) | wanted
+    await asyncio.to_thread(sql.set_service_types, chat_id, ",".join(sorted(merged)))
+    await message.answer(
+        "Clean service is now <code>on</code> for: <code>{}</code>".format(
+            ", ".join(sorted(merged))
+        ),
+        parse_mode=ParseMode.HTML,
+    )
+    return (
+        f"<b>{html.escape(chat.title)}:</b>\n"
+        f"#CLEANSERVICE\n"
+        f"<b>Admin:</b> {mention_html(message.from_user.id, message.from_user.first_name)}\n"
+        f"Clean service is now <b>on</b> for <code>{', '.join(sorted(merged))}</code>."
+    )
+
+
+@check_admin(permission="can_delete_messages", is_both=True)
+@typing_action
+async def nocleanservice(message: Message, command: CommandObject) -> str:
+    """Stop deleting specific service types without clearing the rest."""
+    chat_id, chat, args = await _service_target(message, command)
+    if chat_id is None:
+        return ""
+
+    if not args:
+        await message.answer(
+            "Give me the service types to stop cleaning.",
+            parse_mode=ParseMode.HTML,
+        )
+        return ""
+
+    current = set(await asyncio.to_thread(sql.get_service_types, chat_id))
+    removed = current & {arg.lower() for arg in args}
+    if not removed:
+        await message.answer(
+            "Those types were not being cleaned.",
+            parse_mode=ParseMode.HTML,
+        )
+        return ""
+
+    current -= removed
+    await asyncio.to_thread(sql.set_service_types, chat_id, ",".join(sorted(current)))
+    await message.answer(
+        "No longer cleaning: <code>{}</code>".format(", ".join(sorted(removed))),
+        parse_mode=ParseMode.HTML,
+    )
+    return (
+        f"<b>{html.escape(chat.title)}:</b>\n"
+        f"#CLEANSERVICE\n"
+        f"<b>Admin:</b> {mention_html(message.from_user.id, message.from_user.first_name)}\n"
+        f"No longer cleaning <code>{', '.join(sorted(removed))}</code>."
+    )
+
+
+@check_admin(permission="can_delete_messages", is_both=True)
+@typing_action
+async def cleanservicetypes(message: Message, command: CommandObject) -> str:
+    """List the service types this chat can clean."""
+    await message.answer(
+        "Service types you can use:\n"
+        + "\n".join(
+            f"\n <code>{name}</code> — {desc}"
+            for name, desc in (
+                ("all", "Every service message"),
+                ("join", "When a new user joins, or is added"),
+                ("leave", "When a user leaves, or is removed"),
+                ("pin", "When a message is pinned"),
+                ("photo", "When the chat photo changes"),
+                ("title", "When the chat title changes"),
+                ("videochat", "Video chat started, ended or scheduled"),
+                ("other", "Payments, proximity alerts, webapps"),
             )
-    else:
-        curr = await asyncio.to_thread(sql.clean_service, chat.id)
-        if curr:
-            await message.answer(
-                "Welcome clean service is : <code>on</code>",
-                parse_mode=ParseMode.HTML,
-            )
-        else:
-            await message.answer(
-                "Welcome clean service is : <code>off</code>",
-                parse_mode=ParseMode.HTML,
-            )
+        ),
+        parse_mode=ParseMode.HTML,
+    )
+    return ""
 
 
 async def user_button(query: CallbackQuery):
@@ -1358,7 +1516,11 @@ __help__ = """
 » /resetgoodbye: Reset to the default goodbye message.
 » /cleanwelcome <on/off>: On new member, try to delete the previous welcome message to avoid spamming the chat.
 » /welcomemutehelp: Gives information about welcome mutes.
-» /cleanservice <on/off>: Deletes Telegram's welcome/left service messages.
+» /cleanservice <on/off/types>: Deletes Telegram's service messages. Accepts `on`, `off`, `all`, or specific types.
+
+» /nocleanservice <types>: Stop deleting those service types.
+
+» /cleanservicetypes: List every supported service type.
 
 ➠ *Example:*
 User joined chat, user left chat.
@@ -1381,6 +1543,8 @@ for _name, _handler in (
     ("resetgoodbye", reset_goodbye),
     ("welcomemute", welcomemute),
     ("cleanservice", cleanservice),
+    ("nocleanservice", nocleanservice),
+    ("cleanservicetypes", cleanservicetypes),
     ("cleanwelcome", clean_welcome),
 ):
     dp.message.register(

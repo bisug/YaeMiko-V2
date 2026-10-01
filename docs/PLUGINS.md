@@ -33,12 +33,12 @@ name in that list, so dropping a new file into the directory is enough to regist
 | Module | Display name | Commands |
 | --- | --- | --- |
 | `admin` | ADMIN | `admincache`, `adminlist`, `promote`, `demote`, `fullpromote`, `title`, `invitelink`, `pin`, `unpin`, `unpinall` |
-| `ban` | BAN | `kick`, `kickme`, `roar`, `unban` |
+| `ban` | BAN | `kick`, `dban`, `dkick`, `kickme`, `roar`, `unban` |
 | `gban` | ANTI-SPAM | `antispam`, `gban`, `gbanlist`, `ungban` |
 | `flood` | ANTI-FLOOD | `flood`, `setflood`, `setfloodmode`, `setfloodtimer`, `clearflood` |
 | `locks` | LOCKS | `lock`, `unlock`, `locks`, `locktypes` |
 | `antiraid` | ANTIRAID | `antiraid`, `raidtime`, `raidactiontime`, `autoantiraid` |
-| `mute` | MUTE | `mute`, `unmute` |
+| `mute` | MUTE | `mute`, `dmute`, `tmute`, `dtmute`, `unmute` |
 | `warns` | WARN | `warns`, `addwarn`, `strongwarn`, `warnlimit` |
 | `purge` | PURGE | Bulk message deletion |
 | `zombies` | ZOMBIES | Removes accounts that left |
@@ -67,7 +67,7 @@ name in that list, so dropping a new file into the directory is enough to regist
 
 | Module | Display name | Commands |
 | --- | --- | --- |
-| `welcome` | WELCOME | `setwelcome`, `resetwelcome`, `setgoodbye`, `resetgoodbye`, `cleanservice`, `cleanwelcome`, `welcome`, `goodbye`, `welcomemute`, plus help variants |
+| `welcome` | WELCOME | `setwelcome`, `resetwelcome`, `setgoodbye`, `resetgoodbye`, `cleanservice`, `nocleanservice`, `cleanservicetypes`, `cleanwelcome`, `welcome`, `goodbye`, `welcomemute`, plus help variants |
 | `newuserinfo` | none | `/userinfo` for a member profile card |
 | `afk` | AFK | `afk`, with a MongoDB backed clean mode cache |
 | `notes` | NOTES | `save`, `get`, `clear`, `removeallnotes` |
