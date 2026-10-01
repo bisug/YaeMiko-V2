@@ -36,7 +36,7 @@ name in that list, so dropping a new file into the directory is enough to regist
 | `ban` | BAN | `kick`, `dban`, `dkick`, `kickme`, `roar`, `unban` |
 | `gban` | ANTI-SPAM | `antispam`, `gban`, `gbanlist`, `ungban` |
 | `flood` | ANTI-FLOOD | `flood`, `setflood`, `setfloodmode`, `setfloodtimer`, `clearflood` |
-| `locks` | LOCKS | `lock`, `unlock`, `locks`, `locktypes` |
+| `locks` | LOCKS | `lock`, `unlock`, `locks`, `locktypes`, `allowlist`, `rmallowlist`, `rmallowlistall` |
 | `antiraid` | ANTIRAID | `antiraid`, `raidtime`, `raidactiontime`, `autoantiraid` |
 | `mute` | MUTE | `mute`, `dmute`, `tmute`, `dtmute`, `unmute` |
 | `warns` | WARN | `warns`, `addwarn`, `strongwarn`, `warnlimit` |

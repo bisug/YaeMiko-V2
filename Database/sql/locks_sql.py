@@ -76,6 +76,24 @@ class Permissions(BASE):
         return "<ᴘᴇʀᴍɪssɪᴏɴs ғᴏʀ %s>" % self.chat_id
 
 
+class AllowedItem(BASE):
+    __tablename__ = "allowed_items"
+    chat_id = Column(String(14), primary_key=True)
+    # Which locktype this exemption applies to, e.g. "url" or "forward".
+    lockable = Column(String(32), primary_key=True)
+    # Domain, bot id, invite link or pack name. Stored lowercase so lookups
+    # do not have to normalise on every message.
+    item = Column(String(256), primary_key=True)
+
+    def __init__(self, chat_id, lockable, item):
+        self.chat_id = str(chat_id)
+        self.lockable = lockable
+        self.item = str(item).lower()
+
+    def __repr__(self):
+        return "<ᴀʟʟᴏᴡᴇᴅ %s %s ғᴏʀ %s>" % (self.lockable, self.item, self.chat_id)
+
+
 class Restrictions(BASE):
     __tablename__ = "restrictions"
     chat_id = Column(String(14), primary_key=True)
@@ -102,6 +120,7 @@ class Restrictions(BASE):
 Permissions.__table__.create(bind=ENGINE, checkfirst=True)
 # Permissions.__table__.drop()
 Restrictions.__table__.create(bind=ENGINE, checkfirst=True)
+AllowedItem.__table__.create(bind=ENGINE, checkfirst=True)
 
 PERM_LOCK = threading.RLock()
 RESTR_LOCK = threading.RLock()
@@ -290,3 +309,49 @@ def migrate_chat(old_chat_id, new_chat_id):
         if rest:
             rest.chat_id = str(new_chat_id)
         SESSION.commit()
+
+
+def allow_item(chat_id, lockable, item):
+    """Add an exemption for one locktype. Repeatable and case-insensitive."""
+    with PERM_LOCK:
+        SESSION.merge(AllowedItem(str(chat_id), lockable, str(item).lower()))
+        SESSION.commit()
+
+
+def unallow_item(chat_id, lockable, item):
+    with PERM_LOCK:
+        row = SESSION.get(AllowedItem, (str(chat_id), lockable, str(item).lower()))
+        if row:
+            SESSION.delete(row)
+            SESSION.commit()
+
+
+def rmallow_all(chat_id):
+    with PERM_LOCK:
+        for row in SESSION.query(AllowedItem).filter_by(chat_id=str(chat_id)).all():
+            SESSION.delete(row)
+        SESSION.commit()
+
+
+def list_allowed(chat_id):
+    """Every exemption for a chat, as (lockable, item) pairs."""
+    try:
+        return [
+            (row.lockable, row.item)
+            for row in SESSION.query(AllowedItem).filter_by(chat_id=str(chat_id)).all()
+        ]
+    finally:
+        SESSION.close()
+
+
+def allowed_for(chat_id, lockable):
+    """The item list for one locktype, as a set for fast membership checks."""
+    try:
+        return {
+            row.item
+            for row in SESSION.query(AllowedItem)
+            .filter_by(chat_id=str(chat_id), lockable=lockable)
+            .all()
+        }
+    finally:
+        SESSION.close()

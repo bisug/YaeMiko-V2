@@ -3355,5 +3355,99 @@ class CleanServiceTests(unittest.TestCase):
         self.assertIn("if not wanted:", source)
 
 
+class LockAllowlistTests(unittest.TestCase):
+    """Allowlists relax a lock for specific items, and invite links are real."""
+
+    @classmethod
+    def setUpClass(cls):
+        import re
+
+        path = ROOT / "Mikobot" / "plugins" / "locks.py"
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        keep = []
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef) and node.name in (
+                "_domain_of", "_normalise_item",
+            ):
+                keep.append(node)
+            elif isinstance(node, ast.Assign) and getattr(
+                node.targets[0], "id", ""
+            ) in ("_INVITE_LINK_RE", "DOMAIN_LOCKABLES", "HANDLE_LOCKABLES"):
+                keep.append(node)
+        ns = {"re": re}
+        exec(  # noqa: S102 - exercising the real source
+            compile(ast.Module(body=keep, type_ignores=[]), "<locks>", "exec"),
+            ns,
+        )
+        cls.domain_of = staticmethod(ns["_domain_of"])
+        cls.normalise = staticmethod(ns["_normalise_item"])
+        cls.invite_re = ns["_INVITE_LINK_RE"]
+
+    def test_domains_are_canonicalised(self):
+        # The stored value has to match whatever the entity reports, so scheme,
+        # www, case and path all have to be stripped.
+        for raw, expected in (
+            ("https://www.Example.com/path?q=1", "example.com"),
+            ("example.com", "example.com"),
+            ("//cdn.example.org", "cdn.example.org"),
+            ("http://t.me/joinchat/AAAA", "t.me"),
+        ):
+            self.assertEqual(self.domain_of(raw), expected, raw)
+
+    def test_invite_links_are_detected_by_shape(self):
+        # Telegram has no invitelink entity type, so this has to read the text.
+        for text in (
+            "join https://t.me/joinchat/AAAAAEabc",
+            "t.me/+AbCdEfGh",
+            "https://telegram.me/joinchat/XYZ",
+            "https://t.me/mygroup?start=abcdef",
+        ):
+            self.assertTrue(self.invite_re.search(text), text)
+
+    def test_lookalike_links_are_not_matched(self):
+        for text in (
+            "check https://example.com/joinchat/AAAA",
+            "https://t.me/username",
+            "https://t.me/joinchat",
+            "just a normal message",
+        ):
+            self.assertFalse(self.invite_re.search(text), text)
+
+    def test_invite_exemptions_are_ids_not_domains(self):
+        # An invite-link exemption is the target chat, so classifying it as a
+        # domain lock would make the allowlist comparison useless.
+        source = (ROOT / "Mikobot" / "plugins" / "locks.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn('DOMAIN_LOCKABLES = {"url", "button", "invitelink"}', source)
+        self.assertIn('"invitelink",', source)
+
+    def test_handles_are_normalised_for_comparison(self):
+        self.assertEqual(self.normalise("inline", "@PicBot"), "picbot")
+        self.assertEqual(self.normalise("url", "HTTPS://WWW.Example.COM/x"), "example.com")
+
+    def test_commands_are_registered(self):
+        found = _registered_commands(ROOT / "Mikobot" / "plugins" / "locks.py")
+        for command in ("allowlist", "rmallowlist", "rmallowlistall"):
+            self.assertIn(command, found, command)
+
+    def test_clearing_the_allowlist_is_owner_only(self):
+        tree = ast.parse(
+            (ROOT / "Mikobot" / "plugins" / "locks.py").read_text(encoding="utf-8")
+        )
+        func = next(
+            n for n in tree.body
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "rmallowlistall"
+        )
+        decorators = " ".join(ast.unparse(d) for d in func.decorator_list)
+        self.assertIn("only_owner=True", decorators)
+
+    def test_allowlist_is_checked_before_deleting(self):
+        source = (ROOT / "Mikobot" / "plugins" / "locks.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("_is_allowlisted", source)
+
+
 if __name__ == "__main__":
     unittest.main()

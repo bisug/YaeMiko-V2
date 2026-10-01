@@ -1,4 +1,5 @@
 import html
+import re
 import unicodedata
 
 from aiogram.enums import ChatMemberStatus, ChatType, ParseMode
@@ -56,6 +57,14 @@ def _is_command(message) -> bool:
 # Plain predicates, not magic filters: del_lockables() deletes messages, so the
 # match must be obvious and unit-testable. aiogram's F.<attr> composes rather
 # than evaluates, which would have made every lockable match everything.
+# Telegram sends no dedicated entity for join links, so the shapes it
+# actually accepts are matched here instead.
+_INVITE_LINK_RE = re.compile(
+    r"(?:t\.me|telegram\.me)/(?:joinchat/|join/|\+)[A-Za-z0-9_-]+"
+    r"|(?:t\.me|telegram\.me)/[A-Za-z0-9_]{3,}\?start=",
+    re.IGNORECASE,
+)
+
 LOCK_TYPES = {
     "audio": lambda m: bool(m.audio),
     "voice": lambda m: bool(m.voice),
@@ -78,12 +87,114 @@ LOCK_TYPES = {
     "anonchannel": "anonchannel",
     "forwardchannel": "forwardchannel",
     "forwardbot": "forwardbot",
-    # "invitelink": ,
     "videonote": lambda m: bool(m.video_note),
     "emojicustom": lambda m: _has_entity(m, "custom_emoji"),
     "stickerpremium": lambda m: bool(getattr(m.sticker, "premium", False)),
     "stickeranimated": lambda m: bool(getattr(m.sticker, "is_animated", False)),
+    # Telegram does not tag join links with their own entity type, so the
+    # text is inspected for the forms it actually accepts: t.me/joinchat/<id>,
+    # t.me/+<invite>, and t.me/username?start=<group> for private links.
+    "invitelink": lambda m: _has_invite_link(m),
 }
+
+
+def _has_invite_link(message) -> bool:
+    for text in (message.text, message.caption):
+        if text and _INVITE_LINK_RE.search(text):
+            return True
+    return False
+
+# Locktypes whose allowlist holds domains rather than ids or pack names.
+DOMAIN_LOCKABLES = {"url", "button"}
+
+# Locktypes whose allowlist holds an id or a username, with or without @.
+HANDLE_LOCKABLES = {
+    "inline",
+    "anonchannel",
+    "forward",
+    "command",
+    "sticker",
+    "emojicustom",
+    "invitelink",
+}
+
+
+def _entity_hosts(message, kind: str) -> set:
+    """Domains carried by a given entity type in the text or caption."""
+    hosts = set()
+    text = message.text or message.caption or ""
+    for entities in (message.entities, message.caption_entities):
+        if not entities:
+            continue
+        for entity in entities:
+            if entity.type != kind:
+                continue
+            fragment = text[entity.offset : entity.offset + entity.length]
+            host = _domain_of(fragment)
+            if host:
+                hosts.add(host)
+    return hosts
+
+
+def _domain_of(value: str) -> str:
+    """Lowercase host of a URL, tolerating a missing scheme or a trailing path."""
+    value = value.strip().lower()
+    if not value:
+        return ""
+    if value.startswith("http://"):
+        value = value[7:]
+    elif value.startswith("https://"):
+        value = value[8:]
+    if value.startswith("//"):
+        value = value[2:]
+    host = value.split("/")[0].split("?")[0]
+    if "@" in host:
+        host = host.rsplit("@", 1)[1]
+    if host.startswith("www."):
+        host = host[4:]
+    return host
+
+
+def _is_allowlisted(message, lockable: str) -> bool:
+    """True when this message is exempt from `lockable` by chat allowlist.
+
+    One DB read per candidate message, and only when the chat has any entry
+    for that locktype, so an unconfigured chat pays nothing.
+    """
+    wanted = sql.allowed_for(message.chat.id, lockable)
+    if not wanted:
+        return False
+    wanted = {w.lstrip("@") for w in wanted}
+
+    if lockable in DOMAIN_LOCKABLES:
+        kind = {"url": "url", "button": "text_link"}[lockable]
+        return bool(_entity_hosts(message, kind) & wanted)
+
+    if lockable in HANDLE_LOCKABLES:
+        candidate = None
+        if lockable == "inline" and message.via_bot:
+            candidate = str(message.via_bot.id)
+        elif lockable == "anonchannel" and message.from_user:
+            candidate = str(message.from_user.id)
+        elif lockable == "command":
+            candidate = (message.text or "").split(maxsplit=1)[0].lower() if message.text else None
+        elif lockable == "sticker" and getattr(message, "sticker", None):
+            candidate = message.sticker.set_name or ""
+        elif lockable == "emojicustom" and getattr(message, "sticker", None):
+            candidate = message.sticker.set_name or ""
+        elif lockable == "forward":
+            origin = message.forward_from_chat or message.forward_from_user
+            if origin is not None:
+                candidate = str(origin.id)
+        elif lockable == "invitelink":
+            found = _INVITE_LINK_RE.search(message.text or message.caption or "")
+            if found:
+                candidate = found.group(0)
+        if candidate is None:
+            return False
+        return candidate.lstrip("@").lower() in wanted
+
+    return False
 
 LOCK_CHAT_RESTRICTION = {
     "all": {
@@ -539,6 +650,9 @@ async def del_lockables(message: Message):
         if lockable == "inline":
             if getattr(locks, lockable, False):
                 if message and message.via_bot:
+                    # allowlisted inline bots are exempt
+                    if _is_allowlisted(message, "inline"):
+                        continue
                     try:
                         await message.delete()
                     except TelegramAPIError as excp:
@@ -591,6 +705,10 @@ async def del_lockables(message: Message):
                 continue
             continue
         if callable(filter) and filter(message) and getattr(locks, lockable, False):
+            # An allowlisted item is exempt, so the message is left alone even
+            # though this locktype is on.
+            if lockable != "bots" and _is_allowlisted(message, lockable):
+                continue
             if lockable == "bots":
                 new_members = message.new_chat_members
                 for new_mem in new_members:
@@ -715,6 +833,176 @@ async def list_locks(message: Message):
     await send_message(message, res, parse_mode=ParseMode.MARKDOWN)
 
 
+# Which locktypes each allowlistable command applies to, and what its
+# arguments mean. Anything not listed here cannot be allowlisted.
+ALLOWLIST_LOCKABLES = (
+    "url",
+    "button",
+    "invitelink",
+    "inline",
+    "anonchannel",
+    "forward",
+    "command",
+    "sticker",
+    "emojicustom",
+)
+
+
+async def _allowlist_target(message: Message):
+    """(chat_id, chat) for an allowlist command, honouring connections."""
+    conn = await connected(bot, message, message.chat, message.from_user.id, need_admin=True)
+    if conn:
+        chat = await bot.get_chat(conn)
+        return conn, chat
+    if message.chat.type == ChatType.PRIVATE:
+        await message.reply_text("This command is meant to be used in a group.")
+        return None, None
+    return message.chat.id, message.chat
+
+
+def _normalise_item(lockable: str, value: str) -> str:
+    """Canonical form used for both storage and comparison."""
+    if lockable in DOMAIN_LOCKABLES:
+        return _domain_of(value)
+    return value.strip().lstrip("@").lower()
+
+
+@check_admin(permission="can_delete_messages", is_both=True)
+@typing_action
+async def allowlist(message: Message, command: CommandObject) -> str:
+    """Exempt specific items from a lock, eg /allowlist missrose.xyz."""
+    chat_id, chat = await _allowlist_target(message)
+    if chat_id is None:
+        return ""
+
+    args = command.args.split() if command.args else []
+    user = message.from_user
+
+    if not args:
+        current = sql.list_allowed(chat_id)
+        if not current:
+            await message.reply_text("There is nothing on the allowlist.")
+            return ""
+        lines = "\n".join(
+            f" • <code>{html.escape(lockable)}</code>: <code>{html.escape(item)}</code>"
+            for lockable, item in sorted(current)
+        )
+        await message.reply_text(
+            f"Allowlisted items here:\n{lines}", parse_mode=ParseMode.HTML
+        )
+        return ""
+
+    lockable, values = args[0].lower(), args[1:]
+    if lockable not in ALLOWLIST_LOCKABLES:
+        await message.reply_text(
+            "That cannot be allowlisted. Supported: "
+            f"<code>{', '.join(ALLOWLIST_LOCKABLES)}</code>",
+            parse_mode=ParseMode.HTML,
+        )
+        return ""
+
+    if not values:
+        await message.reply_text(f"Give me something to allow for <code>{lockable}</code>.")
+        return ""
+
+    added = []
+    for value in values:
+        # "stickerpack:<>" reads the pack name off the replied message.
+        if value.endswith(":<>"):
+            base = value[: -len(":<>")]
+            lockable = base or lockable
+            replied = message.reply_to_message
+            sticker = getattr(replied, "sticker", None) if replied else None
+            if sticker is None or not sticker.set_name:
+                await message.reply_text("Reply to a sticker to use `<>`.")
+                return ""
+            value = sticker.set_name
+        elif lockable in ("sticker", "emojicustom") and value.startswith(("stickerpack:", "emojipack:")):
+            value = value.split(":", 1)[1]
+
+        item = _normalise_item(lockable, value)
+        if not item:
+            continue
+        sql.allow_item(chat_id, lockable, item)
+        added.append(item)
+
+    if not added:
+        await message.reply_text("That value could not be read as an item.")
+        return ""
+
+    listed = ", ".join(f"<code>{html.escape(i)}</code>" for i in added)
+    await message.reply_text(
+        f"Allowlisted for <code>{lockable}</code>: {listed}",
+        parse_mode=ParseMode.HTML,
+    )
+    return (
+        f"<b>{html.escape(chat.title)}:</b>\n"
+        f"#ALLOWLIST\n"
+        f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
+        f"Allowlisted <code>{lockable}</code>: {listed}."
+    )
+
+
+@check_admin(permission="can_delete_messages", is_both=True)
+@typing_action
+async def rmallowlist(message: Message, command: CommandObject) -> str:
+    """Remove one or more entries from the allowlist."""
+    chat_id, chat = await _allowlist_target(message)
+    if chat_id is None:
+        return ""
+
+    args = command.args.split() if command.args else []
+    user = message.from_user
+    if not args:
+        await message.reply_text("Give me the type and item to remove.")
+        return ""
+
+    lockable, values = args[0].lower(), args[1:]
+    if lockable not in ALLOWLIST_LOCKABLES:
+        await message.reply_text(
+            f"That cannot be allowlisted. Supported: <code>{', '.join(ALLOWLIST_LOCKABLES)}</code>",
+            parse_mode=ParseMode.HTML,
+        )
+        return ""
+
+    removed = []
+    for value in values:
+        item = _normalise_item(lockable, value)
+        sql.unallow_item(chat_id, lockable, item)
+        removed.append(item)
+
+    listed = ", ".join(f"<code>{html.escape(i)}</code>" for i in removed)
+    await message.reply_text(
+        f"Removed from the <code>{lockable}</code> allowlist: {listed}",
+        parse_mode=ParseMode.HTML,
+    )
+    return (
+        f"<b>{html.escape(chat.title)}:</b>\n"
+        f"#ALLOWLIST\n"
+        f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
+        f"Removed <code>{lockable}</code>: {listed}."
+    )
+
+
+@check_admin(only_owner=True)
+@typing_action
+async def rmallowlistall(message: Message, command: CommandObject) -> str:
+    """Clear the whole allowlist. Owner only, since it is all-or-nothing."""
+    chat_id, chat = await _allowlist_target(message)
+    if chat_id is None:
+        return ""
+
+    sql.rmallow_all(chat_id)
+    user = message.from_user
+    await message.reply_text("The allowlist is now empty.")
+    return (
+        f"<b>{html.escape(chat.title)}:</b>\n"
+        f"#ALLOWLIST\n"
+        f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
+        f"Has cleared the whole allowlist."
+    )
+
+
 def get_permission_list(current, new):
     permissions = {
         "can_send_messages": None,
@@ -771,6 +1059,16 @@ telegram world; our bot will automatically delete them!
 » /unlock <type>: Unlock items of a certain type (not available in private)
 » /locks: The current list of locks in this chat.
 
+➠ *Allowlisting:* relax a lock for specific items instead of turning it off.
+» /allowlist: Show the current allowlist.
+» /allowlist <type> <item> ...: Allow items. `type` is one of url, button,
+invitelink, inline, anonchannel, forward, command, sticker, emojicustom.
+For url and button give a domain; for the others an id, @username or pack name.
+Multiple items can be added at once: `/allowlist url example.org wikipedia.org`
+» /allowlist stickerpack:<>: Reply to a sticker to allow its whole pack.
+» /rmallowlist <type> <item> ...: Remove those items.
+» /rmallowlistall: Clear the allowlist entirely. Owner only.
+
 ➠ Locks can be used to restrict a group's users.
 eg:
 Locking urls will auto-delete all messages with urls, locking stickers will restrict all \
@@ -794,3 +1092,6 @@ dp.message.register(chain(lock), Command("lock"))
 dp.message.register(chain(unlock), Command("unlock"))
 dp.message.register(chain(locktypes), *disableable("locktypes"))
 dp.message.register(chain(list_locks), Command("locks"))
+dp.message.register(chain(allowlist), Command("allowlist"))
+dp.message.register(chain(rmallowlist), Command("rmallowlist"))
+dp.message.register(chain(rmallowlistall), Command("rmallowlistall"))
