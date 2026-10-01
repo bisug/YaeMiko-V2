@@ -31,7 +31,7 @@ check_admin = chat_status.check_admin
 @typing_action
 async def allow_connections(message: Message, command: CommandObject):
     chat = message.chat
-    args = command.args
+    args = command.args or []
 
     if chat.type != ChatType.PRIVATE:
         if len(args) >= 1:
@@ -110,7 +110,7 @@ async def connection_chat(message: Message, command: CommandObject):
 async def connect_chat(message: Message, command: CommandObject):
     chat = message.chat
     user = message.from_user
-    args = command.args
+    args = command.args or []
 
     if message.chat.type == ChatType.PRIVATE:
         if args and len(args) >= 1:
@@ -241,9 +241,9 @@ async def connect_chat(message: Message, command: CommandObject):
                         else str(len(gethistory))
                     ),
                 )
-                conn_hist = InlineKeyboardMarkup(buttons)
+                conn_hist = InlineKeyboardMarkup(inline_keyboard=buttons)
             elif buttons:
-                conn_hist = InlineKeyboardMarkup([buttons])
+                conn_hist = InlineKeyboardMarkup(inline_keyboard=[buttons])
             else:
                 conn_hist = None
             await send_message(

@@ -50,7 +50,7 @@ async def ban(message: Message, command: CommandObject) -> str:
     chat = message.chat
     user = message.from_user
     log_message = ""
-    args = command.args
+    args = command.args or []
     user_id, reason = await extract_user_and_text(message, args)
 
     member = await bot.get_chat_member(chat.id, user.id)
@@ -74,7 +74,7 @@ async def ban(message: Message, command: CommandObject) -> str:
         await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
-                [
+                inline_keyboard=[
                     [
                         InlineKeyboardButton(
                             text="Click to prove Admin.",
@@ -216,7 +216,7 @@ async def temp_ban(message: Message, command: CommandObject) -> str:
     chat = message.chat
     user = message.from_user
     log_message = ""
-    args = command.args
+    args = command.args or []
     user_id, reason = await extract_user_and_text(message, args)
 
     if not user_id:
@@ -305,7 +305,7 @@ async def kick(message: Message, command: CommandObject) -> str:
     chat = message.chat
     user = message.from_user
     log_message = ""
-    args = command.args
+    args = command.args or []
     user_id, reason = await extract_user_and_text(message, args)
 
     if not user_id:
@@ -388,7 +388,7 @@ async def unban(message: Message, command: CommandObject) -> str:
     user = message.from_user
     chat = message.chat
     log_message = ""
-    args = command.args
+    args = command.args or []
     user_id, reason = await extract_user_and_text(message, args)
 
     if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
@@ -405,7 +405,7 @@ async def unban(message: Message, command: CommandObject) -> str:
         await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
-                [
+                inline_keyboard=[
                     [
                         InlineKeyboardButton(
                             text="Click to prove Admin.",
@@ -477,7 +477,7 @@ async def unban(message: Message, command: CommandObject) -> str:
 async def selfunban(message: Message, command: CommandObject) -> str:
     message = message
     user = message.from_user
-    args = command.args
+    args = command.args or []
     if user.id not in DRAGONS:
         return
 

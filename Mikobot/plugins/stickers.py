@@ -342,10 +342,10 @@ async def kang_sticker(self: Client, ctx: Message, strings):
                 return await prog_msg.edit(
                     strings("please_start_msg"),
                     reply_markup=InlineKeyboardMarkup(
-                        [
+                        inline_keyboard=[
                             [
                                 InlineKeyboardButton(
-                                    strings("click_me"),
+                                    text=strings("click_me"),
                                     url=f"https://t.me/{self.me.username}?start",
                                  style=ButtonStyle.PRIMARY)
                             ]
@@ -359,7 +359,7 @@ async def kang_sticker(self: Client, ctx: Message, strings):
         await prog_msg.edit(f"{all_e.__class__.__name__} : {all_e}")
     else:
         markup = InlineKeyboardMarkup(
-            [
+            inline_keyboard=[
                 [
                     InlineKeyboardButton(
                         text=strings("viewpack"),

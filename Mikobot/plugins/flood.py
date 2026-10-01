@@ -158,7 +158,7 @@ async def set_flood(message: Message, command: CommandObject):
     chat = message.chat
     user = message.from_user
     message = message
-    args = command.args
+    args = command.args or []
 
     conn = await connected(bot, message, chat, user.id, need_admin=True)
     if conn:
@@ -299,7 +299,7 @@ async def flood(message: Message, command: CommandObject):
 async def set_flood_mode(message: Message, command: CommandObject):
     user = message.from_user
     msg = message
-    args = command.args
+    args = command.args or []
     chat = message.chat
 
     conn = await connected(bot, message, chat, user.id, need_admin=True)

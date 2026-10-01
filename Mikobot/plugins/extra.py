@@ -80,7 +80,7 @@ async def logs(message: Message):
     with open("Logs.txt", "rb") as f:
         caption = "Here is your log"
         reply_markup = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Close", callback_data="close", style=ButtonStyle.PRIMARY)]]
+            inline_keyboard=[[InlineKeyboardButton(text="Close", callback_data="close", style=ButtonStyle.PRIMARY)]]
         )
         sent = await bot.send_document(
             document=f,

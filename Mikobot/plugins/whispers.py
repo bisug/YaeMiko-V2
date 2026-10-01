@@ -70,13 +70,13 @@ async def mainwhisper(query: InlineQuery):
             title=f"👤 Send a whisper message to {user}!",
             description="Only they can see it!",
             input_message_content=InputTextMessageContent(
-                f"🔐 A Whisper Message For {user}\nOnly they can see it!"
+                message_text=f"🔐 A Whisper Message For {user}\nOnly they can see it!"
             ),
             reply_markup=InlineKeyboardMarkup(
-                [
+                inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            "📩 𝗦𝗵𝗼𝘄 𝗪𝗵𝗶𝘀𝗽𝗲𝗿 📩",
+                            text="📩 𝗦𝗵𝗼𝘄 𝗪𝗵𝗶𝘀𝗽𝗲𝗿 📩",
                             callback_data=f"whisper_{whisperId}",
                          style=ButtonStyle.PRIMARY)
                     ]

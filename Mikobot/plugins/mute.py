@@ -51,7 +51,7 @@ async def mute(message: Message, command: CommandObject) -> str:
     chat = message.chat
     user = message.from_user
 
-    user_id, reason = await extract_user_and_text(message, command.args)
+    user_id, reason = await extract_user_and_text(message, command.args or [])
     reply = await check_user(user_id, bot, chat)
 
     if reply:
@@ -94,7 +94,7 @@ async def unmute(message: Message, command: CommandObject) -> str:
     chat = message.chat
     user = message.from_user
 
-    user_id = await extract_user(message, command.args)
+    user_id = await extract_user(message, command.args or [])
     if not user_id:
         await message.answer(
             "You'll need to either give me a username to unmute, or reply to someone to be unmuted.",
@@ -153,7 +153,7 @@ async def temp_mute(message: Message, command: CommandObject) -> str:
     chat = message.chat
     user = message.from_user
 
-    user_id, reason = await extract_user_and_text(message, command.args)
+    user_id, reason = await extract_user_and_text(message, command.args or [])
     reply = await check_user(user_id, bot, chat)
 
     if reply:

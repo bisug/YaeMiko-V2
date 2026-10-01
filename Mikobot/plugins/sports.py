@@ -67,19 +67,19 @@ def _league_keyboard(sport: str, leagues: list[dict]) -> InlineKeyboardMarkup:
     rows = [
         [
             InlineKeyboardButton(
-                _escape(item.get("strLeague"), 35),
+                text=_escape(item.get("strLeague"), 35),
                 callback_data=f"sport_league:{sport}:{item['idLeague']}",
                 style=ButtonStyle.PRIMARY,
             )
         ]
         for item in leagues
     ]
-    return InlineKeyboardMarkup(rows)
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def _back_keyboard(sport: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
-        [[InlineKeyboardButton("⬅️ Leagues", callback_data=f"sport_menu:{sport}", style=ButtonStyle.PRIMARY)]]
+        inline_keyboard=[[InlineKeyboardButton(text="⬅️ Leagues", callback_data=f"sport_menu:{sport}", style=ButtonStyle.PRIMARY)]]
     )
 
 
@@ -154,7 +154,7 @@ async def _show_menu(query: CallbackQuery, sport: str) -> None:
 
 
 async def get_sport_matches(message: Message, command: CommandObject, sport: str) -> None:
-    if len(command.args) == 1 and command.args[0].isdigit():
+    if len(command.args or []) == 1 and command.args[0].isdigit():
         await _send_league_message(message, sport, command.args[0])
     else:
         await _show_leagues(message, sport)

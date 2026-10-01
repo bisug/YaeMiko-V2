@@ -36,7 +36,7 @@ from Mikobot.utils.parser import mention_html
 @loggable
 @check_admin(permission="can_promote_members", is_both=True)
 async def promote(message: Message, command: CommandObject):
-    args = command.args
+    args = command.args or []
 
     chat = message.chat
     user = message.from_user
@@ -48,7 +48,7 @@ async def promote(message: Message, command: CommandObject):
         await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
-                [
+                inline_keyboard=[
                     [
                         InlineKeyboardButton(
                             text="Click to promote admin.",
@@ -134,7 +134,7 @@ async def promote(message: Message, command: CommandObject):
 @loggable
 @check_admin(permission="can_promote_members", is_both=True)
 async def fullpromote(message: Message, command: CommandObject):
-    args = command.args
+    args = command.args or []
 
     chat = message.chat
     user = message.from_user
@@ -146,7 +146,7 @@ async def fullpromote(message: Message, command: CommandObject):
         await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
-                [
+                inline_keyboard=[
                     [
                         InlineKeyboardButton(
                             text="Click to promote admin.",
@@ -233,7 +233,7 @@ async def fullpromote(message: Message, command: CommandObject):
 @loggable
 @check_admin(permission="can_promote_members", is_both=True)
 async def demote(message: Message, command: CommandObject):
-    args = command.args
+    args = command.args or []
 
     chat = message.chat
     user = message.from_user
@@ -245,7 +245,7 @@ async def demote(message: Message, command: CommandObject):
         await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
-                [
+                inline_keyboard=[
                     [
                         InlineKeyboardButton(
                             text="Click to prove admin.",
@@ -340,7 +340,7 @@ async def refresh_admin(message: Message):
 @connection_status
 @check_admin(permission="can_promote_members", is_both=True)
 async def set_title(message: Message, command: CommandObject):
-    args = command.args
+    args = command.args or []
 
     chat = message.chat
 
@@ -356,7 +356,7 @@ async def set_title(message: Message, command: CommandObject):
         await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
-                [
+                inline_keyboard=[
                     [
                         InlineKeyboardButton(
                             text="Click to prove admin.",
@@ -431,7 +431,7 @@ async def set_title(message: Message, command: CommandObject):
 @loggable
 @check_admin(permission="can_pin_messages", is_both=True)
 async def pin(message: Message, command: CommandObject) -> None:
-    args = command.args
+    args = command.args or []
 
     user = message.from_user
     chat = message.chat
@@ -455,7 +455,7 @@ async def pin(message: Message, command: CommandObject) -> None:
         await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
-                [
+                inline_keyboard=[
                     [
                         InlineKeyboardButton(
                             text="Click to prove admin.",
@@ -499,7 +499,7 @@ async def unpin(message: Message, command: CommandObject):
         await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
-                [
+                inline_keyboard=[
                     [
                         InlineKeyboardButton(
                             text="Click to prove Admin.",
@@ -543,7 +543,7 @@ async def unpinall(message: Message, command: CommandObject):
         await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
-                [
+                inline_keyboard=[
                     [
                         InlineKeyboardButton(
                             text="Click to prove admin.",
@@ -609,7 +609,7 @@ async def invite(message: Message, command: CommandObject):
 async def adminlist(message: Message, command: CommandObject):
     chat = message.chat  # type: Optional[Chat]
     user = message.from_user  # type: Optional[User]
-    args = command.args
+    args = command.args or []
     if message.chat.type == "private":
         await send_message(
             message, "This command only works in Groups."

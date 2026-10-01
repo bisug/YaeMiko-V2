@@ -68,7 +68,7 @@ UNGBAN_ERRORS = {
 # <================================================ FUNCTION =======================================================>
 @support_plus
 async def gban(message: Message, command: CommandObject):
-    args = command.args
+    args = command.args or []
     user = message.from_user
     chat = message.chat
     log_message = ""
@@ -247,7 +247,7 @@ async def gban(message: Message, command: CommandObject):
 
 @support_plus
 async def ungban(message: Message, command: CommandObject):
-    args = command.args
+    args = command.args or []
     user = message.from_user
     chat = message.chat
     log_message = ""
@@ -432,7 +432,7 @@ async def enforce_gban(msg: Message):
 
 @check_admin(is_user=True)
 async def gbanstat(message: Message, command: CommandObject):
-    args = command.args
+    args = command.args or []
     if len(args) > 0:
         if args[0].lower() in ["on", "yes"]:
             sql.enable_gbans(message.chat.id)

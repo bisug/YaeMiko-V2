@@ -506,7 +506,7 @@ async def new_member(message: Message, command: CommandObject):
                 backup_message = random.choice(sql.DEFAULT_WELCOME_MESSAGES).format(
                     first=escape_markdown(first_name),
                 )
-                keyboard = InlineKeyboardMarkup(keyb)
+                keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
 
         else:
             welcome_bool = False
@@ -588,7 +588,7 @@ async def new_member(message: Message, command: CommandObject):
                             new_join_mem
                         ),
                         reply_markup=InlineKeyboardMarkup(
-                            [
+                            inline_keyboard=[
                                 [
                                     InlineKeyboardButton(
                                         text="YES, I'M HUMAN",
@@ -808,7 +808,7 @@ async def left_member(message: Message):
                 )
                 keyb = []
 
-            keyboard = InlineKeyboardMarkup(keyb)
+            keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
 
             await send(
                 message,
@@ -820,7 +820,7 @@ async def left_member(message: Message):
 
 @check_admin(is_user=True)
 async def welcome(message: Message, command: CommandObject):
-    args = command.args
+    args = command.args or []
     chat = message.chat
     if not args or args[0].lower() == "noformat":
         noformat = True
@@ -840,7 +840,7 @@ async def welcome(message: Message, command: CommandObject):
                 await message.answer(welcome_m)
             else:
                 keyb = build_keyboard(buttons)
-                keyboard = InlineKeyboardMarkup(keyb)
+                keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
                 await send(message, welcome_m, keyboard, sql.DEFAULT_WELCOME)
         else:
             buttons = await asyncio.to_thread(sql.get_welc_buttons, chat.id)
@@ -851,7 +851,7 @@ async def welcome(message: Message, command: CommandObject):
                 )
             else:
                 keyb = build_keyboard(buttons)
-                keyboard = InlineKeyboardMarkup(keyb)
+                keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
                 ENUM_FUNC_MAP[welcome_type](
                     chat.id,
                     cust_content,
@@ -886,7 +886,7 @@ async def welcome(message: Message, command: CommandObject):
 
 @check_admin(is_user=True)
 async def goodbye(message: Message, command: CommandObject):
-    args = command.args
+    args = command.args or []
     chat = message.chat
 
     if not args or args[0] == "noformat":
@@ -908,7 +908,7 @@ async def goodbye(message: Message, command: CommandObject):
 
             else:
                 keyb = build_keyboard(buttons)
-                keyboard = InlineKeyboardMarkup(keyb)
+                keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
                 await send(message, goodbye_m, keyboard, sql.DEFAULT_GOODBYE)
 
         else:
@@ -1038,7 +1038,7 @@ async def reset_goodbye(message: Message, command: CommandObject) -> str:
 @check_admin(is_user=True)
 @loggable
 async def welcomemute(message: Message, command: CommandObject) -> str:
-    args = command.args
+    args = command.args or []
     chat = message.chat
     user = message.from_user
     msg = message
@@ -1100,7 +1100,7 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
 @check_admin(is_user=True)
 @loggable
 async def clean_welcome(message: Message, command: CommandObject) -> str:
-    args = command.args
+    args = command.args or []
     chat = message.chat
     user = message.from_user
 
@@ -1151,7 +1151,7 @@ async def clean_welcome(message: Message, command: CommandObject) -> str:
 
 @check_admin(is_user=True)
 async def cleanservice(message: Message, command: CommandObject) -> str:
-    args = command.args
+    args = command.args or []
     chat = message.chat  # type: Optional[Chat]
     if chat.type != chat.PRIVATE:
         if len(args) >= 1:

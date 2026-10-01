@@ -29,7 +29,7 @@ from Mikobot.utils.parser import mention_html
 async def blacklist(message: Message, command: CommandObject):
     chat = message.chat
     user = message.from_user
-    args = command.args
+    args = command.args or []
 
     conn = await connected(bot, message, chat, user.id, need_admin=False)
     if conn:
@@ -213,7 +213,7 @@ async def blacklist_mode(message: Message, command: CommandObject):
     chat = message.chat
     user = message.from_user
     msg = message
-    args = command.args
+    args = command.args or []
 
     conn = await connected(bot, message, chat, user.id, need_admin=True)
     if conn:

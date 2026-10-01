@@ -41,7 +41,7 @@ async def _remove_deleted(message, status):
     result = f"Removed {removed} deleted account(s)."
     if skipped:
         result += f" Skipped {skipped} admin account(s)."
-    await status.edit(result, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Close", callback_data="zombies_close", style=ButtonStyle.PRIMARY)]]))
+    await status.edit(result, reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Close", callback_data="zombies_close", style=ButtonStyle.PRIMARY)]]))
 
 
 @app.on_message(filters.regex(r"^[!/]zombies(?:\s+(clean))?(?:@\S+)?$"), group=1)
@@ -57,7 +57,7 @@ async def zombies(_, message):
         button = "Remove" if allowed else "Close"
         return await message.reply(
             f"Found {deleted} deleted account(s).\n" + ("You can remove them." if allowed else "Only an admin with ban permission can remove them."),
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(button, callback_data="zombies_remove" if allowed else "zombies_close", style=ButtonStyle.DANGER)]]),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=button, callback_data="zombies_remove" if allowed else "zombies_close", style=ButtonStyle.DANGER)]]),
         )
     if not await is_administrator(message.from_user.id, message):
         return await message.reply("You need to be an admin to remove deleted accounts.")

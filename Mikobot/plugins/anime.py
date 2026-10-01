@@ -819,7 +819,7 @@ def get_btns(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    "Description",
+                    text="Description",
                     callback_data=(
                         f"desc_{result[2][0]}_CHAR" + f"{qry}{pg}_{str(auth)}_{user}"
                     ),
@@ -829,7 +829,7 @@ def get_btns(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    "List Series",
+                    text="List Series",
                     callback_data=f"lsc_{result[2][0]}{qry}{pg}_{str(auth)}_{user}",
                  style=ButtonStyle.PRIMARY)
             ]
@@ -839,11 +839,11 @@ def get_btns(
             buttons.append(
                 [
                     InlineKeyboardButton(
-                        str(day_(result[0] - 1)),
+                        text=str(day_(result[0] - 1)),
                         callback_data=f"sched_{result[0]-1}_{user}",
                      style=ButtonStyle.PRIMARY),
                     InlineKeyboardButton(
-                        str(day_(result[0] + 1)),
+                        text=str(day_(result[0] + 1)),
                         callback_data=f"sched_{result[0]+1}_{user}",
                      style=ButtonStyle.PRIMARY),
                 ]
@@ -852,7 +852,7 @@ def get_btns(
             buttons.append(
                 [
                     InlineKeyboardButton(
-                        str(day_(result[0] + 1)),
+                        text=str(day_(result[0] + 1)),
                         callback_data=f"sched_{result[0]+1}_{user}",
                      style=ButtonStyle.PRIMARY)
                 ]
@@ -861,15 +861,15 @@ def get_btns(
             buttons.append(
                 [
                     InlineKeyboardButton(
-                        str(day_(result[0] - 1)),
+                        text=str(day_(result[0] - 1)),
                         callback_data=f"sched_{result[0]-1}_{user}",
                      style=ButtonStyle.PRIMARY)
                 ]
             )
     if media == "MANGA" and sfw == "False":
-        buttons.append([InlineKeyboardButton("More Info", url=result[1][2], style=ButtonStyle.PRIMARY)])
+        buttons.append([InlineKeyboardButton(text="More Info", url=result[1][2], style=ButtonStyle.PRIMARY)])
     if media == "AIRING" and sfw == "False":
-        buttons.append([InlineKeyboardButton("More Info", url=result[1][0], style=ButtonStyle.PRIMARY)])
+        buttons.append([InlineKeyboardButton(text="More Info", url=result[1][0], style=ButtonStyle.PRIMARY)])
     if auth is True and media != "SCHEDULED" and sfw == "False":
         auth_btns = get_auth_btns(media, user, result[2], lspage=lspage, lsqry=lsqry)
         buttons.append(auth_btns)
@@ -951,7 +951,7 @@ def get_btns(
                          style=ButtonStyle.PRIMARY),
                     ]
                 )
-    return InlineKeyboardMarkup(buttons)
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def get_auth_btns(media, user, data, lsqry: str = None, lspage: int = None):
@@ -2002,7 +2002,7 @@ async def get_studios(qry, page, user, duser=None, auth: bool = False):
     btns.append(
         [
             InlineKeyboardButton(
-                "List Animes",
+                text="List Animes",
                 callback_data=f"stuani_1_{data['id']}_{page}_{qry}_{auth}_{duser}",
              style=ButtonStyle.PRIMARY)
         ]
@@ -2011,7 +2011,7 @@ async def get_studios(qry, page, user, duser=None, auth: bool = False):
         btns.append(
             [
                 InlineKeyboardButton(
-                    "Remove from Favs" if isFav else "Add To Favs",
+                    text="Remove from Favs" if isFav else "Add To Favs",
                     callback_data=f"fav_STUDIO_{data['id']}_{qry}_{page}_{duser}",
                  style=ButtonStyle.DANGER)
             ]
@@ -2024,7 +2024,7 @@ async def get_studios(qry, page, user, duser=None, auth: bool = False):
             btns.append(
                 [
                     InlineKeyboardButton(
-                        "Prev", callback_data=f"pgstudio_{page-1}_{qry}_{auth}_{duser}"
+                        text="Prev", callback_data=f"pgstudio_{page-1}_{qry}_{auth}_{duser}"
                     , style=ButtonStyle.PRIMARY)
                 ]
             )
@@ -2033,7 +2033,7 @@ async def get_studios(qry, page, user, duser=None, auth: bool = False):
             btns.append(
                 [
                     InlineKeyboardButton(
-                        "Next", callback_data=f"pgstudio_2_{qry}_{auth}_{duser}"
+                        text="Next", callback_data=f"pgstudio_2_{qry}_{auth}_{duser}"
                     , style=ButtonStyle.PRIMARY)
                 ]
             )
@@ -2041,14 +2041,14 @@ async def get_studios(qry, page, user, duser=None, auth: bool = False):
             btns.append(
                 [
                     InlineKeyboardButton(
-                        "Prev", callback_data=f"pgstudio_{page-1}_{qry}_{auth}_{duser}"
+                        text="Prev", callback_data=f"pgstudio_{page-1}_{qry}_{auth}_{duser}"
                     , style=ButtonStyle.PRIMARY),
                     InlineKeyboardButton(
-                        "Next", callback_data=f"pgstudio_{page+1}_{qry}_{auth}_{duser}"
+                        text="Next", callback_data=f"pgstudio_{page+1}_{qry}_{auth}_{duser}"
                     , style=ButtonStyle.PRIMARY),
                 ]
             )
-    return msg, InlineKeyboardMarkup(btns)
+    return msg, InlineKeyboardMarkup(inline_keyboard=btns)
 
 
 async def get_studio_animes(id_, page, qry, rp, user, duser=None, auth: bool = False):
@@ -2072,7 +2072,7 @@ async def get_studio_animes(id_, page, qry, rp, user, duser=None, auth: bool = F
             btns.append(
                 [
                     InlineKeyboardButton(
-                        "Back", callback_data=f"pgstudio_{rp}_{qry}_{auth}_{duser}"
+                        text="Back", callback_data=f"pgstudio_{rp}_{qry}_{auth}_{duser}"
                     , style=ButtonStyle.PRIMARY)
                 ]
             )
@@ -2081,7 +2081,7 @@ async def get_studio_animes(id_, page, qry, rp, user, duser=None, auth: bool = F
             btns.append(
                 [
                     InlineKeyboardButton(
-                        "Prev",
+                        text="Prev",
                         callback_data=f"stuani_{int(page)-1}_{id_}_{rp}_{qry}_{auth}_{duser}",
                      style=ButtonStyle.PRIMARY)
                 ]
@@ -2091,7 +2091,7 @@ async def get_studio_animes(id_, page, qry, rp, user, duser=None, auth: bool = F
             btns.append(
                 [
                     InlineKeyboardButton(
-                        "Next",
+                        text="Next",
                         callback_data=f"stuani_2_{id_}_{rp}_{qry}_{auth}_{duser}",
                      style=ButtonStyle.PRIMARY)
                 ]
@@ -2100,11 +2100,11 @@ async def get_studio_animes(id_, page, qry, rp, user, duser=None, auth: bool = F
             btns.append(
                 [
                     InlineKeyboardButton(
-                        "Prev",
+                        text="Prev",
                         callback_data=f"stuani_{int(page)-1}_{id_}_{rp}_{qry}_{auth}_{duser}",
                      style=ButtonStyle.PRIMARY),
                     InlineKeyboardButton(
-                        "Next",
+                        text="Next",
                         callback_data=f"stuani_{int(page)+1}_{id_}_{rp}_{qry}_{auth}_{duser}",
                      style=ButtonStyle.PRIMARY),
                 ]
@@ -2112,11 +2112,11 @@ async def get_studio_animes(id_, page, qry, rp, user, duser=None, auth: bool = F
     btns.append(
         [
             InlineKeyboardButton(
-                "Back", callback_data=f"pgstudio_{rp}_{qry}_{auth}_{duser}"
+                text="Back", callback_data=f"pgstudio_{rp}_{qry}_{auth}_{duser}"
             , style=ButtonStyle.PRIMARY)
         ]
     )
-    return msg, InlineKeyboardMarkup(btns)
+    return msg, InlineKeyboardMarkup(inline_keyboard=btns)
 
 
 async def get_all_tags(text: str = None):
@@ -2172,11 +2172,11 @@ async def get_user_activity(id_, user, duser=None):
             pass
     if duser is None:
         duser = user
-    btn = [[InlineKeyboardButton("Back", callback_data=f"getusrbc_{duser}", style=ButtonStyle.PRIMARY)]]
+    btn = [[InlineKeyboardButton(text="Back", callback_data=f"getusrbc_{duser}", style=ButtonStyle.PRIMARY)]]
     return [
         f"https://img.anili.st/user/{id_}?a={time.time()}",
         msg,
-        InlineKeyboardMarkup(btn),
+        InlineKeyboardMarkup(inline_keyboard=btn),
     ]
 
 
@@ -2228,7 +2228,7 @@ async def get_top_animes(gnr: str, page, user):
             btn.append(
                 [
                     InlineKeyboardButton(
-                        "Next", callback_data=f"topanimu_{gnr}_{int(page)+1}_{user}"
+                        text="Next", callback_data=f"topanimu_{gnr}_{int(page)+1}_{user}"
                     , style=ButtonStyle.PRIMARY)
                 ]
             )
@@ -2236,7 +2236,7 @@ async def get_top_animes(gnr: str, page, user):
         btn.append(
             [
                 InlineKeyboardButton(
-                    "Prev", callback_data=f"topanimu_{gnr}_{int(page)-1}_{user}"
+                    text="Prev", callback_data=f"topanimu_{gnr}_{int(page)-1}_{user}"
                 , style=ButtonStyle.PRIMARY)
             ]
         )
@@ -2244,14 +2244,14 @@ async def get_top_animes(gnr: str, page, user):
         btn.append(
             [
                 InlineKeyboardButton(
-                    "Prev", callback_data=f"topanimu_{gnr}_{int(page)-1}_{user}"
+                    text="Prev", callback_data=f"topanimu_{gnr}_{int(page)-1}_{user}"
                 , style=ButtonStyle.PRIMARY),
                 InlineKeyboardButton(
-                    "Next", callback_data=f"topanimu_{gnr}_{int(page)+1}_{user}"
+                    text="Next", callback_data=f"topanimu_{gnr}_{int(page)+1}_{user}"
                 , style=ButtonStyle.PRIMARY),
             ]
         )
-    return [msg, nsfw], InlineKeyboardMarkup(btn) if len(btn) != 0 else ""
+    return [msg, nsfw], InlineKeyboardMarkup(inline_keyboard=btn) if len(btn) != 0 else ""
 
 
 async def get_user_favourites(id_, user, req, page, sighs, duser=None):
@@ -2287,7 +2287,7 @@ async def get_user_favourites(id_, user, req, page, sighs, duser=None):
             btn.append(
                 [
                     InlineKeyboardButton(
-                        "Next",
+                        text="Next",
                         callback_data=(
                             f"myfavqry_{req}_{id_}_{str(int(page)+1)}"
                             + f"_{sighs}_{duser}"
@@ -2299,7 +2299,7 @@ async def get_user_favourites(id_, user, req, page, sighs, duser=None):
         btn.append(
             [
                 InlineKeyboardButton(
-                    "Prev",
+                    text="Prev",
                     callback_data=(
                         f"myfavqry_{req}_{id_}_{str(int(page)-1)}_{sighs}_{duser}"
                     ),
@@ -2310,13 +2310,13 @@ async def get_user_favourites(id_, user, req, page, sighs, duser=None):
         btn.append(
             [
                 InlineKeyboardButton(
-                    "Prev",
+                    text="Prev",
                     callback_data=(
                         f"myfavqry_{req}_{id_}_{str(int(page)-1)}_{sighs}_{duser}"
                     ),
                  style=ButtonStyle.PRIMARY),
                 InlineKeyboardButton(
-                    "Next",
+                    text="Next",
                     callback_data=(
                         f"myfavqry_{req}_{id_}_{str(int(page)+1)}_{sighs}_{duser}"
                     ),
@@ -2324,12 +2324,12 @@ async def get_user_favourites(id_, user, req, page, sighs, duser=None):
             ]
         )
     btn.append(
-        [InlineKeyboardButton("Back", callback_data=f"myfavs_{id_}_{sighs}_{user}", style=ButtonStyle.PRIMARY)]
+        [InlineKeyboardButton(text="Back", callback_data=f"myfavs_{id_}_{sighs}_{user}", style=ButtonStyle.PRIMARY)]
     )
     return [
         f"https://img.anili.st/user/{id_}?a=({time.time()})",
         msg,
-        InlineKeyboardMarkup(btn),
+        InlineKeyboardMarkup(inline_keyboard=btn),
     ]
 
 
@@ -2863,19 +2863,19 @@ Average Score: `{manga['meanScore']}`
         btn.append(
             [
                 InlineKeyboardButton(
-                    "Favourites",
+                    text="Favourites",
                     callback_data=f"myfavs_{data['id']}_yes_{display_user}",
                  style=ButtonStyle.SUCCESS),
                 InlineKeyboardButton(
-                    "Activity", callback_data=f"myacc_{data['id']}_{display_user}"
+                    text="Activity", callback_data=f"myacc_{data['id']}_{display_user}"
                 , style=ButtonStyle.PRIMARY),
             ]
         )
-    btn.append([InlineKeyboardButton("Profile", url=str(data["siteUrl"]), style=ButtonStyle.PRIMARY)])
+    btn.append([InlineKeyboardButton(text="Profile", url=str(data["siteUrl"]), style=ButtonStyle.PRIMARY)])
     return [
         f'https://img.anili.st/user/{data["id"]}?a={time.time()}',
         stats,
-        InlineKeyboardMarkup(btn),
+        InlineKeyboardMarkup(inline_keyboard=btn),
     ]
 
 
@@ -3526,7 +3526,7 @@ async def settings_cmd(client: Client, message: Message, mdata: dict):
         await message.reply_text(
             text=setting_text,
             reply_markup=InlineKeyboardMarkup(
-                [
+                inline_keyboard=[
                     [
                         InlineKeyboardButton(
                             text=sfw, callback_data=f"settogl_sfw_{cid}"
@@ -3572,13 +3572,13 @@ async def browse_cmd(client: Client, message: Message, mdata: dict):
     pp = "Popular"
     btns = [
         [
-            InlineKeyboardButton(tr, callback_data=f"browse_{tr.lower()}_{user}", style=ButtonStyle.PRIMARY),
-            InlineKeyboardButton(pp, callback_data=f"browse_{pp.lower()}_{user}", style=ButtonStyle.PRIMARY),
-            InlineKeyboardButton(up, callback_data=f"browse_{up.lower()}_{user}", style=ButtonStyle.PRIMARY),
+            InlineKeyboardButton(text=tr, callback_data=f"browse_{tr.lower()}_{user}", style=ButtonStyle.PRIMARY),
+            InlineKeyboardButton(text=pp, callback_data=f"browse_{pp.lower()}_{user}", style=ButtonStyle.PRIMARY),
+            InlineKeyboardButton(text=up, callback_data=f"browse_{up.lower()}_{user}", style=ButtonStyle.PRIMARY),
         ]
     ]
     msg = await browse_("trending")
-    await client.send_message(gid, msg, reply_markup=InlineKeyboardMarkup(btns))
+    await client.send_message(gid, msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=btns))
 
 
 @app.on_message(
@@ -3832,7 +3832,7 @@ async def nsfw_toggle_btn(client: Client, cq: CallbackQuery):
             await SG.insert_one({"_id": int(query[2])})
             sp = "Subsplease Updates: ON"
     btns = InlineKeyboardMarkup(
-        [
+        inline_keyboard=[
             [InlineKeyboardButton(text=sfw, callback_data=f"settogl_sfw_{query[2]}", style=ButtonStyle.PRIMARY)],
             [
                 InlineKeyboardButton(
@@ -3890,21 +3890,21 @@ async def list_favourites_btn(client: Client, cq: CallbackQuery, cdata: dict):
     btn = [
         [
             InlineKeyboardButton(
-                "ANIME", callback_data=f"myfavqry_ANIME_{q[1]}_1_{q[2]}_{q[3]}"
+                text="ANIME", callback_data=f"myfavqry_ANIME_{q[1]}_1_{q[2]}_{q[3]}"
             , style=ButtonStyle.PRIMARY),
             InlineKeyboardButton(
-                "CHARACTER", callback_data=f"myfavqry_CHAR_{q[1]}_1_{q[2]}_{q[3]}"
+                text="CHARACTER", callback_data=f"myfavqry_CHAR_{q[1]}_1_{q[2]}_{q[3]}"
             , style=ButtonStyle.PRIMARY),
             InlineKeyboardButton(
-                "MANGA", callback_data=f"myfavqry_MANGA_{q[1]}_1_{q[2]}_{q[3]}"
+                text="MANGA", callback_data=f"myfavqry_MANGA_{q[1]}_1_{q[2]}_{q[3]}"
             , style=ButtonStyle.PRIMARY),
         ]
     ]
     if q[2] == "yes":
-        btn.append([InlineKeyboardButton("BACK", callback_data=f"getusrbc_{q[3]}", style=ButtonStyle.PRIMARY)])
+        btn.append([InlineKeyboardButton(text="BACK", callback_data=f"getusrbc_{q[3]}", style=ButtonStyle.PRIMARY)])
     else:
         btn.append(
-            [InlineKeyboardButton("PROFILE", url=f"https://anilist.co/user/{q[1]}", style=ButtonStyle.PRIMARY)]
+            [InlineKeyboardButton(text="PROFILE", url=f"https://anilist.co/user/{q[1]}", style=ButtonStyle.PRIMARY)]
         )
     try:
         await cq.edit_message_media(
@@ -3912,7 +3912,7 @@ async def list_favourites_btn(client: Client, cq: CallbackQuery, cdata: dict):
                 f"https://img.anili.st/user/{q[1]}?a={time.time()}",
                 caption="Choose one of the below options",
             ),
-            reply_markup=InlineKeyboardMarkup(btn),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=btn),
         )
     except (WebpageMediaEmpty, WebpageCurlFailed):
         await clog(
@@ -3923,7 +3923,7 @@ async def list_favourites_btn(client: Client, cq: CallbackQuery, cdata: dict):
         )
         await cq.edit_message_media(
             InputMediaPhoto(failed_pic, caption="Choose one of the below options"),
-            reply_markup=InlineKeyboardMarkup(btn),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=btn),
         )
 
 
@@ -4116,11 +4116,11 @@ async def list_update_anilist_btn(client: Client, cq: CallbackQuery, cdata: dict
         btns.append(
             [
                 InlineKeyboardButton(
-                    "DELETE", callback_data=cq.data.replace("lsupdt", f"dlt_{i}")
+                    text="DELETE", callback_data=cq.data.replace("lsupdt", f"dlt_{i}")
                 , style=ButtonStyle.DANGER)
             ]
         )
-    await cq.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(btns))
+    await cq.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(inline_keyboard=btns))
     await cq.answer()
 
 
@@ -4138,12 +4138,12 @@ async def browse_btn(client: Client, cq: CallbackQuery, cdata: dict):
     pp = "Popular" if query[1] != "popular" else "• Popular •"
     btns = [
         [
-            InlineKeyboardButton(tr, callback_data=f"browse_{tr.lower()}_{query[2]}", style=ButtonStyle.PRIMARY),
-            InlineKeyboardButton(pp, callback_data=f"browse_{pp.lower()}_{query[2]}", style=ButtonStyle.PRIMARY),
-            InlineKeyboardButton(up, callback_data=f"browse_{up.lower()}_{query[2]}", style=ButtonStyle.PRIMARY),
+            InlineKeyboardButton(text=tr, callback_data=f"browse_{tr.lower()}_{query[2]}", style=ButtonStyle.PRIMARY),
+            InlineKeyboardButton(text=pp, callback_data=f"browse_{pp.lower()}_{query[2]}", style=ButtonStyle.PRIMARY),
+            InlineKeyboardButton(text=up, callback_data=f"browse_{up.lower()}_{query[2]}", style=ButtonStyle.PRIMARY),
         ]
     ]
-    await cq.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(btns))
+    await cq.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=btns))
     await cq.answer()
 
 
@@ -4373,13 +4373,13 @@ async def additional_info_btn(client: Client, cq: CallbackQuery, cdata: dict):
     button.append([InlineKeyboardButton(text="BACK", callback_data=cbd, style=ButtonStyle.PRIMARY)])
     try:
         await cq.edit_message_media(
-            InputMediaPhoto(pic, caption=msg), reply_markup=InlineKeyboardMarkup(button)
+            InputMediaPhoto(pic, caption=msg), reply_markup=InlineKeyboardMarkup(inline_keyboard=button)
         )
     except (WebpageMediaEmpty, WebpageCurlFailed):
         await clog("Mikobot", pic, "LINK", msg=cq)
         await cq.edit_message_media(
             InputMediaPhoto(failed_pic, caption=msg),
-            reply_markup=InlineKeyboardMarkup(button),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=button),
         )
     await cq.answer()
 
@@ -4426,13 +4426,13 @@ async def featured_in_btn(client: Client, cq: CallbackQuery, cdata: dict):
     )
     try:
         await cq.edit_message_media(
-            InputMediaPhoto(pic, caption=msg), reply_markup=InlineKeyboardMarkup(button)
+            InputMediaPhoto(pic, caption=msg), reply_markup=InlineKeyboardMarkup(inline_keyboard=button)
         )
     except (WebpageMediaEmpty, WebpageCurlFailed):
         await clog("Mikobot", pic, "LINK", msg=cq)
         await cq.edit_message_media(
             InputMediaPhoto(failed_pic, caption=msg),
-            reply_markup=InlineKeyboardMarkup(button),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=button),
         )
 
 
@@ -4483,13 +4483,13 @@ async def featured_in_switch_btn(client: Client, cq: CallbackQuery, cdata: dict)
     )
     try:
         await cq.edit_message_media(
-            InputMediaPhoto(pic, caption=msg), reply_markup=InlineKeyboardMarkup(button)
+            InputMediaPhoto(pic, caption=msg), reply_markup=InlineKeyboardMarkup(inline_keyboard=button)
         )
     except (WebpageMediaEmpty, WebpageCurlFailed):
         await clog("Mikobot", pic, "LINK", msg=cq)
         await cq.edit_message_media(
             InputMediaPhoto(failed_pic, caption=msg),
-            reply_markup=InlineKeyboardMarkup(button),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=button),
         )
 
 
@@ -4582,7 +4582,7 @@ async def headlines_btn(client: Client, cq: CallbackQuery):
         lchdpin = pin_msg
         lchd = src_status
     btn = InlineKeyboardMarkup(
-        [
+        inline_keyboard=[
             [InlineKeyboardButton(text=lchd, callback_data=f"headlines_lchd_{gid}", style=ButtonStyle.PRIMARY)],
             [
                 InlineKeyboardButton(
@@ -4679,7 +4679,7 @@ async def auto_unpin(client: Client, cq: CallbackQuery):
     for i in TIMES.keys():
         count = count + 1
         row.append(
-            InlineKeyboardButton(i, callback_data=f"unpin_{TIMES[i]}_{src}_{gid}", style=ButtonStyle.DANGER)
+            InlineKeyboardButton(text=i, callback_data=f"unpin_{TIMES[i]}_{src}_{gid}", style=ButtonStyle.DANGER)
         )
         if count == 3:
             btn.append(row)
@@ -4687,7 +4687,7 @@ async def auto_unpin(client: Client, cq: CallbackQuery):
             row = []
     if len(row) != 0:
         btn.append(row)
-    btn.append([InlineKeyboardButton("BACK", callback_data=f"headlines_call_{gid}", style=ButtonStyle.PRIMARY)])
+    btn.append([InlineKeyboardButton(text="BACK", callback_data=f"headlines_call_{gid}", style=ButtonStyle.PRIMARY)])
     if type(unpin) is int:
         if unpin == 0:
             unpindata = "after Next Feed"
@@ -4697,7 +4697,7 @@ async def auto_unpin(client: Client, cq: CallbackQuery):
         unpindata = "OFF"
     await cq.edit_message_text(
         f"Auto Unpin options for {srcname}\nCurrently set to: {unpindata}",
-        reply_markup=InlineKeyboardMarkup(btn),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=btn),
     )
     await cq.answer()
 
@@ -4756,7 +4756,7 @@ async def change_ui_btn(client: Client, cq: CallbackQuery):
         cs = data["cs"]
     text = f"""Selected bullet in this group: {bl}
 Selected text case in this group: {cs}"""
-    await cq.edit_message_text(text, reply_markup=InlineKeyboardMarkup(btn))
+    await cq.edit_message_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=btn))
 
 
 ## For accepting commands from edited messages
@@ -4903,11 +4903,11 @@ async def get_watch_order(client: Client, message: Message, mdata: dict):
         buttons.append(
             [
                 InlineKeyboardButton(
-                    str(i[1]), callback_data=f"watch_{i[0]}_{x[1]}_0_{user}"
+                    text=str(i[1]), callback_data=f"watch_{i[0]}_{x[1]}_0_{user}"
                 , style=ButtonStyle.PRIMARY)
             ]
         )
-    await client.send_message(gid, msg, reply_markup=InlineKeyboardMarkup(buttons))
+    await client.send_message(gid, msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
 
 
 @app.on_callback_query(filters.regex(pattern=r"watch_(.*)"))
@@ -4951,8 +4951,8 @@ async def watch_(client: app, cq: CallbackQuery, cdata: dict):
                      style=ButtonStyle.PRIMARY),
                 ]
             )
-    button.append([InlineKeyboardButton("Back", callback_data=f"wol_{qry}_{user}", style=ButtonStyle.PRIMARY)])
-    await cq.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(button))
+    button.append([InlineKeyboardButton(text="Back", callback_data=f"wol_{qry}_{user}", style=ButtonStyle.PRIMARY)])
+    await cq.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=button))
     await cq.answer()
 
 
@@ -4967,11 +4967,11 @@ async def wls(client: app, cq: CallbackQuery, cdata: dict):
         buttons.append(
             [
                 InlineKeyboardButton(
-                    str(i[1]), callback_data=f"watch_{i[0]}_{qry}_0_{user}"
+                    text=str(i[1]), callback_data=f"watch_{i[0]}_{qry}_0_{user}"
                 , style=ButtonStyle.PRIMARY)
             ]
         )
-    await cq.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(buttons))
+    await cq.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
     await cq.answer()
 
 
@@ -5023,10 +5023,10 @@ example: /fillers Detective Conan"""
     for i in list_:
         fl_js = rand_key()
         FILLERS[fl_js] = [k.get(i), i]
-        button.append([InlineKeyboardButton(i, callback_data=f"fill_{fl_js}_{user}", style=ButtonStyle.PRIMARY)])
+        button.append([InlineKeyboardButton(text=i, callback_data=f"fill_{fl_js}_{user}", style=ButtonStyle.PRIMARY)])
     await message.reply_text(
         "Pick anime you want to see fillers list for:",
-        reply_markup=InlineKeyboardMarkup(button),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=button),
     )
 
 
@@ -5068,7 +5068,7 @@ async def animequotes(client, message):
     keyboard = [[InlineKeyboardButton(text="CHANGE", callback_data="changek_quote", style=ButtonStyle.PRIMARY)]]
     await message.reply_photo(
         photo=random.choice(QUOTES_IMG),
-        reply_markup=InlineKeyboardMarkup(keyboard),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard),
     )
 
 
@@ -5077,7 +5077,7 @@ async def changek_quote(client, callback_query):
     keyboard = [[InlineKeyboardButton(text="CHANGE", callback_data="changek_quote", style=ButtonStyle.PRIMARY)]]
     await callback_query.edit_message_media(
         media=InputMediaPhoto(media=random.choice(QUOTES_IMG)),
-        reply_markup=InlineKeyboardMarkup(keyboard),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard),
     )
     await callback_query.answer()
 

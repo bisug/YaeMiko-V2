@@ -98,7 +98,7 @@ async def reverse_image_search(message: Message):
         text,
         link_preview_options=LinkPreviewOptions(is_disabled=True),
         reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton(STRINGS.OPEN_SEARCH_PAGE, url=search_url, style=ButtonStyle.PRIMARY)]]
+            inline_keyboard=[[InlineKeyboardButton(text=STRINGS.OPEN_SEARCH_PAGE, url=search_url, style=ButtonStyle.PRIMARY)]]
         ),
         parse_mode=ParseMode.HTML,
     )

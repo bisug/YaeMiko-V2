@@ -96,7 +96,7 @@ async def invite_manage(message: Message, command: CommandObject) -> None:
 @connection_status
 @check_admin(permission="can_invite_users", is_both=True)
 async def join_requests(message: Message, command: CommandObject) -> None:
-    if len(command.args) != 2 or command.args[0].lower() not in {"approve", "decline"}:
+    if len(command.args or []) != 2 or command.args[0].lower() not in {"approve", "decline"}:
         return await message.answer("Usage: /joins approve|decline <user_id>")
     try:
         user_id, action = _user_id(command.args[1]), command.args[0].lower()
@@ -111,7 +111,7 @@ async def join_requests(message: Message, command: CommandObject) -> None:
 @connection_status
 @check_admin(permission="can_change_info", is_both=True)
 async def set_chat_metadata(message: Message, command: CommandObject) -> None:
-    args = command.args
+    args = command.args or []
     if not args:
         return await message.answer("Usage: /setchat <title|description|description-> [text]")
     try:
@@ -192,7 +192,7 @@ async def menu_button(message: Message, command: CommandObject) -> None:
         await bot.set_chat_menu_button(chat_id, MenuButtonCommands())
     elif action == "default":
         await bot.set_chat_menu_button(chat_id, MenuButtonDefault())
-    elif action == "webapp" and len(command.args) > 1:
+    elif action == "webapp" and len(command.args or []) > 1:
         await bot.set_chat_menu_button(
             chat_id,
             # aiogram requires text on MenuButtonWebApp; PTB defaulted it to
@@ -211,7 +211,7 @@ async def menu_button(message: Message, command: CommandObject) -> None:
 @connection_status
 @check_admin(permission="can_manage_topics", is_both=True)
 async def sticker_set(message: Message, command: CommandObject) -> None:
-    if len(command.args) == 2 and command.args[0].lower() == "set":
+    if len(command.args or []) == 2 and command.args[0].lower() == "set":
         await bot.set_chat_sticker_set(message.chat.id, command.args[1])
         await message.answer("Sticker set updated.")
     elif command.args and command.args[0].lower() == "delete":
@@ -243,7 +243,7 @@ async def delete_reaction(message: Message, command: CommandObject) -> None:
         return await message.answer(
             "Reply to a message and optionally provide a user ID to remove their reaction."
         )
-    if len(command.args) > 1:
+    if len(command.args or []) > 1:
         return await message.answer("Usage: /deletereaction [user_id]")
     user_id = None
     if command.args:
@@ -268,11 +268,11 @@ async def delete_reaction(message: Message, command: CommandObject) -> None:
 @connection_status
 @check_admin(permission="can_manage_topics", is_both=True)
 async def member_tag(message: Message, command: CommandObject) -> None:
-    if len(command.args) not in {1, 2}:
+    if len(command.args or []) not in {1, 2}:
         return await message.answer("Usage: /membertag <user_id> [tag|remove]")
     try:
         user_id = _user_id(command.args[0])
-        tag = None if len(command.args) == 1 or command.args[1].lower() == "remove" else command.args[1]
+        tag = None if len(command.args or []) == 1 or command.args[1].lower() == "remove" else command.args[1]
         await bot.set_chat_member_tag(message.chat.id, user_id, tag)
         await message.answer("Member tag updated.")
     except (ValueError, TelegramAPIError) as error:

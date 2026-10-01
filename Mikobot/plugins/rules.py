@@ -58,7 +58,7 @@ async def send_rules(message, chat_id, from_pm=False):
         await reply_msg.reply_text(
             "Please click the button below to see the rules.",
             reply_markup=InlineKeyboardMarkup(
-                [
+                inline_keyboard=[
                     [
                         InlineKeyboardButton(
                             text="RULES",
@@ -72,7 +72,7 @@ async def send_rules(message, chat_id, from_pm=False):
         await message.answer(
             "Please click the button below to see the rules.",
             reply_markup=InlineKeyboardMarkup(
-                [
+                inline_keyboard=[
                     [
                         InlineKeyboardButton(
                             text="RULES",

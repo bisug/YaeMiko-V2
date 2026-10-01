@@ -24,7 +24,7 @@ async def blackliststicker(message: Message, command: CommandObject):
     msg = message
     chat = message.chat
     user = message.from_user
-    args = command.args
+    args = command.args or []
     conn = await connected(bot, message, chat, user.id, need_admin=False)
     if conn:
         chat_id = conn
@@ -274,7 +274,7 @@ async def blacklist_mode(message: Message, command: CommandObject):
     chat = message.chat
     user = message.from_user
     msg = message
-    args = command.args
+    args = command.args or []
     conn = await connected(bot, message, chat, user.id, need_admin=True)
     if conn:
         chat = await bot.get_chat(conn)

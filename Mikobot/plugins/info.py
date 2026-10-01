@@ -24,7 +24,7 @@ from Mikobot.utils.parser import mention_html
 # <================================================ FUNCTION =======================================================>
 async def info(message: Message, command: CommandObject):
     chat = message.chat
-    args = command.args
+    args = command.args or []
 
     def reply_with_text(text):
         return message.answer(text, parse_mode=ParseMode.HTML)
@@ -201,14 +201,14 @@ async def stats(message: Message):
     keyboard = [
         [
             InlineKeyboardButton(
-                "㊋ Infamous • Hydra",
+                text="㊋ Infamous • Hydra",
                 url="https://t.me/Infamous_Hydra",
                 style=ButtonStyle.PRIMARY,
             ),
         ]
     ]
 
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     await message.answer_photo(
         photo=str(choice(START_IMG)),

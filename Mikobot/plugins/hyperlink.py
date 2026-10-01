@@ -18,7 +18,7 @@ from Mikobot import dp
 # <================================================ FUNCTION =======================================================>
 # Define the command handler for the "/pickwinner" command
 async def pick_winner(message: Message, command: CommandObject):
-    participants = command.args
+    participants = command.args or []
 
     if participants:
         # Select a random winner
@@ -33,7 +33,7 @@ async def pick_winner(message: Message, command: CommandObject):
 
 # Define the command handler for the "/hyperlink" command
 async def hyperlink_command(message: Message, command: CommandObject):
-    args = command.args
+    args = command.args or []
     if len(args) >= 2:
         text = " ".join(args[:-1])
         link = args[-1]

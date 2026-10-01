@@ -601,8 +601,13 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
                 answers.append((args, kwargs))
 
         class Update:
+            """Only needed for error_callback's annotation."""
+
+        # aiogram passes an ErrorEvent, which carries .update and .exception;
+        # it has no .event.
+        class ErrorEvent:
             def __init__(self):
-                self.event = CallbackQuery()
+                self.update = CallbackQuery()
                 self.exception = TelegramAPIError("failed")
 
         error_callback = load_function(
@@ -627,7 +632,7 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
             },
         )
 
-        await error_callback(Update())
+        await error_callback(ErrorEvent())
         self.assertEqual(len(answers), 1)
         self.assertTrue(answers[0][1]["show_alert"])
         self.assertEqual(len(warnings), 1)
@@ -2473,6 +2478,74 @@ class SqlLayerDatabaseTests(unittest.TestCase):
         self.assertIn(self.UID, [row.user_id for row in approve_sql.list_approved(self.CID)])
         self.assertTrue(approve_sql.disapprove(self.CID, self.UID))
         self.assertIsNone(approve_sql.is_approved(self.CID, self.UID))
+
+
+class AiogramModelKeywordTests(unittest.TestCase):
+    """aiogram's pydantic models take keyword arguments only.
+
+    A positional first argument raises TypeError at construction, so every
+    inline keyboard in the bot was unbuildable.
+    """
+
+    NAMES = (
+        "InlineKeyboardButton",
+        "InlineKeyboardMarkup",
+        "InputTextMessageContent",
+        "KeyboardButton",
+        "ReplyKeyboardMarkup",
+        "ReplyKeyboardRemove",
+        "ForceReply",
+        "ChatPermissions",
+        "LinkPreviewOptions",
+        "InlineQueryResultArticle",
+    )
+
+    def test_no_aiogram_model_is_built_with_a_positional_argument(self):
+        bad = []
+        for path in sorted((ROOT / "Mikobot").rglob("*.py")):
+            if "__pycache__" in path.parts:
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if not (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name)
+                    and node.func.id in self.NAMES
+                ):
+                    continue
+                if node.args:
+                    bad.append(f"{path.relative_to(ROOT)}:{node.lineno} {node.func.id}")
+        self.assertEqual(bad, [])
+
+    def test_keyword_construction_works(self):
+        try:
+            from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+        except ModuleNotFoundError:
+            self.skipTest("aiogram is not installed")
+
+        markup = InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="x", callback_data="y")]]
+        )
+        self.assertEqual(markup.inline_keyboard[0][0].text, "x")
+
+    def test_command_args_is_none_without_arguments(self):
+        # PTB handed over []; aiogram hands over None, so len()/indexing must
+        # be guarded or normalised at the extraction point.
+        try:
+            from aiogram.filters.command import CommandObject
+        except ModuleNotFoundError:
+            self.skipTest("aiogram is not installed")
+
+        self.assertIsNone(CommandObject(prefix="/", command="start", args=None).args)
+
+    def test_error_event_exposes_update_not_event(self):
+        try:
+            from aiogram.types import ErrorEvent
+        except ModuleNotFoundError:
+            self.skipTest("aiogram is not installed")
+
+        self.assertIn("update", ErrorEvent.model_fields)
+        self.assertNotIn("event", ErrorEvent.model_fields)
 
 
 if __name__ == "__main__":

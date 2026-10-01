@@ -89,31 +89,31 @@ def _keyboard(
         if page > 0:
             buttons.append(
                 InlineKeyboardButton(
-                    "⬅️ Previous", callback_data=f"{prefix}:moves:{page - 1}"
+                    text="⬅️ Previous", callback_data=f"{prefix}:moves:{page - 1}"
                 , style=ButtonStyle.PRIMARY)
             )
         buttons.append(
             InlineKeyboardButton(
-                f"Page {page + 1}/{pages}", callback_data=f"{prefix}:info:{page}"
+                text=f"Page {page + 1}/{pages}", callback_data=f"{prefix}:info:{page}"
             , style=ButtonStyle.PRIMARY)
         )
         if page + 1 < pages:
             buttons.append(
                 InlineKeyboardButton(
-                    "Next ➡️", callback_data=f"{prefix}:moves:{page + 1}"
+                    text="Next ➡️", callback_data=f"{prefix}:moves:{page + 1}"
                 , style=ButtonStyle.PRIMARY)
             )
-        return InlineKeyboardMarkup([buttons])
+        return InlineKeyboardMarkup(inline_keyboard=[buttons])
     return InlineKeyboardMarkup(
-        [
+        inline_keyboard=[
             [
-                InlineKeyboardButton("Overview", callback_data=f"{prefix}:info:0", style=ButtonStyle.PRIMARY),
-                InlineKeyboardButton("Stats", callback_data=f"{prefix}:stats:0", style=ButtonStyle.PRIMARY),
+                InlineKeyboardButton(text="Overview", callback_data=f"{prefix}:info:0", style=ButtonStyle.PRIMARY),
+                InlineKeyboardButton(text="Stats", callback_data=f"{prefix}:stats:0", style=ButtonStyle.PRIMARY),
             ],
             [
-                InlineKeyboardButton("Moves", callback_data=f"{prefix}:moves:0", style=ButtonStyle.PRIMARY),
+                InlineKeyboardButton(text="Moves", callback_data=f"{prefix}:moves:0", style=ButtonStyle.PRIMARY),
                 InlineKeyboardButton(
-                    "Evolution", callback_data=f"{prefix}:evolution:0"
+                    text="Evolution", callback_data=f"{prefix}:evolution:0"
                 , style=ButtonStyle.PRIMARY),
             ],
         ]

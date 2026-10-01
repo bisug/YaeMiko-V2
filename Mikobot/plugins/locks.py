@@ -240,7 +240,7 @@ async def locktypes(message: Message):
 @loggable
 @typing_action
 async def lock(message: Message, command: CommandObject) -> str:
-    args = command.args
+    args = command.args or []
     chat = message.chat
     user = message.from_user
 
@@ -371,7 +371,7 @@ async def lock(message: Message, command: CommandObject) -> str:
 @loggable
 @typing_action
 async def unlock(message: Message, command: CommandObject) -> str:
-    args = command.args
+    args = command.args or []
     chat = message.chat
     user = message.from_user
     message = message

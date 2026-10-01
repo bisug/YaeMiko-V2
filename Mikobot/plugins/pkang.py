@@ -71,10 +71,10 @@ async def _packkang(app, message):
             f"""Your sticker has been added! For fast update remove your pack & add again\n
 🎖 𝗧𝗢𝗧𝗔𝗟 𝗦𝗧𝗜𝗖𝗞𝗘𝗥: {len(sticks)}""",
             reply_markup=InlineKeyboardMarkup(
-                [
+                inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            "PACK", url=f"http://t.me/addstickers/{short_name}"
+                            text="PACK", url=f"http://t.me/addstickers/{short_name}"
                         , style=ButtonStyle.PRIMARY)
                     ]
                 ]

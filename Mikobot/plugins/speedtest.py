@@ -21,13 +21,13 @@ def convert(speed):
 async def speedtestxyz(message: Message):
     buttons = [
         [
-            InlineKeyboardButton("Image", callback_data="speedtest_image", style=ButtonStyle.PRIMARY),
-            InlineKeyboardButton("Text", callback_data="speedtest_text", style=ButtonStyle.PRIMARY),
+            InlineKeyboardButton(text="Image", callback_data="speedtest_image", style=ButtonStyle.PRIMARY),
+            InlineKeyboardButton(text="Text", callback_data="speedtest_text", style=ButtonStyle.PRIMARY),
         ],
     ]
     await message.answer(
         "Select SpeedTest Mode",
-        reply_markup=InlineKeyboardMarkup(buttons),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
     )
 
 

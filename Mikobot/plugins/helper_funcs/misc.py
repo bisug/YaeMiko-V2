@@ -159,9 +159,9 @@ def build_keyboard(buttons):
     keyb = []
     for btn in buttons:
         if btn.same_line and keyb:
-            keyb[-1].append(InlineKeyboardButton(btn.name, url=btn.url, style=ButtonStyle.PRIMARY))
+            keyb[-1].append(InlineKeyboardButton(text=btn.name, url=btn.url, style=ButtonStyle.PRIMARY))
         else:
-            keyb.append([InlineKeyboardButton(btn.name, url=btn.url, style=ButtonStyle.PRIMARY)])
+            keyb.append([InlineKeyboardButton(text=btn.name, url=btn.url, style=ButtonStyle.PRIMARY)])
 
     return keyb
 
@@ -183,9 +183,9 @@ def build_keyboard_parser(bot, chat_id, buttons):
         if btn.url == "{rules}":
             btn.url = "http://t.me/{}?start={}".format(bot.username, chat_id)
         if btn.same_line and keyb:
-            keyb[-1].append(InlineKeyboardButton(btn.name, url=btn.url, style=ButtonStyle.PRIMARY))
+            keyb[-1].append(InlineKeyboardButton(text=btn.name, url=btn.url, style=ButtonStyle.PRIMARY))
         else:
-            keyb.append([InlineKeyboardButton(btn.name, url=btn.url, style=ButtonStyle.PRIMARY)])
+            keyb.append([InlineKeyboardButton(text=btn.name, url=btn.url, style=ButtonStyle.PRIMARY)])
 
     return keyb
 
@@ -194,9 +194,9 @@ def build_keyboard_alternate(buttons):
     keyb = []
     for btn in buttons:
         if btn[2] and keyb:
-            keyb[-1].append(InlineKeyboardButton(btn[0], url=btn[1], style=ButtonStyle.PRIMARY))
+            keyb[-1].append(InlineKeyboardButton(text=btn[0], url=btn[1], style=ButtonStyle.PRIMARY))
         else:
-            keyb.append([InlineKeyboardButton(btn[0], url=btn[1], style=ButtonStyle.PRIMARY)])
+            keyb.append([InlineKeyboardButton(text=btn[0], url=btn[1], style=ButtonStyle.PRIMARY)])
 
     return keyb
 

@@ -347,7 +347,7 @@ async def reply_filter(message: Message):
             if filt.reply == "there is should be a new reply":
                 buttons = sql.get_buttons(chat.id, filt.keyword)
                 keyb = build_keyboard_parser(bot, chat.id, buttons)
-                keyboard = InlineKeyboardMarkup(keyb)
+                keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
 
                 VALID_WELCOME_FORMATTERS = [
                     "first",
@@ -514,7 +514,7 @@ async def reply_filter(message: Message):
                 elif filt.has_buttons:
                     buttons = sql.get_buttons(chat.id, filt.keyword)
                     keyb = build_keyboard_parser(bot, chat.id, buttons)
-                    keyboard = InlineKeyboardMarkup(keyb)
+                    keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
 
                     try:
                         await bot.send_message(
@@ -581,7 +581,7 @@ async def rmall_filters(message: Message):
         )
     else:
         buttons = InlineKeyboardMarkup(
-            [
+            inline_keyboard=[
                 [
                     InlineKeyboardButton(
                         text="STOP ALL FILTERS",
