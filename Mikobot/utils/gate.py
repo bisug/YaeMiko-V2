@@ -80,7 +80,10 @@ class GateMiddleware(BaseMiddleware):
 
     async def __call__(self, handler, event, data):
         bot = data["bot"]
-        callback = data["event_handler"].callback
+        # aiogram passes the HandlerObject under "handler"; it subclasses
+        # CallableObject, whose .callback is the decorated function carrying
+        # the gate requirements.
+        callback = data["handler"].callback
         for spec in getattr(callback, "requirements", ()):
             action = spec.get("chat_action")
             if action:

@@ -1841,7 +1841,9 @@ class GateMiddlewareTests(unittest.TestCase):
 
     def _run(self, callback, event, bot):
         middleware = self._middleware()
-        data = {"bot": bot, "event_handler": SimpleNamespace(callback=callback)}
+        # aiogram passes the HandlerObject under "handler" (see
+        # TelegramEventObserver.trigger), not "event_handler".
+        data = {"bot": bot, "handler": SimpleNamespace(callback=callback)}
         return asyncio.run(middleware(self._handler, event, data))
 
     def test_outermost_decorator_runs_first(self):
@@ -2138,6 +2140,71 @@ class BotIdentityFallbackTests(unittest.TestCase):
         self.assertEqual(module.fetch_bot_info(), (42, "Name", "name_bot"))
         self.assertEqual(module.fetch_bot_info(), (42, "Name", "name_bot"))
         self.assertEqual(calls["count"], 1, "a resolved identity should not be re-fetched")
+
+
+class GateMiddlewareHandlerKeyTests(unittest.TestCase):
+    """The gate middleware must read the key aiogram actually provides.
+
+    It is registered on every observer, so reading a key aiogram does not
+    supply made every inbound update raise KeyError and silently do nothing.
+    """
+
+    def _middleware(self):
+        from Mikobot.utils.gate import GateMiddleware
+
+        class _Status:
+            DEV_USERS = frozenset()
+
+            def is_sudo_plus(self, chat, uid):
+                return False
+
+            def is_support_plus(self, chat, uid):
+                return False
+
+            def is_whitelist_plus(self, chat, uid):
+                return False
+
+            async def is_user_admin(self, chat, uid):
+                return False
+
+        return GateMiddleware(_Status())
+
+    def test_middleware_reads_the_handler_object_aiogram_passes(self):
+        import asyncio
+
+        from aiogram.dispatcher.event.handler import HandlerObject
+
+        from Mikobot import bot
+
+        ran = []
+
+        async def handler(update, data=None):
+            ran.append(update)
+            return "handled"
+
+        handler_obj = HandlerObject(callback=handler)
+        event = object()
+        # Exactly the keys aiogram builds before calling outer middlewares.
+        data = {"bot": bot, "handler": handler_obj}
+
+        # aiogram passes HandlerObject.call as the downstream handler.
+        result = asyncio.run(self._middleware()(handler_obj.call, event, data))
+        self.assertEqual(result, "handled")
+        self.assertEqual(ran, [event])
+
+    def test_aiogram_never_supplies_an_event_handler_key(self):
+        import inspect
+
+        from aiogram.dispatcher.event.telegram import TelegramEventObserver
+
+        source = inspect.getsource(TelegramEventObserver)
+        self.assertIn('kwargs["handler"]', source)
+        # Guards against someone renaming the key the middleware relies on.
+        source_gate = inspect.getsource(
+            __import__("Mikobot.utils.gate", fromlist=["x"])
+        )
+        self.assertNotIn('data["event_handler"]', source_gate)
+        self.assertIn('data["handler"]', source_gate)
 
 
 if __name__ == "__main__":
