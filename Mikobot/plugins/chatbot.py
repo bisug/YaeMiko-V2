@@ -9,7 +9,7 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 import Database.sql.kuki_sql as sql
-from Mikobot import bot, dp
+from Mikobot import LOGGER, bot, dp
 from Mikobot.plugins.ai import get_ai_response
 from Mikobot.plugins.log_channel import gloggable
 from Mikobot.utils.gate import chain
@@ -21,14 +21,28 @@ from Mikobot.utils.gate import chain
 # Mikobot.plugins.ai already wraps, so no new dependency is introduced.
 
 # <================================================ FUNCTION =======================================================>
+# Chat ids with the chatbot on. is_kuki is a blocking psycopg query, and this
+# handler sees every text message in every chat, so consulting the database per
+# message would stall the event loop on the busiest chats. The set is loaded
+# once and kept in step by the two callbacks below.
+_enabled: set[int] = set()
+
+
+def _refresh_enabled() -> set[int]:
+    _enabled.clear()
+    _enabled.update(int(chat_id) for chat_id in sql.get_all_kuki_chats())
+    return _enabled
+
+
 @gloggable
 async def kukirm(query: CallbackQuery):
     match = re.fullmatch(r"rm_chat", query.data or "")
     if not match:
         return ""
     chat = query.message.chat
-    was_enabled = sql.is_kuki(chat.id)
+    was_enabled = chat.id in _enabled
     sql.rem_kuki(chat.id)
+    _enabled.discard(chat.id)
     if was_enabled:
         return (
             f"<b>{html.escape(chat.title or str(chat.id))}:</b>\n"
@@ -44,8 +58,9 @@ async def kukiadd(query: CallbackQuery):
     if not match:
         return ""
     chat = query.message.chat
-    already = sql.is_kuki(chat.id)
+    already = chat.id in _enabled
     sql.set_kuki(chat.id)
+    _enabled.add(chat.id)
     if not already:
         await query.message.edit_text("Chatbot enabled.", parse_mode=ParseMode.HTML)
         return ""
@@ -76,15 +91,17 @@ async def kuki(message: Message, command):
 
 
 async def chatbot(message: Message):
-    # Skips commands and replies to itself, so the bot cannot feed its own
-    # output back into the model and loop.
+    # Telegram never routes a bot's own messages back through the Bot API, so
+    # the guard is against replies the bot made being quoted back at it: a
+    # reply to this bot is skipped so an enabled chatbot cannot answer its own
+    # output and loop.
     text = message.text
     if not text or text.lower() == "kuki" or text.startswith(("#", "!", "/")):
         return
     reply = message.reply_to_message
     if reply and reply.from_user and reply.from_user.id == bot.id:
         return
-    if not sql.is_kuki(message.chat.id):
+    if message.chat.id not in _enabled:
         return
 
     await bot.send_chat_action(message.chat.id, action="typing")
@@ -104,6 +121,7 @@ async def list_all_chats(message: Message):
         except TelegramAPIError as exc:
             if "chat not found" in str(exc).lower():
                 sql.rem_kuki(chat_id)
+                _enabled.discard(int(chat_id))
                 continue
             raise
         text += f"• <code>{html.escape(info.title or info.first_name)}</code>\n"
@@ -127,4 +145,11 @@ dp.message.register(chain(list_all_chats), Command("allchats"), F.chat.type == "
 dp.callback_query.register(chain(kukiadd), F.data == "add_chat")
 dp.callback_query.register(chain(kukirm), F.data == "rm_chat")
 dp.message.register(chain(chatbot), F.text, ~F.text.startswith(("#", "!", "/")))
+
+try:
+    _refresh_enabled()
+except Exception:
+    # A chatbot left enabled but uncached would silently stop answering until
+    # the next restart, which is worse than logging and carrying on.
+    LOGGER.exception("Unable to preload the enabled chatbot chats")
 # <================================================ END =======================================================>
