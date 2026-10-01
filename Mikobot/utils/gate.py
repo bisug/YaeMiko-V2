@@ -42,10 +42,13 @@ def chain(func):
 
     @wraps(func)
     async def wrapper(*args, **kwargs):
-        try:
-            return await func(*args, **kwargs)
-        finally:
-            raise SkipHandler()
+        # SkipHandler is raised only after the handler returns. Raising it
+        # from a finally block replaced whatever exception was in flight, so
+        # a failing handler looked like a successful one and its traceback
+        # never reached error_callback. The dispatcher's trigger() discards
+        # the return value anyway, so it is not propagated here.
+        await func(*args, **kwargs)
+        raise SkipHandler()
 
     wrapper._chained = True
     return wrapper
@@ -104,6 +107,14 @@ class GateMiddleware(BaseMiddleware):
                     return None
                 continue
 
+            # Skips quietly when the sender is an admin, matching PTB, which
+            # only reached the handler for a non-admin user. It is not a
+            # denial: no reply and no command deletion.
+            if spec["kind"] == "user_not_admin":
+                if not await self._sender_is_not_admin(event):
+                    return None
+                continue
+
             denial = await self._denial(bot, event, spec)
             if denial is not None:
                 text, drop = denial
@@ -112,6 +123,20 @@ class GateMiddleware(BaseMiddleware):
                 await _action_reply(event, text)
                 return None
         return await handler(event, data)
+
+    @staticmethod
+    def _event_parts(event):
+        message = getattr(event, "message", None)
+        chat = getattr(event, "chat", None) or getattr(message, "chat", None)
+        user = getattr(event, "from_user", None) or getattr(message, "from_user", None)
+        return chat, user
+
+    async def _sender_is_not_admin(self, event) -> bool:
+        """PTB's @user_not_admin ran the handler only for a non-admin sender."""
+        chat, user = self._event_parts(event)
+        if chat is None or user is None:
+            return False
+        return not await self.chat_status.is_user_admin(chat, user.id)
 
     @staticmethod
     def _chat_id(event):
@@ -176,10 +201,6 @@ class GateMiddleware(BaseMiddleware):
                 f"You don't have access to use this.\nVisit @{status.SUPPORT_CHAT}",
                 False,
             )
-        if kind == "user_not_admin":
-            if user_id is not None and not await status.is_user_admin(chat, user_id):
-                return None
-            return None
 
         if self._is_private(event) and not (
             spec["only_dev"] or spec["only_sudo"] or spec["only_owner"]

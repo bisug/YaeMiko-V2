@@ -23,12 +23,29 @@ if is_module_loaded(FILENAME):
 
     # <=======================================================================================================>
     # <================================================ FUNCTION =======================================================>
+    def _event_message(args, kwargs):
+        """Find the Message in a handler's arguments.
+
+        The wrappers take *args/**kwargs rather than a named `message`, so
+        that aiogram's per-argument injection is forwarded untouched: with a
+        named parameter the event collided with the injected `message`
+        keyword, and anything the handler also declared (e.g. `command`)
+        was dropped.
+        """
+        message = kwargs.get("message")
+        if message is None:
+            message = next((a for a in args if isinstance(a, Message)), None)
+        return message
+
     def loggable(func):
         """Post the handler's return value to the chat's log channel."""
 
         @wraps(func)
-        async def log_action(message: Message, *args, **kwargs):
-            result = await func(message, *args, **kwargs)
+        async def log_action(*args, **kwargs):
+            message = _event_message(args, kwargs)
+            result = await func(*args, **kwargs)
+            if message is None:
+                return result
 
             chat = message.chat
 
@@ -60,8 +77,11 @@ if is_module_loaded(FILENAME):
         """Post the handler's return value to the global event log channel."""
 
         @wraps(func)
-        async def glog_action(message: Message, *args, **kwargs):
-            result = await func(message, *args, **kwargs)
+        async def glog_action(*args, **kwargs):
+            message = _event_message(args, kwargs)
+            result = await func(*args, **kwargs)
+            if message is None:
+                return result
             chat = message.chat
 
             if result:

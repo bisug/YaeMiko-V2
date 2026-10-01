@@ -361,7 +361,7 @@ async def list_warn_filters(message: Message, command: CommandObject):
 
 
 @loggable
-async def reply_filter(message: Message, command: CommandObject) -> str:
+async def reply_filter(message: Message) -> str:
     chat: Optional[Chat] = message.chat
     message: Optional[Message] = message
     user: Optional[User] = message.from_user

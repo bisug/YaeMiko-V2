@@ -1,5 +1,4 @@
 # <============================================== IMPORTS =========================================================>
-from functools import wraps
 from html import escape
 from math import ceil
 from typing import Dict, List
@@ -14,10 +13,9 @@ from aiogram.types import (
     InlineQueryResultArticle,
     InputTextMessageContent,
     LinkPreviewOptions,
-    User,
 )
 
-from Mikobot import NO_LOAD, OWNER_ID
+from Mikobot import NO_LOAD
 from Mikobot.utils.consts import MessageLimit
 
 # <=======================================================================================================>
@@ -190,17 +188,6 @@ def build_keyboard_parser(bot, chat_id, buttons):
             keyb.append([InlineKeyboardButton(btn.name, url=btn.url, style=ButtonStyle.PRIMARY)])
 
     return keyb
-
-
-def user_bot_owner(func):
-    """Only the owner may run this inline-query handler."""
-
-    @wraps(func)
-    async def is_user_bot_owner(from_user: User, bot: Bot, *args, **kwargs):
-        if from_user and from_user.id == OWNER_ID:
-            return await func(from_user, bot, *args, **kwargs)
-
-    return is_user_bot_owner
 
 
 def build_keyboard_alternate(buttons):

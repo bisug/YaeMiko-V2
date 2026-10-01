@@ -632,6 +632,50 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(answers[0][1]["show_alert"])
         self.assertEqual(len(warnings), 1)
 
+    def test_loggable_forwards_every_injected_argument(self):
+        # The wrapper used to declare `message` itself, so aiogram's injected
+        # arguments (e.g. `command`) were dropped and 36 command handlers
+        # raised TypeError instead of running.
+        from datetime import datetime as _dt
+
+        from aiogram.types import Chat, Message
+
+        sent = []
+
+        async def send_log(log_chat_id, orig_chat_id, result):
+            sent.append(result)
+
+        namespace = {
+            "wraps": __import__("functools").wraps,
+            "ChatType": SimpleNamespace(SUPERGROUP="supergroup"),
+            "Message": Message,
+            "send_log": send_log,
+            "sql": SimpleNamespace(get_chat_log_channel=lambda chat_id: -100),
+            "LOGGER": SimpleNamespace(exception=lambda *args, **kwargs: None),
+            "datetime": __import__("datetime").datetime,
+            "timezone": __import__("datetime").timezone,
+        }
+        source = ROOT / "Mikobot/plugins/log_channel.py"
+        load_nested_function(source, "_event_message", namespace)
+        loggable = load_nested_function(source, "loggable", namespace)
+
+        seen = {}
+
+        @loggable
+        async def action(message, command):
+            seen["command"] = command
+            return "event"
+
+        message = Message(
+            message_id=1, date=_dt.now(), chat=Chat(id=42, type="private"), text="/cmd"
+        )
+        sentinel = object()
+        result = asyncio.run(action(message, command=sentinel))
+        self.assertEqual(seen["command"], sentinel)
+        # loggable appends the event stamp before returning.
+        self.assertTrue(result.startswith("event\nEvent stamp:"))
+        self.assertTrue(sent and sent[0].startswith("event\nEvent stamp:"))
+
     async def test_audit_log_failure_does_not_fail_successful_action(self):
         async def failing_send_log(*args, **kwargs):
             raise RuntimeError("log delivery failed")
@@ -639,23 +683,28 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         async def successful_action(message):
             return "event"
 
-        loggable = load_nested_function(
-            ROOT / "Mikobot/plugins/log_channel.py",
-            "loggable",
-            {
-                "wraps": __import__("functools").wraps,
-                "ChatType": SimpleNamespace(SUPERGROUP="supergroup"),
-                "send_log": failing_send_log,
-                "sql": SimpleNamespace(get_chat_log_channel=lambda chat_id: -100),
-                "LOGGER": SimpleNamespace(exception=lambda *args, **kwargs: None),
-                "datetime": __import__("datetime").datetime,
-                "timezone": __import__("datetime").timezone,
-            },
-        )
-        message = SimpleNamespace(
-            chat=SimpleNamespace(id=42, is_forum=False, username=None, type="private"),
+        from aiogram.types import Chat, Message
+        from datetime import datetime as _dt
+
+        namespace = {
+            "wraps": __import__("functools").wraps,
+            "ChatType": SimpleNamespace(SUPERGROUP="supergroup"),
+            "Message": Message,
+            "send_log": failing_send_log,
+            "sql": SimpleNamespace(get_chat_log_channel=lambda chat_id: -100),
+            "LOGGER": SimpleNamespace(exception=lambda *args, **kwargs: None),
+            "datetime": __import__("datetime").datetime,
+            "timezone": __import__("datetime").timezone,
+        }
+        source = ROOT / "Mikobot/plugins/log_channel.py"
+        # loggable resolves _event_message, so both have to be in scope.
+        load_nested_function(source, "_event_message", namespace)
+        loggable = load_nested_function(source, "loggable", namespace)
+        message = Message(
             message_id=1,
-            message_thread_id=None,
+            date=_dt.now(),
+            chat=Chat(id=42, type="private"),
+            text="/cmd",
         )
         wrapped = loggable(successful_action)
         result = await wrapped(message)
@@ -1780,6 +1829,35 @@ class HandlerChainingTests(unittest.TestCase):
         self.assertEqual(calls, ["solo"])
         self.assertEqual(result, "handled")
 
+    def test_a_failing_chained_handler_still_raises(self):
+        # SkipHandler must not be raised from a finally block: that replaced
+        # the in-flight exception, so failures in 150 chained handlers were
+        # invisible to error_callback.
+        import asyncio
+
+        from Mikobot.utils.gate import chain
+
+        @chain
+        async def boom(message):
+            raise ValueError("boom")
+
+        with self.assertRaises(ValueError):
+            asyncio.run(boom(None))
+
+    def test_a_successful_chained_handler_continues_the_chain(self):
+        import asyncio
+
+        from aiogram.dispatcher.event.bases import SkipHandler
+
+        from Mikobot.utils.gate import chain
+
+        @chain
+        async def fine(message):
+            return "ok"
+
+        with self.assertRaises(SkipHandler):
+            asyncio.run(fine(None))
+
     def test_chain_is_idempotent(self):
         from Mikobot.utils.gate import chain
 
@@ -1845,6 +1923,56 @@ class GateMiddlewareTests(unittest.TestCase):
         # TelegramEventObserver.trigger), not "event_handler".
         data = {"bot": bot, "handler": SimpleNamespace(callback=callback)}
         return asyncio.run(middleware(self._handler, event, data))
+
+    def _patched_is_admin(self, is_admin: bool):
+        """Stub chat_status.is_user_admin, which otherwise uses the real bot."""
+        from contextlib import contextmanager
+
+        from Mikobot.plugins.helper_funcs import chat_status
+
+        @contextmanager
+        def patcher():
+            original = chat_status.is_user_admin
+
+            async def fake(chat, user_id, member=None):
+                return is_admin
+
+            chat_status.is_user_admin = fake
+            try:
+                yield
+            finally:
+                chat_status.is_user_admin = original
+
+        return patcher()
+
+    def test_user_not_admin_skips_quietly_for_an_admin(self):
+        # PTB only reached the handler when the sender was not an admin; the
+        # gate returned None from both paths, so admins were not protected.
+        from Mikobot.plugins.helper_funcs import chat_status
+
+        @chat_status.user_not_admin
+        async def cmd(message):
+            return None
+
+        event = self._event()
+        bot = self._bot({5: SimpleNamespace(status="administrator", user=SimpleNamespace(id=5))})
+        with self._patched_is_admin(True):
+            self.assertIsNone(self._run(cmd, event, bot))
+        self.assertEqual(event.replies, [])
+        self.assertFalse(event.deleted)
+
+    def test_user_not_admin_runs_for_an_ordinary_user(self):
+        from Mikobot.plugins.helper_funcs import chat_status
+
+        @chat_status.user_not_admin
+        async def cmd(message):
+            return None
+
+        event = self._event()
+        bot = self._bot({5: SimpleNamespace(status="member", user=SimpleNamespace(id=5))})
+        with self._patched_is_admin(False):
+            self.assertEqual(self._run(cmd, event, bot), "HANDLED")
+        self.assertEqual(event.replies, [])
 
     def test_outermost_decorator_runs_first(self):
         from Mikobot.plugins.helper_funcs import alternate, chat_status
