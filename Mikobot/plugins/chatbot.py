@@ -136,7 +136,9 @@ __help__ = """
 » /chatbot: shows chatbot panel.
 » /allchats: lists every chat with the chatbot enabled.
 """
-__mod_name__ = "CHATBOT"
+# Not "CHATBOT": palmchat.py has claimed that name since it landed, and the
+# loader aborts the whole bot on a duplicate rather than skipping one.
+__mod_name__ = "KUKI"
 
 
 # <================================================ HANDLER =======================================================>

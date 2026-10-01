@@ -2597,5 +2597,60 @@ class UnresolvedTargetTests(unittest.TestCase):
             GetChatMember(chat_id=1, user_id=None)
 
 
+class PluginModNameTests(unittest.TestCase):
+    """Two plugins must never claim the same __mod_name__.
+
+    Mikobot/__main__.py aborts the whole bot with "Can't have two modules with
+    the same name!" on a duplicate, so a collision is a total startup failure,
+    not a degraded feature. palmchat.py has held "CHATBOT" since it landed, and
+    porting chatbot.py back in with the same name took production down.
+    """
+
+    def _mod_names(self):
+        import ast
+
+        names = {}
+        for path in sorted((ROOT / "Mikobot/plugins").glob("*.py")):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in tree.body:
+                # Class-scoped __mod_name__ is legal and is not loader-visible.
+                if not isinstance(node, ast.Assign):
+                    continue
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id == "__mod_name__":
+                        if isinstance(node.value, ast.Constant):
+                            names.setdefault(
+                                node.value.value.lower(), []
+                            ).append(path.name)
+        return names
+
+    def test_no_duplicate_mod_names(self):
+        names = self._mod_names()
+        duplicates = {
+            name: owners for name, owners in names.items() if len(owners) > 1
+        }
+        self.assertEqual(
+            duplicates,
+            {},
+            "duplicate __mod_name__ would abort startup in Mikobot/__main__.py",
+        )
+
+    def test_chatbot_plugin_does_not_shadow_palmchat(self):
+        import ast
+
+        source = (ROOT / "Mikobot/plugins/chatbot.py").read_text(encoding="utf-8")
+        declared = [
+            node.value.value
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.Assign)
+            and any(
+                isinstance(t, ast.Name) and t.id == "__mod_name__"
+                for t in node.targets
+            )
+            and isinstance(node.value, ast.Constant)
+        ]
+        self.assertEqual(declared, ["KUKI"])
+
+
 if __name__ == "__main__":
     unittest.main()
