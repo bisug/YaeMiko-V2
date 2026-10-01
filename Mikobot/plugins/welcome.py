@@ -31,6 +31,7 @@ from aiogram.types import (
     Message,
 )
 
+import Database.sql.topics_sql
 import Database.sql.welcome_sql as sql
 from Database.mongodb.toggle_mongo import dwelcome_off, dwelcome_on, is_dwelcome_on
 from Database.sql.global_bans_sql import is_user_gbanned
@@ -280,6 +281,11 @@ async def send(source_message, message, keyboard, backup_message):
         except TelegramAPIError:
             pass
         reply = False
+    # In a forum a greeting has to name a topic, otherwise it lands in General
+    # regardless of where the rest of the conversation is.
+    thread = await asyncio.to_thread(topics_sql.get_action_topic, chat.id)
+    if not chat.is_forum:
+        thread = None
     try:
         try:
             msg = await bot.send_message(
@@ -287,6 +293,7 @@ async def send(source_message, message, keyboard, backup_message):
                 message,
                 parse_mode=ParseMode.HTML,
                 reply_markup=keyboard,
+                message_thread_id=thread,
             )
         except:
             msg = await message.answer(
@@ -1403,7 +1410,6 @@ async def user_button(query: CallbackQuery):
             pass
         if member_dict["should_welc"]:
             if member_dict["media_wel"]:
-                # topic_chat = get_action_topic(chat.id)
                 sent = await ENUM_FUNC_MAP[member_dict["welc_type"]](
                     member_dict["chat_id"],
                     member_dict["cust_content"],

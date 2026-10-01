@@ -3626,5 +3626,88 @@ class EchoImpersonationTests(unittest.TestCase):
         )
 
 
+class TopicManagementTests(unittest.TestCase):
+    """Forum topics need manage_topics, and deletion is irreversible."""
+
+    PATH = ROOT / "Mikobot" / "plugins" / "topics.py"
+
+    def test_documented_commands_are_registered(self):
+        found = _registered_commands(self.PATH)
+        for command in (
+            "newtopic", "renametopic", "closetopic", "reopentopic",
+            "deletetopic", "actiontopic", "setactiontopic",
+        ):
+            self.assertIn(command, found, command)
+
+    def test_every_topic_command_requires_manage_topics(self):
+        # A group has no such permission, so without the gate every one of these
+        # would fail against the API instead of explaining itself.
+        tree = ast.parse(self.PATH.read_text(encoding="utf-8"))
+        handlers = [
+            n for n in tree.body
+            if isinstance(n, ast.AsyncFunctionDef)
+            and n.name in (
+                "new_topic", "rename_topic", "close_topic", "reopen_topic",
+                "delete_topic", "action_topic", "set_action_topic",
+            )
+        ]
+        self.assertEqual(len(handlers), 7)
+        for handler in handlers:
+            decorators = " ".join(ast.unparse(d) for d in handler.decorator_list)
+            self.assertIn("can_manage_topics", decorators, handler.name)
+
+    def test_commands_refuse_a_non_forum(self):
+        source = self.PATH.read_text(encoding="utf-8")
+        self.assertIn("if not chat.is_forum:", source)
+        self.assertIn("forum with topics enabled", source)
+
+    def test_delete_requires_confirmation(self):
+        # Telegram cannot undo a topic deletion, so the command must not call
+        # the API itself.
+        tree = ast.parse(self.PATH.read_text(encoding="utf-8"))
+        command = next(
+            n for n in tree.body
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "delete_topic"
+        )
+        body = ast.unparse(command)
+        # The destructive call must not be here at all; the button markup is
+        # built by a helper, so assert the helper is used instead.
+        self.assertNotIn("delete_forum_topic", body)
+        self.assertIn("_confirm_markup(", body)
+
+    def test_delete_callback_rechecks_permission(self):
+        # The button can be pressed by whoever the message reached.
+        tree = ast.parse(self.PATH.read_text(encoding="utf-8"))
+        callback = next(
+            n for n in tree.body
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "delete_topic_button"
+        )
+        body = ast.unparse(callback)
+        self.assertIn("get_chat_member", body)
+        self.assertIn("can_manage_topics", body)
+        # The cancel branch must not delete anything.
+        self.assertIn("deltopic_cancel", body)
+
+    def test_action_topic_defaults_to_general(self):
+        tree = ast.parse((ROOT / "Database" / "sql" / "topics_sql.py").read_text(
+            encoding="utf-8"
+        ))
+        func = next(
+            n for n in tree.body
+            if isinstance(n, ast.FunctionDef) and n.name == "get_action_topic"
+        )
+        body = ast.unparse(func)
+        # No row means General, which is a missing thread rather than an id.
+        self.assertIn("None", body)
+
+    def test_greetings_follow_the_action_topic(self):
+        # Before this, a forum's greetings always landed in General.
+        source = (ROOT / "Mikobot" / "plugins" / "welcome.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("message_thread_id=thread", source)
+        self.assertIn("topics_sql.get_action_topic", source)
+
+
 if __name__ == "__main__":
     unittest.main()
