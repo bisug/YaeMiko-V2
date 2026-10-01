@@ -1,6 +1,7 @@
 # <============================================== IMPORTS =========================================================>
 import html
 import re
+import time
 
 from aiogram import F
 from aiogram.enums import ParseMode
@@ -37,13 +38,21 @@ async def check_flood(message: Message):
 
     if await is_user_admin(chat, user.id):
         sql.update_flood(chat.id, None)
+        sql.clear_flood_state(chat.id, user.id)
         return ""
 
     if is_approved(chat.id, user.id):
         sql.update_flood(chat.id, None)
+        sql.clear_flood_state(chat.id, user.id)
         return
 
-    should_ban = sql.update_flood(chat.id, user.id)
+    timed = sql.get_flood_timer(chat.id) > 0
+    if timed:
+        should_ban = sql.update_flood_timer(chat.id, user.id, message.message_id)
+    else:
+        should_ban = sql.update_flood(chat.id, user.id)
+        if should_ban and sql.get_clearflood(chat.id):
+            sql.track_message(chat.id, user.id, message.message_id)
     if not should_ban:
         return ""
 
@@ -85,6 +94,17 @@ async def check_flood(message: Message):
             )
             execstrings = "MUTED for {}".format(getvalue)
             tag = "TMUTE"
+        # Timed mode remembers every message in the window, so the offender's
+        # spam is removed with them. Consecutive mode only has the message that
+        # tripped the limit, unless clearflood is on and the burst was tracked.
+        if timed or sql.get_clearflood(chat.id):
+            tracked = sql.take_flooded_messages(chat.id, user.id)
+            for message_id in tracked:
+                try:
+                    await bot.delete_message(chat.id, message_id)
+                except TelegramAPIError:
+                    continue
+
         await send_message(
             message,
             "Beep boop! Boop beep!\n{}!".format(execstrings),
@@ -405,6 +425,136 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
     return ""
 
 
+async def _flood_target(message, user):
+    """(chat_id, chat_name) for a group command, honouring connections."""
+    conn = await connected(bot, message, message.chat, user.id, need_admin=True)
+    if conn:
+        chat_obj = await bot.get_chat(conn)
+        return conn, chat_obj.title
+    if message.chat.type == "private":
+        await send_message(
+            message, "This command is meant to use in a group, not in PM."
+        )
+        return None, None
+    return message.chat.id, message.chat.title
+
+
+@loggable
+@check_admin(is_user=True)
+async def set_flood_timer(message: Message, command: CommandObject):
+    """Act on N messages sent within a window, rather than N in a row."""
+    chat = message.chat
+    user = message.from_user
+    msg = message
+    args = command.args.split() if command.args else []
+
+    chat_id, chat_name = await _flood_target(message, user)
+    if chat_id is None:
+        return ""
+
+    if not args:
+        current = sql.get_flood_timer(chat_id)
+        if not current:
+            await send_message(
+                msg,
+                "Timed antiflood is off; use `/setflood <number>` for consecutive mode.",
+            )
+            return ""
+        await send_message(
+            msg,
+            "I'm currently acting on more than {} messages within {} seconds here.".format(
+                sql.get_flood_limit(chat_id), current
+            ),
+        )
+        return ""
+
+    if len(args) < 2:
+        await send_message(
+            msg,
+            "Use `/setfloodtimer <number> <duration>`, eg `/setfloodtimer 5 10s`.",
+        )
+        return ""
+
+    if not args[0].isdigit() or int(args[0]) <= 0:
+        await send_message(msg, "The message limit must be a number greater than 0.")
+        return ""
+
+    # Reuse extract_time so the documented m/h/d/w units all work here too.
+    expiry = await extract_time(msg, args[1])
+    if not expiry:
+        return ""
+    window = max(1, expiry - int(time.time()))
+
+    amount, seconds = sql.set_flood_timer(chat_id, int(args[0]), window)
+    if chat_id != message.chat.id:
+        await msg.answer(
+            "Timed antiflood is now set to {} messages within {} seconds in {}.".format(
+                amount, seconds, chat_name
+            ),
+        )
+    else:
+        await msg.answer(
+            "Timed antiflood is now set to {} messages within {} seconds.".format(
+                amount, seconds
+            ),
+        )
+    return (
+        f"<b>{html.escape(chat_name)}:</b>\n"
+        f"#SETFLOODTIMER\n"
+        f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
+        f"Set timed antiflood to <code>{amount}</code> messages within"
+        f" <code>{seconds}</code> seconds."
+    )
+
+
+@loggable
+@check_admin(is_user=True)
+async def clearflood(message: Message, command: CommandObject):
+    """Toggle deleting the whole flooding burst instead of only the excess."""
+    chat = message.chat
+    user = message.from_user
+    msg = message
+    args = command.args.split() if command.args else []
+
+    chat_id, chat_name = await _flood_target(message, user)
+    if chat_id is None:
+        return ""
+
+    if not args:
+        await send_message(
+            msg,
+            "Clearflood is currently {}.".format(
+                "on" if sql.get_clearflood(chat_id) else "off"
+            ),
+        )
+        return ""
+
+    if args[0].lower() in ("on", "yes", "true", "1"):
+        enabled = True
+    elif args[0].lower() in ("off", "no", "false", "0"):
+        enabled = False
+    else:
+        await send_message(msg, "Please enter `on` or `off`.")
+        return ""
+
+    sql.set_clearflood(chat_id, enabled)
+    if chat_id != message.chat.id:
+        await msg.answer(
+            "Clearflood is now {} in {}.".format(
+                "on" if enabled else "off", chat_name
+            ),
+        )
+    else:
+        await msg.answer("Clearflood is now {}.".format("on" if enabled else "off"))
+
+    return (
+        f"<b>{html.escape(chat_name)}:</b>\n"
+        f"#CLEARFLOOD\n"
+        f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
+        f"Has turned clearflood <b>{'on' if enabled else 'off'}</b>."
+    )
+
+
 def __migrate__(old_chat_id, new_chat_id):
     sql.migrate_chat(old_chat_id, new_chat_id)
 
@@ -430,6 +580,10 @@ __help__ = """
 » /setflood <number/off/no>: Set the number of messages after which to take action on a user. Set to '0', 'off', or 'no' to disable.
 
 » /setfloodmode <action type>: Choose which action to take on a user who has been flooding. Options: ban/kick/mute/tban/tmute.
+
+» /setfloodtimer <number> <duration>: Act on a user who sends more than `number` messages within `duration`, instead of in a row. Use `/setflood off` to go back to consecutive mode.
+
+» /clearflood on/off: On, deletes every message from the flooding burst instead of only the ones past the limit.
 """
 
 __mod_name__ = "ANTI-FLOOD"
@@ -442,4 +596,6 @@ dp.callback_query.register(chain(flood_button), F.data.regexp(r"^unmute_flooder\
 dp.message.register(chain(set_flood), GROUPS, Command("setflood"))
 dp.message.register(chain(set_flood_mode), Command("setfloodmode"))
 dp.message.register(chain(flood), GROUPS, Command("flood"))
+dp.message.register(chain(set_flood_timer), Command("setfloodtimer"))
+dp.message.register(chain(clearflood), Command("clearflood"))
 # <================================================ END =======================================================>

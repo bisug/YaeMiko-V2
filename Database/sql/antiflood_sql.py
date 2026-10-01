@@ -23,8 +23,10 @@ SOFTWARE.
 """
 
 import threading
+import time
+from collections import deque
 
-from sqlalchemy import BigInteger, Column, String, UnicodeText
+from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, inspect, text
 
 from Database.sql import BASE, ENGINE, SESSION
 
@@ -39,9 +41,17 @@ class FloodControl(BASE):
     user_id = Column(BigInteger)
     count = Column(BigInteger, default=DEF_COUNT)
     limit = Column(BigInteger, default=DEF_LIMIT)
+    # 0 = act on N consecutive messages, >0 = act on N messages within this
+    # many seconds. Timed mode is what makes this usable for non-consecutive
+    # spam, which the consecutive counter cannot see.
+    timer = Column(BigInteger, default=0)
+    # delete only the messages past the limit, or the whole flooding burst
+    clearflood = Column(Boolean, default=False)
 
     def __init__(self, chat_id):
         self.chat_id = str(chat_id)  # ensure string
+        self.timer = 0
+        self.clearflood = False
 
     def __repr__(self):
         return "<ғʟᴏᴏᴅ ᴄᴏɴᴛʀᴏʟ ғᴏʀ %s>" % self.chat_id
@@ -65,10 +75,50 @@ class FloodSettings(BASE):
 FloodControl.__table__.create(bind=ENGINE, checkfirst=True)
 FloodSettings.__table__.create(bind=ENGINE, checkfirst=True)
 
+
+def _ensure_columns() -> None:
+    """Add the new antiflood columns to a table made by an older build.
+
+    create(checkfirst=True) leaves an existing table untouched, so without this
+    the timer and clearflood columns are missing and every read of them fails.
+    """
+    inspector = inspect(ENGINE)
+    if "antiflood" not in inspector.get_table_names():
+        return
+    present = {column["name"] for column in inspector.get_columns("antiflood")}
+    with ENGINE.begin() as connection:
+        for column in FloodControl.__table__.columns:
+            if column.name in present:
+                continue
+            ddl = (
+                f'ALTER TABLE antiflood ADD COLUMN "{column.name}" '
+                f"{column.type.compile(dialect=ENGINE.dialect)}"
+            )
+            connection.execute(text(ddl))
+            default = getattr(column.default, "arg", None)
+            if default is not None:
+                connection.execute(
+                    text(
+                        f'UPDATE antiflood SET "{column.name}" = :value'
+                        f' WHERE "{column.name}" IS NULL'
+                    ),
+                    {"value": default},
+                )
+
+
+_ensure_columns()
+
 INSERTION_FLOOD_LOCK = threading.RLock()
 INSERTION_FLOOD_SETTINGS_LOCK = threading.RLock()
 
 CHAT_FLOOD = {}
+
+# (chat_id, user_id) -> deque of message timestamps inside the timed window.
+FLOOD_WINDOWS: dict = {}
+# (chat_id, user_id) -> deque of message ids, so the offender's messages can be
+# removed after the fact. Bounded to keep a long run from growing without limit.
+FLOOD_MESSAGES: dict = {}
+MAX_TRACKED_MESSAGES = 50
 
 
 def set_flood(chat_id, amount):
@@ -146,6 +196,109 @@ def get_flood_setting(chat_id):
 
     finally:
         SESSION.close()
+
+
+def set_flood_timer(chat_id, amount, seconds):
+    """Act on `amount` messages sent within `seconds`, instead of consecutively."""
+    with INSERTION_FLOOD_LOCK:
+        flood = SESSION.get(FloodControl, str(chat_id))
+        if not flood:
+            flood = FloodControl(str(chat_id))
+        flood.limit = int(amount)
+        flood.timer = int(seconds)
+        flood.user_id = None
+        CHAT_FLOOD[str(chat_id)] = (None, DEF_COUNT, int(amount))
+        SESSION.add(flood)
+        SESSION.commit()
+    FLOOD_WINDOWS.pop((str(chat_id), None), None)
+    return int(amount), int(seconds)
+
+
+def set_clearflood(chat_id, enabled: bool) -> None:
+    with INSERTION_FLOOD_LOCK:
+        flood = SESSION.get(FloodControl, str(chat_id))
+        if not flood:
+            flood = FloodControl(str(chat_id))
+        flood.clearflood = bool(enabled)
+        SESSION.add(flood)
+        SESSION.commit()
+
+
+def get_clearflood(chat_id) -> bool:
+    try:
+        flood = SESSION.get(FloodControl, str(chat_id))
+        return bool(flood and flood.clearflood)
+    finally:
+        SESSION.close()
+
+
+def get_flood_timer(chat_id) -> int:
+    """The timed window in seconds, or 0 when consecutive mode is in use."""
+    try:
+        flood = SESSION.get(FloodControl, str(chat_id))
+        return int(flood.timer or 0) if flood else 0
+    finally:
+        SESSION.close()
+
+
+def track_message(chat_id, user_id, message_id) -> None:
+    """Remember a message so the whole burst can be deleted later."""
+    key = (str(chat_id), user_id)
+    messages = FLOOD_MESSAGES.setdefault(key, deque())
+    messages.append(message_id)
+    while len(messages) > MAX_TRACKED_MESSAGES:
+        messages.popleft()
+
+
+def take_flooded_messages(chat_id, user_id) -> list:
+    """Return and clear the tracked ids, keeping only what is past the limit."""
+    key = (str(chat_id), user_id)
+    messages = FLOOD_MESSAGES.pop(key, deque())
+    FLOOD_WINDOWS.pop(key, None)
+    limit = get_flood_limit(chat_id)
+    if not messages:
+        return []
+    if not get_clearflood(chat_id):
+        # Default behaviour: remove only the messages sent after the limit was
+        # reached, so the conversation up to that point survives.
+        keep = max(limit, 0)
+        return list(messages)[min(keep, len(messages)):]
+    return list(messages)
+
+
+def update_flood_timer(chat_id, user_id, message_id=None) -> bool:
+    """Count a message in the timed window; True when the limit is exceeded."""
+    window = get_flood_timer(chat_id)
+    limit = get_flood_limit(chat_id)
+    if window <= 0 or limit <= 0:
+        return False
+
+    now = time.time()
+    key = (str(chat_id), user_id)
+    bucket = FLOOD_WINDOWS.setdefault(key, deque())
+    bucket.append(now)
+    while bucket and bucket[0] <= now - window:
+        bucket.popleft()
+    if message_id is not None:
+        track_message(chat_id, user_id, message_id)
+
+    if len(bucket) > limit:
+        FLOOD_WINDOWS.pop(key, None)
+        return True
+    return False
+
+
+def clear_flood_state(chat_id, user_id=None) -> None:
+    """Reset counters for one user, or the whole chat when user_id is None."""
+    if user_id is not None:
+        FLOOD_WINDOWS.pop((str(chat_id), user_id), None)
+        FLOOD_MESSAGES.pop((str(chat_id), user_id), None)
+        return
+    for store in (FLOOD_WINDOWS, FLOOD_MESSAGES):
+        for key in [k for k in store if k[0] == str(chat_id)]:
+            store.pop(key, None)
+    with INSERTION_FLOOD_LOCK:
+        CHAT_FLOOD[str(chat_id)] = (None, DEF_COUNT, get_flood_limit(chat_id))
 
 
 def migrate_chat(old_chat_id, new_chat_id):

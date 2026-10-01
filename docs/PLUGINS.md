@@ -35,7 +35,7 @@ name in that list, so dropping a new file into the directory is enough to regist
 | `admin` | ADMIN | `admincache`, `adminlist`, `promote`, `demote`, `fullpromote`, `title`, `invitelink`, `pin`, `unpin`, `unpinall` |
 | `ban` | BAN | `kick`, `kickme`, `roar`, `unban` |
 | `gban` | ANTI-SPAM | `antispam`, `gban`, `gbanlist`, `ungban` |
-| `flood` | ANTI-FLOOD | `flood`, `setflood`, `setfloodmode` |
+| `flood` | ANTI-FLOOD | `flood`, `setflood`, `setfloodmode`, `setfloodtimer`, `clearflood` |
 | `locks` | LOCKS | `lock`, `unlock`, `locks`, `locktypes` |
 | `antiraid` | ANTIRAID | `antiraid`, `raidtime`, `raidactiontime`, `autoantiraid` |
 | `mute` | MUTE | `mute`, `unmute` |
@@ -43,7 +43,7 @@ name in that list, so dropping a new file into the directory is enough to regist
 | `purge` | PURGE | Bulk message deletion |
 | `zombies` | ZOMBIES | Removes accounts that left |
 | `unbanall` | Unbanll | Lifts every ban in a chat |
-| `blacklist` | BLACKLIST | `addblacklist`, `unblacklist`, `blacklist`, `blacklistmode` |
+| `blacklist` | BLACKLIST | `addblacklist`, `unblacklist`, `blacklist`, `blacklistmode`, `blocklistdelete`, `silentactions` |
 | `blacklist_stickers` | Stickers Blacklist | `blsticker`, `addblsticker`, `blstickermode` |
 | `feds` | FEDS | Federation owner, admin and user help, plus `newfed`, `joinfed`, `leavefed`, `subfed`, `fban`, `fbanlist`, `unfban`, `importfbans`, `fbroadcast`, `fedinfo`, `frules`, `setfrules`, `fedchats`, `renamefed`, `delfed`, `setfedlog`, `unsetfedlog` |
 | `approve` | APPROVALS | `approve`, `approved`, `unapprove`, `unapproveall`, `approval` |

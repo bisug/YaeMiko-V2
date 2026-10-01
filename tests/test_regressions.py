@@ -3120,5 +3120,144 @@ class AntiRaidTests(unittest.TestCase):
                     )
 
 
+def _registered_commands(path: Path) -> set:
+    """Every Command("x") literal in a module, regardless of wrapping."""
+    found = set()
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if (
+            isinstance(node, ast.Call)
+            and getattr(node.func, "id", "") == "Command"
+            and node.args
+            and isinstance(node.args[0], ast.Constant)
+        ):
+            found.add(node.args[0].value)
+    return found
+
+
+class BlacklistMatchingTests(unittest.TestCase):
+    """Blocklist matching is the anti-spam surface, so the rules are pinned here.
+
+    The matcher is loaded from source rather than imported: importing the plugin
+    pulls in the whole bot, and a second definition of a SQLAlchemy table would
+    break the other SQL tests in this process.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        import unicodedata
+
+        path = ROOT / "Mikobot" / "plugins" / "blacklist.py"
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        wanted = {
+            "normalize_text", "parse_trigger", "matches_text",
+            "_wildcard_pattern", "_base_pattern", "_match_pattern",
+            "_file_match", "TYPED_PREFIXES",
+        }
+        keep = []
+        for node in tree.body:
+            name = getattr(node, "name", None)
+            if name in wanted:
+                keep.append(node)
+            elif isinstance(node, ast.Assign) and getattr(
+                node.targets[0], "id", ""
+            ) in wanted:
+                keep.append(node)
+        namespace = {"re": re, "unicodedata": unicodedata, "Message": object}
+        exec(  # noqa: S102 - exercising the real source, not a copy
+            compile(ast.Module(body=keep, type_ignores=[]), "<blacklist>", "exec"),
+            namespace,
+        )
+        # staticmethod keeps these plain functions; a bare assignment would
+        # bind them as methods and pass self as the first argument.
+        cls.matches = staticmethod(namespace["matches_text"])
+        cls.parse_trigger = staticmethod(namespace["parse_trigger"])
+        cls.file_match = staticmethod(namespace["_file_match"])
+
+    def test_plain_triggers_match_whole_words_only(self):
+        # "hi" must not fire inside "this", or every mention trips a filter.
+        self.assertTrue(self.matches("hi", "hi there"))
+        self.assertTrue(self.matches("hi", "say hi!"))
+        self.assertFalse(self.matches("hi", "this"))
+        self.assertFalse(self.matches("hi", "his"))
+
+    def test_typed_prefixes_are_recognised(self):
+        for kind in (
+            "prefix", "exact", "lookalike", "name", "username", "file",
+            "forward", "inline", "stickerpack", "emojipack",
+        ):
+            self.assertEqual(
+                self.parse_trigger(f"{kind}:payload"), (kind, "payload")
+            )
+        self.assertEqual(self.parse_trigger("earn"), (None, "earn"))
+
+    def test_modifiers(self):
+        self.assertTrue(self.matches("bit?", "bits"))
+        self.assertFalse(self.matches("bit?", "bit"))
+        self.assertTrue(self.matches("earn*", "earnings are up"))
+        self.assertTrue(self.matches("earn*", "learn to earn"))
+
+    def test_trigger_text_cannot_inject_a_regex(self):
+        # Everything but ? and * is escaped, so a trigger is always literal.
+        self.assertFalse(self.matches("a.b", "axb"))
+        self.assertTrue(self.matches("a.b", "a.b"))
+        self.assertFalse(self.matches("(a|b)", "a"))
+
+    def test_prefix_and_exact_scoping(self):
+        self.assertTrue(self.matches("prefix:earn", "earn money now"))
+        self.assertFalse(self.matches("prefix:earn", "please earn money"))
+        self.assertTrue(self.matches("exact:hi", "hi"))
+        self.assertFalse(self.matches("exact:hi", "hi there"))
+
+    def test_messages_are_normalised_before_matching(self):
+        # Accents, case, curly quotes and padded whitespace must not hide a hit.
+        self.assertTrue(self.matches("hi", "hî"))
+        self.assertTrue(self.matches("hi there", "HI THERE"))
+        self.assertTrue(self.matches("hi there", "hi   there"))
+        self.assertTrue(self.matches("hi", "hî"))
+
+    def test_lookalike_catches_homoglyphs_and_digits(self):
+        self.assertTrue(self.matches("lookalike:bot", "b0t"))
+        self.assertTrue(self.matches("lookalike:bot", "\u0432\u043e\u0442"))
+        self.assertFalse(self.matches("lookalike:bot", "bots"))
+
+    def test_file_extension_wildcards(self):
+        self.assertTrue(self.file_match("*.pdf", "report.pdf"))
+        self.assertFalse(self.file_match("*.pdf", "report.docx"))
+        self.assertTrue(self.file_match("docs.pdf", "docs.pdf"))
+
+
+class BlocklistModeTests(unittest.TestCase):
+    """Delete and punishment are separate settings, plus owner-gated silence."""
+
+    def test_documented_blocklist_commands_are_registered(self):
+        registered = _registered_commands(
+            ROOT / "Mikobot" / "plugins" / "blacklist.py"
+        )
+        # blacklistmode keeps this repo's existing name for the action setting;
+        # the new commands follow the documented spellings.
+        for command in ("blacklistmode", "blocklistdelete", "silentactions"):
+            self.assertIn(command, registered)
+
+    def test_silent_actions_require_the_owner(self):
+        tree = ast.parse(
+            (ROOT / "Mikobot" / "plugins" / "blacklist.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        func = next(
+            n for n in tree.body
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "silent_actions"
+        )
+        decorators = " ".join(ast.unparse(d) for d in func.decorator_list)
+        self.assertIn("only_owner=True", decorators)
+
+    def test_silent_actions_demand_a_log_channel(self):
+        # Otherwise a silent ban leaves no record at all.
+        source = (ROOT / "Mikobot" / "plugins" / "blacklist.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("get_chat_log_channel", source)
+
+
 if __name__ == "__main__":
     unittest.main()

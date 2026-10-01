@@ -24,7 +24,7 @@ SOFTWARE.
 
 import threading
 
-from sqlalchemy import BigInteger, Column, String, UnicodeText, distinct, func
+from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, distinct, func, inspect, text
 
 from Database.sql import BASE, ENGINE, SESSION
 
@@ -54,11 +54,21 @@ class BlacklistSettings(BASE):
     chat_id = Column(String(14), primary_key=True)
     blacklist_type = Column(BigInteger, default=1)
     value = Column(UnicodeText, default="0")
+    # Deleting the message is separate from the action taken on the sender, so
+    # an admin can ban silently while still removing the offending text.
+    delete_message = Column(Boolean, default=True)
+    # Owner-only master switch; each mode can then be marked silent on its own.
+    silent_enabled = Column(Boolean, default=False)
+    # Comma separated list of blacklist_type numbers that should act quietly.
+    silent_types = Column(UnicodeText, default="")
 
     def __init__(self, chat_id, blacklist_type=1, value="0"):
         self.chat_id = str(chat_id)
         self.blacklist_type = blacklist_type
         self.value = value
+        self.delete_message = True
+        self.silent_enabled = False
+        self.silent_types = ""
 
     def __repr__(self):
         return "<{} ᴡɪʟʟ ᴇxᴇᴄᴜᴛɪɴɢ {} ғᴏʀ ʙʟᴀᴄᴋʟɪsᴛ ᴛʀɪɢɢᴇʀ.>".format(
@@ -69,6 +79,36 @@ class BlacklistSettings(BASE):
 
 BlackListFilters.__table__.create(bind=ENGINE, checkfirst=True)
 BlacklistSettings.__table__.create(bind=ENGINE, checkfirst=True)
+
+
+def _ensure_columns() -> None:
+    """Add the delete/silent columns to a table made by an older build."""
+    inspector = inspect(ENGINE)
+    if "blacklist_settings" not in inspector.get_table_names():
+        return
+    present = {c["name"] for c in inspector.get_columns("blacklist_settings")}
+    with ENGINE.begin() as connection:
+        for column in BlacklistSettings.__table__.columns:
+            if column.name in present:
+                continue
+            connection.execute(
+                text(
+                    f'ALTER TABLE blacklist_settings ADD COLUMN "{column.name}" '
+                    f"{column.type.compile(dialect=ENGINE.dialect)}"
+                )
+            )
+            default = getattr(column.default, "arg", None)
+            if default is not None:
+                connection.execute(
+                    text(
+                        f'UPDATE blacklist_settings SET "{column.name}" = :value'
+                        f' WHERE "{column.name}" IS NULL'
+                    ),
+                    {"value": default},
+                )
+
+
+_ensure_columns()
 
 BLACKLIST_FILTER_INSERTION_LOCK = threading.RLock()
 BLACKLIST_SETTINGS_INSERTION_LOCK = threading.RLock()
@@ -159,6 +199,9 @@ def set_blacklist_strength(chat_id, blacklist_type, value):
         CHAT_SETTINGS_BLACKLISTS[str(chat_id)] = {
             "blacklist_type": int(blacklist_type),
             "value": value,
+            "delete_message": bool(curr_setting.delete_message),
+            "silent_enabled": bool(curr_setting.silent_enabled),
+            "silent_types": curr_setting.silent_types or "",
         }
 
         SESSION.add(curr_setting)
@@ -174,6 +217,79 @@ def get_blacklist_setting(chat_id):
 
     finally:
         SESSION.close()
+
+
+def _mutate_setting(chat_id, **fields) -> None:
+    """Update the delete/silent columns and refresh the cache entry."""
+    with BLACKLIST_SETTINGS_INSERTION_LOCK:
+        global CHAT_SETTINGS_BLACKLISTS
+        curr = SESSION.get(BlacklistSettings, str(chat_id))
+        if not curr:
+            curr = BlacklistSettings(str(chat_id))
+        for name, value in fields.items():
+            setattr(curr, name, value)
+        SESSION.add(curr)
+        SESSION.commit()
+        CHAT_SETTINGS_BLACKLISTS[str(chat_id)] = {
+            "blacklist_type": int(curr.blacklist_type),
+            "value": curr.value,
+            "delete_message": bool(curr.delete_message),
+            "silent_enabled": bool(curr.silent_enabled),
+            "silent_types": curr.silent_types or "",
+        }
+
+
+def set_delete_message(chat_id, enabled: bool) -> None:
+    _mutate_setting(chat_id, delete_message=bool(enabled))
+
+
+def get_delete_message(chat_id) -> bool:
+    setting = CHAT_SETTINGS_BLACKLISTS.get(str(chat_id))
+    if setting:
+        return bool(setting.get("delete_message", True))
+    try:
+        curr = SESSION.get(BlacklistSettings, str(chat_id))
+        return bool(curr.delete_message) if curr else True
+    finally:
+        SESSION.close()
+
+
+def set_silent_enabled(chat_id, enabled: bool) -> None:
+    """Master switch for silent blacklist actions."""
+    _mutate_setting(chat_id, silent_enabled=bool(enabled))
+
+
+def get_silent_enabled(chat_id) -> bool:
+    setting = CHAT_SETTINGS_BLACKLISTS.get(str(chat_id))
+    if setting:
+        return bool(setting.get("silent_enabled", False))
+    try:
+        curr = SESSION.get(BlacklistSettings, str(chat_id))
+        return bool(curr and curr.silent_enabled)
+    finally:
+        SESSION.close()
+
+
+def set_silent_type(chat_id, blacklist_type: int, silent: bool) -> None:
+    """Mark one action mode as silent, leaving the others alone."""
+    setting = CHAT_SETTINGS_BLACKLISTS.get(str(chat_id)) or {}
+    current = [
+        part for part in str(setting.get("silent_types", "")).split(",") if part
+    ]
+    wanted = str(int(blacklist_type))
+    present = wanted in current
+    if silent and not present:
+        current.append(wanted)
+    elif not silent and present:
+        current.remove(wanted)
+    _mutate_setting(chat_id, silent_types=",".join(current))
+
+
+def is_silent_type(chat_id, blacklist_type: int) -> bool:
+    if not get_silent_enabled(chat_id):
+        return False
+    setting = CHAT_SETTINGS_BLACKLISTS.get(str(chat_id)) or {}
+    return str(int(blacklist_type)) in str(setting.get("silent_types", "")).split(",")
 
 
 def __load_chat_blacklists():
@@ -201,6 +317,11 @@ def __load_chat_settings_blacklists():
             CHAT_SETTINGS_BLACKLISTS[x.chat_id] = {
                 "blacklist_type": x.blacklist_type,
                 "value": x.value,
+                # Loaded from the same row so the cache agrees with the
+                # database after a restart, rather than silently defaulting.
+                "delete_message": bool(x.delete_message),
+                "silent_enabled": bool(x.silent_enabled),
+                "silent_types": x.silent_types or "",
             }
 
     finally:
