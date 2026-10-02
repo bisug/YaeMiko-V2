@@ -7,3 +7,6 @@ __pycache__
 *.session
 *.session-journal
 Logs.txt*
+ptb_persistence.pickle
+ptb_persistence.pickle.*
+tests
