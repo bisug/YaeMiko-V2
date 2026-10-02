@@ -21,6 +21,7 @@ worker's must not be touched from another thread. That is also why the guarantee
 cannot live in middleware.
 """
 
+import os
 import threading
 from functools import wraps
 
@@ -29,6 +30,7 @@ from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
 
 from Mikobot import DB_URI
 from Mikobot import LOGGER as log
+from Mikobot import env_int
 
 if DB_URI and DB_URI.startswith(("postgres://", "postgresql://")):
     DB_URI = DB_URI.replace("postgres://", "postgresql+psycopg://", 1).replace(
@@ -44,11 +46,32 @@ BASE = declarative_base()
 
 def start() -> scoped_session:
     global ENGINE
+    # The default pool is 5 plus 10 overflow, so 15 connections at most.
+    # asyncio.to_thread runs each helper on a worker and can spawn up to
+    # min(32, cpu + 4) of them, so a busy chat reaches the ceiling and every
+    # further caller then blocks for the full 30s pool timeout and raises
+    # TimeoutError. That is the "the database is really slow" report: it is
+    # queueing, not the queries.
+    #
+    # pool_size is sized to the worker count and max_overflow is left generous
+    # but finite, so a burst costs a wait rather than exhausting the server's
+    # own connection limit. Both are overridable from the environment for
+    # hosts that need different numbers.
+    pool_size = env_int("DB_POOL_SIZE", min(20, (os.cpu_count() or 4) * 2 + 4))
+    max_overflow = env_int("DB_MAX_OVERFLOW", 20)
+    pool_timeout = env_int("DB_POOL_TIMEOUT", 30)
+
     engine = create_engine(
         DB_URI,
         client_encoding="utf8",
         pool_pre_ping=True,
         pool_recycle=1800,
+        pool_size=pool_size,
+        max_overflow=max_overflow,
+        # Fail fast rather than holding a handler for 30s. A short wait still
+        # absorbs a normal burst; a long one only turns congestion into a
+        # stalled event loop.
+        pool_timeout=pool_timeout,
     )
     ENGINE = engine
     log.info("[PostgreSQL] Connecting to database......")

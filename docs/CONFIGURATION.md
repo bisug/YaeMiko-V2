@@ -38,6 +38,9 @@ environment variables.
 | `TOKEN` | string | PTB application and Kurigram bot session | From [@BotFather](https://t.me/BotFather) |
 | `OWNER_ID` | integer | Rank checks | Parsed with `int()`, a bad value raises at startup |
 | `DATABASE_URL` | string | `Database/sql` | `postgres://` is rewritten to `postgresql+psycopg://` |
+| `DB_POOL_SIZE` | integer | `Database/sql` | Pooled connections held open. Default `min(20, cpu*2+4)` |
+| `DB_MAX_OVERFLOW` | integer | `Database/sql` | Extra connections above the pool size. Default `20` |
+| `DB_POOL_TIMEOUT` | integer | `Database/sql` | Seconds a caller waits for a connection. Default `30` |
 | `MONGO_DB_URI` | string | `Database/mongodb` | Atlas SRV string |
 | `DB_NAME` | string | `Database/mongodb` | Mongo database name |
 | `EVENT_LOGS` | integer | Logging plugins | Channel ID for bot level events |

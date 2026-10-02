@@ -4170,5 +4170,70 @@ class UnitOfWorkTests(unittest.TestCase):
         self.assertIn("SESSION.commit()", body)
 
 
+class ConnectionPoolTests(unittest.TestCase):
+    """The pool has to be able to hold every worker that might call in.
+
+    Helpers run on asyncio.to_thread workers, which number up to
+    min(32, cpu + 4). SQLAlchemy's default pool is 5 plus 10 overflow, so a
+    busy chat hit the ceiling, and the next caller blocked for the full
+    pool_timeout and then raised TimeoutError. That is what "the database is
+    really slow" was: queueing, not slow queries.
+    """
+
+    INIT = ROOT / "Database" / "sql" / "__init__.py"
+
+    def test_pool_is_explicitly_sized(self):
+        source = self.INIT.read_text(encoding="utf-8")
+        engine = next(
+            node for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.Call)
+            and getattr(node.func, "id", "") == "create_engine"
+        )
+        kwargs = {kw.arg: ast.unparse(kw.value) for kw in engine.keywords}
+        for name in ("pool_size", "max_overflow", "pool_timeout"):
+            self.assertIn(name, kwargs, f"{name} must be set explicitly")
+
+    def test_default_ceiling_covers_the_worker_pool(self):
+        # Read the sizing straight out of the module that builds the engine,
+        # rather than re-deriving it: the point is that the numbers in the
+        # code clear the worker count, so a change to either must be caught.
+        import importlib.util
+        import os
+
+        source = self.INIT.read_text(encoding="utf-8")
+        # The defaults as written: min(20, cpu*2+4) plus 20 overflow.
+        match = re.search(
+            r'pool_size = env_int\(\s*"DB_POOL_SIZE",\s*min\((\d+),',
+            source,
+        )
+        self.assertIsNotNone(match, "pool_size default must be sized from cpu_count")
+        cap = int(match.group(1))
+        overflow_match = re.search(
+            r'max_overflow = env_int\(\s*"DB_MAX_OVERFLOW",\s*(\d+)\)', source
+        )
+        self.assertIsNotNone(overflow_match)
+        overflow = int(overflow_match.group(1))
+
+        cpus = os.cpu_count() or 4
+        ceiling = min(cap, cpus * 2 + 4) + overflow
+        # asyncio.to_thread spawns at most min(32, cpu + 4) workers.
+        workers = min(32, cpus + 4)
+        self.assertGreaterEqual(
+            ceiling, workers,
+            f"pool ceiling {ceiling} must hold all {workers} to_thread workers",
+        )
+        self.assertLessEqual(ceiling, 40, "but not so many the server refuses")
+
+    def test_settings_are_overridable_from_the_environment(self):
+        source = self.INIT.read_text(encoding="utf-8")
+        for name in ("DB_POOL_SIZE", "DB_MAX_OVERFLOW", "DB_POOL_TIMEOUT"):
+            self.assertIn(name, source, name)
+
+    def test_documented_in_configuration(self):
+        docs = (ROOT / "docs" / "CONFIGURATION.md").read_text(encoding="utf-8")
+        for name in ("DB_POOL_SIZE", "DB_MAX_OVERFLOW", "DB_POOL_TIMEOUT"):
+            self.assertIn(name, docs, name)
+
+
 if __name__ == "__main__":
     unittest.main()
