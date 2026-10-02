@@ -660,7 +660,9 @@ async def new_member(message: Message, command: CommandObject):
                             ],
                         ),
                         parse_mode=ParseMode.HTML,
-                        reply_to_message_id=reply,
+                        # No explicit reply target: msg.reply() already replies to
+                        # the message it was called on, and aiogram's reply()
+                        # takes neither reply_to_message_id nor reply_parameters.
                     )
                     await bot.restrict_chat_member(
                         chat.id,

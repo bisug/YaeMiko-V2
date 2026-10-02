@@ -11,13 +11,17 @@ overwrite existing configuration.
 
 import asyncio
 import html
-import io
 import json
 
 from aiogram import F
 from aiogram.enums import ChatMemberStatus, ParseMode
 from aiogram.filters import Command, CommandObject
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import (
+    BufferedInputFile,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 import Database.sql.blsticker_sql as blsticker_sql
 import Database.sql.blacklist_sql as blacklist_sql
@@ -156,8 +160,9 @@ async def export(message: Message, command: CommandObject) -> str:
     payload = json.dumps(data, indent=2, ensure_ascii=False, default=str)
     name = f"settings_{abs(int(chat_id))}.json"
     await message.answer_document(
-        document=io.BytesIO(payload.encode()),
-        filename=name,
+        # aiogram types `document` as a file id or an InputFile; a raw BytesIO
+        # fails validation, so the buffer and the name are wrapped together.
+        document=BufferedInputFile(payload.encode(), filename=name),
         caption=(
             f"Settings export for <b>{html.escape(chat.title)}</b>."
             f"\nReply to this with <code>/import</code> to apply it elsewhere."

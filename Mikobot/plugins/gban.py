@@ -7,7 +7,7 @@ from io import BytesIO
 from aiogram.enums import ChatMemberStatus, ChatType, ParseMode
 from aiogram.exceptions import TelegramAPIError, TelegramForbiddenError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import Message
+from aiogram.types import BufferedInputFile, Message
 
 import Database.sql.global_bans_sql as sql
 from Database.mongodb.users_db import Users
@@ -379,8 +379,7 @@ async def gbanlist(message: Message):
     with BytesIO(str.encode(banfile)) as output:
         output.name = "gbanlist.txt"
         await message.reply_document(
-            document=output,
-            filename="gbanlist.txt",
+            document=BufferedInputFile(output.read(), filename="gbanlist.txt"),
             caption="Here is the list of currently gbanned users.",
         )
 

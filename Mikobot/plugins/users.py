@@ -8,7 +8,7 @@ from typing import Union
 from aiogram.enums import ChatMemberStatus, ParseMode
 from aiogram.exceptions import TelegramAPIError, TelegramForbiddenError
 from aiogram.filters import Command
-from aiogram.types import LinkPreviewOptions, Message
+from aiogram.types import BufferedInputFile, LinkPreviewOptions, Message
 from cachetools import TTLCache
 from pyrogram import Client
 from pyrogram import filters as fil
@@ -270,8 +270,7 @@ async def chats(message: Message):
     with BytesIO(str.encode(chatfile)) as output:
         output.name = "groups_list.txt"
         await message.answer_document(
-            document=output,
-            filename="groups_list.txt",
+            document=BufferedInputFile(output.read(), filename="groups_list.txt"),
             caption="Here be the list of groups in my database.",
         )
 

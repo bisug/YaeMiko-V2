@@ -17,6 +17,7 @@ from aiogram.exceptions import (
 )
 from aiogram.filters import Command, CommandObject
 from aiogram.types import (
+    BufferedInputFile,
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -1371,8 +1372,9 @@ async def fed_ban_list(message: Message, command: CommandObject):
             with BytesIO(str.encode(backups)) as output:
                 output.name = "mikobot_fbanned_users.json"
                 await message.reply_document(
-                    document=output,
-                    filename="mikobot_fbanned_users.json",
+                    document=BufferedInputFile(
+                        output.read(), filename="mikobot_fbanned_users.json"
+                    ),
                     caption="Total {} User are blocked by the Federation {}.".format(
                         len(getfban),
                         info["fname"],
@@ -1418,8 +1420,9 @@ async def fed_ban_list(message: Message, command: CommandObject):
             with BytesIO(str.encode(backups)) as output:
                 output.name = "mikobot_fbanned_users.csv"
                 await message.reply_document(
-                    document=output,
-                    filename="mikobot_fbanned_users.csv",
+                    document=BufferedInputFile(
+                        output.read(), filename="mikobot_fbanned_users.csv"
+                    ),
                     caption="Total {} User are blocked by Federation {}.".format(
                         len(getfban),
                         info["fname"],
@@ -1477,8 +1480,7 @@ async def fed_ban_list(message: Message, command: CommandObject):
         with BytesIO(str.encode(cleantext)) as output:
             output.name = "fbanlist.txt"
             await message.reply_document(
-                document=output,
-                filename="fbanlist.txt",
+                document=BufferedInputFile(output.read(), filename="fbanlist.txt"),
                 caption="The following is a list of users who are currently fbanned in the Federation {}.".format(
                     info["fname"],
                 ),
@@ -1577,8 +1579,7 @@ async def fed_chats(message: Message, command: CommandObject):
         with BytesIO(str.encode(cleantext)) as output:
             output.name = "fedchats.txt"
             await message.reply_document(
-                document=output,
-                filename="fedchats.txt",
+                document=BufferedInputFile(output.read(), filename="fedchats.txt"),
                 caption="Here is a list of all the chats that joined the federation {}.".format(
                     info["fname"],
                 ),

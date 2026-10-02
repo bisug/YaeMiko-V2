@@ -4864,5 +4864,192 @@ class AiogramMethodNameTests(unittest.TestCase):
         self.assertEqual(kwargs.get("parse_mode"), ParseMode.HTML)
 
 
+class AiogramKwargsTests(unittest.TestCase):
+    """PTB keyword arguments that aiogram renamed or never had.
+
+    These fail inside pydantic validation or as a TypeError before the request
+    is built, so the export silently produced nothing.
+    """
+
+    def test_reply_document_rejects_the_ptb_filename_kwarg(self):
+        """The document name moved into the InputFile itself."""
+        import inspect
+
+        from aiogram.types import Message
+
+        self.assertNotIn(
+            "filename", inspect.signature(Message.reply_document).parameters
+        )
+        self.assertNotIn(
+            "filename", inspect.signature(Message.answer_document).parameters
+        )
+
+    def test_reply_does_not_accept_reply_to_message_id(self):
+        """aiogram's reply() targets the message it was called on."""
+        import inspect
+
+        from aiogram.types import Message
+
+        params = inspect.signature(Message.reply).parameters
+        self.assertNotIn("reply_to_message_id", params)
+        self.assertNotIn("reply_parameters", params)
+        # answer() is the one that can target another message.
+        self.assertIn("reply_to_message_id", inspect.signature(Message.answer).parameters)
+
+    def test_document_uploads_use_an_input_file(self):
+        """A raw BytesIO fails validation; document must be an InputFile."""
+        import inspect
+
+        from aiogram.types import BufferedInputFile, Message
+
+        source = inspect.getsource(Message.reply_document)
+        self.assertIn("InputFileUnion", source)
+
+        # The name is an instance attribute, not a class one.
+        upload = BufferedInputFile(b"data", filename="report.json")
+        self.assertEqual(upload.filename, "report.json")
+
+    def test_no_ptb_filename_kwarg_survives_in_document_sends(self):
+        """`filename=` is not a kwarg of the aiogram document methods."""
+        import ast
+
+        offenders = []
+        for path in (ROOT / "Mikobot").rglob("*.py"):
+            if "__pycache__" in path.parts:
+                continue
+            source = path.read_text(encoding="utf-8")
+            if "from pyrogram" in source and "from aiogram" not in source:
+                continue  # pyrogram plugin
+            for node in ast.walk(ast.parse(source)):
+                if not (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and node.func.attr in ("reply_document", "answer_document")
+                ):
+                    continue
+                for keyword in node.keywords:
+                    if keyword.arg == "filename":
+                        offenders.append(f"{path.name}:{node.lineno}")
+        self.assertEqual(offenders, [], "\n".join(offenders[:15]))
+
+
+class FrameworkMethodAuditTests(unittest.TestCase):
+    """A whole-tree audit so a wrong-framework method cannot reappear.
+
+    anime.py is a Pyrogram plugin whose cq.edit_message_media and
+    cq.edit_message_reply_markup are valid there, so a naive grep reports them as
+    broken. This resolves the receiver's framework per file first.
+    """
+
+    def test_no_call_uses_a_method_its_framework_does_not_define(self):
+        import ast
+        import collections
+        import inspect
+        import sys
+
+        sys.path.insert(0, str(ROOT))
+        from aiogram import Bot as AioBot
+        from aiogram.types import CallbackQuery as AioCallback, Message as AioMessage
+        from pyrogram import Client as PyroClient
+        from pyrogram.types import (
+            CallbackQuery as PyroCallback,
+            Message as PyroMessage,
+        )
+
+        aio = {"Message": AioMessage, "CallbackQuery": AioCallback, "Bot": AioBot}
+        pyro = {"Message": PyroMessage, "CallbackQuery": PyroCallback, "Client": PyroClient}
+        nested_types = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+
+        problems = collections.defaultdict(list)
+        for path in sorted((ROOT / "Mikobot").rglob("*.py")):
+            if "__pycache__" in path.parts:
+                continue
+            source = path.read_text(encoding="utf-8")
+            imports_pyro = "from pyrogram" in source
+            imports_aio = "from aiogram" in source
+            if imports_pyro and not imports_aio:
+                types = pyro
+            elif imports_aio:
+                types = aio
+            else:
+                continue
+
+            tree = ast.parse(source)
+            for func in [
+                n
+                for n in ast.walk(tree)
+                if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+            ]:
+                nested = set()
+                for inner in ast.walk(func):
+                    if isinstance(inner, nested_types) and inner is not func:
+                        nested.update(id(n) for n in ast.walk(inner))
+                own = [n for n in ast.walk(func) if id(n) not in nested]
+                # Only a reassignment *before* the call shadows the parameter.
+                # `message = await msg.reply(...)` reassigns the name, so every
+                # later `message.something()` in that scope is a different
+                # object and must not be judged against the parameter's type.
+                rebinds = {}
+                aliases = {}
+                for node in own:
+                    if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+                        rebinds[node.id] = node.lineno
+                    # `msg = message` makes msg the same object under another
+                    # name, so a call on the alias is a call on the parameter.
+                    if (
+                        isinstance(node, ast.Assign)
+                        and len(node.targets) == 1
+                        and isinstance(node.targets[0], ast.Name)
+                        and isinstance(node.value, ast.Name)
+                        and node.value.id not in rebinds
+                    ):
+                        aliases[node.targets[0].id] = node.value.id
+                for arg in list(func.args.args) + list(func.args.kwonlyargs):
+                    if arg.arg == "self":
+                        continue
+                    annotation = (
+                        (ast.unparse(arg.annotation) if arg.annotation else "") or ""
+                    ).strip()
+                    if annotation not in types:
+                        continue
+                    rebound_at = rebinds.get(arg.arg)
+                    for node in own:
+                        if not (
+                            isinstance(node, ast.Call)
+                            and isinstance(node.func, ast.Attribute)
+                            and isinstance(node.func.value, ast.Name)
+                        ):
+                            continue
+                        receiver = node.func.value.id
+                        if receiver == arg.arg:
+                            if rebound_at is not None and node.lineno > rebound_at:
+                                continue
+                        elif aliases.get(receiver) != arg.arg:
+                            continue
+                        target = types[annotation]
+                        method = getattr(target, node.func.attr, None)
+                        if method is None:
+                            problems[f"{arg.arg}.{node.func.attr}"].append(
+                                f"{path.relative_to(ROOT)}:{node.lineno}"
+                            )
+                            continue
+                        raw = getattr(method, "__func__", method)
+                        try:
+                            params = set(inspect.signature(raw).parameters)
+                        except (TypeError, ValueError):
+                            continue
+                        for keyword in node.keywords:
+                            if keyword.arg and keyword.arg not in params:
+                                problems[
+                                    f"{arg.arg}.{node.func.attr}({keyword.arg}=)"
+                                ].append(f"{path.relative_to(ROOT)}:{node.lineno}")
+
+        report = "\n".join(
+            f"  {name} -> {', '.join(sorted(set(where)))}"
+            for name, where in sorted(problems.items())
+        )
+        self.assertEqual(dict(problems), {}, report)
+
+
 if __name__ == "__main__":
     unittest.main()
