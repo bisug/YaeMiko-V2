@@ -329,9 +329,9 @@ async def clear(message: Message, command: CommandObject):
         notename = args[0].lower()
 
         if sql.rm_note(chat_id, notename):
-            await message.reply_text("Successfully removed note.")
+            await message.reply("Successfully removed note.")
         else:
-            await message.reply_text(
+            await message.reply(
                 "That's not a note in my database!"
             )
 
@@ -341,7 +341,7 @@ async def clearall(message: Message):
     user = message.from_user
     member = await bot.get_chat_member(chat.id, user.id)
     if member.status != ChatMemberStatus.CREATOR and user.id not in DRAGONS:
-        await message.reply_text(
+        await message.reply(
             "Only the chat owner can clear all notes at once.",
         )
     else:
@@ -356,7 +356,7 @@ async def clearall(message: Message):
                 [InlineKeyboardButton(text="Cancel", callback_data="notes_cancel", style=ButtonStyle.PRIMARY)],
             ],
         )
-        await message.reply_text(
+        await message.reply(
             f"Are you sure you would like to clear ALL notes in {escape_markdown(chat.title)}? This action cannot be undone.",
             reply_markup=buttons,
             parse_mode=ParseMode.MARKDOWN,
@@ -407,7 +407,7 @@ async def list_notes(message: Message):
         else:
             note_name = f"`{note_id}.`  `#{(note.name.lower())}`\n"
         if len(msg) + len(note_name) > MessageLimit.MAX_TEXT_LENGTH:
-            await message.reply_text(
+            await message.reply(
                 msg, parse_mode=ParseMode.MARKDOWN
             )
             msg = ""
@@ -415,14 +415,14 @@ async def list_notes(message: Message):
 
     if not note_list:
         try:
-            await message.reply_text("No notes in this chat!")
+            await message.reply("No notes in this chat!")
         except TelegramAPIError:
-            await message.reply_text(
+            await message.reply(
                 "No notes in this chat!"
             )
 
     elif len(msg) != 0:
-        await message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+        await message.reply(msg, parse_mode=ParseMode.MARKDOWN)
 
 
 async def __import_data__(chat_id, data, message: Message):

@@ -183,19 +183,19 @@ async def rename_fed(message: Message, command: CommandObject):
     args = msg.text.split(None, 2)
 
     if len(args) < 3:
-        return await msg.reply_text("usage: /renamefed <fed_id> <newname>")
+        return await msg.reply("usage: /renamefed <fed_id> <newname>")
 
     fed_id, newname = args[1], args[2]
     verify_fed = sql.get_fed_info(fed_id)
 
     if not verify_fed:
-        return await msg.reply_text("This fed not exist in my database!")
+        return await msg.reply("This fed not exist in my database!")
 
     if is_user_fed_owner(fed_id, user.id):
         sql.rename_fed(fed_id, user.id, newname)
-        await msg.reply_text(f"Successfully renamed your fed name to {newname}!")
+        await msg.reply(f"Successfully renamed your fed name to {newname}!")
     else:
-        await msg.reply_text("Only federation owner can do this!")
+        await msg.reply("Only federation owner can do this!")
 
 
 async def fed_chat(message: Message, command: CommandObject):
@@ -369,7 +369,7 @@ async def user_join_fed(message: Message, command: CommandObject):
                 and not any(e.type == "text_mention" for e in (msg.entities or ()))
             )
         ):
-            await msg.reply_text("I cannot extract user from this message")
+            await msg.reply("I cannot extract user from this message")
             return
 
         getuser = sql.search_user_in_fed(fed_id, user_id)
@@ -428,7 +428,7 @@ async def user_demote_fed(message: Message, command: CommandObject):
                 and not any(e.type == "text_mention" for e in (msg.entities or ()))
             )
         ):
-            await msg.reply_text("I cannot extract user from this message")
+            await msg.reply("I cannot extract user from this message")
             return
 
         if user_id == bot.id:
@@ -1501,19 +1501,19 @@ async def fed_notif(message: Message, command: CommandObject):
     if args:
         if args[0] in ("yes", "on"):
             sql.set_feds_setting(user.id, True)
-            await msg.reply_text(
+            await msg.reply(
                 "Reporting Federation back up! Every user who is fban / unfban you will be notified via PM.",
             )
         elif args[0] in ("no", "off"):
             sql.set_feds_setting(user.id, False)
-            await msg.reply_text(
+            await msg.reply(
                 "Reporting Federation has stopped! Every user who is fban / unfban you will not be notified via PM.",
             )
         else:
-            await msg.reply_text("Please enter `on`/`off`", parse_mode=ParseMode.MARKDOWN)
+            await msg.reply("Please enter `on`/`off`", parse_mode=ParseMode.MARKDOWN)
     else:
         getreport = sql.user_feds_report(user.id)
-        await msg.reply_text(
+        await msg.reply(
             "Your current Federation report preferences: `{}`".format(getreport),
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -1636,14 +1636,14 @@ async def fed_import_bans(message: Message, command: CommandObject):
             if user.id not in DRAGONS:
                 put_chat(chat.id, new_jam, chat_data)
         # if int(int(msg.reply_to_message.document.file_size)/1024) >= 200:
-        # 	msg.reply_text("This file is too big!")
+        # 	msg.reply("This file is too big!")
         # 	return
         success = 0
         failed = 0
         try:
             file_info = await bot.get_file(msg.reply_to_message.document.file_id)
         except TelegramBadRequest:
-            await msg.reply_text(
+            await msg.reply(
                 "Try downloading and re-uploading the file, this one seems broken!",
             )
             return

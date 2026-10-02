@@ -713,7 +713,7 @@ async def settings_button(query: CallbackQuery):
             text = "*{}* has the following settings for the *{}* module:\n\n".format(
                 escape_markdown(chat.title), CHAT_SETTINGS[module].__mod_name__
             ) + CHAT_SETTINGS[module].__chat_settings__(chat_id, user.id)
-            await query.message.reply_text(
+            await query.message.reply(
                 text=text,
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=InlineKeyboardMarkup(
@@ -732,7 +732,7 @@ async def settings_button(query: CallbackQuery):
             chat_id = prev_match.group(1)
             curr_page = int(prev_match.group(2))
             chat = await bot.get_chat(chat_id)
-            await query.message.reply_text(
+            await query.message.reply(
                 "Hi there! There are quite a few settings for {} - go ahead and pick what "
                 "you're interested in.".format(chat.title),
                 reply_markup=InlineKeyboardMarkup(
@@ -746,7 +746,7 @@ async def settings_button(query: CallbackQuery):
             chat_id = next_match.group(1)
             next_page = int(next_match.group(2))
             chat = await bot.get_chat(chat_id)
-            await query.message.reply_text(
+            await query.message.reply(
                 "Hi there! There are quite a few settings for {} - go ahead and pick what "
                 "you're interested in.".format(chat.title),
                 reply_markup=InlineKeyboardMarkup(
@@ -759,7 +759,7 @@ async def settings_button(query: CallbackQuery):
         elif back_match:
             chat_id = back_match.group(1)
             chat = await bot.get_chat(chat_id)
-            await query.message.reply_text(
+            await query.message.reply(
                 text="Hi there! There are quite a few settings for {} - go ahead and pick what "
                 "you're interested in.".format(escape_markdown(chat.title)),
                 parse_mode=ParseMode.MARKDOWN,
@@ -789,7 +789,7 @@ async def get_settings(message: Message, command: CommandObject):
     if chat.type != ChatType.PRIVATE:
         if await is_user_admin(chat, user.id):
             text = "Click here to get this chat's settings, as well as yours."
-            await msg.reply_text(
+            await msg.reply(
                 text,
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
@@ -805,7 +805,7 @@ async def get_settings(message: Message, command: CommandObject):
                 ),
             )
         else:
-            await msg.reply_text("Contact me in PM to get your current settings.")
+            await msg.reply("Contact me in PM to get your current settings.")
 
     else:
         await send_settings(chat.id, user.id, True)

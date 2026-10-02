@@ -21,10 +21,10 @@ from Mikobot.utils.errors import capture_err
 async def telegraph_upload(client: Client, message: Message):
     replied = message.reply_to_message
     if not replied or not replied.media:
-        await message.reply_text("Reply to a photo, video, animation, or document.")
+        await message.reply("Reply to a photo, video, animation, or document.")
         return
 
-    status = await message.reply_text("Downloading and uploading to Telegraph…")
+    status = await message.reply("Downloading and uploading to Telegraph…")
     media = replied.media
     if getattr(media, "file_size", 0) > 20 * 1024 * 1024:
         await status.edit_text("That media is too large to upload (20 MB maximum).")

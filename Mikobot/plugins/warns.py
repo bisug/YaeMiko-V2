@@ -257,13 +257,13 @@ async def warns(message: Message, command: CommandObject):
 
             msgs = split_message(text)
             for msg in msgs:
-                await message.reply_text(msg)
+                await message.reply(msg)
         else:
-            await message.reply_text(
+            await message.reply(
                 f"User has {num_warns}/{limit} warns, but no reasons for any of them.",
             )
     else:
-        await message.reply_text("This user doesn't have any warns!")
+        await message.reply("This user doesn't have any warns!")
 
 
 # Dispatcher handler stop - do not async
@@ -294,7 +294,7 @@ async def add_warn_filter(message: Message, command: CommandObject):
     # truth, so re-adding a keyword overwrites the previous reply at send time.
     sql.add_warn_filter(chat.id, keyword, content)
 
-    await message.reply_text(f"Warn handler added for '{keyword}'!")
+    await message.reply(f"Warn handler added for '{keyword}'!")
     raise SkipHandler()
 
 
@@ -340,14 +340,14 @@ async def list_warn_filters(message: Message, command: CommandObject):
     all_handlers = sql.get_chat_warn_triggers(chat.id)
 
     if not all_handlers:
-        await message.reply_text("No warning filters are active here!")
+        await message.reply("No warning filters are active here!")
         return
 
     filter_list = CURRENT_WARNING_FILTER_STRING
     for keyword in all_handlers:
         entry = f" - {html.escape(keyword)}\n"
         if len(entry) + len(filter_list) > MessageLimit.MAX_TEXT_LENGTH:
-            await message.reply_text(
+            await message.reply(
                 filter_list, parse_mode=ParseMode.HTML
             )
             filter_list = entry
@@ -355,7 +355,7 @@ async def list_warn_filters(message: Message, command: CommandObject):
             filter_list += entry
 
     if filter_list != CURRENT_WARNING_FILTER_STRING:
-        await message.reply_text(
+        await message.reply(
             filter_list, parse_mode=ParseMode.HTML
         )
 

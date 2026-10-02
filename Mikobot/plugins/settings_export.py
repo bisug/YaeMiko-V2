@@ -136,13 +136,13 @@ async def export(message: Message, command: CommandObject) -> str:
     """Send this chat's settings as a JSON file."""
     chat_id, chat, error = await _resolve(message, need_owner=False)
     if error:
-        await message.reply_text(error)
+        await message.reply(error)
         return ""
 
     args = command.args.split() if command.args else []
     unknown = [a.lower() for a in args if a.lower() not in EXPORT_MODULES]
     if unknown:
-        await message.reply_text(
+        await message.reply(
             f"Cannot export: <code>{html.escape(', '.join(unknown))}</code>. "
             f"Available: <code>{', '.join(EXPORT_MODULES)}</code>",
             parse_mode=ParseMode.HTML,
@@ -178,23 +178,23 @@ async def import_settings(message: Message, command: CommandObject) -> str:
     """Apply a settings file to this chat. Owner only."""
     chat_id, chat, error = await _resolve(message, need_owner=True)
     if error:
-        await message.reply_text(error)
+        await message.reply(error)
         return ""
 
     replied = message.reply_to_message
     document = getattr(replied, "document", None) if replied else None
     if document is None:
-        await message.reply_text("Reply to an exported settings file.")
+        await message.reply("Reply to an exported settings file.")
         return ""
 
     try:
         raw = await bot.download(document.file_id)
         data = json.loads(raw.decode("utf-8"))
     except Exception:
-        await message.reply_text("That file could not be read as settings.")
+        await message.reply("That file could not be read as settings.")
         return ""
     if not isinstance(data, dict):
-        await message.reply_text("That file does not contain settings.")
+        await message.reply("That file does not contain settings.")
         return ""
 
     args = [a.lower() for a in (command.args.split() if command.args else [])]
@@ -209,7 +209,7 @@ async def import_settings(message: Message, command: CommandObject) -> str:
             LOGGER.exception("Import of %s failed in %s", module_name, chat_id)
             failed.append(module_name)
 
-    await message.reply_text(
+    await message.reply(
         "Imported: <code>{}</code>{}".format(
             html.escape(", ".join(applied)) or "nothing",
             f"\nFailed: <code>{html.escape(', '.join(failed))}</code>" if failed else "",
@@ -230,9 +230,9 @@ async def reset(message: Message, command: CommandObject) -> str:
     """Clear every exportable setting. Owner only, and confirmed inline."""
     chat_id, chat, error = await _resolve(message, need_owner=True)
     if error:
-        await message.reply_text(error)
+        await message.reply(error)
         return ""
-    await message.reply_text(
+    await message.reply(
         "This deletes every blocklist, lock, filter, note, rule and warn in "
         f"<b>{html.escape(chat.title)}</b>. It cannot be undone.",
         parse_mode=ParseMode.HTML,

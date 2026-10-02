@@ -855,7 +855,7 @@ async def _allowlist_target(message: Message):
         chat = await bot.get_chat(conn)
         return conn, chat
     if message.chat.type == ChatType.PRIVATE:
-        await message.reply_text("This command is meant to be used in a group.")
+        await message.reply("This command is meant to be used in a group.")
         return None, None
     return message.chat.id, message.chat
 
@@ -881,20 +881,20 @@ async def allowlist(message: Message, command: CommandObject) -> str:
     if not args:
         current = sql.list_allowed(chat_id)
         if not current:
-            await message.reply_text("There is nothing on the allowlist.")
+            await message.reply("There is nothing on the allowlist.")
             return ""
         lines = "\n".join(
             f" • <code>{html.escape(lockable)}</code>: <code>{html.escape(item)}</code>"
             for lockable, item in sorted(current)
         )
-        await message.reply_text(
+        await message.reply(
             f"Allowlisted items here:\n{lines}", parse_mode=ParseMode.HTML
         )
         return ""
 
     lockable, values = args[0].lower(), args[1:]
     if lockable not in ALLOWLIST_LOCKABLES:
-        await message.reply_text(
+        await message.reply(
             "That cannot be allowlisted. Supported: "
             f"<code>{', '.join(ALLOWLIST_LOCKABLES)}</code>",
             parse_mode=ParseMode.HTML,
@@ -902,7 +902,7 @@ async def allowlist(message: Message, command: CommandObject) -> str:
         return ""
 
     if not values:
-        await message.reply_text(f"Give me something to allow for <code>{lockable}</code>.")
+        await message.reply(f"Give me something to allow for <code>{lockable}</code>.")
         return ""
 
     added = []
@@ -914,7 +914,7 @@ async def allowlist(message: Message, command: CommandObject) -> str:
             replied = message.reply_to_message
             sticker = getattr(replied, "sticker", None) if replied else None
             if sticker is None or not sticker.set_name:
-                await message.reply_text("Reply to a sticker to use `<>`.")
+                await message.reply("Reply to a sticker to use `<>`.")
                 return ""
             value = sticker.set_name
         elif lockable in ("sticker", "emojicustom") and value.startswith(("stickerpack:", "emojipack:")):
@@ -927,11 +927,11 @@ async def allowlist(message: Message, command: CommandObject) -> str:
         added.append(item)
 
     if not added:
-        await message.reply_text("That value could not be read as an item.")
+        await message.reply("That value could not be read as an item.")
         return ""
 
     listed = ", ".join(f"<code>{html.escape(i)}</code>" for i in added)
-    await message.reply_text(
+    await message.reply(
         f"Allowlisted for <code>{lockable}</code>: {listed}",
         parse_mode=ParseMode.HTML,
     )
@@ -954,12 +954,12 @@ async def rmallowlist(message: Message, command: CommandObject) -> str:
     args = command.args.split() if command.args else []
     user = message.from_user
     if not args:
-        await message.reply_text("Give me the type and item to remove.")
+        await message.reply("Give me the type and item to remove.")
         return ""
 
     lockable, values = args[0].lower(), args[1:]
     if lockable not in ALLOWLIST_LOCKABLES:
-        await message.reply_text(
+        await message.reply(
             f"That cannot be allowlisted. Supported: <code>{', '.join(ALLOWLIST_LOCKABLES)}</code>",
             parse_mode=ParseMode.HTML,
         )
@@ -972,7 +972,7 @@ async def rmallowlist(message: Message, command: CommandObject) -> str:
         removed.append(item)
 
     listed = ", ".join(f"<code>{html.escape(i)}</code>" for i in removed)
-    await message.reply_text(
+    await message.reply(
         f"Removed from the <code>{lockable}</code> allowlist: {listed}",
         parse_mode=ParseMode.HTML,
     )
@@ -994,7 +994,7 @@ async def rmallowlistall(message: Message, command: CommandObject) -> str:
 
     sql.rmallow_all(chat_id)
     user = message.from_user
-    await message.reply_text("The allowlist is now empty.")
+    await message.reply("The allowlist is now empty.")
     return (
         f"<b>{html.escape(chat.title)}:</b>\n"
         f"#ALLOWLIST\n"

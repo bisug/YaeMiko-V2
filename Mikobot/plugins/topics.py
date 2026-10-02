@@ -28,7 +28,7 @@ async def _forum_or_reply(message: Message):
     """Return the forum chat, or None after explaining why it cannot be used."""
     chat = message.chat
     if not chat.is_forum:
-        await message.reply_text("That only works in a forum with topics enabled.")
+        await message.reply("That only works in a forum with topics enabled.")
         return None
     return chat
 
@@ -42,16 +42,16 @@ async def new_topic(message: Message, command: CommandObject):
 
     name = command.args.strip() if command.args else ""
     if not name:
-        await message.reply_text("Give the topic a name.")
+        await message.reply("Give the topic a name.")
         return ""
 
     try:
         topic = await bot.create_forum_topic(chat.id, name)
     except TelegramAPIError as exc:
-        await message.reply_text(f"I could not create that topic: {exc.message}")
+        await message.reply(f"I could not create that topic: {exc.message}")
         return ""
 
-    await message.reply_text(
+    await message.reply(
         f"Created topic <b>{html.escape(name)}</b>.",
         parse_mode=ParseMode.HTML,
     )
@@ -73,19 +73,19 @@ async def rename_topic(message: Message, command: CommandObject):
 
     name = command.args.strip() if command.args else ""
     if not name:
-        await message.reply_text("Give the topic a new name.")
+        await message.reply("Give the topic a new name.")
         return ""
     if not message.message_thread_id:
-        await message.reply_text("Run this inside the topic you want to rename.")
+        await message.reply("Run this inside the topic you want to rename.")
         return ""
 
     try:
         await bot.edit_forum_topic(chat.id, message.message_thread_id, name)
     except TelegramAPIError as exc:
-        await message.reply_text(f"I could not rename that topic: {exc.message}")
+        await message.reply(f"I could not rename that topic: {exc.message}")
         return ""
 
-    await message.reply_text(
+    await message.reply(
         f"Renamed this topic to <b>{html.escape(name)}</b>.",
         parse_mode=ParseMode.HTML,
     )
@@ -104,18 +104,18 @@ async def close_topic(message: Message, command: CommandObject):
     if chat is None:
         return ""
     if not message.message_thread_id:
-        await message.reply_text("Run this inside the topic you want to close.")
+        await message.reply("Run this inside the topic you want to close.")
         return ""
 
     try:
         await bot.close_forum_topic(chat.id, message.message_thread_id)
     except TelegramAPIError as exc:
-        await message.reply_text(f"I could not close that topic: {exc.message}")
+        await message.reply(f"I could not close that topic: {exc.message}")
         return ""
 
     # Admins can still post in a closed topic, so say so rather than leaving
     # someone to assume the topic is fully sealed.
-    await message.reply_text(
+    await message.reply(
         "Closed this topic. Admins can still post in it.",
     )
     return (
@@ -133,16 +133,16 @@ async def reopen_topic(message: Message, command: CommandObject):
     if chat is None:
         return ""
     if not message.message_thread_id:
-        await message.reply_text("Run this inside the topic you want to reopen.")
+        await message.reply("Run this inside the topic you want to reopen.")
         return ""
 
     try:
         await bot.reopen_forum_topic(chat.id, message.message_thread_id)
     except TelegramAPIError as exc:
-        await message.reply_text(f"I could not reopen that topic: {exc.message}")
+        await message.reply(f"I could not reopen that topic: {exc.message}")
         return ""
 
-    await message.reply_text("Reopened this topic.")
+    await message.reply("Reopened this topic.")
     return (
         f"<b>{html.escape(chat.title)}:</b>\n"
         f"#REOPENTOPIC\n"
@@ -158,12 +158,12 @@ async def delete_topic(message: Message, command: CommandObject):
     if chat is None:
         return ""
     if not message.message_thread_id:
-        await message.reply_text("Run this inside the topic you want to delete.")
+        await message.reply("Run this inside the topic you want to delete.")
         return ""
 
     # Deleting removes the topic and every message in it, and Telegram cannot
     # undo that, so it is confirmed rather than done on the first request.
-    await message.reply_text(
+    await message.reply(
         "This deletes the topic <b>and every message in it</b>. It cannot be"
         " undone.",
         parse_mode=ParseMode.HTML,
@@ -234,7 +234,7 @@ async def action_topic(message: Message, command: CommandObject):
     args = command.args.split() if command.args else []
     if not args:
         current = await asyncio.to_thread(sql.get_action_topic, chat.id)
-        await message.reply_text(
+        await message.reply(
             "Automated messages go to "
             f"<code>{'General' if not current else current}</code>."
             + (
@@ -248,7 +248,7 @@ async def action_topic(message: Message, command: CommandObject):
 
     if args[0].lower() in ("off", "none", "general"):
         await asyncio.to_thread(sql.remove_action_topic, chat.id)
-        await message.reply_text("Automated messages will go to General.")
+        await message.reply("Automated messages will go to General.")
         return (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#ACTIONTOPIC\n"
@@ -256,7 +256,7 @@ async def action_topic(message: Message, command: CommandObject):
             f"Has reset the action topic to General."
         )
 
-    await message.reply_text(
+    await message.reply(
         "Run `/setactiontopic` inside the topic you want automated messages in.",
     )
     return ""
@@ -269,11 +269,11 @@ async def set_action_topic(message: Message, command: CommandObject):
     if chat is None:
         return ""
     if not message.message_thread_id:
-        await message.reply_text("Run this inside the topic you want to target.")
+        await message.reply("Run this inside the topic you want to target.")
         return ""
 
     await asyncio.to_thread(sql.set_action_topic, chat.id, message.message_thread_id)
-    await message.reply_text(
+    await message.reply(
         f"Automated messages will now go to topic <code>{message.message_thread_id}</code>.",
         parse_mode=ParseMode.HTML,
     )

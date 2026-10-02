@@ -17,7 +17,7 @@ async def _packkang(app, message):
     """
     @MaybeSuraj on telegram. who helped me in making this module.
     """
-    txt = await message.reply_text("Processing....")
+    txt = await message.reply("Processing....")
     if not message.reply_to_message:
         await txt.edit("Reply to message")
         return

@@ -365,7 +365,7 @@ async def gbanlist(message: Message):
     banned_users = sql.get_gban_list()
 
     if not banned_users:
-        await message.reply_text(
+        await message.reply(
             "There aren't any gbanned users! You're kinder than I expected...",
         )
         return
@@ -398,7 +398,7 @@ async def check_and_ban(message: Message, user_id, should_message=True):
             user = sql.get_gbanned_user(user_id)
             if user.reason:
                 text += f"\n<b>Ban Reason:</b> <code>{html.escape(user.reason)}</code>"
-            await message.reply_text(text, parse_mode=ParseMode.HTML)
+            await message.reply(text, parse_mode=ParseMode.HTML)
 
 
 async def enforce_gban(msg: Message):
@@ -438,17 +438,17 @@ async def gbanstat(message: Message, command: CommandObject):
     if len(args) > 0:
         if args[0].lower() in ["on", "yes"]:
             sql.enable_gbans(message.chat.id)
-            await message.reply_text(
+            await message.reply(
                 "Antispam is now enabled ✅ "
                 "I am now protecting your group from potential remote threats!",
             )
         elif args[0].lower() in ["off", "no"]:
             sql.disable_gbans(message.chat.id)
-            await message.reply_text(
+            await message.reply(
                 "I am not now protecting your group from potential remote threats!",
             )
     else:
-        await message.reply_text(
+        await message.reply(
             "Give me some arguments to choose a setting! on/off, yes/no!\n\n"
             "Your current setting is: {}\n"
             "When True, any gbans that happen will also happen in your group. "

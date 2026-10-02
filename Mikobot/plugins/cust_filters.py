@@ -579,7 +579,7 @@ async def rmall_filters(message: Message):
     user = message.from_user
     member = await bot.get_chat_member(chat.id, user.id)
     if member.status != ChatMemberStatus.CREATOR and user.id not in DRAGONS:
-        await message.reply_text(
+        await message.reply(
             "Only the chat owner can clear all notes at once.",
         )
     else:
@@ -594,7 +594,7 @@ async def rmall_filters(message: Message):
                 [InlineKeyboardButton(text="CANCEL", callback_data="filters_cancel", style=ButtonStyle.PRIMARY)],
             ],
         )
-        await message.reply_text(
+        await message.reply(
             f"Are you sure you would like to stop ALL filters in {escape_markdown(chat.title)}? This action cannot be undone.",
             reply_markup=buttons,
             parse_mode=ParseMode.MARKDOWN,

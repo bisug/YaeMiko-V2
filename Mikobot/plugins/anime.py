@@ -449,13 +449,13 @@ def control_user(func):
                 if nut - out < 1.2:
                     USER_WC[user] += 1
                     if USER_WC[user] == 3:
-                        await message.reply_text(
+                        await message.reply(
                             ("Stop spamming bot!!!" + "\nElse you will be blacklisted"),
                         )
                         await clog("Mikobot", f"UserID: {user}", "SPAM")
                     if USER_WC[user] == 5:
                         await IGNORE.insert_one({"_id": user})
-                        await message.reply_text(
+                        await message.reply(
                             (
                                 "You have been exempted from using this bot "
                                 + "now due to spamming 5 times consecutively!!!"
@@ -3118,7 +3118,7 @@ async def anime_cmd(client: Client, message: Message, mdata: dict):
     if find_gc is not None and "anime" in find_gc["cmd_list"].split():
         return
     if len(text) == 1:
-        k = await message.reply_text(
+        k = await message.reply(
             """Please give a query to search about
 
 example: /anime Sword Art Online"""
@@ -3138,7 +3138,7 @@ example: /anime Sword Art Online"""
     if len(result) != 1:
         title_img, finals_ = result[0], result[1]
     else:
-        k = await message.reply_text(result[0])
+        k = await message.reply(result[0])
         await asyncio.sleep(5)
         return await k.delete()
     buttons = get_btns("ANIME", result=result, user=user, auth=auth)
@@ -3178,7 +3178,7 @@ async def manga_cmd(client: Client, message: Message, mdata: dict):
     if find_gc is not None and "manga" in find_gc["cmd_list"].split():
         return
     if len(text) == 1:
-        k = await message.reply_text(
+        k = await message.reply(
             """Please give a query to search about
 
 example: /manga Sword Art Online"""
@@ -3195,7 +3195,7 @@ example: /manga Sword Art Online"""
         qdb, 1, auth=auth, user=auser, cid=gid if gid != user else None
     )
     if len(result) == 1:
-        k = await message.reply_text(result[0])
+        k = await message.reply(result[0])
         await asyncio.sleep(5)
         return await k.delete()
     pic, finals_ = result[0], result[1][0]
@@ -3248,7 +3248,7 @@ async def character_cmd(client: Client, message: Message, mdata: dict):
     if find_gc is not None and "character" in find_gc["cmd_list"].split():
         return
     if len(text) == 1:
-        k = await message.reply_text(
+        k = await message.reply(
             "Please give a query to search about\nexample: /character Luffy"
         )
         await asyncio.sleep(5)
@@ -3261,7 +3261,7 @@ async def character_cmd(client: Client, message: Message, mdata: dict):
         auth = True
     result = await get_character(qdb, 1, auth=auth, user=auser)
     if len(result) == 1:
-        k = await message.reply_text(result[0])
+        k = await message.reply(result[0])
         await asyncio.sleep(5)
         return await k.delete()
     img = result[0]
@@ -3297,7 +3297,7 @@ async def anilist_cmd(client: Client, message: Message, mdata: dict):
     if find_gc is not None and "anilist" in find_gc["cmd_list"].split():
         return
     if len(text) == 1:
-        k = await message.reply_text(
+        k = await message.reply(
             "Please give a query to search about\nexample: /anilist Sword Art Online"
         )
         await asyncio.sleep(5)
@@ -3312,7 +3312,7 @@ async def anilist_cmd(client: Client, message: Message, mdata: dict):
         qdb, 1, auth=auth, user=auser, cid=gid if gid != user else None
     )
     if len(result) == 1:
-        k = await message.reply_text(result[0])
+        k = await message.reply(result[0])
         await asyncio.sleep(5)
         return await k.delete()
     pic, msg = result[0], result[1][0]
@@ -3360,11 +3360,11 @@ async def top_tags_cmd(client: Client, message: Message, mdata: dict):
         user = mdata["sender_chat"]["id"]
     result = await get_top_animes(get_tag, 1, user)
     if len(result) == 1:
-        k = await message.reply_text(result[0])
+        k = await message.reply(result[0])
         await asyncio.sleep(5)
         return await k.delete()
     if await SFW_GRPS.find_one({"id": gid}) and str(result[0][1]) == "True":
-        return await message.reply_text("No nsfw stuff allowed in this group!!!")
+        return await message.reply("No nsfw stuff allowed in this group!!!")
     msg, buttons = result
     await client.send_message(
         gid, msg[0], reply_markup=buttons if buttons != "" else None
@@ -3382,7 +3382,7 @@ async def studio_cmd(client: Client, message: Message, mdata: dict):
     if find_gc is not None and "studio" in find_gc["cmd_list"].split():
         return
     if len(text) == 1:
-        x = await message.reply_text(
+        x = await message.reply(
             "Please give a query to search about!!!\nExample: /studio ufotable"
         )
         await asyncio.sleep(5)
@@ -3406,7 +3406,7 @@ async def studio_cmd(client: Client, message: Message, mdata: dict):
         auth = True
     result = await get_studios(qdb, 1, user=auser, duser=user, auth=auth)
     if len(result) == 1:
-        x = await message.reply_text("No results found!!!")
+        x = await message.reply("No results found!!!")
         await asyncio.sleep(5)
         return await x.delete()
     msg, buttons = result[0], result[1]
@@ -3425,7 +3425,7 @@ async def airing_cmd(client: Client, message: Message, mdata: dict):
     if find_gc is not None and "airing" in find_gc["cmd_list"].split():
         return
     if len(text) == 1:
-        k = await message.reply_text(
+        k = await message.reply(
             """Please give a query to search about
 
 example: /airing Sword Art Online"""
@@ -3450,7 +3450,7 @@ example: /airing Sword Art Online"""
         auth = True
     result = await get_airing(qdb, 1, auth=auth, user=auser)
     if len(result) == 1:
-        k = await message.reply_text(result[0])
+        k = await message.reply(result[0])
         await asyncio.sleep(5)
         return await k.delete()
     coverImg, out = result[0]
@@ -3529,7 +3529,7 @@ async def settings_cmd(client: Client, message: Message, mdata: dict):
         sp = "Subsplease Updates: OFF"
         if await SG.find_one({"_id": cid}):
             sp = "Subsplease Updates: ON"
-        await message.reply_text(
+        await message.reply(
             text=setting_text,
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
@@ -3607,13 +3607,13 @@ async def list_tags_genres_cmd(client, message: Message, mdata: dict):
     ):
         return
     if await SFW_GRPS.find_one({"id": gid}) and "nsfw" in text:
-        return await message.reply_text("No nsfw allowed here!!!")
+        return await message.reply("No nsfw allowed here!!!")
     msg = (
         (await get_all_tags(text))
         if "gettags" in text.split()[0]
         else (await get_all_genres())
     )
-    await message.reply_text(msg)
+    await message.reply(msg)
 
 
 @app.on_callback_query(filters.regex(pattern=r"page_(.*)"))
@@ -4893,7 +4893,7 @@ async def get_watch_order(client: Client, message: Message, mdata: dict):
         return
     x = message.text.split(" ", 1)
     if len(x) == 1:
-        await message.reply_text("Nothing given to search for!!!")
+        await message.reply("Nothing given to search for!!!")
         return
     try:
         user = mdata["from_user"]["id"]
@@ -5002,13 +5002,13 @@ async def fillers_cmd(client: app, message: Message, mdata: dict):
         return
     qry = mdata["text"].split(" ", 1)
     if len(qry) == 1:
-        return await message.reply_text(
+        return await message.reply(
             """Give some anime name to search fillers for
 example: /fillers Detective Conan"""
         )
     k = await search_filler(qry[1])
     if k == {}:
-        await message.reply_text("No fillers found for the given anime...")
+        await message.reply("No fillers found for the given anime...")
         return
     button = []
     list_ = list(k.keys())
@@ -5024,13 +5024,13 @@ example: /fillers Detective Conan"""
         if result.get("ac_ep") is not None:
             msg += "\n\nAnime Canon episodes:\n"
             msg += str(result.get("ac_ep"))
-        await message.reply_text(msg)
+        await message.reply(msg)
         return
     for i in list_:
         fl_js = rand_key()
         FILLERS[fl_js] = [k.get(i), i]
         button.append([InlineKeyboardButton(text=i, callback_data=f"fill_{fl_js}_{user}", style=ButtonStyle.PRIMARY)])
-    await message.reply_text(
+    await message.reply(
         "Pick anime you want to see fillers list for:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=button),
     )

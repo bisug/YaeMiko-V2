@@ -79,7 +79,7 @@ async def nibba_nibbi(_, message):
                 if member.user and not member.user.is_bot:
                     list_of_users.append(member.user.id)
             if len(list_of_users) < 2:
-                return await message.reply_text("Not enough users in the group.")
+                return await message.reply("Not enough users in the group.")
             c1_id, c2_id = random.sample(list_of_users, 2)
             c1_mention = (await _.get_users(c1_id)).mention
             c2_mention = (await _.get_users(c2_id)).mention
@@ -101,7 +101,7 @@ async def nibba_nibbi(_, message):
                 message.chat.id, photo=COUPLES_PIC, caption=couple_selection_message
             )
     except Exception:
-        await message.reply_text("Unable to select a couple right now. Please try again later.")
+        await message.reply("Unable to select a couple right now. Please try again later.")
 
 
 # <=================================================== HELP ====================================================>

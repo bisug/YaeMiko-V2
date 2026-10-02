@@ -282,9 +282,10 @@ async def on_join(message: Message) -> str:
 async def _button_prompt(message, member, settings) -> None:
     """Button mode: solved in the chat with one press."""
     try:
-        await message.reply_html(
+        await message.reply(
             f"{mention_html(member.id, member.first_name)}\n"
             f"You have been muted until you confirm you are human.",
+            parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
@@ -308,9 +309,10 @@ async def _private_prompt(message, member, settings) -> None:
     """
     _store_challenge(message.chat.id, member.id, "", settings["mode"])
     try:
-        await message.reply_html(
+        await message.reply(
             f"{mention_html(member.id, member.first_name)}\n"
             f"I have sent you a private message to prove you are human.",
+            parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
@@ -560,7 +562,7 @@ async def math_answer(message: Message) -> str:
 
     if text == entry["answer"]:
         await _pass(*match, approve=True)
-        await message.reply_text("Correct, you're verified.")
+        await message.reply("Correct, you're verified.")
     else:
         await _fail(*match, message)
     return ""
@@ -575,7 +577,7 @@ async def captcha(message: Message, command: CommandObject) -> str:
 
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, chat.id)
-        await message.reply_text(
+        await message.reply(
             f"CAPTCHA is <b>{'on' if settings['enabled'] else 'off'}</b>\n"
             f"Mode: <code>{html.escape(settings['mode'])}</code>\n"
             f"Button text: <code>{html.escape(settings['button_text'])}</code>\n"
@@ -588,7 +590,7 @@ async def captcha(message: Message, command: CommandObject) -> str:
 
     value = args[0].lower()
     if value not in ("on", "off", "yes", "no", "true", "false", "1", "0"):
-        await message.reply_text("Use `on` or `off`.")
+        await message.reply("Use `on` or `off`.")
         return ""
 
     enabled = value in ("on", "yes", "true", "1")
@@ -598,14 +600,14 @@ async def captcha(message: Message, command: CommandObject) -> str:
         # the user would be muted with no way out.
         welcomes = await asyncio.to_thread(welcome_sql.get_welcome_pref, chat.id)
         if not welcomes:
-            await message.reply_text(
+            await message.reply(
                 "Enable welcome messages first, or there is nowhere to show"
                 " the CAPTCHA."
             )
             return ""
 
     await asyncio.to_thread(sql.set_enabled, chat.id, enabled)
-    await message.reply_text(
+    await message.reply(
         f"CAPTCHA is now <b>{'on' if enabled else 'off'}</b>.",
         parse_mode=ParseMode.HTML,
     )
@@ -633,7 +635,7 @@ async def captcha_mode(message: Message, command: CommandObject):
     args = command.args.split() if command.args else []
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, message.chat.id)
-        await message.reply_text(
+        await message.reply(
             f"CAPTCHA mode is <code>{html.escape(settings['mode'])}</code>."
             f" Options: <code>{', '.join(sql.MODES)}</code>",
             parse_mode=ParseMode.HTML,
@@ -642,14 +644,14 @@ async def captcha_mode(message: Message, command: CommandObject):
 
     wanted = args[0].lower()
     if wanted not in sql.MODES:
-        await message.reply_text(
+        await message.reply(
             f"Use one of: <code>{', '.join(sql.MODES)}</code>.",
             parse_mode=ParseMode.HTML,
         )
         return ""
 
     await asyncio.to_thread(sql.set_mode, message.chat.id, wanted)
-    await message.reply_text(
+    await message.reply(
         f"CAPTCHA mode is now <code>{wanted}</code>.", parse_mode=ParseMode.HTML
     )
 
@@ -661,7 +663,7 @@ async def captcha_buttons(message: Message, command: CommandObject):
     text = args.strip()
     if not text:
         settings = await asyncio.to_thread(sql.get_settings, message.chat.id)
-        await message.reply_text(
+        await message.reply(
             f"Button text is <code>{html.escape(settings['button_text'])}</code>."
         )
         return ""
@@ -669,7 +671,7 @@ async def captcha_buttons(message: Message, command: CommandObject):
     # The label sits inside an InlineKeyboardButton, which renders no markup,
     # so only plain text is accepted.
     await asyncio.to_thread(sql.set_button_text, message.chat.id, text)
-    await message.reply_text("Button text updated.")
+    await message.reply("Button text updated.")
 
 
 @check_admin(permission="can_restrict_members", is_both=True)
@@ -678,7 +680,7 @@ async def captcha_reset_text(message: Message, command: CommandObject):
     await asyncio.to_thread(
         sql.set_button_text, message.chat.id, sql.DEF_BUTTON_TEXT
     )
-    await message.reply_text(f"Button text reset to <code>{html.escape(sql.DEF_BUTTON_TEXT)}</code>.", parse_mode=ParseMode.HTML)
+    await message.reply(f"Button text reset to <code>{html.escape(sql.DEF_BUTTON_TEXT)}</code>.", parse_mode=ParseMode.HTML)
 
 
 @check_admin(permission="can_restrict_members", is_both=True)
@@ -688,7 +690,7 @@ async def captcha_kick(message: Message, command: CommandObject):
     chat = message.chat
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, chat.id)
-        await message.reply_text(
+        await message.reply(
             f"CAPTCHA kicks are <b>{'on' if settings['kick_enabled'] else 'off'}</b>."
             f"\nTime: <code>{_fmt(settings['kick_time'])}</code>",
             parse_mode=ParseMode.HTML,
@@ -698,12 +700,12 @@ async def captcha_kick(message: Message, command: CommandObject):
     value = args[0].lower()
     if value in ("on", "yes", "true", "1"):
         await asyncio.to_thread(sql.set_kick_enabled, chat.id, True)
-        await message.reply_text("Unsolved members will be kicked.")
+        await message.reply("Unsolved members will be kicked.")
     elif value in ("off", "no", "false", "0"):
         await asyncio.to_thread(sql.set_kick_enabled, chat.id, False)
-        await message.reply_text("CAPTCHA kicks are off.")
+        await message.reply("CAPTCHA kicks are off.")
     else:
-        await message.reply_text("Use `on` or `off`.")
+        await message.reply("Use `on` or `off`.")
 
 
 @check_admin(permission="can_restrict_members", is_both=True)
@@ -713,7 +715,7 @@ async def captcha_kick_time(message: Message, command: CommandObject):
     chat = message.chat
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, chat.id)
-        await message.reply_text(
+        await message.reply(
             f"Kick time is <code>{_fmt(settings['kick_time'])}</code>.",
             parse_mode=ParseMode.HTML,
         )
@@ -726,13 +728,13 @@ async def captcha_kick_time(message: Message, command: CommandObject):
     # Documented bounds: too short kicks almost everyone, too long fills the
     # member list with muted accounts.
     if not sql.MIN_KICK_TIME <= seconds <= sql.MAX_KICK_TIME:
-        await message.reply_text(
+        await message.reply(
             "That has to be between <code>5m</code> and <code>1d</code>.",
             parse_mode=ParseMode.HTML,
         )
         return ""
     await asyncio.to_thread(sql.set_kick_time, chat.id, seconds)
-    await message.reply_text(
+    await message.reply(
         f"Unsolved members are now kicked after <code>{_fmt(seconds)}</code>.",
         parse_mode=ParseMode.HTML,
     )
@@ -745,7 +747,7 @@ async def captcha_rules(message: Message, command: CommandObject):
     chat = message.chat
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, chat.id)
-        await message.reply_text(
+        await message.reply(
             f"Showing rules in the CAPTCHA is <b>{'on' if settings['show_rules'] else 'off'}</b>.",
             parse_mode=ParseMode.HTML,
         )
@@ -753,12 +755,12 @@ async def captcha_rules(message: Message, command: CommandObject):
     value = args[0].lower()
     if value in ("on", "yes", "true", "1"):
         await asyncio.to_thread(sql.set_show_rules, chat.id, True)
-        await message.reply_text("Rules will be shown as part of the CAPTCHA.")
+        await message.reply("Rules will be shown as part of the CAPTCHA.")
     elif value in ("off", "no", "false", "0"):
         await asyncio.to_thread(sql.set_show_rules, chat.id, False)
-        await message.reply_text("Rules will not be shown in the CAPTCHA.")
+        await message.reply("Rules will not be shown in the CAPTCHA.")
     else:
-        await message.reply_text("Use `on` or `off`.")
+        await message.reply("Use `on` or `off`.")
 
 
 @check_admin(permission="can_restrict_members", is_both=True)
@@ -768,7 +770,7 @@ async def captcha_mute_time(message: Message, command: CommandObject):
     chat = message.chat
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, chat.id)
-        await message.reply_text(
+        await message.reply(
             f"Auto-unmute after <code>{_fmt(settings['mute_time'])}</code>."
             + (
                 "\n<i>Careful: this unmutes people who never proved anything.</i>"
@@ -781,7 +783,7 @@ async def captcha_mute_time(message: Message, command: CommandObject):
 
     if args[0].lower() == "off":
         await asyncio.to_thread(sql.set_mute_time, chat.id, 0)
-        await message.reply_text("Members now stay muted until they solve it.")
+        await message.reply("Members now stay muted until they solve it.")
         return ""
 
     expiry = await extract_time(message, args[0])
@@ -789,7 +791,7 @@ async def captcha_mute_time(message: Message, command: CommandObject):
         return ""
     seconds = expiry - int(time.time())
     await asyncio.to_thread(sql.set_mute_time, chat.id, seconds)
-    await message.reply_text(
+    await message.reply(
         f"Members are now unmuted automatically after <code>{_fmt(seconds)}</code>.",
         parse_mode=ParseMode.HTML,
     )
@@ -802,16 +804,16 @@ async def captcha_reset(message: Message, command: CommandObject):
     args = command.args.split() if command.args else []
     chat = message.chat
     if not args:
-        await message.reply_text("Reply to someone with `/resetcaptcha` to make them redo it.")
+        await message.reply("Reply to someone with `/resetcaptcha` to make them redo it.")
         return ""
 
     if not args[0].isdigit():
-        await message.reply_text("Give me a user id.")
+        await message.reply("Give me a user id.")
         return ""
 
     user_id = int(args[0])
     await asyncio.to_thread(sql.reset_solved, chat.id, user_id)
-    await message.reply_text(
+    await message.reply(
         f"{mention_html(user_id, 'That user')} will be asked to solve the CAPTCHA again."
     )
 

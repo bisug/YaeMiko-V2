@@ -55,7 +55,7 @@ async def send_rules(message, chat_id, from_pm=False):
             "This probably doesn't mean it's lawless though...!",
         )
     elif rules and reply_msg and not reply_msg.forum_topic_created:
-        await reply_msg.reply_text(
+        await reply_msg.reply(
             "Please click the button below to see the rules.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[

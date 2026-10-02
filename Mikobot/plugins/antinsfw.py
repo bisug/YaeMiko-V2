@@ -121,7 +121,7 @@ async def detect_nsfw(_, message):
         try:
             result = await _scan(file)
         except Exception as error:
-            await message.reply_text(f"NSFW scan failed: {error}")
+            await message.reply(f"NSFW scan failed: {error}")
             return
     if result.nsfw < NSFW_THRESHOLD:
         return
@@ -131,7 +131,7 @@ async def detect_nsfw(_, message):
         await message.delete()
     except Exception:
         return
-    await message.reply_text(
+    await message.reply(
         f"""
 **🔞 NSFW Image Detected & Deleted Successfully!**
 
@@ -146,7 +146,7 @@ async def detect_nsfw(_, message):
 @capture_err
 async def nsfw_scan_command(_, message):
     if not message.reply_to_message:
-        await message.reply_text(
+        await message.reply(
             "Reply to an image/document/sticker/animation to scan it."
         )
         return
@@ -159,11 +159,11 @@ async def nsfw_scan_command(_, message):
         and not reply.video
         and not reply.video_note
     ):
-        await message.reply_text(
+        await message.reply(
             "Reply to an image/document/sticker/animation to scan it."
         )
         return
-    m = await message.reply_text("Scanning")
+    m = await message.reply("Scanning")
     if not get_media_from_message(reply)[0]:
         return await m.edit("Something wrong happened.")
     with tempfile.TemporaryDirectory(prefix="yae-nsfw-") as temp_dir:
@@ -187,27 +187,27 @@ async def nsfw_scan_command(_, message):
 @can_restrict
 async def nsfw_enable_disable(_, message):
     if len(message.command) != 2:
-        await message.reply_text("Usage: /antinsfw [on/off]")
+        await message.reply("Usage: /antinsfw [on/off]")
         return
     status = message.text.split(None, 1)[1].strip()
     status = status.lower()
     chat_id = message.chat.id
     if status in ("on", "yes"):
         if await is_nsfw_on(chat_id):
-            await message.reply_text("Antinsfw is already enabled.")
+            await message.reply("Antinsfw is already enabled.")
             return
         await nsfw_on(chat_id)
-        await message.reply_text(
+        await message.reply(
             "Enabled AntiNSFW System. I will Delete Messages Containing Inappropriate Content."
         )
     elif status in ("off", "no"):
         if not await is_nsfw_on(chat_id):
-            await message.reply_text("Antinsfw is already disabled.")
+            await message.reply("Antinsfw is already disabled.")
             return
         await nsfw_off(chat_id)
-        await message.reply_text("Disabled AntiNSFW System.")
+        await message.reply("Disabled AntiNSFW System.")
     else:
-        await message.reply_text("Unknown Suffix, Use /antinsfw [on/off]")
+        await message.reply("Unknown Suffix, Use /antinsfw [on/off]")
 
 
 # <=================================================== HELP ====================================================>

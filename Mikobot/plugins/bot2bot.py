@@ -43,7 +43,7 @@ async def bot2bot(message: Message, command: CommandObject) -> str:
 
     if not args:
         mode, skip, allowed = sql.get_setting(chat.id)
-        await message.reply_text(
+        await message.reply(
             f"Bot-to-bot is <b>{html.escape(mode)}</b>."
             f"\nCommand review: <b>{'off' if skip else 'on'}</b>."
             + (
@@ -57,14 +57,14 @@ async def bot2bot(message: Message, command: CommandObject) -> str:
 
     wanted = args[0].lower()
     if wanted not in sql.MODES:
-        await message.reply_text(
+        await message.reply(
             f"Use one of <code>{', '.join(sql.MODES)}</code>.",
             parse_mode=ParseMode.HTML,
         )
         return ""
 
     sql.set_mode(chat.id, wanted)
-    await message.reply_text(
+    await message.reply(
         f"Bot-to-bot is now <b>{html.escape(wanted)}</b>.",
         parse_mode=ParseMode.HTML,
     )
@@ -85,7 +85,7 @@ async def bot2bot_skip_review(message: Message, command: CommandObject) -> str:
 
     if not args:
         _mode, skip, _allowed = sql.get_setting(chat.id)
-        await message.reply_text(
+        await message.reply(
             f"Command review for bot commands is <b>{'off' if skip else 'on'}</b>.",
             parse_mode=ParseMode.HTML,
         )
@@ -97,11 +97,11 @@ async def bot2bot_skip_review(message: Message, command: CommandObject) -> str:
     elif value in ("off", "no", "false", "0"):
         enabled = False
     else:
-        await message.reply_text("Please enter `on` or `off`.")
+        await message.reply("Please enter `on` or `off`.")
         return ""
 
     sql.set_skip_review(chat.id, enabled)
-    await message.reply_text(
+    await message.reply(
         f"Command review for bot commands is now <b>{'off' if enabled else 'on'}</b>.",
         parse_mode=ParseMode.HTML,
     )
@@ -133,7 +133,7 @@ async def request_review(bot_user, chat, message) -> bool:
     PENDING[key] = {"bot_id": bot_user.id, "text": text}
 
     try:
-        await message.reply_text(
+        await message.reply(
             f"<b>Bot command needs approval</b>\n"
             f"<b>From:</b> {mention_html(bot_user.id, bot_user.first_name)}\n"
             f"<b>Command:</b> <code>{html.escape(text[:200])}</code>",

@@ -48,7 +48,7 @@ async def _id(client, message):
             text += f"**๏ [{user_mention}](tg://user?id={user_id})** » `{user_id}`\n"
 
         except Exception:
-            return await message.reply_text("**🪄 ᴛʜɪs ᴜsᴇʀ ᴅᴏᴇsɴ'ᴛ ᴇxɪsᴛ.**")
+            return await message.reply("**🪄 ᴛʜɪs ᴜsᴇʀ ᴅᴏᴇsɴ'ᴛ ᴇxɪsᴛ.**")
 
     text += f"**๏ [ᴄʜᴀᴛ ɪᴅ ](https://t.me/{chat.username})** » `{chat.id}`\n\n"
 
@@ -71,7 +71,7 @@ async def _id(client, message):
         "CAACAgIAAx0EdppwYAABAgotZg5rBL4P05Xjmy80p7DdNdneDmUAAnccAALIWZhJPyYLf3FzPHs0BA"
     )
     await message.reply_sticker(sticker=sticker_id)
-    await message.reply_text(text, link_preview_options=LinkPreviewOptions(is_disabled=True))
+    await message.reply(text, link_preview_options=LinkPreviewOptions(is_disabled=True))
 
 
 # Function to handle the "logs" command
@@ -117,7 +117,7 @@ async def close_callback(query: CallbackQuery):
 async def ping(_, m: Message):
     LOGGER.info(f"{m.from_user.id} used ping cmd in {m.chat.id}")
     start = time()
-    replymsg = await m.reply_text(text="Pinging...")
+    replymsg = await m.reply(text="Pinging...")
     delta_ping = time() - start
 
     up = strftime("%Hh %Mm %Ss", gmtime(time() - UPTIME))

@@ -57,7 +57,7 @@ async def broadcast_cmd(client: Client, message):  # kurigram handler
     user_id = message.from_user.id
 
     if user_id not in [OWNER_ID] + DEV_USERS:
-        await message.reply_text(
+        await message.reply(
             "You are not authorized to use this command. Only the owner and authorized users can use it."
         )
         return
@@ -66,7 +66,7 @@ async def broadcast_cmd(client: Client, message):  # kurigram handler
         message.text, has_reply=message.reply_to_message is not None
     )
     if not targets:
-        return await message.reply_text(
+        return await message.reply(
             "<b>GLOBALCASTING COMMANDS</b>\n"
             "-user : broadcast to users\n"
             "-group : broadcast to groups\n"
@@ -75,11 +75,11 @@ async def broadcast_cmd(client: Client, message):  # kurigram handler
             "<code>/gcast -all</code>"
         )
     if content is None:
-        return await message.reply_text(
+        return await message.reply(
             "<b>Please provide a message or reply to a message</b>"
         )
 
-    tex = await message.reply_text("<code>Starting global broadcast...</code>")
+    tex = await message.reply("<code>Starting global broadcast...</code>")
 
     usersss = 0
     chatttt = 0

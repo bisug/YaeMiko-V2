@@ -2153,7 +2153,8 @@ class ExtractTimeTests(unittest.TestCase):
         replies = []
 
         class _Message:
-            async def reply_text(self, text, *args, **kwargs):
+            # Named after the real method: extract_time calls message.reply().
+            async def reply(self, text, *args, **kwargs):
                 replies.append(text)
 
         return _Message(), replies
@@ -4619,10 +4620,6 @@ class ExceptionHandlingTests(unittest.TestCase):
         self.assertIn("_report_kick_outcome", source)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class CallbackEditMethodTests(unittest.TestCase):
     """`CallbackQuery.edit_message_text` does not exist.
 
@@ -4732,6 +4729,139 @@ class CallbackEditMethodTests(unittest.TestCase):
         self.assertIn("github.com/bisug/YaeMiko-V2", seen["text"])
         self.assertIn("parse_mode", seen["kwargs"])
         self.assertIn("reply_markup", seen["kwargs"])
+
+
+class AiogramMethodNameTests(unittest.TestCase):
+    """PTB method names that aiogram does not define.
+
+    `reply_html`, `reply_markdown`, `edit_html` and `edit_message_text` are
+    python-telegram-bot idioms carried over during the port. Calling one raises
+    AttributeError from pydantic before any request is made, so the feature is
+    dead and only the log shows it.
+    """
+
+    PTB_ONLY = ("reply_html", "reply_markdown", "edit_html", "edit_markdown",
+                "edit_message_text", "reply_text")
+
+    def test_the_premise_holds(self):
+        """If a future aiogram adds these, these shims can be revisited."""
+        from aiogram.types import CallbackQuery, Message
+
+        for name in ("reply_html", "reply_markdown", "edit_message_text", "reply_text"):
+            with self.subTest(method=name):
+                self.assertFalse(hasattr(Message, name))
+                self.assertFalse(hasattr(CallbackQuery, name))
+
+    def test_the_replacement_methods_exist(self):
+        from aiogram.types import CallbackQuery, Message
+
+        for name in ("reply", "answer", "edit_text", "edit_reply_markup"):
+            with self.subTest(method=name):
+                self.assertTrue(hasattr(Message, name), f"Message.{name} is missing")
+        self.assertTrue(hasattr(CallbackQuery, "answer"))
+
+    def test_no_reply_html_remains_anywhere(self):
+        """The method from the production traceback."""
+        offenders = []
+        for path in (ROOT / "Mikobot").rglob("*.py"):
+            if "__pycache__" in path.parts:
+                continue
+            for number, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
+                stripped = line.strip()
+                if stripped.startswith("#"):
+                    continue
+                if ".reply_html(" in stripped or ".reply_markdown(" in stripped:
+                    offenders.append(f"{path.relative_to(ROOT)}:{number}: {stripped[:90]}")
+        self.assertEqual(offenders, [], "\n".join(offenders[:20]))
+
+    def test_no_reply_text_remains_anywhere(self):
+        """aiogram spells this `reply`; Pyrogram spells it `reply_text`.
+
+        The two signatures are compatible supersets of each other, so the repo
+        standardises on `reply` and neither framework breaks.
+        """
+        offenders = []
+        for path in (ROOT / "Mikobot").rglob("*.py"):
+            if "__pycache__" in path.parts:
+                continue
+            for number, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
+                stripped = line.strip()
+                if stripped.startswith("#"):
+                    continue
+                if ".reply_text(" in stripped:
+                    offenders.append(f"{path.relative_to(ROOT)}:{number}: {stripped[:90]}")
+        self.assertEqual(offenders, [], "\n".join(offenders[:20]))
+
+    def test_both_frameworks_accept_reply(self):
+        """The rename is only safe because both libraries define `reply`."""
+        from aiogram.types import Message
+        from pyrogram.types import Message as PyrogramMessage
+
+        self.assertTrue(hasattr(Message, "reply"))
+        # Pyrogram also spells it reply_text, but aiogram does not, which is the
+        # whole reason the repo standardises on `reply`.
+        self.assertTrue(hasattr(PyrogramMessage, "reply"))
+        self.assertTrue(hasattr(PyrogramMessage, "reply_text"))
+
+    def test_reply_accepts_every_keyword_the_old_calls_used(self):
+        """A pure rename only works if reply() is a superset of reply_text()."""
+        import inspect
+
+        from aiogram.types import Message
+
+        reply = set(inspect.signature(Message.reply).parameters)
+        self.assertLessEqual(
+            {"text", "parse_mode", "reply_markup", "link_preview_options"}, reply
+        )
+
+    def test_genshin_uses_reply_with_parse_mode(self):
+        """The exact path from the production traceback."""
+        source = (ROOT / "Mikobot" / "plugins" / "genshin.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("message.reply_html(", source)
+        self.assertIn("message.reply(", source)
+        self.assertIn("parse_mode=ParseMode.HTML", source)
+
+    def test_genshin_lookup_survives_a_no_argument_invocation(self):
+        """`/gchar` with no args must reach reply() and not raise."""
+        import asyncio
+        import logging
+        from types import SimpleNamespace
+
+        source = "import logging\n" + (
+            ROOT / "Mikobot" / "plugins" / "genshin.py"
+        ).read_text(encoding="utf-8")
+        source = source.replace("from Mikobot import bot, dp", "bot = object()\ndp = object()")
+        source = source.replace("from Mikobot.state import state", "state = object()")
+        source = "\n".join(
+            line
+            for line in source.split("\n")
+            if not line.startswith("dp.message.register")
+            and not line.startswith("dp.callback_query.register")
+        )
+        namespace = {"logging": logging}
+        exec(compile(source, "genshin.py", "exec"), namespace)
+
+        sent = []
+
+        class FakeMessage:
+            chat = SimpleNamespace(id=1, is_forum=False)
+            message_thread_id = None
+
+            async def reply(self, text, **kwargs):
+                sent.append((text, kwargs))
+                return self
+
+        asyncio.run(
+            namespace["_lookup"](FakeMessage(), SimpleNamespace(args=""), "characters")
+        )
+        self.assertEqual(len(sent), 1)
+        text, kwargs = sent[0]
+        self.assertIn("Give me a name", text)
+        from aiogram.enums import ParseMode
+
+        self.assertEqual(kwargs.get("parse_mode"), ParseMode.HTML)
 
 
 if __name__ == "__main__":

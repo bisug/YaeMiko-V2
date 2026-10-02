@@ -643,7 +643,7 @@ async def new_member(message: Message, command: CommandObject):
                     new_join_mem = '<a href="tg://user?id={}">{}</a>'.format(
                         user.id, html.escape(new_mem.first_name)
                     )
-                    message = await msg.reply_text(
+                    message = await msg.reply(
                         "{}\nYou have 120 seconds to prove you're human.".format(
                             new_join_mem
                         ),
@@ -1009,13 +1009,13 @@ async def set_welcome(message: Message, command: CommandObject):
     text, data_type, content, buttons = get_welcome_type(msg)
 
     if data_type is None:
-        await msg.reply_text("You didn't specify what to reply with!")
+        await msg.reply("You didn't specify what to reply with!")
         return ""
 
     await asyncio.to_thread(
         sql.set_custom_welcome, chat.id, content, text, data_type, buttons
     )
-    await msg.reply_text("Successfully set custom welcome message!")
+    await msg.reply("Successfully set custom welcome message!")
 
     return (
         f"<b>{html.escape(chat.title)}:</b>\n"
@@ -1059,13 +1059,13 @@ async def set_goodbye(message: Message, command: CommandObject):
     text, data_type, content, buttons = get_welcome_type(msg)
 
     if data_type is None:
-        await msg.reply_text("You didn't specify what to reply with!")
+        await msg.reply("You didn't specify what to reply with!")
         return ""
 
     await asyncio.to_thread(
         sql.set_custom_gdbye, chat.id, content or text, data_type, buttons
     )
-    await msg.reply_text("Successfully set custom goodbye message!")
+    await msg.reply("Successfully set custom goodbye message!")
     return (
         f"<b>{html.escape(chat.title)}:</b>\n"
         f"#SET_GOODBYE\n"
@@ -1108,7 +1108,7 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
             await asyncio.to_thread(
                 sql.set_welcome_mutes, chat.id, False
             )
-            await msg.reply_text("I will no longer mute people on joining!")
+            await msg.reply("I will no longer mute people on joining!")
             return (
                 f"<b>{html.escape(chat.title)}:</b>\n"
                 f"#WELCOME_MUTE\n"
@@ -1119,7 +1119,7 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
             await asyncio.to_thread(
                 sql.set_welcome_mutes, chat.id, "soft"
             )
-            await msg.reply_text(
+            await msg.reply(
                 "I will restrict users permission to send media for 24 hours.",
             )
             return (
@@ -1132,7 +1132,7 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
             await asyncio.to_thread(
                 sql.set_welcome_mutes, chat.id, "strong"
             )
-            await msg.reply_text(
+            await msg.reply(
                 "I will now mute people when they join until they prove they're not a bot. They will have 120 seconds before they get kicked.",
             )
             return (
@@ -1142,7 +1142,7 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
                 f"Has toggled welcome mute to <b>strong</b>."
             )
         else:
-            await msg.reply_text(
+            await msg.reply(
                 "Please enter <code>off</code>/<code>no</code>/<code>soft</code>/<code>strong</code>!",
                 parse_mode=ParseMode.HTML,
             )
@@ -1153,7 +1153,7 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
             "Give me a setting!\nChoose one out of: <code>off</code>/<code>no</code> or <code>soft</code> or <code>strong</code> only! \n"
             f"Current setting: <code>{curr_setting}</code>"
         )
-        await msg.reply_text(reply, parse_mode=ParseMode.HTML)
+        await msg.reply(reply, parse_mode=ParseMode.HTML)
         return ""
 
 

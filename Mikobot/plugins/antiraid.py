@@ -43,7 +43,7 @@ async def _resolve(message: Message, command: CommandObject):
     if conn:
         return await bot.get_chat(conn), conn
     if message.chat.type == ChatType.PRIVATE:
-        await message.reply_text("This command is meant to be used in a group.")
+        await message.reply("This command is meant to be used in a group.")
         return None, None
     return message.chat, message.chat.id
 
@@ -63,7 +63,7 @@ async def antiraid(message: Message, command: CommandObject) -> str:
         active, raid_time, action_time, auto = await asyncio.to_thread(
             sql.get_raid_setting, chat_id
         )
-        await message.reply_text(
+        await message.reply(
             f"<b>AntiRaid is currently {'enabled' if active else 'disabled'}.</b>\n\n"
             f"Raid duration: <code>{format_duration(raid_time)}</code>"
             f"\nBan duration: <code>{format_duration(action_time)}</code>"
@@ -86,7 +86,7 @@ async def antiraid(message: Message, command: CommandObject) -> str:
     if args[0].lower() in OFF_WORDS:
         await asyncio.to_thread(sql.rem_raid, chat_id)
         await asyncio.to_thread(sql.clear_joins, chat_id)
-        await message.reply_text("Disabled AntiRaid. New joins are no longer banned.")
+        await message.reply("Disabled AntiRaid. New joins are no longer banned.")
         return (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#ANTIRAID\n"
@@ -105,7 +105,7 @@ async def antiraid(message: Message, command: CommandObject) -> str:
     await asyncio.to_thread(sql.set_raid, chat_id, duration)
     _active, raid_time, *_ = await asyncio.to_thread(sql.get_raid_setting, chat_id)
     shown = format_duration(duration or raid_time)
-    await message.reply_text(
+    await message.reply(
         f"Enabled AntiRaid for <code>{shown}</code>. New members will be banned on join.",
         parse_mode=ParseMode.HTML,
     )
@@ -132,7 +132,7 @@ async def raidtime(message: Message, command: CommandObject) -> str:
         _active, raid_time, *_ = await asyncio.to_thread(
             sql.get_raid_setting, chat_id
         )
-        await message.reply_text(
+        await message.reply(
             f"AntiRaid stays enabled for <code>{format_duration(raid_time)}</code>.",
             parse_mode=ParseMode.HTML,
         )
@@ -143,7 +143,7 @@ async def raidtime(message: Message, command: CommandObject) -> str:
         return ""
     shown = format_duration(expiry - int(time.time()))
     await asyncio.to_thread(sql.set_raid_time, chat_id, expiry - int(time.time()))
-    await message.reply_text(
+    await message.reply(
         f"AntiRaid will now stay enabled for <code>{shown}</code>.",
         parse_mode=ParseMode.HTML,
     )
@@ -170,7 +170,7 @@ async def raidactiontime(message: Message, command: CommandObject) -> str:
         _active, _raid_time, action_time, _auto = await asyncio.to_thread(
             sql.get_raid_setting, chat_id
         )
-        await message.reply_text(
+        await message.reply(
             f"Raiders are banned for <code>{format_duration(action_time)}</code>.",
             parse_mode=ParseMode.HTML,
         )
@@ -181,7 +181,7 @@ async def raidactiontime(message: Message, command: CommandObject) -> str:
         return ""
     shown = format_duration(expiry - int(time.time()))
     await asyncio.to_thread(sql.set_action_time, chat_id, expiry - int(time.time()))
-    await message.reply_text(
+    await message.reply(
         f"Raiders will now be banned for <code>{shown}</code>.",
         parse_mode=ParseMode.HTML,
     )
@@ -208,7 +208,7 @@ async def autoantiraid(message: Message, command: CommandObject) -> str:
         _active, _raid_time, _action_time, auto = await asyncio.to_thread(
             sql.get_raid_setting, chat_id
         )
-        await message.reply_text(
+        await message.reply(
             f"Auto AntiRaid is <code>{f'{auto} joins/min' if auto else 'off'}</code>.",
             parse_mode=ParseMode.HTML,
         )
@@ -216,7 +216,7 @@ async def autoantiraid(message: Message, command: CommandObject) -> str:
 
     if args[0].lower() in OFF_WORDS:
         await asyncio.to_thread(sql.set_auto_antiraid, chat_id, 0)
-        await message.reply_text("Disabled automatic AntiRaid.")
+        await message.reply("Disabled automatic AntiRaid.")
         return (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#ANTIRAID\n"
@@ -225,7 +225,7 @@ async def autoantiraid(message: Message, command: CommandObject) -> str:
         )
 
     if not args[0].isdigit():
-        await message.reply_text(
+        await message.reply(
             "Give me a number of joins per minute, or `off`.",
             parse_mode=ParseMode.HTML,
         )
@@ -234,7 +234,7 @@ async def autoantiraid(message: Message, command: CommandObject) -> str:
     threshold = int(args[0])
     await asyncio.to_thread(sql.set_auto_antiraid, chat_id, threshold)
     await asyncio.to_thread(sql.clear_joins, chat_id)
-    await message.reply_text(
+    await message.reply(
         f"AntiRaid will enable itself when more than <code>{threshold}</code>"
         f" users join within a minute.",
         parse_mode=ParseMode.HTML,
@@ -272,7 +272,7 @@ async def _raid_join(message: Message) -> str:
         if not active and joins > auto:
             await asyncio.to_thread(sql.set_raid, chat.id)
             active = True
-            await message.reply_text(
+            await message.reply(
                 f"\u26a0\ufe0f {joins} users joined in under a minute."
                 f" AntiRaid has been <b>enabled</b>.",
                 parse_mode=ParseMode.HTML,
@@ -299,9 +299,10 @@ async def _raid_join(message: Message) -> str:
         return ""
 
     shown = format_duration(action_time)
-    await message.reply_html(
+    await message.reply(
         f"\U0001f512 <b>AntiRaid:</b> {mention_html(new_user.id, new_user.first_name)}"
-        f" was banned for {shown} while AntiRaid is active."
+        f" was banned for {shown} while AntiRaid is active.",
+        parse_mode=ParseMode.HTML,
     )
     return (
         f"<b>{html.escape(chat.title)}:</b>\n"

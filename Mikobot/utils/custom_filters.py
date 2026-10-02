@@ -119,7 +119,7 @@ async def bot_admin_check_func(_, __, m: Message or CallbackQuery):
     if BOT_ID in admin_group:
         return True
 
-    await m.reply_text(
+    await m.reply(
         "I am not an admin to receive updates in this group; Mind Promoting?",
     )
 
@@ -155,7 +155,7 @@ async def admin_check_func(_, __, m: Message or CallbackQuery):
     if m.from_user.id in admin_group:
         return True
 
-    await m.reply_text(text="You cannot use an admin command!")
+    await m.reply(text="You cannot use an admin command!")
 
     return False
 
@@ -181,7 +181,7 @@ async def owner_check_func(_, __, m: Message or CallbackQuery):
             msg = "You're an admin only, stay in your limits!"
         else:
             msg = "Do you think that you can execute owner commands?"
-        await m.reply_text(msg)
+        await m.reply(msg)
 
     return status
 
@@ -207,7 +207,7 @@ async def restrict_check_func(_, __, m: Message or CallbackQuery):
         status = True
     else:
         status = False
-        await m.reply_text(text="You don't have permissions to restrict members!")
+        await m.reply(text="You don't have permissions to restrict members!")
 
     return status
 
@@ -232,7 +232,7 @@ async def promote_check_func(_, __, m: Message or CallbackQuery):
         status = True
     else:
         status = False
-        await m.reply_text(text="You don't have permission to promote members!")
+        await m.reply(text="You don't have permission to promote members!")
 
     return status
 
@@ -243,7 +243,7 @@ async def changeinfo_check_func(_, __, m):
         m = m.message
 
     if m.chat.type not in [ChatType.SUPERGROUP, ChatType.GROUP]:
-        await m.reply_text("This command is made to be used in groups not in pm!")
+        await m.reply("This command is made to be used in groups not in pm!")
         return False
 
     # Telegram and GroupAnonyamousBot
@@ -259,7 +259,7 @@ async def changeinfo_check_func(_, __, m):
         status = True
     else:
         status = False
-        await m.reply_text("You don't have: can_change_info permission!")
+        await m.reply("You don't have: can_change_info permission!")
 
     return status
 
@@ -270,7 +270,7 @@ async def can_pin_message_func(_, __, m):
         m = m.message
 
     if m.chat.type not in [ChatType.SUPERGROUP, ChatType.GROUP]:
-        await m.reply_text("This command is made to be used in groups not in pm!")
+        await m.reply("This command is made to be used in groups not in pm!")
         return False
 
     # Telegram and GroupAnonyamousBot
@@ -290,7 +290,7 @@ async def can_pin_message_func(_, __, m):
         status = True
     else:
         status = False
-        await m.reply_text("You don't have: can_pin_messages permission!")
+        await m.reply("You don't have: can_pin_messages permission!")
 
     return status
 

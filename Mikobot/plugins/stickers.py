@@ -85,13 +85,13 @@ async def _vidstick(_, message):
     replied = message.reply_to_message
     if replied and replied.sticker:
         if not replied.sticker.is_video:
-            return await message.reply_text("Use /getsticker if sticker is not video.")
+            return await message.reply("Use /getsticker if sticker is not video.")
         file_id = replied.sticker.file_id
         new_file = await _.download_media(file_id, file_name="sticker.mp4")
         await _.send_animation(chat_id, new_file)
         os.remove(new_file)
     else:
-        await message.reply_text("Please reply to a video sticker to upload it's MP4.")
+        await message.reply("Please reply to a video sticker to upload it's MP4.")
 
 
 @app.on_message(filters.command("getvideo"), group=333)
@@ -106,7 +106,7 @@ async def _vidstick(_, message):
         finally:
             os.remove(new_file)
     else:
-        await message.reply_text("Please reply to a gif for me to get it's video.")
+        await message.reply("Please reply to a gif for me to get it's video.")
 
 
 @app.on_message(filters.command("stickerid", PREFIX_HANDLER) & filters.reply, group=444)
@@ -605,10 +605,10 @@ async def draw_text(image_path, text, output_path=None):
 @app.on_message(filters.command(["stickerinfo", "stinfo"]), group=888)
 async def give_st_info(c: app, m: Message):
     if not m.reply_to_message:
-        await m.reply_text("Reply to a sticker")
+        await m.reply("Reply to a sticker")
         return
     elif not m.reply_to_message.sticker:
-        await m.reply_text("Reply to a sticker")
+        await m.reply("Reply to a sticker")
         return
     st_in = m.reply_to_message.sticker
     st_type = "Normal"
@@ -635,7 +635,7 @@ async def give_st_info(c: app, m: Message):
             ]
         ]
     )
-    await m.reply_text(st_to_gib, reply_markup=kb)
+    await m.reply(st_to_gib, reply_markup=kb)
     return
 
 

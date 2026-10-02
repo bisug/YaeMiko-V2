@@ -33,7 +33,7 @@ def _safe_text(value, limit: int = 300) -> str:
 
 
 async def _send_images(message: Message, query: str) -> None:
-    status = await message.reply_text("🔎 Searching open image sources…")
+    status = await message.reply("🔎 Searching open image sources…")
     try:
         data = await _get_json(
             OPENVERSE_IMAGES_URL,
@@ -64,7 +64,7 @@ async def _send_images(message: Message, query: str) -> None:
             return
         await message.reply_media_group(media=images)
         await status.delete()
-        await message.reply_text("Images: Openverse\n" + "\n".join(credits))
+        await message.reply("Images: Openverse\n" + "\n".join(credits))
     except (HTTPError, ValueError, TypeError, KeyError, AttributeError):
         await status.edit_text("Image search failed. Please try again later.")
 
@@ -76,7 +76,7 @@ async def _send_images(message: Message, query: str) -> None:
 async def image_search(client: Client, message: Message):
     query = _query(message)
     if not query:
-        await message.reply_text("Provide a query to search!")
+        await message.reply("Provide a query to search!")
         return
     await _send_images(message, query)
 
@@ -85,7 +85,7 @@ async def image_search(client: Client, message: Message):
 async def news(_, message: Message):
     query = _query(message)
     if not query:
-        await message.reply_text("Provide a keyword to search for.")
+        await message.reply("Provide a keyword to search for.")
         return
     try:
         data = await _get_json(
@@ -94,13 +94,13 @@ async def news(_, message: Message):
         )
         hits = data.get("hits", []) if isinstance(data, dict) else []
         if not hits:
-            await message.reply_text("No news found.")
+            await message.reply("No news found.")
             return
         item = random.choice(hits)
         title = _safe_text(item.get("title"), 250)
         url = _safe_text(item.get("url") or item.get("story_url"), 500)
         author = _safe_text(item.get("author"), 80)
-        await message.reply_text(
+        await message.reply(
             f"📰 <b>{title}</b>\n\n"
             f"Author: {author or 'Unknown'}\n"
             f"Points: {item.get('points', 0)} | Comments: {item.get('num_comments', 0)}\n"
@@ -108,14 +108,14 @@ async def news(_, message: Message):
             "News source: Hacker News Algolia API"
         )
     except (HTTPError, ValueError, TypeError, KeyError, AttributeError):
-        await message.reply_text("News search failed. Please try again later.")
+        await message.reply("News search failed. Please try again later.")
 
 
 @app.on_message(filters.command(["bingsearch", "duckduckgo"]))
 async def web_search(client: Client, message: Message):
     query = _query(message)
     if not query:
-        await message.reply_text("Please provide a keyword to search.")
+        await message.reply("Please provide a keyword to search.")
         return
     try:
         data = await _get_json(
@@ -136,13 +136,13 @@ async def web_search(client: Client, message: Message):
             if len(sections) >= MAX_RESULTS:
                 break
         if not sections:
-            await message.reply_text("No instant answer found.")
+            await message.reply("No instant answer found.")
             return
-        await message.reply_text(
+        await message.reply(
             "\n\n".join(sections) + "\n\nSearch source: DuckDuckGo Instant Answer API"
         )
     except (HTTPError, ValueError, TypeError, KeyError, AttributeError):
-        await message.reply_text("Search failed. Please try again later.")
+        await message.reply("Search failed. Please try again later.")
 
 # <=================================================== HELP ====================================================>
 __mod_name__ = "SEARCH"

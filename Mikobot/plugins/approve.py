@@ -149,13 +149,13 @@ async def unapproveall(message: Message):
 
     approved_users = sql.list_approved(chat.id)
     if not approved_users:
-        await message.reply_text(
+        await message.reply(
             f"No users are approved in {html.escape(chat.title)}."
         )
         return
 
     if member.status != ChatMemberStatus.CREATOR and user.id not in DRAGONS:
-        await message.reply_text(
+        await message.reply(
             "Only the chat owner can unapprove all users at once.",
         )
     else:
@@ -175,7 +175,7 @@ async def unapproveall(message: Message):
                 ],
             ],
         )
-        await message.reply_text(
+        await message.reply(
             f"Are you sure you would like to unapprove ALL users in {escape_markdown(chat.title)}? This action cannot be undone.",
             reply_markup=buttons,
             parse_mode=ParseMode.MARKDOWN,

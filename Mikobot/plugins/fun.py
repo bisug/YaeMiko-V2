@@ -64,7 +64,7 @@ async def shrug(message: Message):
     reply_text = (
         msg.reply_to_message.answer if msg.reply_to_message else msg.answer
     )
-    await reply_text(r"¯\_(ツ)_/¯")
+    await reply(r"¯\_(ツ)_/¯")
 
 
 async def bluetext(message: Message):
@@ -72,7 +72,7 @@ async def bluetext(message: Message):
     reply_text = (
         msg.reply_to_message.answer if msg.reply_to_message else msg.answer
     )
-    await reply_text(
+    await reply(
         "/BLUE /TEXT\n/MUST /CLICK\n/I /AM /A /STUPID /ANIMAL /THAT /IS /ATTRACTED /TO /COLORS"
     )
 
@@ -93,7 +93,7 @@ async def decide(message: Message):
         if message.reply_to_message
         else message.answer
     )
-    await reply_text(random.choice(fun_strings.DECIDE))
+    await reply(random.choice(fun_strings.DECIDE))
 
 
 normiefont = [
@@ -181,7 +181,7 @@ async def webify(message: Message, command: CommandObject):
             string = string.replace(normiecharacter, weebycharacter)
 
     if message.reply_to_message:
-        await message.reply_to_message.reply_text(string)
+        await message.reply_to_message.reply(string)
     else:
         await message.answer(string)
 

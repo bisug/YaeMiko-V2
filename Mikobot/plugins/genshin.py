@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import httpx
 from aiogram import F
+from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command, CommandObject
 from aiogram.types import (
@@ -775,14 +776,17 @@ async def _lookup(message: Message, command: CommandObject, kind: str):
             f"{t.emoji} <code>/{t.command}</code> — {t.label.lower()}"
             for t in ENTITY_TYPES.values()
         )
-        await message.reply_html(
+        await message.reply(
             f"Give me a name. Example: <code>/{entity.command} {query or 'albedo'}</code>\n\n"
             f"{listing}\n\n"
-            "Add <code>-fr</code> for French, e.g. <code>/gchar albedo-fr</code>."
+            "Add <code>-fr</code> for French, e.g. <code>/gchar albedo-fr</code>.",
+            parse_mode=ParseMode.HTML,
         )
         return
 
-    status = await message.reply_html(f"Looking up {html_escape(query)}…")
+    status = await message.reply(
+        f"Looking up {html_escape(query)}…", parse_mode=ParseMode.HTML
+    )
     try:
         entries = await _search(kind, lang)
     except (httpx.HTTPError, ValueError, KeyError, TypeError) as err:

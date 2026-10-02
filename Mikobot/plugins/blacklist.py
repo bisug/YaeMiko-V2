@@ -704,7 +704,7 @@ class _QuietMessage:
     rather than sent to the group.
     """
 
-    async def reply_text(self, *_args, **_kwargs):
+    async def reply(self, *_args, **_kwargs):
         return None
 
 

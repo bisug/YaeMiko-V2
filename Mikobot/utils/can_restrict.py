@@ -17,7 +17,7 @@ def can_restrict(func: Callable) -> Callable:
 
         check = await app.get_chat_member(message.chat.id, message.from_user.id)
         if check.status not in [ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR]:
-            return await message.reply_text(
+            return await message.reply(
                 "» You're not an admin, Please stay in your limits."
             )
 
@@ -27,7 +27,7 @@ def can_restrict(func: Callable) -> Callable:
         if admin.can_restrict_members:
             return await func(_, message)
         else:
-            return await message.reply_text(
+            return await message.reply(
                 "`You don't have permissions to restrict users in this chat."
             )
 
