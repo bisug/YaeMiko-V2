@@ -1,7 +1,6 @@
 # <============================================== IMPORTS =========================================================>
 from html import escape
 from math import ceil
-from typing import Dict, List
 from uuid import uuid4
 
 from aiogram import Bot
@@ -33,7 +32,7 @@ class EqInlineKeyboardButton(InlineKeyboardButton):
         return self.text > other.text
 
 
-def split_message(msg: str) -> List[str]:
+def split_message(msg: str) -> list[str]:
     if len(msg) < MessageLimit.MAX_TEXT_LENGTH:
         return [msg]
 
@@ -59,7 +58,7 @@ def split_message(msg: str) -> List[str]:
     return result or [""]
 
 
-def paginate_modules(page_n: int, module_dict: Dict, prefix, chat=None) -> List:
+def paginate_modules(page_n: int, module_dict: dict, prefix, chat=None) -> list:
     if not chat:
         modules = sorted(
             [

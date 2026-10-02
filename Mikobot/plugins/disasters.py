@@ -3,7 +3,6 @@ import html
 import json
 import os
 import tempfile
-from typing import Optional
 
 import Mikobot
 from aiogram.enums import ChatType
@@ -34,7 +33,7 @@ DISASTER_LEVELS = {
 ELEVATED_USERS_LOCK = asyncio.Lock()
 
 
-async def check_user_id(user_id: int) -> Optional[str]:
+async def check_user_id(user_id: int) -> str | None:
     if not user_id:
         return "That...is a chat! baka ka omae?"
     return None
@@ -108,7 +107,7 @@ async def add_disaster_level(message: Message, level: str, command: CommandObjec
     rt = ""
 
     async with ELEVATED_USERS_LOCK:
-        with open(ELEVATED_USERS_FILE, "r") as infile:
+        with open(ELEVATED_USERS_FILE) as infile:
             data = json.load(infile)
 
         target_key = DISASTER_LEVELS[level]

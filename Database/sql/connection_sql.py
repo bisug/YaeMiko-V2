@@ -24,7 +24,6 @@ SOFTWARE.
 
 import threading
 import time
-from typing import Union
 
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText
 
@@ -86,7 +85,7 @@ HISTORY_CONNECT = {}
 
 
 @unit_of_work_guard
-def allow_connect_to_chat(chat_id: Union[str, int]) -> bool:
+def allow_connect_to_chat(chat_id: str | int) -> bool:
     try:
         chat_setting = SESSION.get(ChatAccessConnectionSettings, str(chat_id))
         if chat_setting:
@@ -97,7 +96,7 @@ def allow_connect_to_chat(chat_id: Union[str, int]) -> bool:
 
 
 @unit_of_work_guard
-def set_allow_connect_to_chat(chat_id: Union[int, str], setting: bool):
+def set_allow_connect_to_chat(chat_id: int | str, setting: bool):
     with CHAT_ACCESS_LOCK:
         chat_setting = SESSION.get(ChatAccessConnectionSettings, str(chat_id))
         if not chat_setting:

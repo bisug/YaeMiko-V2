@@ -1,7 +1,6 @@
 # <============================================== IMPORTS =========================================================>
 import importlib
 import re
-from typing import Optional, Union
 
 from aiogram.enums import ParseMode
 from aiogram.filters import BaseFilter, Command, CommandObject
@@ -39,7 +38,7 @@ if is_module_loaded(FILENAME):
             self.admin_ok = admin_ok
 
         async def __call__(
-            self, message: Message, command: Optional[CommandObject] = None
+            self, message: Message, command: CommandObject | None = None
         ) -> bool:
             if command is None:
                 return True
@@ -61,7 +60,7 @@ if is_module_loaded(FILENAME):
             return not sql.is_command_disabled(message.chat.id, self.friendly)
 
     def disableable(
-        commands: Union[str, list], admin_ok: bool = False
+        commands: str | list, admin_ok: bool = False
     ) -> tuple:
         """Return the filters for a toggleable command, in the order they must run."""
         names = [commands] if isinstance(commands, str) else list(commands)
@@ -239,7 +238,7 @@ if is_module_loaded(FILENAME):
         else:
             await message.answer("No commands can be disabled.")
 
-    def build_curr_disabled(chat_id: Union[str, int]) -> str:
+    def build_curr_disabled(chat_id: str | int) -> str:
         disabled = sql.get_all_disabled(chat_id)
         if not disabled:
             return "No commands are disabled!"

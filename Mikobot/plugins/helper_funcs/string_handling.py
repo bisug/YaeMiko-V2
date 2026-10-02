@@ -6,7 +6,6 @@ import html
 # <============================================== IMPORTS =========================================================>
 import re
 import time
-from typing import Dict, List
 
 from aiogram.types import Message as AiogramMessage
 from aiogram.types import MessageEntity
@@ -36,7 +35,7 @@ def escape_markdown_v2(text: str, entity_type: str = None) -> str:
     return escape_markdown(text, version=2, entity_type=entity_type)
 
 
-def entities_map(message: AiogramMessage, types: List[str] = None) -> dict:
+def entities_map(message: AiogramMessage, types: list[str] = None) -> dict:
     """PTB's Message.parse_entities(types) as {entity: entity_text}.
 
     markdown_parser walks an entity/text mapping, so keep that shape and build
@@ -50,7 +49,7 @@ def entities_map(message: AiogramMessage, types: List[str] = None) -> dict:
     }
 
 
-def caption_entities_map(message: AiogramMessage, types: List[str] = None) -> dict:
+def caption_entities_map(message: AiogramMessage, types: list[str] = None) -> dict:
     """Caption counterpart of entities_map, for parse_caption_entities()."""
     text = message.caption or ""
     return {
@@ -117,7 +116,7 @@ def _calc_emoji_offset(to_calc) -> int:
 
 def markdown_parser(
     txt: str,
-    entities: Dict[MessageEntity, str] = None,
+    entities: dict[MessageEntity, str] = None,
     offset: int = 0,
 ) -> str:
     """
@@ -197,9 +196,9 @@ def markdown_parser(
 
 def button_markdown_parser(
     txt: str,
-    entities: Dict[MessageEntity, str] = None,
+    entities: dict[MessageEntity, str] = None,
     offset: int = 0,
-) -> (str, List):
+) -> (str, list):
     markdown_note = markdown_parser(txt, entities, offset)
     prev = 0
     note_data = ""
@@ -228,7 +227,7 @@ def button_markdown_parser(
     return note_data, buttons
 
 
-def escape_invalid_curly_brackets(text: str, valids: List[str]) -> str:
+def escape_invalid_curly_brackets(text: str, valids: list[str]) -> str:
     new_text = ""
     idx = 0
     while idx < len(text):
@@ -270,7 +269,7 @@ SMART_CLOSE = "”"
 START_CHAR = ("'", '"', SMART_OPEN)
 
 
-def split_quotes(text: str) -> List:
+def split_quotes(text: str) -> list:
     if not any(text.startswith(char) for char in START_CHAR):
         return text.split(None, 1)
     counter = 1  # ignore first char -> is some kind of quote
@@ -308,7 +307,7 @@ def remove_escapes(text: str) -> str:
     return res
 
 
-def escape_chars(text: str, to_escape: List[str]) -> str:
+def escape_chars(text: str, to_escape: list[str]) -> str:
     to_escape.append("\\")
     new_text = ""
     for x in text:

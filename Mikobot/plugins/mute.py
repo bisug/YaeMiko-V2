@@ -1,5 +1,4 @@
 import html
-from typing import Union
 
 from aiogram import Bot
 from aiogram.enums import ChatMemberStatus, ParseMode
@@ -23,7 +22,7 @@ RESTRICTED_OR_MEMBER = (ChatMemberStatus.RESTRICTED, ChatMemberStatus.MEMBER)
 LEFT_OR_BANNED = ("left", "kicked")
 
 
-async def check_user(user_id: int, bot: Bot, chat: Chat) -> Union[str, None]:
+async def check_user(user_id: int, bot: Bot, chat: Chat) -> str | None:
     if not user_id:
         reply = "You don't seem to be referring to a user or the ID specified is incorrect.."
         return reply

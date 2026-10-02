@@ -23,7 +23,6 @@ SOFTWARE.
 """
 
 import threading
-import typing
 
 from sqlalchemy import BigInteger, Boolean, Column, String, distinct, func
 
@@ -101,7 +100,7 @@ CHANNELS = {}
 
 
 @unit_of_work_guard
-def get_chat_setting(chat_id: int) -> typing.Optional[LogChannelSettings]:
+def get_chat_setting(chat_id: int) -> LogChannelSettings | None:
     with LOG_SETTING_LOCK:
         return SESSION.get(LogChannelSettings, chat_id)
 

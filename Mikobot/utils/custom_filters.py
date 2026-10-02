@@ -2,7 +2,6 @@
 from re import compile as compile_re
 from re import escape
 from shlex import split
-from typing import List, Union
 
 from pyrogram.enums import ChatMemberStatus as CMS
 from pyrogram.enums import ChatType
@@ -21,7 +20,7 @@ PREFIX_HANDLER = ["!", "/", "$"]
 
 # <================================================ FUNCTION =======================================================>
 def command(
-    commands: Union[str, List[str]],
+    commands: str | list[str],
     case_sensitive: bool = False,
     owner_cmd: bool = False,
     dev_cmd: bool = False,

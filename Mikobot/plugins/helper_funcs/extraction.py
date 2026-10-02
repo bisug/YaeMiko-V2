@@ -1,5 +1,4 @@
 # <============================================== IMPORTS =========================================================>
-from typing import List, Optional
 
 from aiogram.types import Message
 
@@ -28,12 +27,12 @@ async def id_from_reply(message: Message):
 
 async def extract_user(
     message: Message,
-    args: List[str],
-) -> Optional[int]:
+    args: list[str],
+) -> int | None:
     return (await extract_user_and_text(message, args))[0]
 
 
-async def _resolve_target(message: Message, args: List[str]) -> tuple:
+async def _resolve_target(message: Message, args: list[str]) -> tuple:
     """Shared body of the extractors: resolve (user_id, text) from message or args.
 
     Returns (None, None) both when the target cannot be resolved and when a
@@ -76,7 +75,7 @@ async def _resolve_target(message: Message, args: List[str]) -> tuple:
 
 async def extract_user_and_text(
     message: Message,
-    args: List[str],
+    args: list[str],
 ) -> tuple:
     result = await _resolve_target(message, args)
     if result == (None, None) and len(args) >= 1 and args[0][0] == "@":
@@ -96,7 +95,7 @@ async def extract_text(message) -> str:
 
 
 async def extract_unt_fedban(
-    message: Message, args: List[str]
+    message: Message, args: list[str]
 ) -> tuple:
     result = await _resolve_target(message, args)
     if result == (None, None) and len(args) >= 1 and args[0][0] == "@":
@@ -109,8 +108,8 @@ async def extract_unt_fedban(
 
 async def extract_user_fban(
     message: Message,
-    args: List[str],
-) -> Optional[int]:
+    args: list[str],
+) -> int | None:
     return (await extract_unt_fedban(message, args))[0]
 
 

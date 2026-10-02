@@ -11,7 +11,6 @@ from datetime import datetime
 from os.path import basename
 from time import time
 from traceback import format_exc as err
-from typing import Optional, Tuple
 from urllib.parse import quote
 from uuid import uuid4
 
@@ -637,7 +636,7 @@ async def media_to_image(client: app, message: Message, x: Message, replied: Mes
     return dls_loc
 
 
-async def runcmd(cmd: str) -> Tuple[str, str, int, int]:
+async def runcmd(cmd: str) -> tuple[str, str, int, int]:
     """run command in terminal"""
     args = shlex.split(cmd)
     process = await asyncio.create_subprocess_exec(
@@ -654,7 +653,7 @@ async def runcmd(cmd: str) -> Tuple[str, str, int, int]:
 
 async def take_screen_shot(
     video_file: str, duration: int, path: str = ""
-) -> Optional[str]:
+) -> str | None:
     """take a screenshot"""
     log.debug("Extracting a frame from %s at %s seconds", video_file, duration)
     thumb_image_path = path or os.path.join(DOWN_PATH, f"{basename(video_file)}.jpg")
@@ -1032,7 +1031,7 @@ class google_new_transError(Exception):
             self.msg = self.infer_msg(self.tts, self.rsp)
         else:
             self.msg = None
-        super(google_new_transError, self).__init__(self.msg)
+        super().__init__(self.msg)
 
     def infer_msg(self, tts, rsp=None):
         cause = "Unknown"

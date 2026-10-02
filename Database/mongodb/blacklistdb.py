@@ -1,11 +1,10 @@
-from typing import List
 
 from Database.mongodb.db import dbname
 
 blacklist_filtersdb = dbname.blacklistFilters
 
 
-async def get_blacklisted_words(chat_id: int) -> List[str]:
+async def get_blacklisted_words(chat_id: int) -> list[str]:
     _filters = await blacklist_filtersdb.find_one({"chat_id": chat_id})
     if not _filters:
         return []

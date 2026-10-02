@@ -1,4 +1,3 @@
-from typing import Dict, Union
 
 from Database.mongodb.db import dbname
 
@@ -50,14 +49,14 @@ async def user_global_karma(user_id) -> int:
     return total_karma
 
 
-async def get_karmas(chat_id: int) -> Dict[str, int]:
+async def get_karmas(chat_id: int) -> dict[str, int]:
     karma = await karmadb.find_one({"chat_id": chat_id})
     if not karma:
         return {}
     return karma["karma"]
 
 
-async def get_karma(chat_id: int, name: str) -> Union[bool, dict]:
+async def get_karma(chat_id: int, name: str) -> bool | dict:
     name = name.lower().strip()
     karmas = await get_karmas(chat_id)
     if name in karmas:

@@ -169,7 +169,7 @@ execution. Persistence, reply construction and error handling surround that spin
 | Component | Version | Link |
 | --- | --- | --- |
 | PostgreSQL | 16 (Heroku addon) | [postgresql.org](https://www.postgresql.org/) |
-| SQLAlchemy | 2.1.0 | [sqlalchemy.org](https://www.sqlalchemy.org/) |
+| SQLAlchemy | 2.1.2 | [sqlalchemy.org](https://www.sqlalchemy.org/) |
 | psycopg (binary, pool) | 3.3.6 | [psycopg.org](https://www.psycopg.org/) |
 | MongoDB Atlas | free or serverless tier | [mongodb.com](https://www.mongodb.com/atlas) |
 | PyMongo | 4.18.2 | [PyPI](https://pypi.org/project/pymongo/) |

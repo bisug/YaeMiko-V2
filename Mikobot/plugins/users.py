@@ -3,7 +3,6 @@ import asyncio
 from io import BytesIO
 from threading import RLock
 from time import monotonic
-from typing import Union
 
 from aiogram.enums import ChatMemberStatus, ParseMode
 from aiogram.exceptions import TelegramAPIError, TelegramForbiddenError
@@ -118,7 +117,7 @@ async def broadcast_cmd(client: Client, message):  # kurigram handler
     )
 
 
-async def get_user_id(username: str) -> Union[int, None]:
+async def get_user_id(username: str) -> int | None:
     # ensure valid user ID
     if len(username) <= 5:
         return None

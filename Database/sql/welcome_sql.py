@@ -24,7 +24,6 @@ SOFTWARE.
 
 import random
 import threading
-from typing import Union
 
 from sqlalchemy import (
     BigInteger,
@@ -468,7 +467,7 @@ def get_gdbye_buttons(chat_id):
 
 
 @unit_of_work_guard
-def clean_service(chat_id: Union[str, int]) -> bool:
+def clean_service(chat_id: str | int) -> bool:
     try:
         chat_setting = SESSION.get(CleanServiceSetting, str(chat_id))
         if chat_setting:
@@ -479,7 +478,7 @@ def clean_service(chat_id: Union[str, int]) -> bool:
 
 
 @unit_of_work_guard
-def set_clean_service(chat_id: Union[int, str], setting: bool):
+def set_clean_service(chat_id: int | str, setting: bool):
     with CS_LOCK:
         chat_setting = SESSION.get(CleanServiceSetting, str(chat_id))
         if not chat_setting:
@@ -491,7 +490,7 @@ def set_clean_service(chat_id: Union[int, str], setting: bool):
 
 
 @unit_of_work_guard
-def set_service_types(chat_id: Union[int, str], types_csv: str):
+def set_service_types(chat_id: int | str, types_csv: str):
     """Replace the set of service message types this chat deletes."""
     with CS_LOCK:
         chat_setting = SESSION.get(CleanServiceSetting, str(chat_id))
@@ -503,7 +502,7 @@ def set_service_types(chat_id: Union[int, str], types_csv: str):
 
 
 @unit_of_work_guard
-def get_service_types(chat_id: Union[int, str]) -> set:
+def get_service_types(chat_id: int | str) -> set:
     try:
         chat_setting = SESSION.get(CleanServiceSetting, str(chat_id))
         raw = getattr(chat_setting, "service_types", "") or ""

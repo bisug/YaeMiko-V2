@@ -1753,7 +1753,6 @@ async def fed_import_bans(message: Message, command: CommandObject):
             )
             with open(
                 "fban_{}.csv".format(msg.reply_to_message.document.file_id),
-                "r",
                 encoding="utf8",
             ) as csvFile:
                 reader = csv.reader(csvFile)

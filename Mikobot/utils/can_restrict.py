@@ -1,5 +1,5 @@
 # <============================================== IMPORTS =========================================================>
-from typing import Callable
+from collections.abc import Callable
 
 from pyrogram.enums import ChatMemberStatus
 from pyrogram.types import Message

@@ -1,6 +1,5 @@
 import html
 import re
-from typing import Optional
 
 from aiogram import F
 from aiogram.dispatcher.event.bases import SkipHandler
@@ -139,7 +138,7 @@ async def warn(
 
 @loggable
 async def button(query: CallbackQuery) -> str:
-    user: Optional[User] = query.from_user
+    user: User | None = query.from_user
     match = re.fullmatch(r"rm_warn\((-?\d+)\)", query.data)
     if not match:
         await query.answer("Invalid callback data.", show_alert=True)
@@ -149,7 +148,7 @@ async def button(query: CallbackQuery) -> str:
     except ValueError:
         await query.answer("Invalid callback data.", show_alert=True)
         return
-    chat: Optional[Chat] = query.message.chat
+    chat: Chat | None = query.message.chat
     chat_member = await bot.get_chat_member(chat.id, user.id)
     if chat_member.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR):
         pass
@@ -184,8 +183,8 @@ async def button(query: CallbackQuery) -> str:
 @check_admin(permission="can_restrict_members", is_both=True)
 async def warn_user(message: Message, command: CommandObject) -> str:
     args = command.args.split() if command.args else []
-    chat: Optional[Chat] = message.chat
-    warner: Optional[User] = message.from_user
+    chat: Chat | None = message.chat
+    warner: User | None = message.from_user
 
     user_id, reason = await extract_user_and_text(message, args)
     if (
@@ -218,8 +217,8 @@ async def warn_user(message: Message, command: CommandObject) -> str:
 @check_admin(is_both=True)
 async def reset_warns(message: Message, command: CommandObject) -> str:
     args = command.args.split() if command.args else []
-    chat: Optional[Chat] = message.chat
-    user: Optional[User] = message.from_user
+    chat: Chat | None = message.chat
+    user: User | None = message.from_user
 
     user_id = await extract_user(message, args)
 
@@ -240,7 +239,7 @@ async def reset_warns(message: Message, command: CommandObject) -> str:
 
 async def warns(message: Message, command: CommandObject):
     args = command.args.split() if command.args else []
-    chat: Optional[Chat] = message.chat
+    chat: Chat | None = message.chat
     user_id = await extract_user(message, args) or message.from_user.id
     result = sql.get_warns(user_id, chat.id)
 
@@ -269,8 +268,8 @@ async def warns(message: Message, command: CommandObject):
 # Dispatcher handler stop - do not async
 @check_admin(is_user=True)
 async def add_warn_filter(message: Message, command: CommandObject):
-    chat: Optional[Chat] = message.chat
-    msg: Optional[Message] = message
+    chat: Chat | None = message.chat
+    msg: Message | None = message
 
     args = msg.text.split(
         None,
@@ -300,8 +299,8 @@ async def add_warn_filter(message: Message, command: CommandObject):
 
 @check_admin(is_user=True)
 async def remove_warn_filter(message: Message, command: CommandObject):
-    chat: Optional[Chat] = message.chat
-    msg: Optional[Message] = message
+    chat: Chat | None = message.chat
+    msg: Message | None = message
 
     args = msg.text.split(
         None,
@@ -336,7 +335,7 @@ async def remove_warn_filter(message: Message, command: CommandObject):
 
 
 async def list_warn_filters(message: Message, command: CommandObject):
-    chat: Optional[Chat] = message.chat
+    chat: Chat | None = message.chat
     all_handlers = sql.get_chat_warn_triggers(chat.id)
 
     if not all_handlers:
@@ -362,9 +361,9 @@ async def list_warn_filters(message: Message, command: CommandObject):
 
 @loggable
 async def reply_filter(message: Message) -> str:
-    chat: Optional[Chat] = message.chat
-    message: Optional[Message] = message
-    user: Optional[User] = message.from_user
+    chat: Chat | None = message.chat
+    message: Message | None = message
+    user: User | None = message.from_user
 
     if not user:  # Ignore channel
         return
@@ -381,7 +380,7 @@ async def reply_filter(message: Message) -> str:
     for keyword in chat_warn_filters:
         pattern = r"( |^|[^\w])" + re.escape(keyword) + r"( |$|[^\w])"
         if re.search(pattern, to_match, flags=re.IGNORECASE):
-            user: Optional[User] = message.from_user
+            user: User | None = message.from_user
             warn_filter = sql.get_warn_filter(chat.id, keyword)
             return await warn(user, chat, warn_filter.reply, message)
     return ""
@@ -391,10 +390,10 @@ async def reply_filter(message: Message) -> str:
 @loggable
 async def set_warn_limit(message: Message, command: CommandObject) -> str:
     args = command.args.split() if command.args else []
-    chat: Optional[Chat] = message.chat
-    user: Optional[User] = message.from_user
-    user: Optional[User] = message.from_user
-    msg: Optional[Message] = message
+    chat: Chat | None = message.chat
+    user: User | None = message.from_user
+    user: User | None = message.from_user
+    msg: Message | None = message
 
     if args:
         if args[0].isdigit():
@@ -421,9 +420,9 @@ async def set_warn_limit(message: Message, command: CommandObject) -> str:
 @check_admin(is_user=True)
 async def set_warn_strength(message: Message, command: CommandObject):
     args = command.args.split() if command.args else []
-    chat: Optional[Chat] = message.chat
-    user: Optional[User] = message.from_user
-    msg: Optional[Message] = message
+    chat: Chat | None = message.chat
+    user: User | None = message.from_user
+    msg: Message | None = message
 
     if args:
         if args[0].lower() in ("on", "yes"):
