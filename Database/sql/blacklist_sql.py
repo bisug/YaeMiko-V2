@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, distinct, func, inspect, text
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class BlackListFilters(BASE):
@@ -117,6 +117,7 @@ CHAT_BLACKLISTS = {}
 CHAT_SETTINGS_BLACKLISTS = {}
 
 
+@unit_of_work_guard
 def add_to_blacklist(chat_id, trigger):
     with BLACKLIST_FILTER_INSERTION_LOCK:
         blacklist_filt = BlackListFilters(str(chat_id), trigger)
@@ -130,6 +131,7 @@ def add_to_blacklist(chat_id, trigger):
             CHAT_BLACKLISTS.get(str(chat_id), set()).add(trigger)
 
 
+@unit_of_work_guard
 def rm_from_blacklist(chat_id, trigger):
     with BLACKLIST_FILTER_INSERTION_LOCK:
         blacklist_filt = SESSION.get(BlackListFilters, (str(chat_id), trigger))
@@ -149,6 +151,7 @@ def get_chat_blacklist(chat_id):
     return set(CHAT_BLACKLISTS.get(str(chat_id), set()))
 
 
+@unit_of_work_guard
 def num_blacklist_filters():
     try:
         return SESSION.query(BlackListFilters).count()
@@ -156,6 +159,7 @@ def num_blacklist_filters():
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_blacklist_chat_filters(chat_id):
     try:
         return (
@@ -167,6 +171,7 @@ def num_blacklist_chat_filters(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_blacklist_filter_chats():
     try:
         return SESSION.query(func.count(distinct(BlackListFilters.chat_id))).scalar()
@@ -174,6 +179,7 @@ def num_blacklist_filter_chats():
         SESSION.close()
 
 
+@unit_of_work_guard
 def set_blacklist_strength(chat_id, blacklist_type, value):
     # for blacklist_type
     # 0 = nothing
@@ -208,6 +214,7 @@ def set_blacklist_strength(chat_id, blacklist_type, value):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_blacklist_setting(chat_id):
     try:
         setting = CHAT_SETTINGS_BLACKLISTS.get(str(chat_id))
@@ -219,6 +226,7 @@ def get_blacklist_setting(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def _mutate_setting(chat_id, **fields) -> None:
     """Update the delete/silent columns and refresh the cache entry."""
     with BLACKLIST_SETTINGS_INSERTION_LOCK:
@@ -243,6 +251,7 @@ def set_delete_message(chat_id, enabled: bool) -> None:
     _mutate_setting(chat_id, delete_message=bool(enabled))
 
 
+@unit_of_work_guard
 def get_delete_message(chat_id) -> bool:
     setting = CHAT_SETTINGS_BLACKLISTS.get(str(chat_id))
     if setting:
@@ -259,6 +268,7 @@ def set_silent_enabled(chat_id, enabled: bool) -> None:
     _mutate_setting(chat_id, silent_enabled=bool(enabled))
 
 
+@unit_of_work_guard
 def get_silent_enabled(chat_id) -> bool:
     setting = CHAT_SETTINGS_BLACKLISTS.get(str(chat_id))
     if setting:
@@ -328,6 +338,7 @@ def __load_chat_settings_blacklists():
         SESSION.close()
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with BLACKLIST_FILTER_INSERTION_LOCK:
         chat_filters = (

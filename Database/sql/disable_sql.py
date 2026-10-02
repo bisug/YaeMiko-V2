@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import Column, String, UnicodeText, distinct, func
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class Disable(BASE):
@@ -48,6 +48,7 @@ DISABLE_INSERTION_LOCK = threading.RLock()
 DISABLED = {}
 
 
+@unit_of_work_guard
 def disable_command(chat_id, disable):
     with DISABLE_INSERTION_LOCK:
         disabled = SESSION.get(Disable, (str(chat_id), disable))
@@ -64,6 +65,7 @@ def disable_command(chat_id, disable):
         return False
 
 
+@unit_of_work_guard
 def enable_command(chat_id, enable):
     with DISABLE_INSERTION_LOCK:
         disabled = SESSION.get(Disable, (str(chat_id), enable))
@@ -88,6 +90,7 @@ def get_all_disabled(chat_id):
     return DISABLED.get(str(chat_id), set())
 
 
+@unit_of_work_guard
 def num_chats():
     try:
         return SESSION.query(func.count(distinct(Disable.chat_id))).scalar()
@@ -95,6 +98,7 @@ def num_chats():
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_disabled():
     try:
         return SESSION.query(Disable).count()
@@ -102,6 +106,7 @@ def num_disabled():
         SESSION.close()
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with DISABLE_INSERTION_LOCK:
         chats = SESSION.query(Disable).filter(Disable.chat_id == str(old_chat_id)).all()

@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import Column, String, UnicodeText
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class BlacklistUsers(BASE):
@@ -45,6 +45,7 @@ BLACKLIST_LOCK = threading.RLock()
 BLACKLIST_USERS = set()
 
 
+@unit_of_work_guard
 def blacklist_user(user_id, reason=None):
     with BLACKLIST_LOCK:
         user = SESSION.get(BlacklistUsers, str(user_id))
@@ -58,6 +59,7 @@ def blacklist_user(user_id, reason=None):
         __load_blacklist_userid_list()
 
 
+@unit_of_work_guard
 def unblacklist_user(user_id):
     with BLACKLIST_LOCK:
         user = SESSION.get(BlacklistUsers, str(user_id))
@@ -68,6 +70,7 @@ def unblacklist_user(user_id):
         __load_blacklist_userid_list()
 
 
+@unit_of_work_guard
 def get_reason(user_id):
     user = SESSION.get(BlacklistUsers, str(user_id))
     rep = user.reason if user else ""

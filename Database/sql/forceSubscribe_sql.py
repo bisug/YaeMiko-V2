@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Numeric, String
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class forceSubscribe(BASE):
@@ -16,6 +16,7 @@ class forceSubscribe(BASE):
 forceSubscribe.__table__.create(bind=ENGINE, checkfirst=True)
 
 
+@unit_of_work_guard
 def fs_settings(chat_id):
     try:
         return (
@@ -29,6 +30,7 @@ def fs_settings(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def add_channel(chat_id, channel):
     adder = SESSION.get(forceSubscribe, chat_id)
     if adder:
@@ -39,6 +41,7 @@ def add_channel(chat_id, channel):
     SESSION.commit()
 
 
+@unit_of_work_guard
 def disapprove(chat_id):
     rem = SESSION.get(forceSubscribe, chat_id)
     if rem:

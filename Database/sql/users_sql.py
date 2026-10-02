@@ -34,7 +34,7 @@ from sqlalchemy import (
     func,
 )
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 from Mikobot import BOT_ID, BOT_USERNAME
 
 
@@ -100,6 +100,7 @@ ChatMembers.__table__.create(bind=ENGINE, checkfirst=True)
 INSERTION_LOCK = threading.RLock()
 
 
+@unit_of_work_guard
 def ensure_bot_in_db():
     with INSERTION_LOCK:
         bot = Users(BOT_ID, BOT_USERNAME)
@@ -107,6 +108,7 @@ def ensure_bot_in_db():
         SESSION.commit()
 
 
+@unit_of_work_guard
 def update_user(user_id, username, chat_id=None, chat_name=None):
     with INSERTION_LOCK:
         user = SESSION.get(Users, user_id)
@@ -142,6 +144,7 @@ def update_user(user_id, username, chat_id=None, chat_name=None):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_userid_by_name(username):
     try:
         return (
@@ -153,6 +156,7 @@ def get_userid_by_name(username):
         SESSION.close()
 
 
+@unit_of_work_guard
 def get_name_by_userid(user_id):
     try:
         return SESSION.get(Users, int(user_id))
@@ -160,6 +164,7 @@ def get_name_by_userid(user_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def get_chat_members(chat_id):
     try:
         return SESSION.query(ChatMembers).filter(ChatMembers.chat == str(chat_id)).all()
@@ -167,6 +172,7 @@ def get_chat_members(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def get_all_chats():
     try:
         return SESSION.query(Chats).all()
@@ -174,6 +180,7 @@ def get_all_chats():
         SESSION.close()
 
 
+@unit_of_work_guard
 def get_all_users():
     try:
         return SESSION.query(Users).all()
@@ -181,6 +188,7 @@ def get_all_users():
         SESSION.close()
 
 
+@unit_of_work_guard
 def get_user_num_chats(user_id):
     try:
         return (
@@ -190,6 +198,7 @@ def get_user_num_chats(user_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def get_user_com_chats(user_id):
     try:
         chat_members = (
@@ -200,6 +209,7 @@ def get_user_com_chats(user_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_chats():
     try:
         return SESSION.query(Chats).count()
@@ -207,6 +217,7 @@ def num_chats():
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_users():
     try:
         return SESSION.query(Users).count()
@@ -214,6 +225,7 @@ def num_users():
         SESSION.close()
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with INSERTION_LOCK:
         chat = SESSION.get(Chats, str(old_chat_id))
@@ -233,6 +245,7 @@ def migrate_chat(old_chat_id, new_chat_id):
 ensure_bot_in_db()
 
 
+@unit_of_work_guard
 def del_user(user_id):
     with INSERTION_LOCK:
         curr = SESSION.get(Users, user_id)
@@ -245,6 +258,7 @@ def del_user(user_id):
     return False
 
 
+@unit_of_work_guard
 def rem_chat(chat_id):
     with INSERTION_LOCK:
         chat = SESSION.get(Chats, str(chat_id))

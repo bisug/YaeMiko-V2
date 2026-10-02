@@ -27,7 +27,7 @@ import typing
 
 from sqlalchemy import BigInteger, Boolean, Column, String, distinct, func
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class GroupLogs(BASE):
@@ -100,11 +100,13 @@ LOG_SETTING_LOCK = threading.RLock()
 CHANNELS = {}
 
 
+@unit_of_work_guard
 def get_chat_setting(chat_id: int) -> typing.Optional[LogChannelSettings]:
     with LOG_SETTING_LOCK:
         return SESSION.get(LogChannelSettings, chat_id)
 
 
+@unit_of_work_guard
 def set_chat_setting(setting: LogChannelSettings):
     with LOGS_INSERTION_LOCK:
         res: LogChannelSettings = SESSION.get(LogChannelSettings, setting.chat_id)
@@ -119,6 +121,7 @@ def set_chat_setting(setting: LogChannelSettings):
     SESSION.commit()
 
 
+@unit_of_work_guard
 def set_chat_log_channel(chat_id, log_channel):
     with LOGS_INSERTION_LOCK:
         res = SESSION.get(GroupLogs, str(chat_id))
@@ -136,6 +139,7 @@ def get_chat_log_channel(chat_id):
     return CHANNELS.get(str(chat_id))
 
 
+@unit_of_work_guard
 def stop_chat_logging(chat_id):
     with LOGS_INSERTION_LOCK:
         res = SESSION.get(GroupLogs, str(chat_id))
@@ -149,6 +153,7 @@ def stop_chat_logging(chat_id):
             return log_channel
 
 
+@unit_of_work_guard
 def num_logchannels():
     try:
         return SESSION.query(func.count(distinct(GroupLogs.chat_id))).scalar()
@@ -156,6 +161,7 @@ def num_logchannels():
         SESSION.close()
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with LOGS_INSERTION_LOCK:
         chat = SESSION.get(GroupLogs, str(old_chat_id))

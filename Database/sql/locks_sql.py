@@ -27,7 +27,7 @@ import threading
 
 from sqlalchemy import Boolean, Column, String
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class Permissions(BASE):
@@ -126,6 +126,7 @@ PERM_LOCK = threading.RLock()
 RESTR_LOCK = threading.RLock()
 
 
+@unit_of_work_guard
 def init_permissions(chat_id, reset=False):
     curr_perm = SESSION.get(Permissions, str(chat_id))
     if reset and curr_perm:
@@ -137,6 +138,7 @@ def init_permissions(chat_id, reset=False):
     return perm
 
 
+@unit_of_work_guard
 def init_restrictions(chat_id, reset=False):
     curr_restr = SESSION.get(Restrictions, str(chat_id))
     if reset and curr_restr:
@@ -148,6 +150,7 @@ def init_restrictions(chat_id, reset=False):
     return restr
 
 
+@unit_of_work_guard
 def update_lock(chat_id, lock_type, locked):
     with PERM_LOCK:
         curr_perm = SESSION.get(Permissions, str(chat_id))
@@ -193,6 +196,7 @@ def update_lock(chat_id, lock_type, locked):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def update_restriction(chat_id, restr_type, locked):
     with RESTR_LOCK:
         curr_restr = SESSION.get(Restrictions, str(chat_id))
@@ -216,6 +220,7 @@ def update_restriction(chat_id, restr_type, locked):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def is_locked(chat_id, lock_type):
     curr_perm = SESSION.get(Permissions, str(chat_id))
     SESSION.close()
@@ -259,6 +264,7 @@ def is_locked(chat_id, lock_type):
         return curr_perm.inline
 
 
+@unit_of_work_guard
 def is_restr_locked(chat_id, lock_type):
     curr_restr = SESSION.get(Restrictions, str(chat_id))
     SESSION.close()
@@ -283,6 +289,7 @@ def is_restr_locked(chat_id, lock_type):
         )
 
 
+@unit_of_work_guard
 def get_locks(chat_id):
     try:
         return SESSION.get(Permissions, str(chat_id))
@@ -290,6 +297,7 @@ def get_locks(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def get_restr(chat_id):
     try:
         return SESSION.get(Restrictions, str(chat_id))
@@ -297,6 +305,7 @@ def get_restr(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with PERM_LOCK:
         perms = SESSION.get(Permissions, str(old_chat_id))
@@ -311,6 +320,7 @@ def migrate_chat(old_chat_id, new_chat_id):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def allow_item(chat_id, lockable, item):
     """Add an exemption for one locktype. Repeatable and case-insensitive."""
     with PERM_LOCK:
@@ -318,6 +328,7 @@ def allow_item(chat_id, lockable, item):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def unallow_item(chat_id, lockable, item):
     with PERM_LOCK:
         row = SESSION.get(AllowedItem, (str(chat_id), lockable, str(item).lower()))
@@ -326,6 +337,7 @@ def unallow_item(chat_id, lockable, item):
             SESSION.commit()
 
 
+@unit_of_work_guard
 def rmallow_all(chat_id):
     with PERM_LOCK:
         for row in SESSION.query(AllowedItem).filter_by(chat_id=str(chat_id)).all():
@@ -333,6 +345,7 @@ def rmallow_all(chat_id):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def list_allowed(chat_id):
     """Every exemption for a chat, as (lockable, item) pairs."""
     try:
@@ -344,6 +357,7 @@ def list_allowed(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def allowed_for(chat_id, lockable):
     """The item list for one locktype, as a set for fast membership checks."""
     try:

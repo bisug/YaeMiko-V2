@@ -27,7 +27,7 @@ from typing import Union
 
 from sqlalchemy import BigInteger, Boolean, Column, String
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class ReportingUserSettings(BASE):
@@ -61,6 +61,7 @@ CHAT_LOCK = threading.RLock()
 USER_LOCK = threading.RLock()
 
 
+@unit_of_work_guard
 def chat_should_report(chat_id: Union[str, int]) -> bool:
     try:
         chat_setting = SESSION.get(ReportingChatSettings, str(chat_id))
@@ -71,6 +72,7 @@ def chat_should_report(chat_id: Union[str, int]) -> bool:
         SESSION.close()
 
 
+@unit_of_work_guard
 def user_should_report(user_id: int) -> bool:
     try:
         user_setting = SESSION.get(ReportingUserSettings, user_id)
@@ -81,6 +83,7 @@ def user_should_report(user_id: int) -> bool:
         SESSION.close()
 
 
+@unit_of_work_guard
 def set_chat_setting(chat_id: Union[int, str], setting: bool):
     with CHAT_LOCK:
         chat_setting = SESSION.get(ReportingChatSettings, str(chat_id))
@@ -92,6 +95,7 @@ def set_chat_setting(chat_id: Union[int, str], setting: bool):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def set_user_setting(user_id: int, setting: bool):
     with USER_LOCK:
         user_setting = SESSION.get(ReportingUserSettings, user_id)
@@ -103,6 +107,7 @@ def set_user_setting(user_id: int, setting: bool):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with CHAT_LOCK:
         chat_notes = (

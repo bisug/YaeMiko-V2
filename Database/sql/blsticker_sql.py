@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import BigInteger, Column, String, UnicodeText, distinct, func
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class StickersFilters(BASE):
@@ -77,6 +77,7 @@ CHAT_STICKERS = {}
 CHAT_BLSTICK_BLACKLISTS = {}
 
 
+@unit_of_work_guard
 def add_to_stickers(chat_id, trigger):
     with STICKERS_FILTER_INSERTION_LOCK:
         stickers_filt = StickersFilters(str(chat_id), trigger)
@@ -90,6 +91,7 @@ def add_to_stickers(chat_id, trigger):
             CHAT_STICKERS.get(str(chat_id), set()).add(trigger)
 
 
+@unit_of_work_guard
 def rm_from_stickers(chat_id, trigger):
     with STICKERS_FILTER_INSERTION_LOCK:
         stickers_filt = SESSION.get(StickersFilters, (str(chat_id), trigger))
@@ -109,6 +111,7 @@ def get_chat_stickers(chat_id):
     return set(CHAT_STICKERS.get(str(chat_id), set()))
 
 
+@unit_of_work_guard
 def num_stickers_filters():
     try:
         return SESSION.query(StickersFilters).count()
@@ -116,6 +119,7 @@ def num_stickers_filters():
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_stickers_chat_filters(chat_id):
     try:
         return (
@@ -127,6 +131,7 @@ def num_stickers_chat_filters(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_stickers_filter_chats():
     try:
         return SESSION.query(func.count(distinct(StickersFilters.chat_id))).scalar()
@@ -134,6 +139,7 @@ def num_stickers_filter_chats():
         SESSION.close()
 
 
+@unit_of_work_guard
 def set_blacklist_strength(chat_id, blacklist_type, value):
     # for blacklist_type
     # 0 = nothing
@@ -165,6 +171,7 @@ def set_blacklist_strength(chat_id, blacklist_type, value):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_blacklist_setting(chat_id):
     try:
         setting = CHAT_BLSTICK_BLACKLISTS.get(str(chat_id))
@@ -207,6 +214,7 @@ def __load_chat_stickerset_blacklists():
         SESSION.close()
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with STICKERS_FILTER_INSERTION_LOCK:
         chat_filters = (

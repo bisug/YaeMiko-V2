@@ -19,7 +19,7 @@ import threading
 
 from sqlalchemy import BigInteger, Boolean, Column, String
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 MODE_OFF = "off"
 MODE_ADMIN = "admin"
@@ -71,6 +71,7 @@ INSERTION_LOCK = threading.RLock()
 _cache: dict = {}
 
 
+@unit_of_work_guard
 def _mutate(chat_id, **fields) -> None:
     with INSERTION_LOCK:
         row = SESSION.get(BotToBot, str(chat_id))
@@ -87,6 +88,7 @@ def _mutate(chat_id, **fields) -> None:
         }
 
 
+@unit_of_work_guard
 def get_setting(chat_id):
     """(mode, skip_review, allowed_ids) with off/defaults when unset."""
     key = str(chat_id)
@@ -134,6 +136,7 @@ def disallow_bot(chat_id, user_id) -> None:
     _mutate(chat_id, allowed=",".join(sorted(allowed)))
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id) -> None:
     with INSERTION_LOCK:
         row = SESSION.get(BotToBot, str(old_chat_id))

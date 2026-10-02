@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import BigInteger, Column, UnicodeText
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class UserInfo(BASE):
@@ -61,6 +61,7 @@ UserBio.__table__.create(bind=ENGINE, checkfirst=True)
 INSERTION_LOCK = threading.RLock()
 
 
+@unit_of_work_guard
 def get_user_me_info(user_id):
     userinfo = SESSION.get(UserInfo, user_id)
     SESSION.close()
@@ -69,6 +70,7 @@ def get_user_me_info(user_id):
     return None
 
 
+@unit_of_work_guard
 def set_user_me_info(user_id, info):
     with INSERTION_LOCK:
         userinfo = SESSION.get(UserInfo, user_id)
@@ -80,6 +82,7 @@ def set_user_me_info(user_id, info):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_user_bio(user_id):
     userbio = SESSION.get(UserBio, user_id)
     SESSION.close()
@@ -88,6 +91,7 @@ def get_user_bio(user_id):
     return None
 
 
+@unit_of_work_guard
 def set_user_bio(user_id, bio):
     with INSERTION_LOCK:
         userbio = SESSION.get(UserBio, user_id)

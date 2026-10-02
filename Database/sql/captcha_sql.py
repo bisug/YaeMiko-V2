@@ -14,7 +14,7 @@ import time
 
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 MODE_BUTTON = "button"
 MODE_TEXT = "text"
@@ -79,10 +79,12 @@ SOLVED_LOCK = threading.RLock()
 _cache: dict = {}
 
 
+@unit_of_work_guard
 def _row(chat_id):
     return SESSION.get(CaptchaSettings, str(chat_id))
 
 
+@unit_of_work_guard
 def _update(chat_id, **fields) -> None:
     with SETTINGS_LOCK:
         row = _row(chat_id)
@@ -95,6 +97,7 @@ def _update(chat_id, **fields) -> None:
         _cache.pop(str(chat_id), None)
 
 
+@unit_of_work_guard
 def get_settings(chat_id):
     """Settings dict with defaults when the chat has never configured any."""
     key = str(chat_id)
@@ -158,6 +161,7 @@ def set_show_rules(chat_id, enabled: bool) -> None:
     _update(chat_id, show_rules=bool(enabled))
 
 
+@unit_of_work_guard
 def has_solved(chat_id, user_id) -> bool:
     try:
         return (
@@ -167,6 +171,7 @@ def has_solved(chat_id, user_id) -> bool:
         SESSION.close()
 
 
+@unit_of_work_guard
 def mark_solved(chat_id, user_id) -> None:
     with SOLVED_LOCK:
         if not has_solved(chat_id, user_id):
@@ -174,6 +179,7 @@ def mark_solved(chat_id, user_id) -> None:
             SESSION.commit()
 
 
+@unit_of_work_guard
 def reset_solved(chat_id, user_id) -> None:
     """Forget a solve, which is what a kick does so the user is asked again."""
     with SOLVED_LOCK:
@@ -183,6 +189,7 @@ def reset_solved(chat_id, user_id) -> None:
             SESSION.commit()
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id) -> None:
     with SETTINGS_LOCK, SOLVED_LOCK:
         settings = SESSION.get(CaptchaSettings, str(old_chat_id))

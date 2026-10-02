@@ -27,7 +27,7 @@ import threading
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, distinct, func
 from sqlalchemy.dialects import postgresql
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class Warns(BASE):
@@ -101,6 +101,7 @@ WARN_SETTINGS_LOCK = threading.RLock()
 WARN_FILTERS = {}
 
 
+@unit_of_work_guard
 def warn_user(user_id, chat_id, reason=None):
     with WARN_INSERTION_LOCK:
         warned_user = SESSION.get(Warns, (user_id, str(chat_id)))
@@ -122,6 +123,7 @@ def warn_user(user_id, chat_id, reason=None):
         return num, reasons
 
 
+@unit_of_work_guard
 def remove_warn(user_id, chat_id):
     with WARN_INSERTION_LOCK:
         removed = False
@@ -138,6 +140,7 @@ def remove_warn(user_id, chat_id):
         return removed
 
 
+@unit_of_work_guard
 def reset_warns(user_id, chat_id):
     with WARN_INSERTION_LOCK:
         warned_user = SESSION.get(Warns, (user_id, str(chat_id)))
@@ -150,6 +153,7 @@ def reset_warns(user_id, chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def get_warns(user_id, chat_id):
     try:
         user = SESSION.get(Warns, (user_id, str(chat_id)))
@@ -162,6 +166,7 @@ def get_warns(user_id, chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def add_warn_filter(chat_id, keyword, reply):
     with WARN_FILTER_INSERTION_LOCK:
         warn_filt = WarnFilters(str(chat_id), keyword, reply)
@@ -176,6 +181,7 @@ def add_warn_filter(chat_id, keyword, reply):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def remove_warn_filter(chat_id, keyword):
     with WARN_FILTER_INSERTION_LOCK:
         warn_filt = SESSION.get(WarnFilters, (str(chat_id), keyword))
@@ -194,6 +200,7 @@ def get_chat_warn_triggers(chat_id):
     return WARN_FILTERS.get(str(chat_id), set())
 
 
+@unit_of_work_guard
 def get_chat_warn_filters(chat_id):
     try:
         return (
@@ -203,6 +210,7 @@ def get_chat_warn_filters(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def get_warn_filter(chat_id, keyword):
     try:
         return SESSION.get(WarnFilters, (str(chat_id), keyword))
@@ -210,6 +218,7 @@ def get_warn_filter(chat_id, keyword):
         SESSION.close()
 
 
+@unit_of_work_guard
 def set_warn_limit(chat_id, warn_limit):
     with WARN_SETTINGS_LOCK:
         curr_setting = SESSION.get(WarnSettings, str(chat_id))
@@ -222,6 +231,7 @@ def set_warn_limit(chat_id, warn_limit):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def set_warn_strength(chat_id, soft_warn):
     with WARN_SETTINGS_LOCK:
         curr_setting = SESSION.get(WarnSettings, str(chat_id))
@@ -234,6 +244,7 @@ def set_warn_strength(chat_id, soft_warn):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_warn_setting(chat_id):
     try:
         setting = SESSION.get(WarnSettings, str(chat_id))
@@ -245,6 +256,7 @@ def get_warn_setting(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def get_all_warns_for_chat(chat_id) -> dict:
     """user_id -> warn count, so a chat's whole warn state can be exported."""
     try:
@@ -254,6 +266,7 @@ def get_all_warns_for_chat(chat_id) -> dict:
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_warns():
     try:
         return SESSION.query(func.sum(Warns.num_warns)).scalar() or 0
@@ -261,6 +274,7 @@ def num_warns():
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_warn_chats():
     try:
         return SESSION.query(func.count(distinct(Warns.chat_id))).scalar()
@@ -268,6 +282,7 @@ def num_warn_chats():
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_warn_filters():
     try:
         return SESSION.query(WarnFilters).count()
@@ -275,6 +290,7 @@ def num_warn_filters():
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_warn_chat_filters(chat_id):
     try:
         return (
@@ -286,6 +302,7 @@ def num_warn_chat_filters(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_warn_filter_chats():
     try:
         return SESSION.query(func.count(distinct(WarnFilters.chat_id))).scalar()
@@ -313,6 +330,7 @@ def __load_chat_warn_filters():
         SESSION.close()
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with WARN_INSERTION_LOCK:
         chat_notes = (

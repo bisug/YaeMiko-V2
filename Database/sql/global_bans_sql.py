@@ -2,7 +2,7 @@ import threading
 
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class GloballyBannedUsers(BASE):
@@ -45,6 +45,7 @@ GBANNED_LIST = set()
 GBANSTAT_LIST = set()
 
 
+@unit_of_work_guard
 def gban_user(user_id, name, reason=None):
     with GBANNED_USERS_LOCK:
         user = SESSION.get(GloballyBannedUsers, user_id)
@@ -59,6 +60,7 @@ def gban_user(user_id, name, reason=None):
         __load_gbanned_userid_list()
 
 
+@unit_of_work_guard
 def update_gban_reason(user_id, name, reason=None):
     with GBANNED_USERS_LOCK:
         user = SESSION.get(GloballyBannedUsers, user_id)
@@ -73,6 +75,7 @@ def update_gban_reason(user_id, name, reason=None):
         return old_reason
 
 
+@unit_of_work_guard
 def ungban_user(user_id):
     with GBANNED_USERS_LOCK:
         user = SESSION.get(GloballyBannedUsers, user_id)
@@ -87,6 +90,7 @@ def is_user_gbanned(user_id):
     return user_id in GBANNED_LIST
 
 
+@unit_of_work_guard
 def get_gbanned_user(user_id):
     try:
         return SESSION.get(GloballyBannedUsers, user_id)
@@ -94,6 +98,7 @@ def get_gbanned_user(user_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def get_gban_list():
     try:
         return [x.to_dict() for x in SESSION.query(GloballyBannedUsers).all()]
@@ -101,6 +106,7 @@ def get_gban_list():
         SESSION.close()
 
 
+@unit_of_work_guard
 def enable_gbans(chat_id):
     with GBAN_SETTING_LOCK:
         chat = SESSION.get(GbanSettings, str(chat_id))
@@ -114,6 +120,7 @@ def enable_gbans(chat_id):
             GBANSTAT_LIST.remove(str(chat_id))
 
 
+@unit_of_work_guard
 def disable_gbans(chat_id):
     with GBAN_SETTING_LOCK:
         chat = SESSION.get(GbanSettings, str(chat_id))
@@ -152,6 +159,7 @@ def __load_gban_stat_list():
         SESSION.close()
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with GBAN_SETTING_LOCK:
         chat = SESSION.get(GbanSettings, str(old_chat_id))

@@ -27,7 +27,7 @@ import threading
 from sqlalchemy import Boolean, Column
 from sqlalchemy.sql.sqltypes import String
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class AntiChannelSettings(BASE):
@@ -48,6 +48,7 @@ AntiChannelSettings.__table__.create(bind=ENGINE, checkfirst=True)
 ANTICHANNEL_SETTING_LOCK = threading.RLock()
 
 
+@unit_of_work_guard
 def enable_antichannel(chat_id: int):
     with ANTICHANNEL_SETTING_LOCK:
         chat = SESSION.get(AntiChannelSettings, str(chat_id))
@@ -59,6 +60,7 @@ def enable_antichannel(chat_id: int):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def disable_antichannel(chat_id: int):
     with ANTICHANNEL_SETTING_LOCK:
         chat = SESSION.get(AntiChannelSettings, str(chat_id))
@@ -70,6 +72,7 @@ def disable_antichannel(chat_id: int):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def antichannel_status(chat_id: int) -> bool:
     with ANTICHANNEL_SETTING_LOCK:
         d = SESSION.get(AntiChannelSettings, str(chat_id))
@@ -78,6 +81,7 @@ def antichannel_status(chat_id: int) -> bool:
         return d.setting
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with ANTICHANNEL_SETTING_LOCK:
         chat = SESSION.get(AntiChannelSettings, str(old_chat_id))

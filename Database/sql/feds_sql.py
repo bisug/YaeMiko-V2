@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from aiogram.exceptions import TelegramAPIError
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 from Mikobot import LOGGER, OWNER_ID, bot
 
 
@@ -202,6 +202,7 @@ def get_user_fbanlist(user_id):
     return user_name, fedname
 
 
+@unit_of_work_guard
 def new_fed(owner_id, fed_name, fed_id):
     with FEDS_LOCK:
         global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME
@@ -297,6 +298,7 @@ def del_fed(fed_id, user_id):
         return True
 
 
+@unit_of_work_guard
 def rename_fed(fed_id, owner_id, newname):
     with FEDS_LOCK:
         global FEDERATION_BYFEDID, FEDERATION_BYOWNER, FEDERATION_BYNAME
@@ -317,6 +319,7 @@ def rename_fed(fed_id, owner_id, newname):
         return True
 
 
+@unit_of_work_guard
 def chat_join_fed(fed_id, chat_name, chat_id):
     with FEDS_LOCK:
         global FEDERATION_CHATS, FEDERATION_CHATS_BYID
@@ -351,6 +354,7 @@ def search_user_in_fed(fed_id, user_id):
         return False
 
 
+@unit_of_work_guard
 def user_demote_fed(fed_id, user_id):
     with FEDS_LOCK:
         global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME
@@ -383,6 +387,7 @@ def user_demote_fed(fed_id, user_id):
         return True
 
 
+@unit_of_work_guard
 def user_join_fed(fed_id, user_id):
     with FEDS_LOCK:
         global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME
@@ -412,6 +417,7 @@ def user_join_fed(fed_id, user_id):
         return True
 
 
+@unit_of_work_guard
 def chat_leave_fed(chat_id):
     with FEDS_LOCK:
         global FEDERATION_CHATS, FEDERATION_CHATS_BYID
@@ -461,6 +467,7 @@ def all_fed_members(fed_id):
         return fed_admins
 
 
+@unit_of_work_guard
 def set_frules(fed_id, rules):
     with FEDS_LOCK:
         global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME
@@ -493,6 +500,7 @@ def get_frules(fed_id):
         return rules
 
 
+@unit_of_work_guard
 def fban_user(fed_id, user_id, first_name, last_name, user_name, reason, time):
     with FEDS_LOCK:
         try:
@@ -535,6 +543,7 @@ def fban_user(fed_id, user_id, first_name, last_name, user_name, reason, time):
         return ban
 
 
+@unit_of_work_guard
 def multi_fban_user(
     multi_fed_id,
     multi_user_id,
@@ -590,6 +599,7 @@ def multi_fban_user(
         return counter
 
 
+@unit_of_work_guard
 def un_fban_user(fed_id, user_id):
     with FEDS_LOCK:
         try:
@@ -616,6 +626,7 @@ def un_fban_user(fed_id, user_id):
         return ban
 
 
+@unit_of_work_guard
 def get_fban_user(fed_id, user_id):
     fed_id = str(fed_id)
     user_id = str(user_id)
@@ -675,6 +686,7 @@ def user_feds_report(user_id: int) -> bool:
     return user_setting
 
 
+@unit_of_work_guard
 def set_feds_setting(user_id: int, setting: bool):
     with FEDS_SETTINGS_LOCK:
         global FEDERATION_NOTIFICATION
@@ -707,6 +719,7 @@ async def get_fed_log(fed_id):
         return False
 
 
+@unit_of_work_guard
 def set_fed_log(fed_id, chat_id):
     with FEDS_LOCK:
         global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME
@@ -733,6 +746,7 @@ def set_fed_log(fed_id, chat_id):
         return True
 
 
+@unit_of_work_guard
 def subs_fed(fed_id, my_fed):
     fed_id, my_fed = str(fed_id), str(my_fed)
     with FEDS_SUBSCRIBER_LOCK:
@@ -745,6 +759,7 @@ def subs_fed(fed_id, my_fed):
         return True
 
 
+@unit_of_work_guard
 def unsubs_fed(fed_id, my_fed):
     fed_id, my_fed = str(fed_id), str(my_fed)
     with FEDS_SUBSCRIBER_LOCK:

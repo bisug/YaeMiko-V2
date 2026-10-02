@@ -28,7 +28,7 @@ from collections import deque
 
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, inspect, text
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 DEF_COUNT = 1
 DEF_LIMIT = 0
@@ -121,6 +121,7 @@ FLOOD_MESSAGES: dict = {}
 MAX_TRACKED_MESSAGES = 50
 
 
+@unit_of_work_guard
 def set_flood(chat_id, amount):
     with INSERTION_FLOOD_LOCK:
         flood = SESSION.get(FloodControl, str(chat_id))
@@ -163,6 +164,7 @@ def get_flood_limit(chat_id):
     return CHAT_FLOOD.get(str(chat_id), DEF_OBJ)[2]
 
 
+@unit_of_work_guard
 def set_flood_strength(chat_id, flood_type, value):
     # ғᴏʀ ғʟᴏᴏᴅ_ᴛʏᴘᴇ
     # 1 = ban
@@ -187,6 +189,7 @@ def set_flood_strength(chat_id, flood_type, value):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_flood_setting(chat_id):
     try:
         setting = SESSION.get(FloodSettings, str(chat_id))
@@ -198,6 +201,7 @@ def get_flood_setting(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def set_flood_timer(chat_id, amount, seconds):
     """Act on `amount` messages sent within `seconds`, instead of consecutively."""
     with INSERTION_FLOOD_LOCK:
@@ -214,6 +218,7 @@ def set_flood_timer(chat_id, amount, seconds):
     return int(amount), int(seconds)
 
 
+@unit_of_work_guard
 def set_clearflood(chat_id, enabled: bool) -> None:
     with INSERTION_FLOOD_LOCK:
         flood = SESSION.get(FloodControl, str(chat_id))
@@ -224,6 +229,7 @@ def set_clearflood(chat_id, enabled: bool) -> None:
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_clearflood(chat_id) -> bool:
     try:
         flood = SESSION.get(FloodControl, str(chat_id))
@@ -232,6 +238,7 @@ def get_clearflood(chat_id) -> bool:
         SESSION.close()
 
 
+@unit_of_work_guard
 def get_flood_timer(chat_id) -> int:
     """The timed window in seconds, or 0 when consecutive mode is in use."""
     try:
@@ -301,6 +308,7 @@ def clear_flood_state(chat_id, user_id=None) -> None:
         CHAT_FLOOD[str(chat_id)] = (None, DEF_COUNT, get_flood_limit(chat_id))
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with INSERTION_FLOOD_LOCK:
         flood = SESSION.get(FloodControl, str(old_chat_id))

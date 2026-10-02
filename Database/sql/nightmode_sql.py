@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class Nightmode(BASE):
@@ -14,12 +14,14 @@ class Nightmode(BASE):
 Nightmode.__table__.create(bind=ENGINE, checkfirst=True)
 
 
+@unit_of_work_guard
 def add_nightmode(chat_id: str):
     nightmoddy = Nightmode(str(chat_id))
     SESSION.add(nightmoddy)
     SESSION.commit()
 
 
+@unit_of_work_guard
 def rmnightmode(chat_id: str):
     rmnightmoddy = SESSION.get(Nightmode, str(chat_id))
     if rmnightmoddy:
@@ -27,12 +29,14 @@ def rmnightmode(chat_id: str):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_all_chat_id():
     stark = SESSION.query(Nightmode).all()
     SESSION.close()
     return stark
 
 
+@unit_of_work_guard
 def is_nightmode_indb(chat_id: str):
     try:
         s__ = SESSION.get(Nightmode, str(chat_id))

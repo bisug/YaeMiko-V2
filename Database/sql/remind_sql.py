@@ -28,7 +28,7 @@ import time
 from sqlalchemy import Column, Integer, String, UnicodeText
 from sqlalchemy.sql.sqltypes import BigInteger
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class Reminds(BASE):
@@ -57,6 +57,7 @@ INSERTION_LOCK = threading.RLock()
 REMINDERS = {}
 
 
+@unit_of_work_guard
 def set_remind(chat_id, time_sec, remind_message, user_id):
     with INSERTION_LOCK:
         reminds = SESSION.get(Reminds, (str(chat_id), time_sec))
@@ -77,6 +78,7 @@ def set_remind(chat_id, time_sec, remind_message, user_id):
         )
 
 
+@unit_of_work_guard
 def rem_remind(chat_id, time_sec, remind_message, user_id):
     with INSERTION_LOCK:
         reminds = SESSION.get(Reminds, (str(chat_id), time_sec))
@@ -95,6 +97,7 @@ def rem_remind(chat_id, time_sec, remind_message, user_id):
         return False
 
 
+@unit_of_work_guard
 def get_remind_in_chat(chat_id, timestamp):
     try:
         return SESSION.get(Reminds, (str(chat_id), int(timestamp)))
@@ -102,6 +105,7 @@ def get_remind_in_chat(chat_id, timestamp):
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_reminds_in_chat(chat_id):
     try:
         return SESSION.query(Reminds).filter(
@@ -111,6 +115,7 @@ def num_reminds_in_chat(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def get_reminds_in_chat(chat_id):
     try:
         return (

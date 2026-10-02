@@ -21,6 +21,11 @@ def load_function(path, name, namespace):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
         and node.name == name
     )
+    # Helpers carry @unit_of_work_guard. These tests lift a function out of its
+    # module, so the decorator travels with it and has to resolve. It is a
+    # pass-through here: these tests supply their own fake session and assert on
+    # the calls made to it, so there is no real session to bound.
+    namespace.setdefault("unit_of_work_guard", lambda func: func)
     module = ast.Module(body=[function], type_ignores=[])
     ast.fix_missing_locations(module)
     exec(compile(module, str(path), "exec"), namespace)
@@ -34,6 +39,11 @@ def load_nested_function(path, name, namespace):
         for node in ast.walk(tree)
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name
     )
+    # Helpers carry @unit_of_work_guard. These tests lift a function out of its
+    # module, so the decorator travels with it and has to resolve. It is a
+    # pass-through here: these tests supply their own fake session and assert on
+    # the calls made to it, so there is no real session to bound.
+    namespace.setdefault("unit_of_work_guard", lambda func: func)
     module = ast.Module(body=[function], type_ignores=[])
     ast.fix_missing_locations(module)
     exec(compile(module, str(path), "exec"), namespace)
@@ -4018,6 +4028,81 @@ class CaptchaTests(unittest.TestCase):
             if isinstance(n, ast.AsyncFunctionDef) and n.name == "math_answer"
         )
         self.assertIn("PRIVATE", ast.unparse(func))
+
+
+class UnitOfWorkTests(unittest.TestCase):
+    """A failed helper must not be able to write through the next one.
+
+    SESSION is thread-local and the to_thread worker pool reuses threads, so a
+    helper that staged a row and then raised left it pending on a Session that
+    outlived the call. The next unrelated helper to commit flushed it, writing
+    rows nobody asked for and failing on the duplicate key.
+    """
+
+    INIT = ROOT / "Database" / "sql" / "__init__.py"
+
+    def test_guard_exists_and_discards_both_sides(self):
+        source = self.INIT.read_text(encoding="utf-8")
+        self.assertIn("def unit_of_work_guard", source)
+        # Leading discard clears an earlier failure; trailing one stops this
+        # helper's session from outliving it.
+        self.assertIn("begin_unit_of_work()", source)
+        self.assertIn("finally:", source)
+        self.assertIn("end_unit_of_work()", source)
+
+    def test_registry_remove_precedes_rollback(self):
+        # remove() first: otherwise the scoped registry still holds the Session
+        # and hands the same object back with its pending rows intact. This
+        # ordering bug was the fix that finally made the leak stop.
+        source = self.INIT.read_text(encoding="utf-8")
+        method = next(
+            node for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "end_unit_of_work"
+        )
+        body = ast.unparse(method)
+        self.assertLess(
+            body.index("remove()"),
+            body.index("rollback()"),
+            "the registry must forget the session before it is rolled back",
+        )
+
+    def test_every_data_helper_is_wrapped(self):
+        # A single unwrapped writing helper is enough to reintroduce the leak.
+        unwrapped = []
+        for path in sorted((ROOT / "Database" / "sql").glob("*_sql.py")):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in tree.body:
+                if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+                if node.name.startswith("__"):
+                    continue
+                touches = any(
+                    isinstance(call, ast.Call)
+                    and isinstance(call.func, ast.Attribute)
+                    and getattr(call.func.value, "id", "") == "SESSION"
+                    and call.func.attr
+                    in {"add", "merge", "delete", "commit", "query", "get", "flush"}
+                    for call in ast.walk(node)
+                )
+                if not touches:
+                    continue
+                decorators = " ".join(ast.unparse(d) for d in node.decorator_list)
+                if "unit_of_work_guard" not in decorators:
+                    unwrapped.append(f"{path.name}:{node.name}")
+        self.assertEqual(unwrapped, [], "unwrapped data helpers")
+
+    def test_helpers_that_read_their_own_write_keep_one_session(self):
+        # A fresh Session per call would break these, so the wrapper has to
+        # keep one Session for the whole helper rather than per statement.
+        source = (ROOT / "Database" / "sql" / "welcome_sql.py").read_text(
+            encoding="utf-8"
+        )
+        body = source.split("def set_custom_welcome", 1)[1].split("\n\ndef ", 1)[0]
+        self.assertIn("SESSION.add(", body)
+        self.assertIn("SESSION.query(", body)
+        # The commit is still inside the helper, not pushed out to the caller.
+        self.assertIn("SESSION.commit()", body)
 
 
 if __name__ == "__main__":

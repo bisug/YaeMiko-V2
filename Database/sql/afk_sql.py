@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import BigInteger, Boolean, Column, DateTime, UnicodeText
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class AFK(BASE):
@@ -34,6 +34,7 @@ def is_afk(user_id):
     return user_id in AFK_USERS
 
 
+@unit_of_work_guard
 def check_afk_status(user_id):
     try:
         return SESSION.get(AFK, user_id)
@@ -41,6 +42,7 @@ def check_afk_status(user_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def set_afk(user_id, reason=""):
     with INSERTION_LOCK:
         curr = SESSION.get(AFK, user_id)
@@ -55,6 +57,7 @@ def set_afk(user_id, reason=""):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def rm_afk(user_id):
     with INSERTION_LOCK:
         curr = SESSION.get(AFK, user_id)
@@ -70,6 +73,7 @@ def rm_afk(user_id):
         return False
 
 
+@unit_of_work_guard
 def toggle_afk(user_id, reason=""):
     with INSERTION_LOCK:
         curr = SESSION.get(AFK, user_id)

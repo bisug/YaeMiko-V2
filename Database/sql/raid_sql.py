@@ -28,7 +28,7 @@ from collections import deque
 
 from sqlalchemy import BigInteger, Boolean, Column, String, inspect, text
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 DEF_RAID_TIME = 60 * 60 * 6  # 6 hours, per the documented default
 DEF_ACTION_TIME = 60 * 60  # 1 hour
@@ -99,6 +99,7 @@ JOIN_WINDOW_SECONDS = 60
 MAX_JOIN_TRACK = 50
 
 
+@unit_of_work_guard
 def _row(chat_id):
     return SESSION.get(RaidChats, str(chat_id))
 
@@ -116,6 +117,7 @@ def _settings(chat_id):
     )
 
 
+@unit_of_work_guard
 def is_raid(chat_id) -> bool:
     """True only while the raid window is still open.
 
@@ -129,6 +131,7 @@ def is_raid(chat_id) -> bool:
         SESSION.close()
 
 
+@unit_of_work_guard
 def set_raid(chat_id, duration: int = None) -> None:
     """Enable the raid for `duration` seconds, or the chat's configured window."""
     with INSERTION_LOCK:
@@ -143,6 +146,7 @@ def set_raid(chat_id, duration: int = None) -> None:
         SESSION.commit()
 
 
+@unit_of_work_guard
 def rem_raid(chat_id) -> None:
     """Disable the raid now, keeping the configured durations."""
     with INSERTION_LOCK:
@@ -153,6 +157,7 @@ def rem_raid(chat_id) -> None:
         SESSION.commit()
 
 
+@unit_of_work_guard
 def set_raid_time(chat_id, seconds: int) -> None:
     with INSERTION_LOCK:
         row = _row(chat_id)
@@ -163,6 +168,7 @@ def set_raid_time(chat_id, seconds: int) -> None:
         SESSION.commit()
 
 
+@unit_of_work_guard
 def set_action_time(chat_id, seconds: int) -> None:
     with INSERTION_LOCK:
         row = _row(chat_id)
@@ -173,6 +179,7 @@ def set_action_time(chat_id, seconds: int) -> None:
         SESSION.commit()
 
 
+@unit_of_work_guard
 def set_auto_antiraid(chat_id, threshold: int) -> None:
     with INSERTION_LOCK:
         row = _row(chat_id)
@@ -183,6 +190,7 @@ def set_auto_antiraid(chat_id, threshold: int) -> None:
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_raid_setting(chat_id):
     """(is_active, raid_time, action_time, auto_antiraid) for the /antiraid view."""
     try:
@@ -197,6 +205,7 @@ def get_raid_setting(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def mark_notified(chat_id) -> None:
     """Record that the raid-alert was sent, so it is posted once per raid."""
     with INSERTION_LOCK:
@@ -207,6 +216,7 @@ def mark_notified(chat_id) -> None:
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_all_raid_chats():
     try:
         return [row.chat_id for row in SESSION.query(RaidChats).all()]
@@ -214,6 +224,7 @@ def get_all_raid_chats():
         SESSION.close()
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id) -> None:
     with INSERTION_LOCK:
         row = _row(old_chat_id)

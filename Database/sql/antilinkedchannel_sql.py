@@ -27,7 +27,7 @@ import threading
 from sqlalchemy import Boolean, Column
 from sqlalchemy.sql.sqltypes import String
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class AntiLinkedChannelSettings(BASE):
@@ -65,6 +65,7 @@ AntiPinChannelSettings.__table__.create(bind=ENGINE, checkfirst=True)
 ANTI_PIN_CHANNEL_SETTING_LOCK = threading.RLock()
 
 
+@unit_of_work_guard
 def enable_linked(chat_id: int):
     with ANTI_LINKED_CHANNEL_SETTING_LOCK:
         chat = SESSION.get(AntiLinkedChannelSettings, str(chat_id))
@@ -76,6 +77,7 @@ def enable_linked(chat_id: int):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def enable_pin(chat_id: int):
     with ANTI_PIN_CHANNEL_SETTING_LOCK:
         chat = SESSION.get(AntiPinChannelSettings, str(chat_id))
@@ -87,6 +89,7 @@ def enable_pin(chat_id: int):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def disable_linked(chat_id: int):
     with ANTI_LINKED_CHANNEL_SETTING_LOCK:
         chat = SESSION.get(AntiLinkedChannelSettings, str(chat_id))
@@ -98,6 +101,7 @@ def disable_linked(chat_id: int):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def disable_pin(chat_id: int):
     with ANTI_PIN_CHANNEL_SETTING_LOCK:
         chat = SESSION.get(AntiPinChannelSettings, str(chat_id))
@@ -109,6 +113,7 @@ def disable_pin(chat_id: int):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def status_linked(chat_id: int) -> bool:
     with ANTI_LINKED_CHANNEL_SETTING_LOCK:
         d = SESSION.get(AntiLinkedChannelSettings, str(chat_id))
@@ -117,6 +122,7 @@ def status_linked(chat_id: int) -> bool:
         return d.setting
 
 
+@unit_of_work_guard
 def status_pin(chat_id: int) -> bool:
     with ANTI_PIN_CHANNEL_SETTING_LOCK:
         d = SESSION.get(AntiPinChannelSettings, str(chat_id))
@@ -125,6 +131,7 @@ def status_pin(chat_id: int) -> bool:
         return d.setting
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with ANTI_LINKED_CHANNEL_SETTING_LOCK:
         chat = SESSION.get(AntiLinkedChannelSettings, str(old_chat_id))

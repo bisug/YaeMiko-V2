@@ -28,7 +28,7 @@ from typing import Union
 
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class ChatAccessConnectionSettings(BASE):
@@ -85,6 +85,7 @@ CONNECTION_HISTORY_LOCK = threading.RLock()
 HISTORY_CONNECT = {}
 
 
+@unit_of_work_guard
 def allow_connect_to_chat(chat_id: Union[str, int]) -> bool:
     try:
         chat_setting = SESSION.get(ChatAccessConnectionSettings, str(chat_id))
@@ -95,6 +96,7 @@ def allow_connect_to_chat(chat_id: Union[str, int]) -> bool:
         SESSION.close()
 
 
+@unit_of_work_guard
 def set_allow_connect_to_chat(chat_id: Union[int, str], setting: bool):
     with CHAT_ACCESS_LOCK:
         chat_setting = SESSION.get(ChatAccessConnectionSettings, str(chat_id))
@@ -106,6 +108,7 @@ def set_allow_connect_to_chat(chat_id: Union[int, str], setting: bool):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def connect(user_id, chat_id):
     with CONNECTION_INSERTION_LOCK:
         connection = SESSION.get(Connection, int(user_id))
@@ -118,6 +121,7 @@ def connect(user_id, chat_id):
         return True
 
 
+@unit_of_work_guard
 def get_connected_chat(user_id):
     try:
         return SESSION.get(Connection, int(user_id))
@@ -125,6 +129,7 @@ def get_connected_chat(user_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def curr_connection(chat_id):
     try:
         return SESSION.query(Connection).filter(Connection.chat_id == str(chat_id)).first()
@@ -132,6 +137,7 @@ def curr_connection(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def disconnect(user_id):
     with CONNECTION_INSERTION_LOCK:
         disconnect = SESSION.get(Connection, int(user_id))
@@ -143,6 +149,7 @@ def disconnect(user_id):
         return False
 
 
+@unit_of_work_guard
 def add_history_conn(user_id, chat_id, chat_name):
     global HISTORY_CONNECT
     with CONNECTION_HISTORY_LOCK:
@@ -178,6 +185,7 @@ def get_history_conn(user_id):
         return dict(HISTORY_CONNECT.setdefault(int(user_id), {}))
 
 
+@unit_of_work_guard
 def clear_history_conn(user_id):
     global HISTORY_CONNECT
     user_id = int(user_id)

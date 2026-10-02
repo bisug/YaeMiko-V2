@@ -2,7 +2,7 @@ import threading
 
 from sqlalchemy import Column, String, UnicodeText, distinct, func
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class Rules(BASE):
@@ -22,6 +22,7 @@ Rules.__table__.create(bind=ENGINE, checkfirst=True)
 INSERTION_LOCK = threading.RLock()
 
 
+@unit_of_work_guard
 def set_rules(chat_id, rules_text):
     with INSERTION_LOCK:
         rules = SESSION.get(Rules, str(chat_id))
@@ -33,6 +34,7 @@ def set_rules(chat_id, rules_text):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_rules(chat_id):
     rules = SESSION.get(Rules, str(chat_id))
     ret = ""
@@ -43,6 +45,7 @@ def get_rules(chat_id):
     return ret
 
 
+@unit_of_work_guard
 def num_chats():
     try:
         return SESSION.query(func.count(distinct(Rules.chat_id))).scalar()
@@ -50,6 +53,7 @@ def num_chats():
         SESSION.close()
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with INSERTION_LOCK:
         chat = SESSION.get(Rules, str(old_chat_id))

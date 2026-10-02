@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import Boolean, Column, UnicodeText
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class CleanerBlueTextChatSettings(BASE):
@@ -72,6 +72,7 @@ CLEANER_CHATS = {}
 GLOBAL_IGNORE_COMMANDS = set()
 
 
+@unit_of_work_guard
 def set_cleanbt(chat_id, is_enable):
     with CLEANER_CHAT_SETTINGS:
         curr = SESSION.get(CleanerBlueTextChatSettings, str(chat_id))
@@ -92,6 +93,7 @@ def set_cleanbt(chat_id, is_enable):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def chat_ignore_command(chat_id, ignore):
     ignore = ignore.lower()
     with CLEANER_CHAT_LOCK:
@@ -113,6 +115,7 @@ def chat_ignore_command(chat_id, ignore):
         return False
 
 
+@unit_of_work_guard
 def chat_unignore_command(chat_id, unignore):
     unignore = unignore.lower()
     with CLEANER_CHAT_LOCK:
@@ -134,6 +137,7 @@ def chat_unignore_command(chat_id, unignore):
         return False
 
 
+@unit_of_work_guard
 def global_ignore_command(command):
     command = command.lower()
     with CLEANER_GLOBAL_LOCK:
@@ -151,6 +155,7 @@ def global_ignore_command(command):
         return False
 
 
+@unit_of_work_guard
 def global_unignore_command(command):
     command = command.lower()
     with CLEANER_GLOBAL_LOCK:

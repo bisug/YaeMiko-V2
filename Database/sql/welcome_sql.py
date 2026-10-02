@@ -37,7 +37,7 @@ from sqlalchemy import (
     text,
 )
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 from Mikobot.plugins.helper_funcs.msg_types import Types
 
 DEFAULT_WELCOME = "ʜᴇʏ {first}, ʜᴏᴡ ᴀʀᴇ ʏᴏᴜ?"
@@ -204,6 +204,7 @@ CS_LOCK = threading.RLock()
 RAID_LOCK = threading.RLock()
 
 
+@unit_of_work_guard
 def welcome_mutes(chat_id):
     try:
         welcomemutes = SESSION.get(WelcomeMute, str(chat_id))
@@ -214,6 +215,7 @@ def welcome_mutes(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def set_welcome_mutes(chat_id, welcomemutes):
     with WM_LOCK:
         welcome_m = SESSION.get(WelcomeMute, str(chat_id))
@@ -225,6 +227,7 @@ def set_welcome_mutes(chat_id, welcomemutes):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def set_human_checks(user_id, chat_id):
     with INSERTION_LOCK:
         human_check = SESSION.get(WelcomeMuteUsers, (user_id, str(chat_id)))
@@ -240,6 +243,7 @@ def set_human_checks(user_id, chat_id):
         return human_check
 
 
+@unit_of_work_guard
 def get_human_checks(user_id, chat_id):
     try:
         human_check = SESSION.get(WelcomeMuteUsers, (user_id, str(chat_id)))
@@ -251,6 +255,7 @@ def get_human_checks(user_id, chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def get_welc_mutes_pref(chat_id):
     welcomemutes = SESSION.get(WelcomeMute, str(chat_id))
     SESSION.close()
@@ -261,6 +266,7 @@ def get_welc_mutes_pref(chat_id):
     return False
 
 
+@unit_of_work_guard
 def get_welc_pref(chat_id):
     welc = SESSION.get(Welcome, str(chat_id))
     SESSION.close()
@@ -277,6 +283,7 @@ def get_welc_pref(chat_id):
         return True, DEFAULT_WELCOME, None, Types.TEXT
 
 
+@unit_of_work_guard
 def get_gdbye_pref(chat_id):
     welc = SESSION.get(Welcome, str(chat_id))
     SESSION.close()
@@ -287,6 +294,7 @@ def get_gdbye_pref(chat_id):
         return True, DEFAULT_GOODBYE, Types.TEXT
 
 
+@unit_of_work_guard
 def set_clean_welcome(chat_id, clean_welcome):
     with INSERTION_LOCK:
         curr = SESSION.get(Welcome, str(chat_id))
@@ -299,6 +307,7 @@ def set_clean_welcome(chat_id, clean_welcome):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_clean_pref(chat_id):
     welc = SESSION.get(Welcome, str(chat_id))
     SESSION.close()
@@ -309,6 +318,7 @@ def get_clean_pref(chat_id):
     return False
 
 
+@unit_of_work_guard
 def set_welc_preference(chat_id, should_welcome):
     with INSERTION_LOCK:
         curr = SESSION.get(Welcome, str(chat_id))
@@ -321,6 +331,7 @@ def set_welc_preference(chat_id, should_welcome):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def set_gdbye_preference(chat_id, should_goodbye):
     with INSERTION_LOCK:
         curr = SESSION.get(Welcome, str(chat_id))
@@ -333,6 +344,7 @@ def set_gdbye_preference(chat_id, should_goodbye):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def set_custom_welcome(
     chat_id, custom_content, custom_welcome, welcome_type, buttons=None
 ):
@@ -371,6 +383,7 @@ def set_custom_welcome(
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_custom_welcome(chat_id):
     welcome_settings = SESSION.get(Welcome, str(chat_id))
     ret = DEFAULT_WELCOME
@@ -381,6 +394,7 @@ def get_custom_welcome(chat_id):
     return ret
 
 
+@unit_of_work_guard
 def set_custom_gdbye(chat_id, custom_goodbye, goodbye_type, buttons=None):
     if buttons is None:
         buttons = []
@@ -416,6 +430,7 @@ def set_custom_gdbye(chat_id, custom_goodbye, goodbye_type, buttons=None):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_custom_gdbye(chat_id):
     welcome_settings = SESSION.get(Welcome, str(chat_id))
     ret = DEFAULT_GOODBYE
@@ -426,6 +441,7 @@ def get_custom_gdbye(chat_id):
     return ret
 
 
+@unit_of_work_guard
 def get_welc_buttons(chat_id):
     try:
         return (
@@ -438,6 +454,7 @@ def get_welc_buttons(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def get_gdbye_buttons(chat_id):
     try:
         return (
@@ -450,6 +467,7 @@ def get_gdbye_buttons(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def clean_service(chat_id: Union[str, int]) -> bool:
     try:
         chat_setting = SESSION.get(CleanServiceSetting, str(chat_id))
@@ -460,6 +478,7 @@ def clean_service(chat_id: Union[str, int]) -> bool:
         SESSION.close()
 
 
+@unit_of_work_guard
 def set_clean_service(chat_id: Union[int, str], setting: bool):
     with CS_LOCK:
         chat_setting = SESSION.get(CleanServiceSetting, str(chat_id))
@@ -471,6 +490,7 @@ def set_clean_service(chat_id: Union[int, str], setting: bool):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def set_service_types(chat_id: Union[int, str], types_csv: str):
     """Replace the set of service message types this chat deletes."""
     with CS_LOCK:
@@ -482,6 +502,7 @@ def set_service_types(chat_id: Union[int, str], types_csv: str):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_service_types(chat_id: Union[int, str]) -> set:
     try:
         chat_setting = SESSION.get(CleanServiceSetting, str(chat_id))
@@ -491,6 +512,7 @@ def get_service_types(chat_id: Union[int, str]) -> set:
         SESSION.close()
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with INSERTION_LOCK:
         chat = SESSION.get(Welcome, str(old_chat_id))
@@ -518,6 +540,7 @@ def migrate_chat(old_chat_id, new_chat_id):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def getRaidStatus(chat_id):
     try:
         if stat := SESSION.get(RaidMode, str(chat_id)):
@@ -527,6 +550,7 @@ def getRaidStatus(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def setRaidStatus(chat_id, status, time=21600, acttime=3600):
     with RAID_LOCK:
         raid = SESSION.get(RaidMode, str(chat_id))
@@ -540,6 +564,7 @@ def setRaidStatus(chat_id, status, time=21600, acttime=3600):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def toggleRaidStatus(chat_id):
     with RAID_LOCK:
         prevObj = SESSION.get(RaidMode, str(chat_id))
@@ -554,6 +579,7 @@ def toggleRaidStatus(chat_id):
         return new_status
 
 
+@unit_of_work_guard
 def _ResetRaidOnRestart():
     with RAID_LOCK:
         raid = SESSION.query(RaidMode).all()

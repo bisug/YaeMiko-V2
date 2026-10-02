@@ -10,7 +10,7 @@ import threading
 
 from sqlalchemy import BigInteger, Column, String
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 # The General topic has no real id; Telegram treats an omitted thread as it.
 GENERAL_TOPIC = None
@@ -34,6 +34,7 @@ ActionTopic.__table__.create(bind=ENGINE, checkfirst=True)
 INSERTION_LOCK = threading.RLock()
 
 
+@unit_of_work_guard
 def get_action_topic(chat_id):
     """The thread automated messages should go to, or None for General."""
     try:
@@ -43,6 +44,7 @@ def get_action_topic(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def set_action_topic(chat_id, message_thread_id) -> None:
     with INSERTION_LOCK:
         row = SESSION.get(ActionTopic, str(chat_id))
@@ -54,6 +56,7 @@ def set_action_topic(chat_id, message_thread_id) -> None:
         SESSION.commit()
 
 
+@unit_of_work_guard
 def remove_action_topic(chat_id) -> None:
     with INSERTION_LOCK:
         row = SESSION.get(ActionTopic, str(chat_id))
@@ -62,6 +65,7 @@ def remove_action_topic(chat_id) -> None:
             SESSION.commit()
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id) -> None:
     with INSERTION_LOCK:
         row = SESSION.get(ActionTopic, str(old_chat_id))

@@ -2,7 +2,7 @@ import threading
 
 from sqlalchemy import Boolean, Column, Integer, String, UnicodeText, distinct, func
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 from Mikobot import LOGGER
 from Mikobot.plugins.helper_funcs.msg_types import Types
 
@@ -125,6 +125,7 @@ BUTTON_LOCK = threading.RLock()
 CHAT_FILTERS = {}
 
 
+@unit_of_work_guard
 def get_all_filters():
     try:
         return SESSION.query(CustomFilters).all()
@@ -132,6 +133,7 @@ def get_all_filters():
         SESSION.close()
 
 
+@unit_of_work_guard
 def add_filter(
     chat_id,
     keyword,
@@ -187,6 +189,7 @@ def add_filter(
             )
 
 
+@unit_of_work_guard
 def new_add_filter(
     chat_id, keyword, reply_text, file_type, file_id, buttons, media_spoiler
 ):
@@ -236,6 +239,7 @@ def new_add_filter(
             )
 
 
+@unit_of_work_guard
 def remove_filter(chat_id, keyword):
     global CHAT_FILTERS
     with CUST_FILT_LOCK:
@@ -265,6 +269,7 @@ def get_chat_triggers(chat_id):
     return set(CHAT_FILTERS.get(str(chat_id), set()))
 
 
+@unit_of_work_guard
 def get_chat_filters(chat_id):
     try:
         return (
@@ -278,6 +283,7 @@ def get_chat_filters(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def get_filter(chat_id, keyword):
     try:
         return SESSION.get(CustomFilters, (str(chat_id), keyword))
@@ -285,6 +291,7 @@ def get_filter(chat_id, keyword):
         SESSION.close()
 
 
+@unit_of_work_guard
 def add_note_button_to_db(chat_id, keyword, b_name, url, same_line):
     with BUTTON_LOCK:
         button = Buttons(chat_id, keyword, b_name, url, same_line)
@@ -292,6 +299,7 @@ def add_note_button_to_db(chat_id, keyword, b_name, url, same_line):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_buttons(chat_id, keyword):
     try:
         return (
@@ -304,6 +312,7 @@ def get_buttons(chat_id, keyword):
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_filters():
     try:
         return SESSION.query(CustomFilters).count()
@@ -311,6 +320,7 @@ def num_filters():
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_chats():
     try:
         return SESSION.query(func.count(distinct(CustomFilters.chat_id))).scalar()
@@ -375,6 +385,7 @@ def __migrate_filters():
         SESSION.close()
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with CUST_FILT_LOCK:
         chat_filters = (

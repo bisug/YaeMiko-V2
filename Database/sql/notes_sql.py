@@ -27,7 +27,7 @@ import threading
 
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, distinct, func
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 from Mikobot.plugins.helper_funcs.msg_types import Types
 
 
@@ -76,6 +76,7 @@ NOTES_INSERTION_LOCK = threading.RLock()
 BUTTONS_INSERTION_LOCK = threading.RLock()
 
 
+@unit_of_work_guard
 def add_note_to_db(chat_id, note_name, note_data, msgtype, buttons=None, file=None):
     if not buttons:
         buttons = []
@@ -108,6 +109,7 @@ def add_note_to_db(chat_id, note_name, note_data, msgtype, buttons=None, file=No
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_note(chat_id, note_name):
     try:
         return (
@@ -119,6 +121,7 @@ def get_note(chat_id, note_name):
         SESSION.close()
 
 
+@unit_of_work_guard
 def rm_note(chat_id, note_name):
     with NOTES_INSERTION_LOCK:
         note = (
@@ -146,6 +149,7 @@ def rm_note(chat_id, note_name):
         return False
 
 
+@unit_of_work_guard
 def get_all_chat_notes(chat_id):
     try:
         return (
@@ -158,6 +162,7 @@ def get_all_chat_notes(chat_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def add_note_button_to_db(chat_id, note_name, b_name, url, same_line):
     with BUTTONS_INSERTION_LOCK:
         button = Buttons(chat_id, note_name, b_name, url, same_line)
@@ -165,6 +170,7 @@ def add_note_button_to_db(chat_id, note_name, b_name, url, same_line):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def get_buttons(chat_id, note_name):
     try:
         return (
@@ -177,6 +183,7 @@ def get_buttons(chat_id, note_name):
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_notes():
     try:
         return SESSION.query(Notes).count()
@@ -184,6 +191,7 @@ def num_notes():
         SESSION.close()
 
 
+@unit_of_work_guard
 def num_chats():
     try:
         return SESSION.query(func.count(distinct(Notes.chat_id))).scalar()
@@ -191,6 +199,7 @@ def num_chats():
         SESSION.close()
 
 
+@unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with NOTES_INSERTION_LOCK:
         chat_notes = (

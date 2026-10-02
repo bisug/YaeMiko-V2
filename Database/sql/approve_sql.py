@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import BigInteger, Column, String
 
-from Database.sql import BASE, ENGINE, SESSION
+from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 
 class Approvals(BASE):
@@ -47,6 +47,7 @@ Approvals.__table__.create(bind=ENGINE, checkfirst=True)
 APPROVE_INSERTION_LOCK = threading.RLock()
 
 
+@unit_of_work_guard
 def approve(chat_id, user_id):
     with APPROVE_INSERTION_LOCK:
         approve_user = Approvals(str(chat_id), user_id)
@@ -54,6 +55,7 @@ def approve(chat_id, user_id):
         SESSION.commit()
 
 
+@unit_of_work_guard
 def is_approved(chat_id, user_id):
     try:
         return SESSION.get(Approvals, (str(chat_id), user_id))
@@ -61,6 +63,7 @@ def is_approved(chat_id, user_id):
         SESSION.close()
 
 
+@unit_of_work_guard
 def disapprove(chat_id, user_id):
     with APPROVE_INSERTION_LOCK:
         disapprove_user = SESSION.get(Approvals, (str(chat_id), user_id))
@@ -73,6 +76,7 @@ def disapprove(chat_id, user_id):
             return False
 
 
+@unit_of_work_guard
 def list_approved(chat_id):
     try:
         return (

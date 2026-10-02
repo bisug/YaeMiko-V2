@@ -80,6 +80,22 @@ async def _silently_drop(event):
     return True
 
 
+def _end_database_unit_of_work() -> None:
+    """Discard any database state this update left staged.
+
+    Imported lazily because Database.sql imports Mikobot, so importing it at
+    the top of this module would be circular.
+    """
+    try:
+        from Database.sql import SESSION
+
+        SESSION.end_unit_of_work()
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "Could not clear staged database state"
+        )
+
+
 class GateMiddleware(BaseMiddleware):
     def __init__(self, chat_status):
         self.chat_status = chat_status
@@ -93,46 +109,54 @@ class GateMiddleware(BaseMiddleware):
             return None
         if not await self._bot_command_reviewed(bot, event):
             return None
-        # aiogram passes the HandlerObject under "handler"; it subclasses
-        # CallableObject, whose .callback is the decorated function carrying
-        # the gate requirements.
-        callback = data["handler"].callback
-        for spec in getattr(callback, "requirements", ()):
-            action = spec.get("chat_action")
-            if action:
-                chat_id = self._chat_id(event)
-                if chat_id is not None:
-                    await bot.send_chat_action(chat_id=chat_id, action=action)
-                continue
+        # Safety net for database state: every handler below may stage writes
+        # and then raise, and the session is thread-local, so whatever is left
+        # would otherwise be committed by an unrelated later call. Ending the
+        # unit of work here means an update can never hand state forward.
+        try:
+            # aiogram passes the HandlerObject under "handler"; it subclasses
+            # CallableObject, whose .callback is the decorated function carrying
+            # the gate requirements.
+            callback = data["handler"].callback
+            for spec in getattr(callback, "requirements", ()):
+                action = spec.get("chat_action")
+                if action:
+                    chat_id = self._chat_id(event)
+                    if chat_id is not None:
+                        await bot.send_chat_action(chat_id=chat_id, action=action)
+                    continue
 
-            if spec["kind"] == "connection_status":
-                resolved = await self._connected_chat(bot, event)
-                if resolved is not None:
-                    data["connected_chat"] = resolved
-                elif self._is_private(event):
-                    await _action_reply(
-                        event,
-                        "Send /connect in a group that you and I have in common first.",
-                    )
-                    return None
-                continue
+                if spec["kind"] == "connection_status":
+                    resolved = await self._connected_chat(bot, event)
+                    if resolved is not None:
+                        data["connected_chat"] = resolved
+                    elif self._is_private(event):
+                        await _action_reply(
+                            event,
+                            "Send /connect in a group that you and I have in common first.",
+                        )
+                        return None
+                    continue
 
-            # Skips quietly when the sender is an admin, matching PTB, which
-            # only reached the handler for a non-admin user. It is not a
-            # denial: no reply and no command deletion.
-            if spec["kind"] == "user_not_admin":
-                if not await self._sender_is_not_admin(event):
-                    return None
-                continue
+                # Skips quietly when the sender is an admin, matching PTB, which
+                # only reached the handler for a non-admin user. It is not a
+                # denial: no reply and no command deletion.
+                if spec["kind"] == "user_not_admin":
+                    if not await self._sender_is_not_admin(event):
+                        return None
+                    continue
 
-            denial = await self._denial(bot, event, spec)
-            if denial is not None:
-                text, drop = denial
-                if drop and await _silently_drop(event):
+                denial = await self._denial(bot, event, spec)
+                if denial is not None:
+                    text, drop = denial
+                    if drop and await _silently_drop(event):
+                        return None
+                    await _action_reply(event, text)
                     return None
-                await _action_reply(event, text)
-                return None
-        return await handler(event, data)
+
+            return await handler(event, data)
+        finally:
+            _end_database_unit_of_work()
 
     async def _bot_sender_allowed(self, bot, event) -> bool:
         """Whether a bot sender may run commands in this chat.
