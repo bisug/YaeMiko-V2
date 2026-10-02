@@ -1,4 +1,5 @@
 import ast
+import copy
 import asyncio
 import importlib
 import re
@@ -11,6 +12,26 @@ from types import SimpleNamespace
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _without_annotations(node):
+    """A copy of a function with every annotation stripped.
+
+    These tests exec a function on its own, without the imports its module
+    makes, so a parameter annotated CallbackQuery or InlineQuery raises
+    NameError before the test body ever runs. Annotations are not used at
+    runtime, so dropping them changes nothing about what is under test.
+    """
+    stripped = copy.deepcopy(node)
+    args = stripped.args
+    for group in (args.args, args.posonlyargs, args.kwonlyargs):
+        for arg in group:
+            arg.annotation = None
+    for extra in (args.vararg, args.kwarg):
+        if extra is not None:
+            extra.annotation = None
+    stripped.returns = None
+    return stripped
 
 
 def load_function(path, name, namespace):
@@ -26,7 +47,7 @@ def load_function(path, name, namespace):
     # pass-through here: these tests supply their own fake session and assert on
     # the calls made to it, so there is no real session to bound.
     namespace.setdefault("unit_of_work_guard", lambda func: func)
-    module = ast.Module(body=[function], type_ignores=[])
+    module = ast.Module(body=[_without_annotations(function)], type_ignores=[])
     ast.fix_missing_locations(module)
     exec(compile(module, str(path), "exec"), namespace)
     return namespace[name]
@@ -44,7 +65,7 @@ def load_nested_function(path, name, namespace):
     # pass-through here: these tests supply their own fake session and assert on
     # the calls made to it, so there is no real session to bound.
     namespace.setdefault("unit_of_work_guard", lambda func: func)
-    module = ast.Module(body=[function], type_ignores=[])
+    module = ast.Module(body=[_without_annotations(function)], type_ignores=[])
     ast.fix_missing_locations(module)
     exec(compile(module, str(path), "exec"), namespace)
     return namespace[name]
