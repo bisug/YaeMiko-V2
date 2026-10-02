@@ -29,6 +29,7 @@ from sqlalchemy import Column, Integer, String, UnicodeText
 from sqlalchemy.sql.sqltypes import BigInteger
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Mikobot import LOGGER
 
 
 class Reminds(BASE):
@@ -140,8 +141,13 @@ def __get_all_reminds():
                         chat.remind_message,
                         chat.user_id,
                     )
-                except:
-                    pass
+                except Exception:
+                    # One unreachable chat must not stop the rest of the queue.
+                    # The reminder is dropped rather than retried, since the
+                    # scheduler has already moved past this tick.
+                    LOGGER.exception(
+                        "Unable to deliver reminder in chat %s", chat.chat_id
+                    )
                 continue
             REMINDERS.setdefault(chat.time_seconds, []).append(
                 {

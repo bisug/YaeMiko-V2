@@ -261,8 +261,11 @@ async def chats(message: Message):
                 chat_members,
             )
             P = P + 1
-        except:
-            pass
+        except TelegramAPIError:
+            # A single chat can be unreachable (kicked, renamed away, or the bot
+            # was removed). Skipping it keeps the export usable; the entry is
+            # simply missing from the listing.
+            LOGGER.debug("Skipped unreadable chat %s", chat.chat_id)
 
     with BytesIO(str.encode(chatfile)) as output:
         output.name = "groups_list.txt"

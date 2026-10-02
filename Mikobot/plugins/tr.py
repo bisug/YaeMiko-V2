@@ -86,12 +86,12 @@ class google_translator:
     def translate(self, text, lang_tgt="auto", lang_src="auto", pronounce=False):
         try:
             lang = LANGUAGES[lang_src]
-        except:
+        except (KeyError, TypeError):
             lang_src = "auto"
         try:
             lang = LANGUAGES[lang_tgt]
-        except:
-            lang_src = "auto"
+        except (KeyError, TypeError):
+            lang_tgt = "auto"
         text = str(text)
         if len(text) >= 5000:
             return "Warning: Can only detect less than 5000 characters"
@@ -209,8 +209,13 @@ class google_translator:
                         response = json.loads(response[0][2])
                         response = list(response)
                         detect_lang = response[0][2]
-                    except Exception:
-                        raise Exception
+                    except Exception as parse_error:
+                        # Google's response shape is undocumented and changes.
+                        # Keep the cause so the log says which line failed to
+                        # parse rather than a bare "Exception".
+                        raise ValueError(
+                            "unexpected response shape from Google Translate"
+                        ) from parse_error
                     # data_got = data_got.split('\\\"]')[0]
                     return [detect_lang, LANGUAGES[detect_lang.lower()]]
             r.raise_for_status()

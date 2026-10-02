@@ -69,7 +69,11 @@ async def promote(message: Message, command: CommandObject):
 
     try:
         user_member = await chat.get_member(user_id)
-    except:
+    except TelegramAPIError as exc:
+        LOGGER.warning(
+            "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
+        )
+        await message.answer("I can't find this user.")
         return
 
     if (
@@ -167,7 +171,11 @@ async def fullpromote(message: Message, command: CommandObject):
 
     try:
         user_member = await chat.get_member(user_id)
-    except:
+    except TelegramAPIError as exc:
+        LOGGER.warning(
+            "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
+        )
+        await message.answer("I can't find this user.")
         return
 
     if (

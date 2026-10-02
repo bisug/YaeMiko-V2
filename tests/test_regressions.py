@@ -4335,5 +4335,98 @@ class FilterListingTests(unittest.TestCase):
         self.assertIn("`{0}`", filter_list)
 
 
+class ExceptionHandlingTests(unittest.TestCase):
+    """Bare ``except:`` swallows KeyboardInterrupt and SystemExit.
+
+    Every one of these branches is best-effort cleanup or a fallback path, so
+    none of them is entitled to catch a shutdown signal or a bug in the
+    fallback itself. Typed handlers also mean a real defect surfaces in the
+    log instead of vanishing.
+    """
+
+    SOURCES = (
+        "Mikobot/plugins/feds.py",
+        "Mikobot/plugins/welcome.py",
+        "Mikobot/plugins/admin.py",
+        "Mikobot/plugins/gban.py",
+        "Mikobot/plugins/users.py",
+        "Mikobot/plugins/info.py",
+        "Mikobot/plugins/tr.py",
+        "Mikobot/plugins/captcha.py",
+        "Database/sql/remind_sql.py",
+    )
+
+    def test_no_bare_except_anywhere_in_the_runtime(self):
+        for relative in self.SOURCES:
+            tree = ast.parse((ROOT / relative).read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.ExceptHandler):
+                    continue
+                self.assertIsNotNone(
+                    node.type,
+                    f"{relative}:{node.lineno} catches everything, including "
+                    "KeyboardInterrupt and SystemExit",
+                )
+
+    def test_bare_raise_is_not_preceded_by_a_bare_except(self):
+        """``except: raise`` is just a no-op that hides the original error."""
+        for relative in self.SOURCES:
+            tree = ast.parse((ROOT / relative).read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.ExceptHandler) or node.type is not None:
+                    continue
+                for inner in ast.walk(node):
+                    if isinstance(inner, ast.Raise) and inner.exc is None:
+                        self.fail(
+                            f"{relative}:{inner.lineno} re-raises nothing, so the "
+                            "cause is lost"
+                        )
+
+    def test_translate_falls_back_on_the_language_it_failed_to_resolve(self):
+        """The target-language handler used to reassign the source instead.
+
+        An unknown destination left lang_tgt holding the bad value while
+        lang_src was reset, so Google was asked to translate into a language
+        code that does not exist.
+        """
+        source = (ROOT / "Mikobot" / "plugins" / "tr.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        translate = next(
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.FunctionDef) and node.name == "translate"
+        )
+        reassigned = []
+        for handler in ast.walk(translate):
+            if not isinstance(handler, ast.ExceptHandler):
+                continue
+            for inner in ast.walk(handler):
+                if isinstance(inner, ast.Assign) and isinstance(inner.targets[0], ast.Name):
+                    reassigned.append(inner.targets[0].id)
+        # One handler per language, and each must reset the language it looked up.
+        self.assertEqual(sorted(reassigned), ["lang_src", "lang_tgt"])
+
+    def test_scheduled_captcha_kick_is_referenced_and_reported(self):
+        """A bare create_task can be collected mid-sleep, losing the failure."""
+        source = (ROOT / "Mikobot" / "plugins" / "captcha.py").read_text(
+            encoding="utf-8"
+        )
+        tree = ast.parse(source)
+        tasks = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "create_task"
+        ]
+        self.assertTrue(tasks, "expected the scheduled kick task")
+        for node in tasks:
+            self.assertIsNotNone(
+                node.func.value, "create_task must be called on the event loop"
+            )
+        self.assertIn("_KICK_TASKS.add(task)", source)
+        self.assertIn("_report_kick_outcome", source)
+
+
 if __name__ == "__main__":
     unittest.main()

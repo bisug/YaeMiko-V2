@@ -241,8 +241,10 @@ async def gban(message: Message, command: CommandObject):
             f"</b>Appeal Chat:</b> @{SUPPORT_CHAT}",
             parse_mode=ParseMode.HTML,
         )
-    except:
-        pass  # bot probably blocked by user
+    except TelegramAPIError:
+        # The user may have blocked the bot, which is exactly why they are being
+        # banned. The global ban is already recorded either way.
+        LOGGER.debug("Could not DM the gban notice to %s", user_id, exc_info=True)
 
 
 @support_plus

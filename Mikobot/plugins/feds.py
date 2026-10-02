@@ -22,6 +22,7 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     Message,
 )
+from sqlalchemy.exc import SQLAlchemyError
 
 import Database.sql.feds_sql as sql
 from Database.mongodb.users_db import Users
@@ -484,7 +485,7 @@ async def fed_info(message: Message, command: CommandObject):
     owner = await bot.get_chat(info["owner"])
     try:
         owner_name = owner.first_name + " " + owner.last_name
-    except:
+    except (AttributeError, TypeError):
         owner_name = owner.first_name
     FEDADMIN = sql.all_fed_users(fed_id)
     TotalAdminFed = len(FEDADMIN)
@@ -541,7 +542,7 @@ async def fed_admin(message: Message, command: CommandObject):
     owner = await bot.get_chat(info["owner"])
     try:
         owner_name = owner.first_name + " " + owner.last_name
-    except:
+    except (AttributeError, TypeError):
         owner_name = owner.first_name
     text += " • {}\n".format(mention_html(owner.id, owner_name))
 
@@ -1075,8 +1076,9 @@ async def unfban(message: Message, command: CommandObject):
                 "Un-fban failed, this user may already be un-fedbanned!",
             )
             return
-    except:
-        pass
+    except SQLAlchemyError:
+        LOGGER.exception("Unable to un-fedban %s from fed %s", user_id, fed_id)
+        return
 
     # UnFban for fed subscriber
     subscriber = list(sql.get_subscriber(fed_id))
@@ -1258,10 +1260,7 @@ async def fed_broadcast(message: Message, command: CommandObject):
         offset = len(txt) - len(raw_text)  # set correct offset relative to command
         text_parser = markdown_parser(txt, offset=offset)
         text = text_parser
-        try:
-            broadcaster = user.first_name
-        except:
-            broadcaster = user.first_name + " " + user.last_name
+        broadcaster = user.first_name or user.last_name or str(user.id)
         text += "\n\n- {}".format(mention_markdown(user.id, broadcaster))
         chat_list = sql.all_fed_chats(fed_id)
         failed = 0
@@ -1449,7 +1448,8 @@ async def fed_ban_list(message: Message, command: CommandObject):
 
     try:
         await message.answer(text, parse_mode=ParseMode.HTML)
-    except:
+    except TelegramAPIError:
+        # Too long for one message, so it ships as a document instead.
         jam = time.time()
         new_jam = jam + 1800
         cek = get_chat(chat.id, chat_data)
@@ -1570,7 +1570,8 @@ async def fed_chats(message: Message, command: CommandObject):
 
     try:
         await message.answer(text, parse_mode=ParseMode.HTML)
-    except:
+    except TelegramAPIError:
+        # Same length fallback as the ban list above.
         cleanr = re.compile("<.*?>")
         cleantext = re.sub(cleanr, "", text)
         with BytesIO(str.encode(cleantext)) as output:
@@ -2192,7 +2193,8 @@ async def get_myfedsubs(message: Message, command: CommandObject):
 
     try:
         getmy = sql.get_mysubs(fed_id)
-    except:
+    except SQLAlchemyError:
+        LOGGER.exception("Unable to read the subscription list for fed %s", fed_id)
         getmy = []
 
     if len(getmy) == 0:

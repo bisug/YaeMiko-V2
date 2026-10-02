@@ -185,7 +185,9 @@ async def info(message: Message, command: CommandObject):
                 os.remove(f"{chat_obj.id}.png")
             else:
                 await reply_with_text(escape(head))
-        except:
+        except (TelegramAPIError, OSError):
+            # The photo path can fail on download, on the caption's HTML, or on
+            # the temp file. Falling back to the text form still answers.
             await reply_with_text(escape(head))
 
 

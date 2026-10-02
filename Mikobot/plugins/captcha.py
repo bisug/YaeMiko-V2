@@ -44,6 +44,10 @@ from Mikobot.utils.filters import GROUPS
 from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
+# Pending delayed kicks. Holding the task keeps it from being garbage collected
+# mid-sleep, and lets the failure be logged instead of vanishing.
+_KICK_TASKS = set()
+
 WORDS = (
     "river", "stone", "cloud", "tiger", "ember", "ocean", "birch", "candle",
     "falcon", "meadow", "anchor", "bridge", "cobalt", "dragon", "fable",
@@ -262,9 +266,15 @@ async def on_join(message: Message) -> str:
             await _private_prompt(message, member, settings)
 
         if settings["kick_enabled"]:
-            asyncio.create_task(
+            # Hold a reference: a bare create_task can be collected while the
+            # kick is still pending, which discards the failure instead of
+            # logging it.
+            task = asyncio.create_task(
                 _kick_later(chat.id, member.id, settings["kick_time"])
             )
+            _KICK_TASKS.add(task)
+            task.add_done_callback(_KICK_TASKS.discard)
+            task.add_done_callback(_report_kick_outcome)
 
     return ""
 
@@ -376,6 +386,24 @@ async def _kick_later(chat_id, user_id, delay: int) -> None:
         return
     # The kick is what lets them be challenged again next time.
     await asyncio.to_thread(sql.reset_solved, chat_id, user_id)
+
+
+def _report_kick_outcome(task: asyncio.Task) -> None:
+    """Surface a kick that died outside its own try block.
+
+    _kick_later only guards the Telegram call, so a failure in the sql layer
+    escapes the task. Without retrieving the exception, asyncio reports
+    "Task exception was never retrieved" on the next collection, detached from
+    the join that triggered it.
+    """
+    if task.cancelled():
+        return
+    error = task.exception()
+    if error is not None:
+        LOGGER.error(
+            "Scheduled captcha kick failed",
+            exc_info=(type(error), error, error.__traceback__),
+        )
 
 
 async def button_callback(message, query: CallbackQuery) -> str:

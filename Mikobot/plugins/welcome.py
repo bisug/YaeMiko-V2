@@ -159,8 +159,12 @@ async def member_has_joined(client, member: ChatMemberUpdated):
         if f"welcome-{chat_id}" in WELCOME_MESSAGES:
             try:
                 await WELCOME_MESSAGES[f"welcome-{chat_id}"].delete()
-            except:
-                pass
+            except TelegramAPIError:
+                # The stored message may be older than the bot's own reach or
+                # already gone; the new welcome still replaces it.
+                LOGGER.debug(
+                    "Could not delete the previous welcome message in %s", chat_id
+                )
         mention = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
         joined_date = datetime.fromtimestamp(time.time()).strftime("%Y.%m. %d %H:%M:%S")
         first_name = (
@@ -295,7 +299,7 @@ async def send(source_message, message, keyboard, backup_message):
                 reply_markup=keyboard,
                 message_thread_id=thread,
             )
-        except:
+        except TelegramAPIError:
             msg = await message.answer(
                 message,
                 parse_mode=ParseMode.HTML,
@@ -318,7 +322,7 @@ async def send(source_message, message, keyboard, backup_message):
                     + "\nNote: The current message has an invalid URL in one of its buttons. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
-            except:
+            except TelegramAPIError:
                 msg = await message.answer(
                     backup_message
                     + "\nNote: The current message has an invalid URL in one of its buttons. Please update.",
@@ -333,7 +337,7 @@ async def send(source_message, message, keyboard, backup_message):
                     + "\nNote: The current message has buttons which use URL protocols that are unsupported by Telegram. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
-            except:
+            except TelegramAPIError:
                 msg = await message.answer(
                     backup_message
                     + "\nNote: The current message has buttons which use URL protocols that are unsupported by Telegram. Please update.",
@@ -348,7 +352,7 @@ async def send(source_message, message, keyboard, backup_message):
                     + "\nNote: The current message has some bad URLs. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
-            except:
+            except TelegramAPIError:
                 msg = await message.answer(
                     backup_message
                     + "\nNote: The current message has some bad URLs. Please update.",
@@ -366,7 +370,7 @@ async def send(source_message, message, keyboard, backup_message):
                     + "\nNote: An error occurred when sending the custom message. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
-            except:
+            except TelegramAPIError:
                 msg = await message.answer(
                     backup_message
                     + "\nNote: An error occurred when sending the custom message. Please update.",
@@ -1406,8 +1410,13 @@ async def user_button(query: CallbackQuery):
         )
         try:
             await bot.delete_message(chat.id, message.message_id)
-        except:
-            pass
+        except TelegramAPIError:
+            # Needs delete rights and a message under 48h old. Failing to
+            # remove the join notice is cosmetic, so it must not abort the
+            # greeting that follows.
+            LOGGER.debug(
+                "Could not delete the join message in %s", chat.id, exc_info=True
+            )
         if member_dict["should_welc"]:
             if member_dict["media_wel"]:
                 sent = await ENUM_FUNC_MAP[member_dict["welc_type"]](

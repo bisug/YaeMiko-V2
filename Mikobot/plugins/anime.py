@@ -1234,8 +1234,14 @@ class google_translator:
                         response = json.loads(response[0][2])
                         response = list(response)
                         detect_lang = response[0][2]
-                    except Exception:
-                        raise Exception
+                    except Exception as parse_error:
+                        log.debug(
+                            "Unexpected response shape from Google Translate: %s",
+                            parse_error,
+                        )
+                        raise ValueError(
+                            "unexpected response shape from Google Translate"
+                        ) from parse_error
                     # data_got = data_got.split('\\\"]')[0]
                     return [detect_lang, LANGUAGES[detect_lang.lower()]]
             r.raise_for_status()
