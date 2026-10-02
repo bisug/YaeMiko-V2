@@ -3719,7 +3719,7 @@ async def studio_pg_btn(client: Client, cq: CallbackQuery, cdata: dict):
     if len(result) == 1:
         return await cq.answer("No more results available!!!", show_alert=True)
     msg, buttons = result[0], result[1]
-    await cq.edit_message_text(msg, reply_markup=buttons)
+    await cq.message.edit_text(msg, reply_markup=buttons)
 
 
 @app.on_callback_query(filters.regex(pattern=r"stuani_(.*)"))
@@ -3735,7 +3735,7 @@ async def studio_ani_btn(client: Client, cq: CallbackQuery, cdata: dict):
     if len(result) == 1:
         return await cq.answer("No results available!!!", show_alert=True)
     msg, buttons = result[0], result[1]
-    await cq.edit_message_text(msg, reply_markup=buttons)
+    await cq.message.edit_text(msg, reply_markup=buttons)
 
 
 @app.on_callback_query(filters.regex(pattern=r"btn_(.*)"))
@@ -3775,7 +3775,7 @@ async def top_tags_btn(client: Client, cq: CallbackQuery, cdata: dict):
     kek, gnr, page, user = cdata["data"].split("_")
     result = await get_top_animes(gnr, page=page, user=user)
     msg, buttons = result[0][0], result[1]
-    await cq.edit_message_text(msg, reply_markup=buttons)
+    await cq.message.edit_text(msg, reply_markup=buttons)
 
 
 @app.on_callback_query(filters.regex(pattern=r"settogl_(.*)"))
@@ -3861,7 +3861,7 @@ async def nsfw_toggle_btn(client: Client, cq: CallbackQuery):
     )
     await cq.answer()
     if query[1] == "call":
-        await cq.edit_message_text(text=setting_text, reply_markup=btns)
+        await cq.message.edit_text(text=setting_text, reply_markup=btns)
     await cq.edit_message_reply_markup(reply_markup=btns)
 
 
@@ -4072,7 +4072,7 @@ async def toggle_favourites_btn(client: Client, cq: CallbackQuery, cdata: dict):
         )
     )
     if query[1] == "STUDIO":
-        return await cq.edit_message_text(result[0], reply_markup=result[1])
+        return await cq.message.edit_text(result[0], reply_markup=result[1])
     pic, msg = (
         (result[0], result[1])
         if query[1] == "ANIME" and len(query) == 3
@@ -4149,7 +4149,7 @@ async def browse_btn(client: Client, cq: CallbackQuery, cdata: dict):
             InlineKeyboardButton(text=up, callback_data=f"browse_{up.lower()}_{query[2]}", style=ButtonStyle.PRIMARY),
         ]
     ]
-    await cq.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=btns))
+    await cq.message.edit_text(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=btns))
     await cq.answer()
 
 
@@ -4610,7 +4610,7 @@ async def headlines_btn(client: Client, cq: CallbackQuery):
             [InlineKeyboardButton(text="BACK", callback_data=f"settogl_call_{gid}", style=ButtonStyle.PRIMARY)],
         ]
     )
-    await cq.edit_message_text(headlines_text, reply_markup=btn)
+    await cq.message.edit_text(headlines_text, reply_markup=btn)
     await cq.answer()
 
 
@@ -4701,7 +4701,7 @@ async def auto_unpin(client: Client, cq: CallbackQuery):
             unpindata = "after " + list(TIMES.keys())[list(TIMES.values()).index(unpin)]
     else:
         unpindata = "OFF"
-    await cq.edit_message_text(
+    await cq.message.edit_text(
         f"Auto Unpin options for {srcname}\nCurrently set to: {unpindata}",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=btn),
     )
@@ -4762,7 +4762,7 @@ async def change_ui_btn(client: Client, cq: CallbackQuery):
         cs = data["cs"]
     text = f"""Selected bullet in this group: {bl}
 Selected text case in this group: {cs}"""
-    await cq.edit_message_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=btn))
+    await cq.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=btn))
 
 
 ## For accepting commands from edited messages
@@ -4870,7 +4870,7 @@ async def ns_(client: app, cq: CallbackQuery, cdata: dict):
     kek, day, user = cdata["data"].split("_")
     msg = await get_scheduled(int(day))
     buttons = get_btns("SCHEDULED", result=[int(day)], user=user)
-    await cq.edit_message_text(msg[0], reply_markup=buttons)
+    await cq.message.edit_text(msg[0], reply_markup=buttons)
     await cq.answer()
 
 
@@ -4958,7 +4958,7 @@ async def watch_(client: app, cq: CallbackQuery, cdata: dict):
                 ]
             )
     button.append([InlineKeyboardButton(text="Back", callback_data=f"wol_{qry}_{user}", style=ButtonStyle.PRIMARY)])
-    await cq.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=button))
+    await cq.message.edit_text(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=button))
     await cq.answer()
 
 
@@ -4977,7 +4977,7 @@ async def wls(client: app, cq: CallbackQuery, cdata: dict):
                 , style=ButtonStyle.PRIMARY)
             ]
         )
-    await cq.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
+    await cq.message.edit_text(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
     await cq.answer()
 
 
@@ -5060,7 +5060,7 @@ async def filler_btn(client: app, cq: CallbackQuery, cdata: dict):
     if result.get("ac_ep") is not None:
         msg += "\n\n**Anime Canon episodes:**\n"
         msg += str(result.get("ac_ep"))
-    await cq.edit_message_text(msg)
+    await cq.message.edit_text(msg)
     await cq.answer()
 
 

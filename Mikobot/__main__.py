@@ -495,7 +495,7 @@ async def gitsource_callback(query: CallbackQuery):
         keyboard = [[InlineKeyboardButton(text="◁", callback_data="Miko_back", style=ButtonStyle.PRIMARY)]]
         reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-        await query.edit_message_text(
+        await query.message.edit_text(
             message_text,
             parse_mode=ParseMode.MARKDOWN,
             link_preview_options=LinkPreviewOptions(is_disabled=False),

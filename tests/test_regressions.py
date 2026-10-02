@@ -4621,3 +4621,118 @@ class ExceptionHandlingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CallbackEditMethodTests(unittest.TestCase):
+    """`CallbackQuery.edit_message_text` does not exist.
+
+    It was probably a misreading of `Bot.edit_message_text`, which is a real
+    Bot API method but needs an explicit chat_id and message_id. Calling it on a
+    CallbackQuery raised AttributeError from pydantic and left the button dead,
+    with the error only visible in the log.
+    """
+
+    def test_callback_query_really_lacks_edit_message_text(self):
+        """Guards the premise: if aiogram adds it later, this test says so."""
+        from aiogram.types import CallbackQuery
+
+        self.assertFalse(
+            hasattr(CallbackQuery, "edit_message_text"),
+            "aiogram now provides CallbackQuery.edit_message_text; the shims in "
+            "this repo can be dropped",
+        )
+
+    def test_no_callback_uses_edit_message_text(self):
+        """A CallbackQuery has to reach the message first: query.message.edit_text."""
+        offenders = []
+        for path in (ROOT / "Mikobot").rglob("*.py"):
+            if "__pycache__" in path.parts:
+                continue
+            for number, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
+                stripped = line.strip()
+                # bot.edit_message_text(chat_id=..., message_id=...) is valid.
+                if "edit_message_text" not in stripped:
+                    continue
+                if "bot.edit_message_text" in stripped or "self.bot." in stripped:
+                    continue
+                if stripped.startswith("#") or stripped.startswith('"'):
+                    continue
+                offenders.append(f"{path.relative_to(ROOT)}:{number}: {stripped}")
+        self.assertEqual(offenders, [], "\n".join(offenders))
+
+    def test_callback_edits_go_through_the_message(self):
+        source = (ROOT / "Mikobot" / "__main__.py").read_text(encoding="utf-8")
+        start = source.index("async def gitsource_callback")
+        body = source[start : source.index("async def repo(", start)]
+        self.assertIn("query.message.edit_text(", body)
+        self.assertNotIn("query.edit_message_text(", body)
+
+    def test_gitsource_callback_completes_against_a_real_callback_query(self):
+        """The exact path from the production traceback."""
+        import asyncio
+        from datetime import datetime
+
+        from aiogram.enums import ButtonStyle, ParseMode
+        from aiogram.types import (
+            CallbackQuery,
+            Chat,
+            InlineKeyboardButton,
+            InlineKeyboardMarkup,
+            LinkPreviewOptions,
+            Message,
+            User,
+        )
+
+        message = Message(
+            message_id=1,
+            date=datetime.now(),
+            chat=Chat(id=1, type="private"),
+            text="menu",
+        )
+        query = CallbackQuery(
+            id="1",
+            from_user=User(id=1, is_bot=False, first_name="A"),
+            chat_instance="x",
+            message=message,
+            data="git_source",
+        )
+
+        seen = {}
+
+        async def fake_edit_text(self, text=None, **kwargs):
+            seen["text"] = text
+            seen["kwargs"] = sorted(kwargs)
+            return self
+
+        async def fake_answer(self, *args, **kwargs):
+            seen["answered"] = True
+
+        original_edit, original_answer = Message.edit_text, CallbackQuery.answer
+        Message.edit_text = fake_edit_text
+        CallbackQuery.answer = fake_answer
+        try:
+            source = (ROOT / "Mikobot" / "__main__.py").read_text(encoding="utf-8")
+            start = source.index("async def gitsource_callback")
+            body = source[start : source.index("async def repo(", start)]
+            namespace = {
+                "CallbackQuery": CallbackQuery,
+                "ParseMode": ParseMode,
+                "InlineKeyboardMarkup": InlineKeyboardMarkup,
+                "InlineKeyboardButton": InlineKeyboardButton,
+                "ButtonStyle": ButtonStyle,
+                "LinkPreviewOptions": LinkPreviewOptions,
+            }
+            exec(compile(body, "__main__.py", "exec"), namespace)
+            asyncio.run(namespace["gitsource_callback"](query))
+        finally:
+            Message.edit_text = original_edit
+            CallbackQuery.answer = original_answer
+
+        self.assertTrue(seen.get("answered"))
+        self.assertIn("github.com/bisug/YaeMiko-V2", seen["text"])
+        self.assertIn("parse_mode", seen["kwargs"])
+        self.assertIn("reply_markup", seen["kwargs"])
+
+
+if __name__ == "__main__":
+    unittest.main()
