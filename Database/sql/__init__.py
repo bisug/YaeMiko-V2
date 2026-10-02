@@ -72,6 +72,10 @@ class UnitOfWorkSession:
     def __init__(self, factory: scoped_session):
         self._scoped = factory
         self._local = threading.local()
+        # Guards are re-entrant: thirteen helpers call another guarded helper,
+        # and the inner one must not discard the session the outer one is
+        # still using. The depth counter is per thread, alongside the session.
+        self._depth = threading.local()
 
     def _current(self):
         session = getattr(self._local, "session", None)
@@ -80,13 +84,19 @@ class UnitOfWorkSession:
             self._local.session = session
         return session
 
-    def end_unit_of_work(self) -> None:
+    def end_unit_of_work(self, force: bool = False) -> None:
         """Roll back and close this thread's session, dropping staged work.
 
         Only affects the calling thread. remove() has to come first: the scoped
         registry still holds the Session otherwise, and hands the very same
         object back on the next call with its pending rows intact.
+
+        Skipped while a guard is already active on this thread, so an inner
+        helper cannot end the outer one's unit of work. pass force=True to end
+        it regardless, which the outer guard does as it leaves.
         """
+        if not force and getattr(self._depth, "value", 0) > 0:
+            return
         session = getattr(self._local, "session", None)
         self._local.session = None
         try:
@@ -158,10 +168,18 @@ def unit_of_work_guard(func):
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        SESSION.begin_unit_of_work()
+        outermost = getattr(SESSION._depth, "value", 0) == 0
+        if outermost:
+            SESSION.begin_unit_of_work()
+        SESSION._depth.value = getattr(SESSION._depth, "value", 0) + 1
         try:
             return func(*args, **kwargs)
         finally:
-            SESSION.end_unit_of_work()
+            SESSION._depth.value -= 1
+            if SESSION._depth.value <= 0:
+                SESSION._depth.value = 0
+                # force=True because end_unit_of_work() now defers to the depth
+                # counter, and this is the outermost frame leaving.
+                SESSION.end_unit_of_work(force=True)
 
     return wrapper

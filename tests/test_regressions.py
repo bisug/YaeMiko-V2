@@ -34,6 +34,33 @@ def _without_annotations(node):
     return stripped
 
 
+def _constant_value(node):
+    """Fold a constant expression, which may be written as arithmetic.
+
+    Defaults are written as 5 * 60 so they read as a duration, and a bare
+    literal_eval rejects a BinOp. Only numeric arithmetic is folded, so this
+    never evaluates anything but integer literals and operators.
+    """
+    if isinstance(node, ast.Constant):
+        return ast.literal_eval(node)
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+        value = _constant_value(node.operand)
+        return -value if isinstance(node.op, ast.USub) else value
+    if isinstance(node, ast.BinOp) and isinstance(
+        node.op, (ast.Add, ast.Sub, ast.Mult, ast.FloorDiv, ast.Mod)
+    ):
+        left = _constant_value(node.left)
+        right = _constant_value(node.right)
+        return {
+            ast.Add: lambda: left + right,
+            ast.Sub: lambda: left - right,
+            ast.Mult: lambda: left * right,
+            ast.FloorDiv: lambda: left // right,
+            ast.Mod: lambda: left % right,
+        }[type(node.op)]()
+    raise AssertionError(f"not a constant expression: {ast.unparse(node)}")
+
+
 def load_function(path, name, namespace):
     tree = ast.parse(path.read_text(encoding="utf-8"))
     function = next(
@@ -3056,9 +3083,7 @@ def _module_constants(path: Path, names) -> dict:
             continue
         name = getattr(node.targets[0], "id", "")
         if name in names:
-            found[name] = ast.literal_eval(node.value) if isinstance(
-                node.value, ast.Constant
-            ) else eval(ast.unparse(node.value), {"__builtins__": {}}, {})
+            found[name] = _constant_value(node.value)
     return found
 
 
@@ -3094,9 +3119,7 @@ class AntiRaidTests(unittest.TestCase):
             if isinstance(node, ast.Assign):
                 name = getattr(node.targets[0], "id", "")
                 if name in wanted:
-                    constants[name] = eval(
-                        ast.unparse(node.value), {"__builtins__": {}}, {}
-                    )
+                    constants[name] = _constant_value(node.value)
         self.assertEqual(constants["DEF_RAID_TIME"], 6 * 60 * 60)
         self.assertEqual(constants["DEF_ACTION_TIME"], 60 * 60)
         self.assertEqual(constants["DEF_AUTO_ANTIRAID"], 0)
@@ -4112,6 +4135,27 @@ class UnitOfWorkTests(unittest.TestCase):
                 if "unit_of_work_guard" not in decorators:
                     unwrapped.append(f"{path.name}:{node.name}")
         self.assertEqual(unwrapped, [], "unwrapped data helpers")
+
+    def test_guard_is_reentrant(self):
+        # Thirteen helpers call another guarded helper. The inner one must not
+        # discard the session the outer one is still using, or a helper that
+        # adds, calls a helper, then queries would read from a fresh session
+        # and see nothing.
+        source = self.INIT.read_text(encoding="utf-8")
+        guard = next(
+            node for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.FunctionDef) and node.name == "unit_of_work_guard"
+        )
+        body = ast.unparse(guard)
+        self.assertIn("outermost", body)
+        self.assertIn("force=True", body)
+        # And end_unit_of_work has to defer while a guard is active.
+        ender = next(
+            node for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "end_unit_of_work"
+        )
+        self.assertIn("force", ast.unparse(ender.args))
 
     def test_helpers_that_read_their_own_write_keep_one_session(self):
         # A fresh Session per call would break these, so the wrapper has to
