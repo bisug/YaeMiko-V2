@@ -11,15 +11,18 @@ from aiogram.filters import Command, CommandObject
 from aiogram.types import (
     CallbackQuery,
     InlineKeyboardMarkup,
+    InputMediaPhoto,
     InputRichBlockBlockQuotation,
     InputRichBlockDivider,
     InputRichBlockList,
     InputRichBlockListItem,
     InputRichBlockParagraph,
+    InputRichBlockPhoto,
     InputRichBlockPullQuotation,
     InputRichBlockSectionHeading,
     InputRichMessage,
     Message,
+    RichBlockCaption,
     RichText,
     RichTextBold,
     RichTextCode,
@@ -78,9 +81,10 @@ class EntityType:
     # Handler attribute name, singular so it reads like the other plugins.
     handler: str = ""
     grouped: bool = False
-    # Image strategy. Characters and weapons expose a fixed name under
-    # /{type}/{id}/{image}; artifact sets name their pieces directly; the
-    # grouped collections and enemies/domains ship no art at all.
+    # Image strategy. Characters, weapons, enemies, nations and elements expose a
+    # fixed name under /{type}/{id}/{image}; artifact sets name their pieces
+    # directly. Domains and the grouped collections ship no art at all, so
+    # `image` stays empty for them rather than pointing at a 404.
     image: str = ""
 
 
@@ -95,7 +99,7 @@ ENTITY_TYPES = {
         EntityType("artifacts", "Artifact Set", "gartifact", "💍", handler="artifact", image="pieces"),
         EntityType("consumables", "Consumable", "gconsumable", "🍲", handler="consumable", grouped=True),
         EntityType("materials", "Material", "gmaterial", "🪵", handler="material", grouped=True),
-        EntityType("enemies", "Enemy", "genemy", "👹", handler="enemy"),
+        EntityType("enemies", "Enemy", "genemy", "👹", handler="enemy", image="icon"),
         EntityType("domains", "Domain", "gdomain", "🏛️", handler="domain"),
         EntityType("nations", "Nation", "gnation", "🗺️", handler="nation", image="icon"),
         EntityType("elements", "Element", "gelement", "⚗️", handler="element", image="icon"),
@@ -353,8 +357,43 @@ def _runlist(items) -> list:
     return [run for group in items if group for run in group]
 
 
-def _name_blocks(entry: dict, emoji: str) -> list:
+def _photo_block(entry: dict, kind: str):
+    """The record's art, or nothing when the collection has none.
+
+    Telegram fetches the URL itself, so no download happens here. The id is
+    already a URL-safe slug, which is why it is interpolated directly.
+    """
+    record_id = str(entry.get("id", "") or "")
+    if not record_id:
+        return None
+    url = _image_url(kind, record_id)
+    if not url:
+        return None
+    return InputRichBlockPhoto(
+        photo=InputMediaPhoto(media=url),
+        caption=RichBlockCaption(text=RichText(text=str(entry.get("name", "")))),
+    )
+
+
+_CHARACTER_NAME_CACHE: dict = {}
+
+
+async def _character_names() -> dict:
+    """id -> display name, for the collections that reference characters by id.
+
+    Boss materials list their users as slugs (`hu-tao`), so rendering them
+    raw showed "hu-tao" where a name was meant.
+    """
+    if not _CHARACTER_NAME_CACHE:
+        for record in await _search("characters", "en"):
+            _CHARACTER_NAME_CACHE[record["id"]] = record.get("name") or record["id"]
+    return _CHARACTER_NAME_CACHE
+
+
+def _name_blocks(entry: dict, emoji: str, kind: str = "") -> list:
+    photo = _photo_block(entry, kind) if kind else None
     return [
+        photo,
         _heading(f"{emoji} {entry.get('name', '?')}", 2),
         _para(_rarity_line(entry) or _t(entry.get("name"))),
         _divider(),
@@ -382,13 +421,14 @@ def _talent_list(records: list, heading: str) -> list:
 
 def _render_character(entry: dict) -> list:
     emoji = VISION_EMOJI.get(str(entry.get("vision_key", "")).upper(), "")
-    blocks = _name_blocks(entry, emoji)
+    blocks = _name_blocks(entry, emoji, "characters")
     blocks.append(
         _field_para(
             [
                 _field("Title", entry.get("title")),
                 _field("Vision", entry.get("vision")),
                 _field("Weapon", entry.get("weapon")),
+                _field("Gender", entry.get("gender")),
                 _field("Nation", entry.get("nation")),
                 _field("Affiliation", entry.get("affiliation")),
                 _field("Constellation", entry.get("constellation")),
@@ -439,7 +479,7 @@ def _render_character(entry: dict) -> list:
 
 
 def _render_weapon(entry: dict) -> list:
-    blocks = _name_blocks(entry, "⚔️")
+    blocks = _name_blocks(entry, "⚔️", "weapons")
     blocks.append(
         _field_para(
             [
@@ -459,7 +499,7 @@ def _render_weapon(entry: dict) -> list:
 
 
 def _render_artifact(entry: dict) -> list:
-    blocks = _name_blocks(entry, "💍")
+    blocks = _name_blocks(entry, "💍", "artifacts")
     items = [
         i
         for i in (
@@ -474,7 +514,7 @@ def _render_artifact(entry: dict) -> list:
 
 
 def _render_nation(entry: dict) -> list:
-    blocks = _name_blocks(entry, "🗺️")
+    blocks = _name_blocks(entry, "🗺️", "nations")
     blocks.append(
         _field_para(
             [
@@ -490,6 +530,7 @@ def _render_nation(entry: dict) -> list:
 def _render_element(entry: dict) -> list:
     emoji = VISION_EMOJI.get(str(entry.get("key", "")).upper(), "⚗️")
     blocks = [
+        _photo_block(entry, "elements"),
         _heading(f"{emoji} {entry.get('name', '?')}", 2),
         _para(_code(entry.get("key", ""))),
         _divider(),
@@ -512,7 +553,11 @@ def _render_element(entry: dict) -> list:
 
 
 def _render_enemy(entry: dict) -> list:
-    blocks = [_heading(f"👹 {entry.get('name', '?')}", 2), _divider()]
+    blocks = [
+        _photo_block(entry, "enemies"),
+        _heading(f"👹 {entry.get('name', '?')}", 2),
+        _divider(),
+    ]
     blocks.append(
         _field_para(
             [
@@ -521,6 +566,7 @@ def _render_enemy(entry: dict) -> list:
                 _field("Faction", entry.get("faction")),
                 _field("Region", entry.get("region")),
                 _field("Elements", ", ".join(entry.get("elements") or []) or None),
+                _field("Mora", entry.get("mora-gained")),
             ]
         )
     )
@@ -538,6 +584,45 @@ def _render_enemy(entry: dict) -> list:
                         label=_rarity(d.get("rarity")) or "•", blocks=[_para(_t(d.get("name")))]
                     )
                     for d in drops
+                ]
+            )
+        )
+
+    artifacts = [
+        a for a in (entry.get("artifacts") or []) if isinstance(a, dict) and a.get("name")
+    ]
+    if artifacts:
+        blocks.append(_heading("Artifact sets", 3))
+        blocks.append(
+            InputRichBlockList(
+                items=[
+                    InputRichBlockListItem(
+                        label=str(a.get("rarity") or "•"),
+                        blocks=[
+                            _para(_bold(a.get("name"))),
+                            _para(_italic(str(a.get("set", "")).strip() or "—")),
+                        ],
+                    )
+                    for a in artifacts
+                ]
+            )
+        )
+
+    elemental = [
+        e
+        for e in (entry.get("elemental-description") or [])
+        if isinstance(e, dict) and e.get("description")
+    ]
+    if elemental:
+        blocks.append(_heading("Elemental lore", 3))
+        blocks.append(
+            InputRichBlockList(
+                items=[
+                    InputRichBlockListItem(
+                        label=VISION_EMOJI.get(str(e.get("element", "")).upper(), "•"),
+                        blocks=[_para(_italic(e["description"]))],
+                    )
+                    for e in elemental
                 ]
             )
         )
@@ -569,6 +654,28 @@ def _render_domain(entry: dict) -> list:
                         label=str(r.get("level") or "•"), blocks=[_para(_t(r.get("name")))]
                     )
                     for r in rewards
+                ]
+            )
+        )
+
+    tiers = [r for r in (entry.get("requirements") or []) if isinstance(r, dict)]
+    if tiers:
+        blocks.append(_heading("Unlock tiers", 3))
+        blocks.append(
+            InputRichBlockList(
+                items=[
+                    InputRichBlockListItem(
+                        label=f"AR {r.get('adventureRank', '—')}",
+                        blocks=[
+                            _para([_bold("Level "), _t(str(r.get("recommendedLevel", "—")))]),
+                            *[
+                                _para(_italic(str(disorder)))
+                                for disorder in r.get("leyLineDisorder") or []
+                                if str(disorder).strip() and str(disorder).strip() != "None"
+                            ],
+                        ],
+                    )
+                    for r in tiers
                 ]
             )
         )
@@ -720,6 +827,13 @@ def _blocks_to_text(blocks: list) -> str:
         if kind == "divider":
             lines.append("———")
             continue
+        if kind == "photo":
+            # A photo block carries no text of its own, so without this the
+            # image disappears entirely when the rich send is unavailable.
+            media = getattr(getattr(block, "photo", None), "media", None)
+            if isinstance(media, str):
+                lines.append(media)
+            continue
         text = getattr(block, "text", None)
         if text is not None:
             lines.append(_flatten(text))
@@ -824,6 +938,15 @@ async def _lookup(message: Message, command: CommandObject, kind: str):
                     record = detail
             except (httpx.HTTPError, ValueError, KeyError, TypeError):
                 pass
+        if isinstance(record.get("characters"), list):
+            try:
+                names = await _character_names()
+                record = dict(record)
+                record["characters"] = [
+                    names.get(str(c), str(c)) for c in record["characters"]
+                ]
+            except (httpx.HTTPError, ValueError, KeyError, TypeError):
+                LOGGER.debug("Could not resolve character names", exc_info=True)
         blocks = RENDERERS[kind](record)
         markup = None
 

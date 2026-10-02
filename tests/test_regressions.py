@@ -4519,10 +4519,16 @@ class GenshinModuleTests(unittest.TestCase):
         self.assertEqual(grouped, {"materials", "consumables"})
 
     def test_image_url_is_omitted_where_the_api_has_no_art(self):
-        self.assertIsNone(self.g._image_url("enemies", "abyss-herald"))
+        # Domains and the grouped collections serve no art; pointing at a
+        # missing image would just 404 on Telegram's side.
         self.assertIsNone(self.g._image_url("domains", "cecilia-garden"))
         self.assertIsNone(self.g._image_url("consumables", "food"))
+        self.assertIsNone(self.g._image_url("materials", "boss-material"))
         self.assertIsNotNone(self.g._image_url("characters", "albedo"))
+        # Enemies do serve art at /icon, which a comment here once denied.
+        self.assertTrue(
+            self.g._image_url("enemies", "abyss-herald").endswith("/enemies/abyss-herald/icon")
+        )
         self.assertTrue(
             self.g._image_url("artifacts", "adventurer").endswith("flower-of-life")
         )
@@ -5049,6 +5055,190 @@ class FrameworkMethodAuditTests(unittest.TestCase):
             for name, where in sorted(problems.items())
         )
         self.assertEqual(dict(problems), {}, report)
+
+
+class GenshinImageTests(unittest.TestCase):
+    """The lookup is supposed to lead with a picture.
+
+    _image_url existed but nothing called it, so every card was text-only.
+    """
+
+    def test_photo_block_is_built_for_a_collection_with_art(self):
+        from Mikobot.plugins.genshin import _photo_block
+
+        block = _photo_block({"id": "albedo", "name": "Albedo"}, "characters")
+        self.assertIsNotNone(block)
+        self.assertEqual(getattr(block.type, "value", block.type), "photo")
+        self.assertTrue(block.photo.media.endswith("/characters/albedo/portrait"))
+        self.assertEqual(block.caption.text[0][1], "Albedo")
+
+    def test_photo_block_is_skipped_for_collections_without_art(self):
+        from Mikobot.plugins.genshin import _photo_block
+
+        # domains, consumables and materials ship no art; the URL 404s.
+        for kind in ("domains", "consumables", "materials"):
+            with self.subTest(kind=kind):
+                self.assertIsNone(_photo_block({"id": "cecilia-garden", "name": "X"}, kind))
+
+    def test_photo_block_is_skipped_without_an_id(self):
+        from Mikobot.plugins.genshin import _photo_block
+
+        self.assertIsNone(_photo_block({"name": "Nameless"}, "characters"))
+
+    def test_every_collection_with_art_is_marked(self):
+        """The image strategy must match what the API actually serves."""
+        from Mikobot.plugins.genshin import ENTITY_TYPES
+
+        with_art = {"characters", "weapons", "artifacts", "enemies", "nations", "elements"}
+        for name, entity in ENTITY_TYPES.items():
+            with self.subTest(collection=name):
+                self.assertEqual(bool(entity.image), name in with_art)
+
+    def test_renderers_put_the_photo_first(self):
+        """A card that leads with fields and trails with art reads wrong."""
+        from Mikobot.plugins.genshin import RENDERERS
+
+        record = {
+            "id": "albedo",
+            "name": "Albedo",
+            "rarity": 5,
+            "vision": "Geo",
+            "vision_key": "GEO",
+        }
+        for kind, renderer in RENDERERS.items():
+            with self.subTest(kind=kind):
+                blocks = [b for b in renderer(record) if b is not None]
+                types = [getattr(b.type, "value", b.type) for b in blocks]
+                if kind in ("domains", "consumables", "materials"):
+                    self.assertNotIn("photo", types)
+                else:
+                    self.assertEqual(types[0], "photo", f"{kind} does not lead with art")
+
+    def test_text_fallback_keeps_the_image(self):
+        """A photo block has no text, so the fallback used to drop it."""
+        from Mikobot.plugins.genshin import _blocks_to_text, _photo_block
+
+        text = _blocks_to_text([_photo_block({"id": "albedo", "name": "A"}, "characters")])
+        self.assertIn("albedo/portrait", text)
+
+
+class GenshinDataShapeTests(unittest.TestCase):
+    """Fields the API returns that the renderers used to discard."""
+
+    ENEMY = {
+        "id": "abyss-mage",
+        "name": "Abyss Mage",
+        "mora-gained": 200,
+        "elements": ["Hydro"],
+        "drops": [{"name": "Masquerade Mask", "rarity": 3}],
+        "artifacts": [{"name": "Blood-Soaked", "set": "Berserker", "rarity": "3/4"}],
+        "elemental-description": [{"element": "Hydro", "description": "Abyss creatures."}],
+    }
+
+    def _labels(self, blocks):
+        """RichTextUnderline holds its label at row.text[0][1], not in a dict."""
+        found = []
+        for block in blocks:
+            for row in getattr(block, "text", None) or []:
+                if type(row).__name__ != "RichTextUnderline":
+                    continue
+                inner = getattr(row, "text", None) or []
+                if inner and len(inner[0]) == 2 and isinstance(inner[0][1], str):
+                    label = inner[0][1]
+                    if label.endswith(": "):
+                        found.append(label[:-2])
+        return found
+
+    def _headings(self, blocks):
+        """A heading's text is [["text", label]] at runtime."""
+        found = []
+        for block in blocks:
+            rows = getattr(block, "text", None)
+            if rows and isinstance(rows[0], list) and len(rows[0]) == 2:
+                found.append(str(rows[0][1]))
+        return found
+
+    def test_enemy_renders_mora_artifact_sets_and_elemental_lore(self):
+        from Mikobot.plugins.genshin import _render_enemy
+
+        blocks = _render_enemy(self.ENEMY)
+        self.assertIn("Mora", self._labels(blocks))
+        headings = self._headings(blocks)
+        for heading in ("Drops", "Artifact sets", "Elemental lore"):
+            self.assertIn(heading, headings)
+
+    def test_domain_renders_unlock_tiers(self):
+        from Mikobot.plugins.genshin import _render_domain
+
+        blocks = _render_domain(
+            {
+                "id": "cecilia-garden",
+                "name": "Cecilia Garden",
+                "requirements": [
+                    {
+                        "level": 1,
+                        "adventureRank": 16,
+                        "recommendedLevel": 15,
+                        "leyLineDisorder": ["Slowing Water", "None"],
+                    }
+                ],
+            }
+        )
+        labels = [item.label for b in blocks for item in (getattr(b, "items", None) or [])]
+        self.assertIn("AR 16", labels)
+
+    def test_domain_drops_empty_ley_line_disorder(self):
+        """Upstream pads the list with the literal string "None"."""
+        from Mikobot.plugins.genshin import _render_domain
+
+        blocks = _render_domain(
+            {
+                "id": "x",
+                "name": "X",
+                "requirements": [
+                    {"adventureRank": 1, "recommendedLevel": 2, "leyLineDisorder": ["None"]}
+                ],
+            }
+        )
+        rendered = [
+            para
+            for block in blocks
+            for item in (getattr(block, "items", None) or [])
+            for para in item.blocks
+        ]
+        self.assertEqual(len(rendered), 1, "the 'None' entry should not be rendered")
+
+    def test_character_renders_gender(self):
+        from Mikobot.plugins.genshin import _render_character
+
+        blocks = _render_character(
+            {"id": "albedo", "name": "Albedo", "gender": "Male", "vision_key": "GEO"}
+        )
+        self.assertIn("Gender", self._labels(blocks))
+
+    def test_character_slug_ids_resolve_to_names(self):
+        """Boss materials reference users by slug, e.g. ["hu-tao"]."""
+        from Mikobot.plugins import genshin
+
+        async def fake_search(kind, lang):
+            return [{"id": "hu-tao", "name": "Hu Tao"}]
+
+        genshin._CHARACTER_NAME_CACHE.clear()
+        original = genshin._search
+        genshin._search = fake_search
+        try:
+            names = _run(genshin._character_names())
+        finally:
+            genshin._search = original
+        # Clear after asserting: the dict returned is the cache itself.
+        self.assertEqual(names, {"hu-tao": "Hu Tao"})
+        genshin._CHARACTER_NAME_CACHE.clear()
+
+
+def _run(coro):
+    import asyncio
+
+    return asyncio.new_event_loop().run_until_complete(coro)
 
 
 if __name__ == "__main__":
