@@ -3709,5 +3709,135 @@ class TopicManagementTests(unittest.TestCase):
         self.assertIn("topics_sql.get_action_topic", source)
 
 
+class BotToBotTests(unittest.TestCase):
+    """Bot senders are inert by default, and setting changes need a human.
+
+    Telegram only delivers one bot's messages to another when the receiving
+    bot has "bot to bot communication" enabled in @BotFather, so this rarely
+    fires. Where it does, the default has to be that a bot can do nothing.
+    """
+
+    GATE = ROOT / "Mikobot" / "utils" / "gate.py"
+    PLUGIN = ROOT / "Mikobot" / "plugins" / "bot2bot.py"
+    SQL = ROOT / "Database" / "sql" / "bot2bot_sql.py"
+
+    def test_modes_match_the_documented_set(self):
+        tree = ast.parse(self.SQL.read_text(encoding="utf-8"))
+        consts = {}
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                name = getattr(node.targets[0], "id", "")
+                if name in ("MODE_OFF", "MODE_ADMIN", "MODE_ALL"):
+                    consts[name] = ast.literal_eval(node.value)
+        self.assertEqual(
+            (consts["MODE_OFF"], consts["MODE_ADMIN"], consts["MODE_ALL"]),
+            ("off", "admin", "all"),
+        )
+
+    def test_gate_runs_before_any_handler(self):
+        source = self.GATE.read_text(encoding="utf-8")
+        main = source.split("async def __call__")[1].split("callback = data")[0]
+        # A bot sender must be dropped before requirements are even inspected.
+        self.assertIn("_bot_sender_allowed", main)
+        self.assertIn("_bot_command_reviewed", main)
+
+    def test_human_senders_are_untouched(self):
+        tree = ast.parse(self.GATE.read_text(encoding="utf-8"))
+        func = next(
+            n for n in ast.walk(tree)
+            if isinstance(n, ast.AsyncFunctionDef)
+            and n.name == "_bot_sender_allowed"
+        )
+        body = ast.unparse(func)
+        # The first check must be "is this even a bot".
+        self.assertIn("is_bot", body)
+        self.assertLess(
+            body.index("is_bot"),
+            body.index("MODE_OFF"),
+        )
+
+    def test_gate_fails_closed_on_a_settings_error(self):
+        tree = ast.parse(self.GATE.read_text(encoding="utf-8"))
+        func = next(
+            n for n in ast.walk(tree)
+            if isinstance(n, ast.AsyncFunctionDef)
+            and n.name == "_bot_sender_allowed"
+        )
+        body = ast.unparse(func)
+        # If the setting cannot be read, a bot gets nothing.
+        self.assertIn("except Exception", body)
+        self.assertIn("return False", body)
+
+    def test_setting_commands_are_held_for_review(self):
+        # A bot that can be prompted by anyone can be used to lock a chat or
+        # ban a member, so configuration changes are shown to an admin first.
+        tree = ast.parse(self.SQL.read_text(encoding="utf-8"))
+        node = next(
+            n for n in tree.body
+            if isinstance(n, ast.Assign)
+            and getattr(n.targets[0], "id", "") == "SETTING_COMMANDS"
+        )
+        # Written as frozenset({...}), so unwrap the set literal.
+        value = node.value
+        if isinstance(value, ast.Call):
+            value = value.args[0]
+        commands = set(ast.literal_eval(value))
+        for expected in (
+            "lock", "setflood", "addblacklist", "ban", "unban", "mute",
+            "setwelcome", "cleanservice", "antiraid", "setrules", "reset",
+            "import", "export", "promote", "demote",
+        ):
+            self.assertIn(expected, commands, expected)
+
+    def test_only_setting_commands_are_held(self):
+        tree = ast.parse(self.PLUGIN.read_text(encoding="utf-8"))
+        func = next(
+            n for n in tree.body
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "request_review"
+        )
+        body = ast.unparse(func)
+        self.assertIn("SETTING_COMMANDS", body)
+        # Harmless commands must not be held.
+        self.assertNotIn('"help"', body)
+
+    def test_review_can_be_skipped_explicitly(self):
+        tree = ast.parse(self.PLUGIN.read_text(encoding="utf-8"))
+        func = next(
+            n for n in tree.body
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "request_review"
+        )
+        body = ast.unparse(func)
+        self.assertIn("skip", body)
+        # Skipping returns True (proceed), holding returns False.
+        self.assertIn("return True", body)
+        self.assertIn("return False", body)
+
+    def test_approval_replay_cannot_loop(self):
+        # Approving resends the command; without a one-shot bypass the replay
+        # would come back through the gate and ask for approval again.
+        plugin = self.PLUGIN.read_text(encoding="utf-8")
+        self.assertIn("APPROVED_ONCE", plugin)
+        gate = self.GATE.read_text(encoding="utf-8")
+        self.assertIn("APPROVED_ONCE", gate)
+        self.assertIn("discard", gate)
+
+    def test_review_callback_rechecks_the_presser(self):
+        tree = ast.parse(self.PLUGIN.read_text(encoding="utf-8"))
+        func = next(
+            n for n in tree.body
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "review_callback"
+        )
+        body = ast.unparse(func)
+        self.assertIn("get_chat_member", body)
+        self.assertIn("ADMINISTRATOR", body)
+        # A request already handled must not run twice.
+        self.assertIn("PENDING.pop", body)
+
+    def test_commands_are_registered(self):
+        found = _registered_commands(self.PLUGIN)
+        self.assertIn("bot2bot", found)
+        self.assertIn("bot2botskipreview", found)
+
+
 if __name__ == "__main__":
     unittest.main()

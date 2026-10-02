@@ -11,10 +11,13 @@ Order matters: ``@a`` above ``@b`` must run first, and tags are prepended so the
 list order matches the source order.
 """
 
+import asyncio
+import logging
 from functools import wraps
 
 from aiogram import BaseMiddleware
 from aiogram.dispatcher.event.bases import SkipHandler
+from aiogram.enums import ChatMemberStatus
 from aiogram.exceptions import TelegramAPIError
 
 
@@ -83,6 +86,13 @@ class GateMiddleware(BaseMiddleware):
 
     async def __call__(self, handler, event, data):
         bot = data["bot"]
+        # Bot senders are dropped before any handler runs. Telegram usually
+        # never delivers these at all, but where it does, the default has to be
+        # that a bot's message is inert.
+        if not await self._bot_sender_allowed(bot, event):
+            return None
+        if not await self._bot_command_reviewed(bot, event):
+            return None
         # aiogram passes the HandlerObject under "handler"; it subclasses
         # CallableObject, whose .callback is the decorated function carrying
         # the gate requirements.
@@ -123,6 +133,77 @@ class GateMiddleware(BaseMiddleware):
                 await _action_reply(event, text)
                 return None
         return await handler(event, data)
+
+    async def _bot_sender_allowed(self, bot, event) -> bool:
+        """Whether a bot sender may run commands in this chat.
+
+        Off by default. In "admin" mode the sending bot must itself be an admin,
+        since that is the whole point of the mode. An explicit per-bot allow
+        overrides the mode so a trusted automation bot can be permitted without
+        opening the chat to every bot.
+        """
+        chat, user = self._event_parts(event)
+        if user is None or not getattr(user, "is_bot", False):
+            return True
+        # Our own messages come back through nothing, but be explicit.
+        if chat is not None and user.id == bot.id:
+            return True
+
+        from Database.sql import bot2bot_sql
+
+        chat_id = self._chat_id(event)
+        if chat_id is None:
+            return True
+        try:
+            mode, _skip, allowed = await asyncio.to_thread(
+                bot2bot_sql.get_setting, chat_id
+            )
+        except Exception:
+            # Fail closed: if the setting cannot be read, a bot gets no access.
+            logging.getLogger(__name__).exception(
+                "Could not read the bot2bot setting for %s", chat_id
+            )
+            return False
+
+        if str(user.id) in allowed:
+            return True
+        if mode == bot2bot_sql.MODE_OFF:
+            return False
+        if mode == bot2bot_sql.MODE_ALL:
+            return True
+        if chat is None:
+            return False
+        try:
+            member = await bot.get_chat_member(chat.id, user.id)
+        except TelegramAPIError:
+            return False
+        return member.status in (ChatMemberStatus.CREATOR, ChatMemberStatus.ADMINISTRATOR)
+
+    async def _bot_command_reviewed(self, bot, event) -> bool:
+        """Whether a bot's command may run now.
+
+        Only commands that change configuration are held for a human; anything
+        else a bot sends is inert enough to run, since the mode check above has
+        already decided the bot is allowed to act at all.
+        """
+        _chat, user = self._event_parts(event)
+        if user is None or not getattr(user, "is_bot", False):
+            return True
+        if getattr(event, "text", None) is None:
+            # Non-text updates from a bot (joins, reactions) carry no command.
+            return True
+        if self._chat_id(event) == bot.id:
+            return True
+
+        from Mikobot.plugins import bot2bot
+
+        # A replay of an approved command passes straight through, once.
+        message_id = getattr(event, "message_id", None)
+        if message_id is not None and message_id in bot2bot.APPROVED_ONCE:
+            bot2bot.APPROVED_ONCE.discard(message_id)
+            return True
+
+        return await bot2bot.request_review(user, self._event_parts(event)[0], event)
 
     @staticmethod
     def _event_parts(event):
