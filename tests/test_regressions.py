@@ -5235,6 +5235,144 @@ class GenshinDataShapeTests(unittest.TestCase):
         genshin._CHARACTER_NAME_CACHE.clear()
 
 
+class RemovedStdlibApiTests(unittest.TestCase):
+    """Nothing may use standard library API that the runtime has dropped.
+
+    A removal is not a deprecation: the name raises AttributeError or
+    ImportError the moment it is touched, with no warning first. Nothing in
+    the suite would notice until the offending line ran, so the guard reads
+    the source instead of exercising the path.
+
+    Both tables were diffed between CPython 3.12 and 3.14 rather than written
+    from memory. That matters: several names often listed as removed are in
+    fact still present, including typing.Pattern, typing.Match,
+    typing.ForwardRef and asyncio.DefaultEventLoopPolicy. Listing those would
+    have failed on correct code.
+
+    test_the_tables_still_describe_removals keeps the tables honest in the
+    other direction, so a name that comes back or was never gone is caught
+    rather than quietly accepted.
+    """
+
+    # Top-level module names the runtime no longer ships. Matched against the
+    # root package so "import asyncore" and "from asyncore import x" both hit.
+    REMOVED_MODULES = frozenset(
+        {
+            "aifc", "asynchat", "asyncore", "audioop", "cgi", "cgitb",
+            "chunk", "crypt", "distutils", "imghdr", "imp", "lib2to3",
+            "mailcap", "nntplib", "ossaudiodev", "pipes", "sndhdr", "spwd",
+            "sunau", "telnetlib", "uu", "xdrlib",
+        }
+    )
+
+    # Dotted paths removed from modules that still exist. Keyed on the full
+    # path so an unrelated local called "version" cannot trip the guard.
+    REMOVED_ATTRIBUTES = frozenset(
+        {
+            "asyncio.AbstractChildWatcher", "asyncio.FastChildWatcher",
+            "asyncio.MultiLoopChildWatcher", "asyncio.PidfdChildWatcher",
+            "asyncio.SafeChildWatcher", "asyncio.ThreadedChildWatcher",
+            "asyncio.get_child_watcher", "asyncio.set_child_watcher",
+            "ast.Bytes", "ast.Ellipsis", "ast.NameConstant", "ast.Num",
+            "ast.Str", "collections.Callable", "collections.Iterable",
+            "collections.Mapping", "collections.Sequence",
+            "importlib.abc.ResourceReader", "importlib.abc.Traversable",
+            "importlib.abc.TraversableResources", "locale.resetlocale",
+            "pkgutil.find_loader", "pkgutil.get_loader",
+            "pty.master_open", "pty.slave_open",
+            "sqlite3.enable_shared_cache", "sqlite3.version",
+            "sqlite3.version_info", "typing.io", "typing.re",
+            "unittest.findTestCases", "unittest.getTestCaseNames",
+            "unittest.makeSuite", "unittest.usageExit",
+            "urllib.request.FancyURLopener", "urllib.request.URLopener",
+        }
+    )
+
+    def _sources(self):
+        for pattern in ("Mikobot/**/*.py", "Database/**/*.py", "tests/**/*.py"):
+            yield from sorted(ROOT.glob(pattern))
+
+    @staticmethod
+    def _dotted(node):
+        """Rebuild "module.attr" for an attribute chain rooted at a Name.
+
+        Anything else, a call result or a subscript, has no module to blame
+        and returns None rather than a partial path that could misfire.
+        """
+        if isinstance(node, ast.Name):
+            return node.id
+        if isinstance(node, ast.Attribute):
+            root = RemovedStdlibApiTests._dotted(node.value)
+            return f"{root}.{node.attr}" if root else None
+        return None
+
+    def test_the_tables_still_describe_removals(self):
+        """A table entry that still resolves is a wrong entry, not a pass."""
+        for name in sorted(self.REMOVED_MODULES):
+            with self.subTest(module=name):
+                self.assertIsNone(
+                    importlib.util.find_spec(name),
+                    f"{name} imports again, so it is not removed after all",
+                )
+        for path in sorted(self.REMOVED_ATTRIBUTES):
+            with self.subTest(attribute=path):
+                module, _, attr = path.rpartition(".")
+                self.assertFalse(
+                    hasattr(importlib.import_module(module), attr),
+                    f"{path} exists again, so it is not removed after all",
+                )
+
+    def test_no_removed_module_is_imported(self):
+        offenders = []
+        for path in self._sources():
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name.split(".")[0] in self.REMOVED_MODULES:
+                            offenders.append(
+                                f"{path.name}:{node.lineno} imports {alias.name}"
+                            )
+                elif isinstance(node, ast.ImportFrom):
+                    # A relative import has module=None; it cannot be stdlib.
+                    if not node.level and node.module:
+                        if node.module.split(".")[0] in self.REMOVED_MODULES:
+                            offenders.append(
+                                f"{path.name}:{node.lineno} imports from {node.module}"
+                            )
+        self.assertEqual(
+            offenders,
+            [],
+            "these modules were removed from the standard library and no longer "
+            "exist at runtime",
+        )
+
+    def test_no_removed_attribute_is_referenced(self):
+        offenders = []
+        for path in self._sources():
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Attribute):
+                    dotted = self._dotted(node)
+                    if dotted in self.REMOVED_ATTRIBUTES:
+                        offenders.append(f"{path.name}:{node.lineno} uses {dotted}")
+                elif isinstance(node, ast.ImportFrom) and not node.level and node.module:
+                    # "from unittest import makeSuite" names the same dead API
+                    # without ever building an attribute chain.
+                    for alias in node.names:
+                        dotted = f"{node.module}.{alias.name}"
+                        if dotted in self.REMOVED_ATTRIBUTES:
+                            offenders.append(
+                                f"{path.name}:{node.lineno} imports {dotted}"
+                            )
+        self.assertEqual(
+            offenders,
+            [],
+            "these attributes were removed; using one raises at call time with "
+            "no deprecation warning first",
+        )
+
+
 def _run(coro):
     import asyncio
 
