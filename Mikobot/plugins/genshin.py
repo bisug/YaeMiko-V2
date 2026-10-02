@@ -1,19 +1,33 @@
 # <============================================== IMPORTS =========================================================>
 import html
+import logging
+from dataclasses import dataclass
 
 import httpx
 from aiogram import F
-from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command, CommandObject
 from aiogram.types import (
     CallbackQuery,
     InlineKeyboardMarkup,
+    InputRichBlockBlockQuotation,
+    InputRichBlockDivider,
+    InputRichBlockList,
+    InputRichBlockListItem,
+    InputRichBlockParagraph,
+    InputRichBlockPullQuotation,
+    InputRichBlockSectionHeading,
+    InputRichMessage,
     Message,
+    RichText,
+    RichTextBold,
+    RichTextCode,
+    RichTextItalic,
+    RichTextUnderline,
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from Mikobot import LOGGER, dp
+from Mikobot import bot, dp
 from Mikobot.state import state
 
 # <=======================================================================================================>
@@ -21,17 +35,14 @@ from Mikobot.state import state
 # <================================================= CONSTANTS =================================================>
 API = "https://genshin.jmp.blue"
 REQUEST_TIMEOUT = 20
+LOGGER = logging.getLogger(__name__)
 
-# Only these return populated records. pt and ru exist upstream but carry a
-# handful of entries each, and de/tr/id/ja/zh 404 outright, so offering them
-# would send most users to a dead end.
+# Upstream coverage is uneven: en carries the full character roster and fr about
+# half of it, while pt and ru hold a handful of records and de/tr/id/ja/zh 404
+# outright. Only the two that actually answer are offered.
 LANGS = {"en": "English", "fr": "Français"}
 
-# Entity types with a uniform record shape. Materials group by category and
-# are served through their own command.
-TYPES = ("characters", "weapons", "artifacts")
-
-TYPE_LABEL = {"characters": "Character", "weapons": "Weapon", "artifacts": "Artifact"}
+PAGE_SIZE = 6
 
 VISION_EMOJI = {
     "ANEMO": "🍃", "CRYO": "❄️", "DENDRO": "🌿", "ELECTRO": "⚡",
@@ -40,17 +51,55 @@ VISION_EMOJI = {
 
 RARITY_EMOJI = {1: "⚪", 2: "🔵", 3: "🔷", 4: "🟣", 5: "🟡"}
 
-PAGE_SIZE = 8
-# Telegram truncates at 4096; leave room for the header and footer.
-MAX_MESSAGE = 3600
-
-# The API's material groups. Fixed rather than fetched, so this only needs
-# touching when a new ascension tier is added upstream.
-MATERIAL_CATEGORIES = (
-    "boss-material", "common-material", "expeditions-material", "food-material",
-    "forged-material", "gem-material", "jade-material", "region-material",
-    "scroll-material", "speciality-material", "talent-book-material", "weapon-material",
+# The five pieces an artifact set is drawn from, and the image slot each maps to.
+ARTIFACT_PIECES = (
+    ("flower-of-life", "Flower"),
+    ("plume-of-death", "Plume"),
+    ("sands-of-eon", "Sands"),
+    ("goblet-of-eonothem", "Goblet"),
+    ("circlet-of-logos", "Circlet"),
 )
+
+
+@dataclass(frozen=True)
+class EntityType:
+    """One of the API's collections.
+
+    `grouped` marks the collections that arrive as a list of categories rather
+    than a flat list of records, which changes both the search and the path used
+    to reach a single item.
+    """
+
+    name: str
+    label: str
+    command: str
+    emoji: str
+    # Handler attribute name, singular so it reads like the other plugins.
+    handler: str = ""
+    grouped: bool = False
+    # Image strategy. Characters and weapons expose a fixed name under
+    # /{type}/{id}/{image}; artifact sets name their pieces directly; the
+    # grouped collections and enemies/domains ship no art at all.
+    image: str = ""
+
+
+# The API serves ten collections. `boss` is excluded because it returns an empty
+# list upstream, and advertising a type that always says "not found" is worse
+# than leaving it out.
+ENTITY_TYPES = {
+    t.name: t
+    for t in (
+        EntityType("characters", "Character", "gchar", "🧝", handler="character", image="portrait"),
+        EntityType("weapons", "Weapon", "gweapon", "⚔️", handler="weapon", image="icon"),
+        EntityType("artifacts", "Artifact Set", "gartifact", "💍", handler="artifact", image="pieces"),
+        EntityType("consumables", "Consumable", "gconsumable", "🍲", handler="consumable", grouped=True),
+        EntityType("materials", "Material", "gmaterial", "🪵", handler="material", grouped=True),
+        EntityType("enemies", "Enemy", "genemy", "👹", handler="enemy"),
+        EntityType("domains", "Domain", "gdomain", "🏛️", handler="domain"),
+        EntityType("nations", "Nation", "gnation", "🗺️", handler="nation", image="icon"),
+        EntityType("elements", "Element", "gelement", "⚗️", handler="element", image="icon"),
+    )
+}
 
 # <=======================================================================================================>
 
@@ -109,11 +158,55 @@ async def _fetch(path: str, lang: str = "en"):
     return response.json()
 
 
-async def _fetch_all(kind: str, lang: str = "en") -> list:
+async def _fetch_flat(kind: str, lang: str) -> list:
+    """Records for the seven collections that are a plain list of objects."""
     data = await _fetch(f"{kind}/all", lang)
     if not isinstance(data, list):
         raise ValueError(f"{kind}/all did not return a list")
     return [e for e in data if isinstance(e, dict) and e.get("id")]
+
+
+async def _fetch_grouped(kind: str, lang: str) -> dict:
+    """Flatten the two collections that arrive as a list of categories.
+
+    Each element is a category whose own `id` names it, with every item stored
+    as a sibling key. Reading it as a map of category to items returns nothing,
+    because it is a list.
+    """
+    data = await _fetch(f"{kind}/all", lang)
+    if not isinstance(data, list):
+        raise ValueError(f"{kind}/all did not return a list")
+    groups = {}
+    for category in data:
+        if not isinstance(category, dict):
+            continue
+        label = str(category.get("id", "")).casefold()
+        if not label:
+            continue
+        items = {
+            key: value
+            for key, value in category.items()
+            if key != "id" and isinstance(value, dict)
+        }
+        if items:
+            groups[label] = items
+    return groups
+
+
+async def _search(kind: str, lang: str) -> list:
+    """Every searchable record for a collection, whichever shape it has."""
+    entity = ENTITY_TYPES[kind]
+    if not entity.grouped:
+        return await _fetch_flat(kind, lang)
+
+    flat = []
+    for category, items in (await _fetch_grouped(kind, lang)).items():
+        for item_id, record in items.items():
+            record = dict(record)
+            record.setdefault("id", item_id)
+            record["category"] = category
+            flat.append(record)
+    return flat
 
 
 def _match(entries: list, query: str) -> list:
@@ -163,126 +256,418 @@ def _paginate(items: list, page: int):
     return items[start : start + PAGE_SIZE], page, total
 
 
-async def _replace(status: Message, text: str, markup=None):
-    """Swap the placeholder for the answer, in place.
+# Rich text runs are a list, not a string, and do not concatenate with +. The
+# short helpers below build the shapes used throughout the renderers.
+def _t(value) -> RichText:
+    return RichText(text=_lines(value, 900))
 
-    Editing keeps the result where the user's command already is, which is what
-    a pagination button on that message expects to follow.
+
+def _bold(value) -> list:
+    return [RichTextBold(text=_t(value))]
+
+
+def _italic(value) -> list:
+    return [RichTextItalic(text=_t(value))]
+
+
+def _code(value) -> list:
+    return [RichTextCode(text=_t(value))]
+
+
+def _field(label: str, value) -> list | None:
+    """A label/value run, or nothing when the field is absent upstream.
+
+    The trailing space matters: rich runs are joined with no separator, so
+    without it the fallback text renders "Title: KreideprinzVision: Geo".
     """
-    try:
-        await status.edit_text(
-            text, parse_mode=ParseMode.HTML, reply_markup=markup
-        )
-    except TelegramAPIError:
-        # "message is not modified" and friends: fall back to a new message so
-        # the user still gets an answer.
-        try:
-            await status.answer(
-                text, parse_mode=ParseMode.HTML, reply_markup=markup
-            )
-        except TelegramAPIError:
-            LOGGER.debug("Could not deliver a genshin lookup result", exc_info=True)
+    if value in (None, "", [], {}):
+        return None
+    return [
+        RichTextUnderline(text=RichText(text=f"{label}: ")),
+        _t(value),
+        RichText(text="  "),
+    ]
+
+
+def _bullet(label: str, value) -> InputRichBlockListItem | None:
+    if value in (None, "", [], {}):
+        return None
+    return InputRichBlockListItem(
+        label=label,
+        blocks=[InputRichBlockParagraph(text=[RichTextUnderline(
+            text=RichText(text=f"{label} — ")), _t(value)])],
+    )
+
+
+def _image_url(kind: str, record_id: str, slot: str = "") -> str | None:
+    """Where the art for a record lives, if the collection has any.
+
+    Art is inconsistent upstream: characters expose a fixed name, artifact sets
+    name their pieces directly, and several collections have none, so a miss
+    here is normal rather than exceptional.
+    """
+    entity = ENTITY_TYPES.get(kind)
+    if entity is None or not entity.image:
+        return None
+    if entity.image == "pieces":
+        piece = slot or ARTIFACT_PIECES[0][0]
+        return f"{API}/{kind}/{record_id}/{piece}"
+    return f"{API}/{kind}/{record_id}/{entity.image}"
 
 
 # <=======================================================================================================>
+
 # <=============================================== RENDERING ===============================================>
-def _render_character(entry: dict) -> str:
-    emoji = VISION_EMOJI.get(str(entry.get("vision_key", "")).upper(), "")
-    body = [f"{emoji} <b>{html.escape(str(entry.get('name', '?')))}</b>"]
-
-    facts = (
-        ("Title", entry.get("title")),
-        ("Vision", entry.get("vision")),
-        ("Weapon", entry.get("weapon")),
-        ("Rarity", _rarity(entry.get("rarity")) or entry.get("rarity")),
-        ("Nation", entry.get("nation")),
-        ("Affiliation", entry.get("affiliation")),
-        ("Constellation", entry.get("constellation")),
-        ("Birthday", entry.get("birthday")),
-        ("Released", entry.get("release")),
-    )
-    for label, value in facts:
-        if value:
-            body.append(f"<b>{label}:</b> {html.escape(str(value))}")
-
-    if entry.get("description"):
-        body.append(f"\n{_lines(entry['description'], 400)}")
-
-    talents = [t for t in (entry.get("skillTalents") or []) if isinstance(t, dict)]
-    if talents:
-        body.append("\n<b>Talents</b>")
-        for talent in talents[:3]:
-            name = html.escape(str(talent.get("name", "?")))
-            body.append(f"• <b>{name}</b> — {_lines(talent.get('description'), 110)}")
-
-    return "\n".join(body)
+# Every renderer returns a list of rich blocks. There is no shared HTML string any
+# more: rich blocks align label/value pairs natively, and the escaping step is
+# gone because rich text is a structured tree rather than a string that has to
+# survive a parser.
 
 
-def _render_weapon(entry: dict) -> str:
-    body = [
-        f"{_rarity(entry.get('rarity'))} <b>{html.escape(str(entry.get('name', '?')))}</b>",
-        f"<b>Type:</b> {html.escape(str(entry.get('type', '?')))}",
-        f"<b>Base ATK:</b> {html.escape(str(entry.get('baseAttack', '?')))}",
-        f"<b>Substat:</b> {html.escape(str(entry.get('subStat', '?')))}",
+def _heading(text: str, size: int = 2):
+    return InputRichBlockSectionHeading(text=RichText(text=text), size=size)
+
+
+def _para(runs):
+    return InputRichBlockParagraph(text=runs)
+
+
+def _divider():
+    return InputRichBlockDivider()
+
+
+def _quote(runs):
+    return InputRichBlockPullQuotation(text=runs)
+
+
+def _rarity_line(record: dict) -> list | None:
+    value = record.get("rarity", record.get("max_rarity"))
+    if value in (None, "", []):
+        return None
+    return [RichText(text=f"{_rarity(value)} "), RichTextBold(text=_t(value))]
+
+
+def _runlist(items) -> list:
+    """Flatten the optional label/value groups a renderer collected."""
+    return [run for group in items if group for run in group]
+
+
+def _name_blocks(entry: dict, emoji: str) -> list:
+    return [
+        _heading(f"{emoji} {entry.get('name', '?')}", 2),
+        _para(_rarity_line(entry) or _t(entry.get("name"))),
+        _divider(),
     ]
-    if entry.get("location"):
-        body.append(f"<b>Obtained:</b> {html.escape(str(entry['location']))}")
-    if entry.get("passiveName"):
-        body.append(
-            f"\n<b>{html.escape(str(entry['passiveName']))}</b>\n"
-            f"{_lines(entry.get('passiveDesc'), 320)}"
+
+
+def _field_para(fields) -> object | None:
+    runs = _runlist(fields)
+    return _para(runs) if runs else None
+
+
+def _talent_list(records: list, heading: str) -> list:
+    kept = [r for r in records if isinstance(r, dict) and r.get("name")]
+    if not kept:
+        return []
+    items = [
+        InputRichBlockListItem(
+            label=str(r.get("unlock") or r.get("level") or "•"),
+            blocks=[_para(_bold(r.get("name"))), _para(_italic(r.get("description")))],
         )
-    return "\n".join(body)
-
-
-def _render_artifact(entry: dict) -> str:
-    body = [
-        f"{_rarity(entry.get('max_rarity'))} "
-        f"<b>{html.escape(str(entry.get('name', '?')))}</b>",
-        f"<b>Max rarity:</b> {html.escape(str(entry.get('max_rarity', '?')))}★",
+        for r in kept
     ]
-    for key, label in (("2-piece_bonus", "2-piece"), ("4-piece_bonus", "4-piece")):
-        if entry.get(key):
-            body.append(f"\n<b>{label}:</b> {_lines(entry[key], 200)}")
-    return "\n".join(body)
+    return [_heading(heading, 3), InputRichBlockList(items=items)]
+
+
+def _render_character(entry: dict) -> list:
+    emoji = VISION_EMOJI.get(str(entry.get("vision_key", "")).upper(), "")
+    blocks = _name_blocks(entry, emoji)
+    blocks.append(
+        _field_para(
+            [
+                _field("Title", entry.get("title")),
+                _field("Vision", entry.get("vision")),
+                _field("Weapon", entry.get("weapon")),
+                _field("Nation", entry.get("nation")),
+                _field("Affiliation", entry.get("affiliation")),
+                _field("Constellation", entry.get("constellation")),
+                _field("Birthday", entry.get("birthday")),
+                _field("Released", entry.get("release")),
+            ]
+        )
+    )
+    if entry.get("description"):
+        blocks.append(_quote(_italic(entry["description"])))
+
+    blocks += _talent_list(entry.get("skillTalents") or [], "Talents")
+
+    consts = [c for c in (entry.get("constellations") or []) if isinstance(c, dict)]
+    if consts:
+        blocks.append(_heading("Constellations", 3))
+        blocks.append(
+            InputRichBlockList(
+                items=[
+                    InputRichBlockListItem(
+                        label=f"C{c.get('level', '')}",
+                        blocks=[_para(_bold(c.get("name"))), _para(_italic(c.get("description")))],
+                    )
+                    for c in consts
+                    if c.get("name")
+                ]
+            )
+        )
+
+    blocks += _talent_list(entry.get("passiveTalents") or [], "Passives")
+
+    materials = entry.get("ascension_materials")
+    if isinstance(materials, dict):
+        blocks.append(_heading("Ascension", 3))
+        for tier, costs in materials.items():
+            if not isinstance(costs, list):
+                continue
+            summary = ", ".join(
+                f"{c.get('name')} x{c.get('value')}"
+                for c in costs
+                if isinstance(c, dict) and c.get("name")
+            )
+            if summary:
+                blocks.append(
+                    _para([RichTextUnderline(text=RichText(text=f"{tier}: ")), _t(summary)])
+                )
+    return [b for b in blocks if b is not None]
+
+
+def _render_weapon(entry: dict) -> list:
+    blocks = _name_blocks(entry, "⚔️")
+    blocks.append(
+        _field_para(
+            [
+                _field("Type", entry.get("type")),
+                _field("Base ATK", entry.get("baseAttack")),
+                _field("Substat", entry.get("subStat")),
+                _field("Obtained", entry.get("location")),
+            ]
+        )
+    )
+    if entry.get("passiveName"):
+        blocks.append(_heading("Passive", 3))
+        blocks.append(_para(_bold(entry["passiveName"])))
+        if entry.get("passiveDesc"):
+            blocks.append(_para(_italic(entry["passiveDesc"])))
+    return [b for b in blocks if b is not None]
+
+
+def _render_artifact(entry: dict) -> list:
+    blocks = _name_blocks(entry, "💍")
+    items = [
+        i
+        for i in (
+            _bullet("2-piece", entry.get("2-piece_bonus")),
+            _bullet("4-piece", entry.get("4-piece_bonus")),
+        )
+        if i is not None
+    ]
+    if items:
+        blocks.append(InputRichBlockList(items=items))
+    return blocks
+
+
+def _render_nation(entry: dict) -> list:
+    blocks = _name_blocks(entry, "🗺️")
+    blocks.append(
+        _field_para(
+            [
+                _field("Element", entry.get("element")),
+                _field("Archon", entry.get("archon")),
+                _field("Ruling Body", entry.get("controllingEntity")),
+            ]
+        )
+    )
+    return [b for b in blocks if b is not None]
+
+
+def _render_element(entry: dict) -> list:
+    emoji = VISION_EMOJI.get(str(entry.get("key", "")).upper(), "⚗️")
+    blocks = [
+        _heading(f"{emoji} {entry.get('name', '?')}", 2),
+        _para(_code(entry.get("key", ""))),
+        _divider(),
+    ]
+    reactions = [r for r in (entry.get("reactions") or []) if isinstance(r, dict)]
+    items = []
+    for reaction in reactions:
+        name = str(reaction.get("name", "?"))
+        against = ", ".join(reaction.get("elements") or [])
+        runs = _bold(name)
+        if against:
+            runs.append(_t(f" — against {against}"))
+        if reaction.get("description"):
+            runs.append(RichText(text=". "))
+            runs.append(_italic(reaction["description"]))
+        items.append(InputRichBlockListItem(label=name[:1] or "•", blocks=[_para(runs)]))
+    if items:
+        blocks.append(InputRichBlockList(items=items))
+    return blocks
+
+
+def _render_enemy(entry: dict) -> list:
+    blocks = [_heading(f"👹 {entry.get('name', '?')}", 2), _divider()]
+    blocks.append(
+        _field_para(
+            [
+                _field("Type", entry.get("type")),
+                _field("Family", entry.get("family")),
+                _field("Faction", entry.get("faction")),
+                _field("Region", entry.get("region")),
+                _field("Elements", ", ".join(entry.get("elements") or []) or None),
+            ]
+        )
+    )
+    description = entry.get("description")
+    if description and description != "N/A":
+        blocks.append(_quote(_italic(description)))
+
+    drops = [d for d in (entry.get("drops") or []) if isinstance(d, dict) and d.get("name")]
+    if drops:
+        blocks.append(_heading("Drops", 3))
+        blocks.append(
+            InputRichBlockList(
+                items=[
+                    InputRichBlockListItem(
+                        label=_rarity(d.get("rarity")) or "•", blocks=[_para(_t(d.get("name")))]
+                    )
+                    for d in drops
+                ]
+            )
+        )
+    return [b for b in blocks if b is not None]
+
+
+def _render_domain(entry: dict) -> list:
+    blocks = [_heading(f"🏛️ {entry.get('name', '?')}", 2), _divider()]
+    blocks.append(
+        _field_para(
+            [
+                _field("Type", entry.get("type")),
+                _field("Nation", entry.get("nation")),
+                _field("Location", entry.get("location")),
+                _field("Recommended", ", ".join(entry.get("recommendedElements") or []) or None),
+            ]
+        )
+    )
+    if entry.get("description"):
+        blocks.append(_quote(_italic(entry["description"])))
+
+    rewards = [r for r in (entry.get("rewards") or []) if isinstance(r, dict) and r.get("name")]
+    if rewards:
+        blocks.append(_heading("Rewards", 3))
+        blocks.append(
+            InputRichBlockList(
+                items=[
+                    InputRichBlockListItem(
+                        label=str(r.get("level") or "•"), blocks=[_para(_t(r.get("name")))]
+                    )
+                    for r in rewards
+                ]
+            )
+        )
+    return [b for b in blocks if b is not None]
+
+
+def _render_grouped(entry: dict, kind: str) -> list:
+    """Consumables and materials share a shape once flattened."""
+    emoji = ENTITY_TYPES[kind].emoji
+    blocks = [_heading(f"{emoji} {entry.get('name', '?')}", 2)]
+    category = str(entry.get("category", "")).replace("-", " ").title()
+    if category:
+        blocks.append(_para([RichTextItalic(text=_t(category))]))
+    blocks.append(_divider())
+    blocks.append(
+        _field_para(
+            [
+                _field("Type", entry.get("type")),
+                _field("Source", entry.get("source")),
+            ]
+        )
+    )
+
+    if entry.get("effect"):
+        blocks.append(_para(_bold("Effect")))
+        blocks.append(_para(_italic(entry["effect"])))
+    if entry.get("description"):
+        blocks.append(_quote(_italic(entry["description"])))
+
+    crafting = entry.get("crafting") or entry.get("recipe")
+    crafting = [c for c in crafting if isinstance(c, dict) and c.get("item")] if isinstance(crafting, list) else []
+    if crafting:
+        blocks.append(_heading("Crafting", 3))
+        blocks.append(
+            InputRichBlockList(
+                items=[
+                    InputRichBlockListItem(
+                        label="•",
+                        blocks=[_para([_t(f"{c['item']} "), _code(f"x{c.get('quantity')}")])],
+                    )
+                    for c in crafting
+                ]
+            )
+        )
+
+    users = entry.get("characters")
+    if isinstance(users, list) and users:
+        blocks.append(_heading("Used by", 3))
+        blocks.append(_para(_italic(", ".join(users))))
+    return [b for b in blocks if b is not None]
 
 
 RENDERERS = {
     "characters": _render_character,
     "weapons": _render_weapon,
     "artifacts": _render_artifact,
+    "nations": _render_nation,
+    "elements": _render_element,
+    "enemies": _render_enemy,
+    "domains": _render_domain,
+    "consumables": lambda e: _render_grouped(e, "consumables"),
+    "materials": lambda e: _render_grouped(e, "materials"),
 }
 
 
-def _render_list(kind: str, items: list, query: str, page: int, lang: str) -> str:
+def _render_list(kind: str, items: list, query: str, page: int, lang: str) -> list:
+    """A paged result list, as blocks.
+
+    The vision and rarity markers the old string renderer used as leading emoji
+    are carried by the list item label instead.
+    """
+    entity = ENTITY_TYPES[kind]
     shown, page, total = _paginate(items, page)
-    header = (
-        f"<b>{html.escape(query.title())}</b> — {len(items)} "
-        f"{TYPE_LABEL[kind].lower()} match(es)"
-    )
-    lines = []
-    for entry in shown:
-        star = _rarity(
-            entry.get("max_rarity") if kind == "artifacts" else entry.get("rarity")
-        )
-        vision = (
-            VISION_EMOJI.get(str(entry.get("vision_key", "")).upper(), "")
-            if kind == "characters"
-            else ""
-        )
-        lines.append(
-            f"{vision}{star} {html.escape(str(entry.get('name', '?')))}"
-            f" — <code>{html.escape(str(entry.get('id', '')))}</code>"
-        )
-    footer = f"\n\nPage {page}/{total}" if total > 1 else ""
+    blocks = [
+        _heading(f"{entity.emoji} {query.title()} · {len(items)} match(es)", 3),
+        _divider(),
+        InputRichBlockList(
+            items=[
+                InputRichBlockListItem(
+                    label=(
+                        (VISION_EMOJI.get(str(e.get("vision_key", "")).upper(), "")
+                         if kind == "characters" else "")
+                        + _rarity(e.get("rarity", e.get("max_rarity")))
+                    ) or "•",
+                    blocks=[
+                        _para([_bold(e.get("name", "?")), _code(f"  {e.get('id', '')}")])
+                    ],
+                )
+                for e in shown
+            ]
+        ),
+    ]
+    footer = f"Page {page} of {total}"
     if lang != "en":
         footer += f" · {LANGS[lang]}"
-    return f"{header}\n\n" + "\n".join(lines) + footer
+    blocks.append(_para([RichTextItalic(text=RichText(text=footer))]))
+    return blocks
 
 
-def _list_keyboard(
-    kind: str, query: str, page: int, lang: str
-) -> InlineKeyboardMarkup:
+def _list_keyboard(kind: str, query: str, page: int, lang: str) -> InlineKeyboardMarkup:
     """Page controls. Callback data is capped at 64 bytes by Telegram."""
 
     def data(step: int) -> str:
@@ -290,41 +675,125 @@ def _list_keyboard(
 
     builder = InlineKeyboardBuilder()
     builder.button(text="◁", callback_data=data(page - 1))
-    builder.button(text="⋮", callback_data=f"genshin_close|{kind}"[:64])
+    builder.button(text="✕", callback_data=f"genshin_close|{kind}"[:64])
     builder.button(text="▷", callback_data=data(page + 1))
     builder.adjust(3)
     return builder.as_markup()
 
 
-# <================================================= COMMANDS ================================================
-_CMD_NAMES = {"characters": "gchar", "weapons": "gweapon", "artifacts": "gartifact"}
+# <=======================================================================================================>
+
+# <================================================== SENDING ================================================>
+async def _send_rich(chat_id: int, blocks: list, reply_markup=None, thread_id: int = None):
+    """Send a rich message, falling back to plain text if the API rejects it.
+
+    sendRichMessage is a comparatively new Bot API method. A bot pointed at an
+    older server, or a client that cannot render blocks, answers with a
+    TelegramAPIError; rather than leave the user with nothing, the blocks are
+    flattened to readable text and sent normally.
+    """
+    rich = InputRichMessage(blocks=blocks)
+    try:
+        return await bot.send_rich_message(
+            chat_id,
+            rich,
+            reply_markup=reply_markup,
+            message_thread_id=thread_id,
+        )
+    except TelegramAPIError as err:
+        LOGGER.debug("Rich message unavailable (%s), falling back to text", err)
+        try:
+            return await bot.send_message(
+                chat_id, _blocks_to_text(blocks), reply_markup=reply_markup
+            )
+        except TelegramAPIError:
+            LOGGER.debug("Could not deliver a genshin result", exc_info=True)
+            return None
 
 
+def _blocks_to_text(blocks: list) -> str:
+    """Readable plain text from rich blocks, for the fallback path."""
+    lines = []
+    for block in blocks:
+        kind = getattr(block, "type", None)
+        if kind == "divider":
+            lines.append("———")
+            continue
+        text = getattr(block, "text", None)
+        if text is not None:
+            lines.append(_flatten(text))
+            continue
+        items = getattr(block, "items", None)
+        if items is not None:
+            for item in items:
+                label = getattr(item, "label", "")
+                inner = " ".join(
+                    _flatten(getattr(b, "text", "")) for b in getattr(item, "blocks", [])
+                )
+                lines.append(f"{label}. {inner}".strip())
+            continue
+    return "\n".join(x for x in lines if x)
+
+
+def _is_run(value) -> bool:
+    """A serialised run is `["text", value]`; anything else is not one."""
+    return (
+        isinstance(value, list)
+        and len(value) == 2
+        and value[0] == "text"
+    )
+
+
+def _flatten(node) -> str:
+    """Plain text out of any rich text shape.
+
+    A run serialises two ways: as `RichText(text="Geo")` when it is the whole
+    field, and as `["text", "Geo"]` once nested inside a styled run. Both have to
+    be handled, since reading the first element as content prints the literal
+    word "text" into every field of the fallback output.
+    """
+    if node is None:
+        return ""
+    if isinstance(node, str):
+        return node
+    if _is_run(node):
+        return _flatten(node[1])
+    if isinstance(node, (list, tuple)):
+        return "".join(_flatten(part) for part in node)
+    inner = getattr(node, "text", None)
+    return _flatten(inner) if inner is not None else ""
+
+
+# <================================================= COMMANDS ================================================>
 async def _lookup(message: Message, command: CommandObject, kind: str):
+    entity = ENTITY_TYPES[kind]
     lang = _lang_arg(command)
     query = _strip_lang(command)
 
     if not query:
+        listing = "\n".join(
+            f"{t.emoji} <code>/{t.command}</code> — {t.label.lower()}"
+            for t in ENTITY_TYPES.values()
+        )
         await message.reply_html(
-            f"Give me a name. Example: <code>/{_CMD_NAMES[kind]} albedo</code> · "
-            "add <code>-fr</code> for French."
+            f"Give me a name. Example: <code>/{entity.command} {query or 'albedo'}</code>\n\n"
+            f"{listing}\n\n"
+            "Add <code>-fr</code> for French, e.g. <code>/gchar albedo-fr</code>."
         )
         return
 
-    status = await message.reply_html("Looking that up…")
+    status = await message.reply_html(f"Looking up {html_escape(query)}…")
     try:
-        entries = await _fetch_all(kind, lang)
+        entries = await _search(kind, lang)
     except (httpx.HTTPError, ValueError, KeyError, TypeError) as err:
         LOGGER.warning("Genshin %s lookup failed: %s", kind, err)
         await _replace(status, "The lookup service is not responding right now.")
         return
 
-    # A language with no coverage for this type comes back empty.
     if not entries:
         await _replace(
             status,
-            f"No {TYPE_LABEL[kind].lower()} data in {LANGS[lang]} yet. "
-            "Try <code>-en</code>.",
+            f"No {entity.label.lower()} data in {LANGS[lang]} yet. Try <code>-en</code>.",
         )
         return
 
@@ -332,118 +801,87 @@ async def _lookup(message: Message, command: CommandObject, kind: str):
     if not matches:
         await _replace(
             status,
-            f"No {TYPE_LABEL[kind].lower()} called <b>{html.escape(query)}</b>.\n"
+            f"No {entity.label.lower()} called <b>{html_escape(query)}</b>.\n"
             "Check the spelling, or try part of the name.",
         )
         return
 
+    thread_id = message.message_thread_id if message.chat.is_forum else None
     if len(matches) > 1:
-        await _replace(
-            status,
-            _render_list(kind, matches, query, 1, lang),
-            _list_keyboard(kind, query, 1, lang),
-        )
-        return
+        blocks = _render_list(kind, matches, query, 1, lang)
+        markup = _list_keyboard(kind, query, 1, lang)
+    else:
+        record = matches[0]
+        # A grouped record is already complete; a flat one needs its own fetch.
+        if not entity.grouped and not record.get("skillTalents"):
+            try:
+                detail = await _fetch(f"{kind}/{record['id']}", lang)
+                if isinstance(detail, dict):
+                    record = detail
+            except (httpx.HTTPError, ValueError, KeyError, TypeError):
+                pass
+        blocks = RENDERERS[kind](record)
+        markup = None
 
     try:
-        entry = await _fetch(f"{kind}/{matches[0]['id']}", lang)
-        if not isinstance(entry, dict):
-            raise ValueError("record was not an object")
-    except (httpx.HTTPError, ValueError, KeyError, TypeError):
-        # The index listed it but the record is absent in this language.
-        entry = matches[0]
-
-    await _replace(status, _cut(RENDERERS[kind](entry), MAX_MESSAGE))
+        await status.delete()
+    except TelegramAPIError:
+        pass
+    await _send_rich(message.chat.id, blocks, markup, thread_id)
 
 
-async def genshin_character(message: Message, command: CommandObject):
-    await _lookup(message, command, "characters")
+def html_escape(text: str) -> str:
+    """Escapes for the few plain-HTML notices still sent while loading."""
+    return html.escape(str(text))
 
 
-async def genshin_weapon(message: Message, command: CommandObject):
-    await _lookup(message, command, "weapons")
-
-
-async def genshin_artifact(message: Message, command: CommandObject):
-    await _lookup(message, command, "artifacts")
-
-
-async def genshin_material(message: Message, command: CommandObject):
-    args = (command.args or "").split()
-    lang = "en"
-    if args and args[-1].lower() in LANGS:
-        lang = args.pop().lower()
-    query = " ".join(args)
-
-    categories = ", ".join(f"<code>{c}</code>" for c in MATERIAL_CATEGORIES)
-    if not query:
-        await message.reply_html(
-            f"Name a material or a category. Categories: {categories}"
-        )
-        return
-
-    status = await message.reply_html("Looking that up…")
+async def _replace(status: Message, text: str):
+    """Swap the 'looking up' placeholder for a short plain-text notice."""
     try:
-        data = await _fetch("materials/all", lang)
-    except (httpx.HTTPError, ValueError, KeyError, TypeError) as err:
-        LOGGER.warning("Genshin material lookup failed: %s", err)
-        await _replace(status, "The lookup service is not responding right now.")
-        return
+        await status.edit_text(text, parse_mode=None)
+    except TelegramAPIError:
+        try:
+            await status.answer(text, parse_mode=None)
+        except TelegramAPIError:
+            LOGGER.debug("Could not deliver a genshin notice", exc_info=True)
 
-    # Materials come back as a list of category objects, each keyed by its own
-    # id and holding every item under it as sibling keys.
-    if not isinstance(data, list):
-        await _replace(status, "The lookup service returned something unexpected.")
-        return
 
-    wanted = query.casefold()
-    groups = {}
-    for category in data:
-        if not isinstance(category, dict):
-            continue
-        label = str(category.get("id", "")).casefold()
-        if not label:
-            continue
-        # Everything except the trailing id is one of this category's items.
-        items = {k: v for k, v in category.items() if k != "id" and isinstance(v, dict)}
-        if wanted in label or any(
-            wanted in str(item.get("name", "")).casefold() for item in items.values()
-        ):
-            groups[label] = items
+# One thin handler per collection keeps the gate and the help text honest: a
+# command exists only for a type the API actually serves.
+def _make_handler(kind: str):
+    """One thin handler per collection.
 
-    if not groups:
-        await _replace(
-            status,
-            f"No material called <b>{html.escape(query)}</b>.\n"
-            f"Categories: {categories}",
-        )
-        return
+    This must be a plain `def`: an `async def` factory returns the coroutine
+    object rather than the inner function, and aiogram then registers a
+    coroutine where it expects a callable.
+    """
 
-    if len(groups) > 1:
-        # A term spanning categories (a boss name, say) matches too much to
-        # list inline, so name the categories and stop.
-        listing = "\n".join(
-            f"• {html.escape(cat.replace('-', ' ').title())} ({len(items)})"
-            for cat, items in list(groups.items())[:PAGE_SIZE]
-        )
-        await _replace(status, f"<b>{html.escape(query.title())}</b>\n{listing}")
-        return
+    async def handler(message: Message, command: CommandObject):
+        await _lookup(message, command, kind)
 
-    category, items = next(iter(groups.items()))
-    lines = [f"<b>{html.escape(category.replace('-', ' ').title())}</b>"]
-    for item in list(items.values())[:PAGE_SIZE]:
-        if not isinstance(item, dict):
-            continue
-        line = f"• {html.escape(str(item.get('name', '?')))}"
-        if item.get("source"):
-            line += f" — <i>{html.escape(str(item['source']))}</i>"
-        lines.append(line)
-    await _replace(status, "\n".join(lines))
+    handler.__name__ = f"genshin_{ENTITY_TYPES[kind].handler}"
+    return handler
 
+
+genshin_character = _make_handler("characters")
+genshin_weapon = _make_handler("weapons")
+genshin_artifact = _make_handler("artifacts")
+genshin_consumable = _make_handler("consumables")
+genshin_material = _make_handler("materials")
+genshin_enemy = _make_handler("enemies")
+genshin_domain = _make_handler("domains")
+genshin_nation = _make_handler("nations")
+genshin_element = _make_handler("elements")
 
 async def genshin_page(query: CallbackQuery):
+    """Advance a result list.
+
+    There is no edit_rich_message in the Bot API, so a page turn cannot rewrite
+    the card in place. The previous page is deleted and the next one sent; only
+    the bot's own listing is ever removed, and the user's command is untouched.
+    """
     parts = (query.data or "").split("|")
-    if len(parts) != 5 or parts[1] not in TYPES:
+    if len(parts) != 5 or parts[1] not in ENTITY_TYPES:
         await query.answer("This button is out of date.", show_alert=True)
         return
 
@@ -455,7 +893,7 @@ async def genshin_page(query: CallbackQuery):
         return
 
     try:
-        matches = _match(await _fetch_all(kind, lang), term)
+        matches = _match(await _search(kind, lang), term)
     except (httpx.HTTPError, ValueError, KeyError, TypeError) as err:
         LOGGER.warning("Genshin page turn failed: %s", err)
         await query.answer("The lookup service is not responding.", show_alert=True)
@@ -465,16 +903,22 @@ async def genshin_page(query: CallbackQuery):
         await query.answer("Nothing left to show.", show_alert=True)
         return
 
-    try:
-        await query.message.edit_text(
-            _render_list(kind, matches, term, page, lang),
-            parse_mode=ParseMode.HTML,
-            reply_markup=_list_keyboard(kind, term, page, lang),
-        )
-    except TelegramAPIError as err:
-        LOGGER.debug("Genshin pagination edit failed: %s", err)
-        await query.answer("Nothing changed.", show_alert=True)
+    shown, page, total = _paginate(matches, page)
+    if total == 1:
+        await query.answer("That is the only match.", show_alert=True)
         return
+
+    try:
+        await query.message.delete()
+    except TelegramAPIError:
+        LOGGER.debug("Could not clear the previous genshin page", exc_info=True)
+
+    await _send_rich(
+        query.message.chat.id,
+        _render_list(kind, matches, term, page, lang),
+        _list_keyboard(kind, term, page, lang),
+        query.message.message_thread_id if query.message.chat.is_forum else None,
+    )
     await query.answer()
 
 
@@ -494,15 +938,20 @@ async def genshin_close(query: CallbackQuery):
 __help__ = """
 ⛩ *Genshin Impact Lookup*
 
-» */gchar* `<name>` — vision, talents, constellation and lore
+» */gchar* `<name>` — vision, talents, constellations, passives, ascension
 » */gweapon* `<name>` — type, base ATK, substat and passive
 » */gartifact* `<name>` — set bonuses
-» */gmaterial* `<name>` — what it drops from and who uses it
+» */gconsumable* `<name>` — food, potions and their effects
+» */gmaterial* `<name>` — ascension materials and who uses them
+» */genemy* `<name>` — family, faction and drops
+» */gdomain* `<name>` — type, location and rewards
+» */gnation* `<name>` — archon and ruling body
+» */gelement* `<name>` — reactions and what triggers them
 
 ➠ Append *-fr* for French: `/gchar albedo-fr`.
-➠ Several matches come back as a paged list you can page through.
-➠ Data is the community API at *genshin.jmp.blue*, which serves static game
-  data only. It cannot look up a player account by UID.
+➠ Several matches come back as a list you can page through.
+➠ Data is the community API at *genshin.jmp.blue*. It serves static game data
+  only, so it cannot look up a player account by UID.
 """
 
 __mod_name__ = "Genshin"
@@ -511,7 +960,12 @@ __mod_name__ = "Genshin"
 dp.message.register(genshin_character, Command("gchar", "gcharlist"))
 dp.message.register(genshin_weapon, Command("gweapon"))
 dp.message.register(genshin_artifact, Command("gartifact", "gset"))
+dp.message.register(genshin_consumable, Command("gconsumable", "gfood"))
 dp.message.register(genshin_material, Command("gmaterial"))
+dp.message.register(genshin_enemy, Command("genemy"))
+dp.message.register(genshin_domain, Command("gdomain"))
+dp.message.register(genshin_nation, Command("gnation"))
+dp.message.register(genshin_element, Command("gelement"))
 dp.callback_query.register(genshin_page, F.data.startswith("genshin|"))
 dp.callback_query.register(genshin_close, F.data.startswith("genshin_close|"))
-# <================================================== END ====================================================
+# <================================================== END ====================================================>

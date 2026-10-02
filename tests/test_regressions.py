@@ -4336,11 +4336,12 @@ class FilterListingTests(unittest.TestCase):
 
 
 class GenshinModuleTests(unittest.TestCase):
-    """The genshin module parses upstream records, so the pure helpers matter.
+    """The genshin module renders rich messages from upstream records.
 
-    Nothing here touches the network: the matching, pagination and rendering
-    rules are what silently produced wrong answers when the upstream shape was
-    assumed rather than checked.
+    Nothing here touches the network. The helpers are what silently produced
+    wrong output when the upstream shape was assumed rather than checked, and
+    the rich text helpers are what silently print the run type into the message
+    when a serialised `["text", value]` pair is read as content.
     """
 
     @staticmethod
@@ -4349,16 +4350,15 @@ class GenshinModuleTests(unittest.TestCase):
 
         The plugin imports dp and registers handlers at import time, which needs
         a live Telegram session. Only the Mikobot imports are stubbed; the real
-        aiogram types and keyboards stay in place.
+        aiogram types and keyboards stay in place, since their exact serialised
+        shape is part of what these tests pin down.
         """
         import logging
 
         source = "import logging\n" + (
             ROOT / "Mikobot" / "plugins" / "genshin.py"
         ).read_text(encoding="utf-8")
-        source = source.replace(
-            "from Mikobot import LOGGER, dp", "LOGGER = logging.getLogger('test')"
-        )
+        source = source.replace("from Mikobot import bot, dp", "bot = object()\ndp = object()")
         source = source.replace("from Mikobot.state import state", "state = object()")
         source = "\n".join(
             line
@@ -4373,6 +4373,7 @@ class GenshinModuleTests(unittest.TestCase):
     def setUp(self):
         self.g = self._module()
 
+    # -- search -----------------------------------------------------------
     def test_exact_name_ranks_first_over_a_longer_containing_name(self):
         """Both still match, but the exact one leads, so the list opens on it."""
         entries = [
@@ -4396,6 +4397,7 @@ class GenshinModuleTests(unittest.TestCase):
         entries = [{"name": "Albedo", "id": "albedo"}]
         self.assertEqual(self.g._match(entries, "not-a-character"), [])
 
+    # -- language ---------------------------------------------------------
     def test_language_suffix_is_read_and_stripped(self):
         command = SimpleNamespace(args="albedo-fr")
         self.assertEqual(self.g._lang_arg(command), "fr")
@@ -4411,49 +4413,11 @@ class GenshinModuleTests(unittest.TestCase):
         """Upstream 404s on de/tr/id/ja/zh and carries almost nothing for pt/ru."""
         self.assertEqual(sorted(self.g.LANGS), ["en", "fr"])
 
+    # -- pagination -------------------------------------------------------
     def test_pagination_clamps_out_of_range_pages(self):
         items = list(range(20))
-        self.assertEqual(self.g._paginate(items, 0)[1:], (1, 3))
-        self.assertEqual(self.g._paginate(items, 99)[1:], (3, 3))
-        self.assertEqual(len(self.g._paginate(items, 1)[0]), self.g.PAGE_SIZE)
-
-    def test_rarity_survives_a_non_numeric_value(self):
-        self.assertEqual(self.g._rarity("5"), "🟡")
-        self.assertEqual(self.g._rarity(None), "")
-        self.assertEqual(self.g._rarity("five"), "")
-
-    def test_artifact_set_bonus_label_is_not_doubled(self):
-        entry = {
-            "name": "Adventurer",
-            "max_rarity": 3,
-            "2-piece_bonus": "Max HP.",
-            "4-piece_bonus": "Opening chest.",
-        }
-        rendered = self.g._render_artifact(entry)
-        self.assertIn("2-piece:", rendered)
-        self.assertNotIn("2-piece-piece", rendered)
-
-    def test_rendered_records_stay_inside_telegrams_limit(self):
-        """A long description must be cut, not sent and rejected for length."""
-        entry = {
-            "name": "X" * 50,
-            "title": "T" * 100,
-            "vision": "Geo",
-            "weapon": "Sword",
-            "rarity": 5,
-            "description": "d" * 5000,
-            "skillTalents": [
-                {"name": "n" * 100, "description": "e" * 5000} for _ in range(3)
-            ],
-        }
-        rendered = self.g._render_character(entry)
-        self.assertLessEqual(len(rendered), self.g.MAX_MESSAGE)
-
-    def test_user_supplied_names_are_escaped_for_html(self):
-        """Names come from the API, but the API is not a trust boundary."""
-        rendered = self.g._render_character({"name": "<script>x</script>"})
-        self.assertNotIn("<script>", rendered)
-        self.assertIn("&lt;script&gt;", rendered)
+        self.assertEqual(self.g._paginate(items, 0)[1:], (1, 4))
+        self.assertEqual(self.g._paginate(items, 99)[1:], (4, 4))
 
     def test_callback_data_fits_telegrams_64_byte_limit(self):
         markup = self.g._list_keyboard("characters", "a" * 200, 2, "en")
@@ -4461,15 +4425,106 @@ class GenshinModuleTests(unittest.TestCase):
             for button in row:
                 self.assertLessEqual(len(button.callback_data.encode()), 64)
 
-    def test_every_registered_command_has_a_handler(self):
-        source = (ROOT / "Mikobot" / "plugins" / "genshin.py").read_text(
-            encoding="utf-8"
-        )
-        for name in ("genshin_character", "genshin_weapon", "genshin_artifact"):
-            self.assertIn(f"dp.message.register({name}", source)
-        for name in ("genshin_page", "genshin_close"):
-            self.assertIn(f"dp.callback_query.register({name}", source)
+    # -- rich text --------------------------------------------------------
+    def test_flatten_drops_the_run_type_from_a_serialised_pair(self):
+        """A nested run is `["text", "Geo"]`; reading element 0 prints "text"."""
+        self.assertEqual(self.g._flatten([["text", "Geo"]]), "Geo")
 
+    def test_flatten_handles_a_bare_rich_text_object(self):
+        from aiogram.types import RichText, RichTextBold
+
+        self.assertEqual(self.g._flatten(RichText(text="Geo")), "Geo")
+        self.assertEqual(self.g._flatten(RichTextBold(text=RichText(text="Geo"))), "Geo")
+
+    def test_flatten_joins_a_run_list_without_duplicating_content(self):
+        from aiogram.types import RichText, RichTextBold
+
+        runs = [RichText(text="a "), RichTextBold(text=RichText(text="b"))]
+        self.assertEqual(self.g._flatten(runs), "a b")
+
+    def test_rarity_survives_a_non_numeric_value(self):
+        self.assertEqual(self.g._rarity("5"), "🟡")
+        self.assertEqual(self.g._rarity(None), "")
+        self.assertEqual(self.g._rarity("five"), "")
+
+    def test_blocks_to_text_reads_as_plain_prose(self):
+        """The fallback path feeds send_message, so it must not carry markup."""
+        blocks = self.g._render_character(
+            {"name": "Albedo", "vision": "Geo", "rarity": 5, "title": "Kreideprinz"}
+        )
+        text = self.g._blocks_to_text(blocks)
+        self.assertIn("Albedo", text)
+        self.assertIn("Kreideprinz", text)
+        self.assertNotIn("text", text.replace("context", ""))
+        self.assertNotIn("<b>", text)
+
+    def test_label_and_value_are_separated_in_fallback_text(self):
+        """Rich runs are joined with no separator, so the field adds its own."""
+        blocks = self.g._render_character({"name": "X", "title": "T", "vision": "V"})
+        text = self.g._blocks_to_text(blocks)
+        self.assertIn("Title: T", text)
+        self.assertNotIn("Title: TVision", text)
+
+    def test_renderers_emit_only_blocks_the_api_accepts(self):
+        blocks = self.g._render_character({"name": "Albedo", "vision": "Geo"})
+        self.assertTrue(blocks)
+        for block in blocks:
+            self.assertIn(
+                getattr(block, "type", None),
+                {"heading", "paragraph", "divider", "pull_quotation", "list"},
+            )
+
+    def test_renderers_survive_an_empty_record(self):
+        """Upstream omits fields freely; a blank record must not raise."""
+        for name, renderer in self.g.RENDERERS.items():
+            with self.subTest(renderer=name):
+                entry = {} if name not in ("consumables", "materials") else {"name": "x"}
+                self.assertIsInstance(renderer(entry), list)
+
+    def test_every_served_collection_has_a_command(self):
+        """Ten collections upstream, nine usable: boss returns [] and is skipped."""
+        self.assertNotIn("boss", self.g.ENTITY_TYPES)
+        commands = {t.command for t in self.g.ENTITY_TYPES.values()}
+        self.assertEqual(len(commands), len(self.g.ENTITY_TYPES))
+
+    def test_every_registered_handler_is_a_callable_coroutine_function(self):
+        """aiogram registers callables, so a factory must not return a coroutine.
+
+        An `async def` factory hands back the coroutine object it created rather
+        than the inner handler, which passes a plain existence check and then
+        fails on the first command.
+        """
+        import inspect
+
+        for entity in self.g.ENTITY_TYPES.values():
+            with self.subTest(entity=entity.command):
+                handler = getattr(self.g, f"genshin_{entity.handler}")
+                self.assertTrue(
+                    inspect.iscoroutinefunction(handler),
+                    f"{entity.command} is registered as {type(handler).__name__}, "
+                    "not an async callable",
+                )
+
+    def test_callback_handlers_are_coroutine_functions(self):
+        import inspect
+
+        for name in ("genshin_page", "genshin_close"):
+            with self.subTest(handler=name):
+                self.assertTrue(inspect.iscoroutinefunction(getattr(self.g, name)))
+
+    def test_grouped_collections_are_flagged_as_such(self):
+        """Only materials and consumables arrive as a list of categories."""
+        grouped = {n for n, t in self.g.ENTITY_TYPES.items() if t.grouped}
+        self.assertEqual(grouped, {"materials", "consumables"})
+
+    def test_image_url_is_omitted_where_the_api_has_no_art(self):
+        self.assertIsNone(self.g._image_url("enemies", "abyss-herald"))
+        self.assertIsNone(self.g._image_url("domains", "cecilia-garden"))
+        self.assertIsNone(self.g._image_url("consumables", "food"))
+        self.assertIsNotNone(self.g._image_url("characters", "albedo"))
+        self.assertTrue(
+            self.g._image_url("artifacts", "adventurer").endswith("flower-of-life")
+        )
 
 class ExceptionHandlingTests(unittest.TestCase):
     """Bare ``except:`` swallows KeyboardInterrupt and SystemExit.

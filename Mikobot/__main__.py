@@ -332,10 +332,15 @@ async def genshin_command_callback(query: CallbackQuery):
         await query.answer()
         await query.message.edit_text(
             "⛩ [𝗚𝗲𝗻𝘀𝗵𝗶𝗻 𝗜𝗺𝗽𝗮𝗰𝘁](https://telegra.ph/file/cd03348a4a357624e70db.jpg) ⛩\n\n"
-            "**╔ /gchar: **fetches a character's vision, talents and lore\n"
-            "**╠ /gweapon: **fetches a weapon's type, base ATK, substat and passive\n"
-            "**╠ /gartifact: **fetches an artifact set's bonuses\n"
-            "**╠ /gmaterial: **shows what an ascension material drops from\n"
+            "**╔ /gchar: **vision, talents, constellations and lore\n"
+            "**╠ /gweapon: **type, base ATK, substat and passive\n"
+            "**╠ /gartifact: **artifact set bonuses\n"
+            "**╠ /gconsumable: **food and potions\n"
+            "**╠ /gmaterial: **ascension materials and who uses them\n"
+            "**╠ /genemy: **family, faction and drops\n"
+            "**╠ /gdomain: **type, location and rewards\n"
+            "**╠ /gnation: **archon and ruling body\n"
+            "**╠ /gelement: **reactions and what triggers them\n"
             "**╚**\n\n"
             "Append **-fr** for French, e.g. `/gchar albedo-fr`.\n"
             "Data is static game data; it cannot look up a player account.",
