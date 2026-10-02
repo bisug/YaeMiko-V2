@@ -183,7 +183,7 @@ Measured wheel sizes for the dependencies that actually matter:
 | Kurigram | 5.8 MB | MTProto implementation |
 | SQLAlchemy | 4.6 MB | Includes the native C extensions |
 | pymongo | 1.1 MB | BSON and the wire protocol |
-| python-telegram-bot | 0.7 MB | Pure Python, small |
+| aiogram | 9.6 MB | Bot API dispatcher, pulls aiohttp and pydantic |
 | All 23 direct dependencies | 64.3 MB | Download size, excluding transitive dependencies |
 
 So the install is roughly 64 MB of wheels plus transitive dependencies, and the runtime memory is

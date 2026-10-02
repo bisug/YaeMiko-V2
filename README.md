@@ -44,9 +44,9 @@
 # YaeMiko
 
 **YaeMiko** is a modular Telegram group management bot that runs two Telegram clients in a single
-process: [python-telegram-bot](https://docs.python-telegram-bot.org/) for the Bot API and
+process: [aiogram](https://docs.aiogram.dev/) for the Bot API and
 [Kurigram](https://docs.kurigram.live/) for MTProto features. It targets Python 3.14, stores chat
-state in PostgreSQL and document shaped data in MongoDB, and ships 57 plugin modules.
+state in PostgreSQL and document shaped data in MongoDB, and ships 61 plugin modules.
 
 | | |
 | --- | --- |
@@ -157,11 +157,11 @@ execution. Persistence, reply construction and error handling surround that spin
 
 | Component | Version | Link |
 | --- | --- | --- |
-| python-telegram-bot | 22.8 | [PyPI](https://pypi.org/project/python-telegram-bot/) |
+| aiogram | 3.31 | [PyPI](https://pypi.org/project/aiogram/) |
 | Kurigram | 2.2.26 | [PyPI](https://pypi.org/project/Kurigram/) |
 | TgCryptoRust | 1.3.1 | [PyPI](https://pypi.org/project/TgCryptoRust/) |
 | ThrottledSession | [`Mikobot/utils/throttle.py`](Mikobot/utils/throttle.py) | aiogram session subclass applying rate limits |
-| DataStore | [`Mikobot/utils/persistence.py`](Mikobot/utils/persistence.py) | JSON backed store for chat and user context |
+| DataStore | [`Mikobot/utils/persistence.py`](Mikobot/utils/persistence.py) | Pickle backed store for chat and user context |
 | ButtonStyle | from aiogram | [docs](https://docs.aiogram.dev/en/latest/api/enums/aiogram.enums.ButtonStyle.html) |
 
 ### Data stores
@@ -512,7 +512,7 @@ python -m Mikobot
 `validate` job, which the `docker` job depends on, executes:
 
 ```bash
-pip install "python-telegram-bot[rate-limiter,job-queue]==22.8"   # the one import the suite needs
+pip install "aiogram==3.31.0"                          # the one import the suite needs
 python -m json.tool app.json >/dev/null      # manifest is valid JSON
 python -m json.tool railway.json >/dev/null   # Railway config is valid JSON
 python tests/validate_deployment.py           # blueprints agree with the entry point
@@ -526,15 +526,15 @@ The `docker` job then builds the worker image with Buildx, loads it into the loc
 store, and asserts its `CMD` is `python -m Mikobot`.
 
 The suite in [`tests/test_regressions.py`](tests/test_regressions.py) mostly uses AST extraction
-rather than importing the bot, so it stays fast. One test genuinely needs `python-telegram-bot`
-installed, because it asserts the field names of the pinned 22.8 release against the real package.
-CI installs that one dependency and fails if the version is not 22.8, so the assertion cannot pass
-by accident on a machine with a different version.
+rather than importing the bot, so it stays fast. One test genuinely needs `aiogram` installed,
+because it asserts the field names of the pinned 3.31 release against the real package. CI installs
+that one dependency and fails if the version is not 3.31.0, so the assertion cannot pass by
+accident on a machine with a different version.
 
 Reproduce the full gate locally:
 
 ```bash
-pip install "python-telegram-bot[rate-limiter,job-queue]==22.8"
+pip install "aiogram==3.31.0"
 python tests/validate_deployment.py
 python tests/validate_docs.py
 python -m json.tool app.json >/dev/null
@@ -544,7 +544,7 @@ python -m unittest discover -s tests -v
 git diff --check
 ```
 
-If you do not have `python-telegram-bot` installed, that single test will report
+If you do not have `aiogram` installed, that single test will report
 `ModuleNotFoundError` while the rest still pass. Install the pin above to run the whole suite.
 
 ---
@@ -591,8 +591,7 @@ button an explicit `style`.
 
 ### Runtime libraries
 
-- [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) for the Bot API
-  application, rate limiter and persistence
+- [aiogram](https://github.com/aiogram/aiogram) for the Bot API dispatcher, session and filters
 - [Kurigram](https://github.com/KurimuzonAkuma/Kurigram) for the MTProto client
 - [TgCryptoRust](https://pypi.org/project/TgCryptoRust/) for accelerated encryption
 - [SQLAlchemy](https://github.com/sqlalchemy/sqlalchemy) and

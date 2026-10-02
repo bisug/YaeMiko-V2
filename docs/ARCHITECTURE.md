@@ -138,7 +138,7 @@ keywords to `__init_subclass__`, which takes no keywords.
 | --- | --- | --- |
 | PostgreSQL | SQLAlchemy 2.1, psycopg 3 pooled | Warns, locks, notes, rules, anti-raid, captcha, federation, filters, disabled commands |
 | MongoDB | PyMongo 4.18 | Users, chats, AFK, whispers, karma, locale selection, blacklist, fsub, sangmata |
-| JSON file | `DataStore` | chat and user context across restarts |
+| Pickle file | `DataStore` | chat and user context across restarts |
 
 `Database/sql/__init__.py` rewrites `postgres://` to `postgresql+psycopg://`, creates the engine
 with `pool_pre_ping=True` and `pool_recycle=1800`, and calls `BASE.metadata.create_all(engine)`.

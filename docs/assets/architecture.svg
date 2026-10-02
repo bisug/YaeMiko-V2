@@ -36,7 +36,7 @@
   <path class="edge" d="M 960 170 L 960 250"/>
 
   <rect class="accent-blue" x="80" y="250" width="480" height="96"/>
-  <text class="head" x="104" y="280">PTB Application</text>
+  <text class="head" x="104" y="280">aiogram Dispatcher</text>
   <text class="sub" x="104" y="302">concurrent_updates 64, AIORateLimiter, PicklePersistence</text>
   <text class="sub" x="104" y="324">CommandHandler, CallbackQueryHandler, MessageHandler, TypeHandler</text>
 

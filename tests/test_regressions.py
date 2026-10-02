@@ -170,7 +170,7 @@ class CleanmodeCacheTests(unittest.IsolatedAsyncioTestCase):
 
 
 class EnvironmentTests(unittest.TestCase):
-    def test_ptb_application_is_imported(self):
+    def test_aiogram_application_is_imported(self):
         source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
         tree = ast.parse(source)
         imports = {
@@ -183,7 +183,7 @@ class EnvironmentTests(unittest.TestCase):
         self.assertIn(("aiogram", "Dispatcher"), imports)
         self.assertIn("Dispatcher(storage=MemoryStorage())", source)
 
-    def test_ptb_persistence_is_configured_for_context_data(self):
+    def test_persistence_is_configured_for_context_data(self):
         source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
         self.assertIn("open_store(", source)
         self.assertIn("chat_data = store.chat_data", source)
@@ -207,7 +207,7 @@ class EnvironmentTests(unittest.TestCase):
         }
         self.assertIn(("Mikobot.utils.parser", "escape_markdown"), imports)
 
-    def test_ptb_updates_are_processed_concurrently(self):
+    def test_updates_are_processed_concurrently(self):
         source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
         self.assertIn("session=ThrottledSession()", source)
         throttle = (ROOT / "Mikobot/utils/throttle.py").read_text(encoding="utf-8")
@@ -1466,7 +1466,7 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
         await bans_callback(query)
         self.assertEqual(unban_calls, [])
 
-    async def test_malformed_ptb_callbacks_are_answered_without_crashing(self):
+    async def test_malformed_callbacks_are_answered_without_crashing(self):
         async def answer_query(*args, **kwargs):
             return None
 
@@ -1580,7 +1580,7 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
         await mainwhisper(InlineQuery())
         self.assertEqual(len(answers), 1)
 
-    def test_ptb_permission_calls_use_supported_fields(self):
+    def test_permission_calls_use_supported_fields(self):
         for relative in (
             "Mikobot/plugins/flood.py",
             "Mikobot/plugins/locks.py",
