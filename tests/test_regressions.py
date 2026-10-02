@@ -4335,6 +4335,142 @@ class FilterListingTests(unittest.TestCase):
         self.assertIn("`{0}`", filter_list)
 
 
+class GenshinModuleTests(unittest.TestCase):
+    """The genshin module parses upstream records, so the pure helpers matter.
+
+    Nothing here touches the network: the matching, pagination and rendering
+    rules are what silently produced wrong answers when the upstream shape was
+    assumed rather than checked.
+    """
+
+    @staticmethod
+    def _module():
+        """Load genshin.py without booting the bot.
+
+        The plugin imports dp and registers handlers at import time, which needs
+        a live Telegram session. Only the Mikobot imports are stubbed; the real
+        aiogram types and keyboards stay in place.
+        """
+        import logging
+
+        source = "import logging\n" + (
+            ROOT / "Mikobot" / "plugins" / "genshin.py"
+        ).read_text(encoding="utf-8")
+        source = source.replace(
+            "from Mikobot import LOGGER, dp", "LOGGER = logging.getLogger('test')"
+        )
+        source = source.replace("from Mikobot.state import state", "state = object()")
+        source = "\n".join(
+            line
+            for line in source.split("\n")
+            if not line.startswith("dp.message.register")
+            and not line.startswith("dp.callback_query.register")
+        )
+        namespace = {"logging": logging}
+        exec(compile(source, "genshin.py", "exec"), namespace)
+        return SimpleNamespace(**namespace)
+
+    def setUp(self):
+        self.g = self._module()
+
+    def test_exact_name_ranks_first_over_a_longer_containing_name(self):
+        """Both still match, but the exact one leads, so the list opens on it."""
+        entries = [
+            {"name": "Albedo", "id": "albedo"},
+            {"name": "Albedo Boss", "id": "albedo-boss"},
+        ]
+        self.assertEqual(
+            [e["name"] for e in self.g._match(entries, "albedo")][0], "Albedo"
+        )
+
+    def test_slugified_ids_are_reachable_without_the_hyphen(self):
+        """`Hu Tao` has the id `hu-tao`, so `/gchar hutao` has to resolve."""
+        entries = [{"name": "Hu Tao", "id": "hu-tao"}]
+        for query in ("hutao", "hu tao", "hu-tao", "HuTao"):
+            with self.subTest(query=query):
+                self.assertEqual(
+                    [e["name"] for e in self.g._match(entries, query)], ["Hu Tao"]
+                )
+
+    def test_unmatched_query_returns_nothing(self):
+        entries = [{"name": "Albedo", "id": "albedo"}]
+        self.assertEqual(self.g._match(entries, "not-a-character"), [])
+
+    def test_language_suffix_is_read_and_stripped(self):
+        command = SimpleNamespace(args="albedo-fr")
+        self.assertEqual(self.g._lang_arg(command), "fr")
+        self.assertEqual(self.g._strip_lang(command), "albedo")
+
+    def test_multiword_name_keeps_its_hyphen(self):
+        """`hu-tao` is part of the name, not a language suffix."""
+        command = SimpleNamespace(args="hu-tao")
+        self.assertEqual(self.g._lang_arg(command), "en")
+        self.assertEqual(self.g._strip_lang(command), "hu-tao")
+
+    def test_only_supported_languages_are_offered(self):
+        """Upstream 404s on de/tr/id/ja/zh and carries almost nothing for pt/ru."""
+        self.assertEqual(sorted(self.g.LANGS), ["en", "fr"])
+
+    def test_pagination_clamps_out_of_range_pages(self):
+        items = list(range(20))
+        self.assertEqual(self.g._paginate(items, 0)[1:], (1, 3))
+        self.assertEqual(self.g._paginate(items, 99)[1:], (3, 3))
+        self.assertEqual(len(self.g._paginate(items, 1)[0]), self.g.PAGE_SIZE)
+
+    def test_rarity_survives_a_non_numeric_value(self):
+        self.assertEqual(self.g._rarity("5"), "🟡")
+        self.assertEqual(self.g._rarity(None), "")
+        self.assertEqual(self.g._rarity("five"), "")
+
+    def test_artifact_set_bonus_label_is_not_doubled(self):
+        entry = {
+            "name": "Adventurer",
+            "max_rarity": 3,
+            "2-piece_bonus": "Max HP.",
+            "4-piece_bonus": "Opening chest.",
+        }
+        rendered = self.g._render_artifact(entry)
+        self.assertIn("2-piece:", rendered)
+        self.assertNotIn("2-piece-piece", rendered)
+
+    def test_rendered_records_stay_inside_telegrams_limit(self):
+        """A long description must be cut, not sent and rejected for length."""
+        entry = {
+            "name": "X" * 50,
+            "title": "T" * 100,
+            "vision": "Geo",
+            "weapon": "Sword",
+            "rarity": 5,
+            "description": "d" * 5000,
+            "skillTalents": [
+                {"name": "n" * 100, "description": "e" * 5000} for _ in range(3)
+            ],
+        }
+        rendered = self.g._render_character(entry)
+        self.assertLessEqual(len(rendered), self.g.MAX_MESSAGE)
+
+    def test_user_supplied_names_are_escaped_for_html(self):
+        """Names come from the API, but the API is not a trust boundary."""
+        rendered = self.g._render_character({"name": "<script>x</script>"})
+        self.assertNotIn("<script>", rendered)
+        self.assertIn("&lt;script&gt;", rendered)
+
+    def test_callback_data_fits_telegrams_64_byte_limit(self):
+        markup = self.g._list_keyboard("characters", "a" * 200, 2, "en")
+        for row in markup.inline_keyboard:
+            for button in row:
+                self.assertLessEqual(len(button.callback_data.encode()), 64)
+
+    def test_every_registered_command_has_a_handler(self):
+        source = (ROOT / "Mikobot" / "plugins" / "genshin.py").read_text(
+            encoding="utf-8"
+        )
+        for name in ("genshin_character", "genshin_weapon", "genshin_artifact"):
+            self.assertIn(f"dp.message.register({name}", source)
+        for name in ("genshin_page", "genshin_close"):
+            self.assertIn(f"dp.callback_query.register({name}", source)
+
+
 class ExceptionHandlingTests(unittest.TestCase):
     """Bare ``except:`` swallows KeyboardInterrupt and SystemExit.
 
