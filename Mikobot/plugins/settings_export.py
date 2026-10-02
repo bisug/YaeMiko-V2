@@ -29,7 +29,7 @@ import Database.sql.warns_sql as warns_sql
 from Mikobot import LOGGER, bot, dp
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.helper_funcs.alternate import typing_action
-from Mikobot.plugins.helper_funcs.chat_status import check_admin, is_user_admin
+from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 

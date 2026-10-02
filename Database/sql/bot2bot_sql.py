@@ -17,7 +17,7 @@ those are shown to a human first unless review is switched off.
 
 import threading
 
-from sqlalchemy import BigInteger, Boolean, Column, String
+from sqlalchemy import Boolean, Column, String
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 

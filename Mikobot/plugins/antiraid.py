@@ -4,7 +4,7 @@ import time
 
 from aiogram import F
 from aiogram.enums import ChatMemberStatus, ChatType, ParseMode
-from aiogram.filters import Command, CommandObject
+from aiogram.filters import CommandObject
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 import Database.sql.raid_sql as sql

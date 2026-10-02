@@ -1,6 +1,5 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
-import os
 import tempfile
 from pathlib import Path
 
@@ -27,14 +26,6 @@ async def _scan(file_path: str):
 
         classifier = NSFWClassifier()
     return await asyncio.to_thread(classifier.classify, file_path)
-
-
-def _safe_remove(path):
-    try:
-        if path and os.path.exists(path):
-            os.remove(path)
-    except OSError:
-        pass
 
 
 def get_media_from_message(message):

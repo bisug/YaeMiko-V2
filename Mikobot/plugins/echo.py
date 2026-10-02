@@ -14,14 +14,13 @@ there is only one way this fan-out is implemented.
 
 import asyncio
 
-from aiogram.enums import ChatType, ParseMode
+from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
 import Database.sql.users_sql as users_sql
 from Mikobot import DEV_USERS, LOGGER, OWNER_ID, bot, dp
-from Mikobot.plugins.helper_funcs.alternate import typing_action
 from Mikobot.utils.gate import chain
 
 # Flood protection: the Bot API rejects bursts, and a broadcast to many chats

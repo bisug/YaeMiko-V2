@@ -10,7 +10,6 @@ challenge is answered or expires.
 """
 
 import threading
-import time
 
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText
 

@@ -1,24 +1,12 @@
 """Database engine, session factory, and the unit of work around each helper.
 
-SESSION is a scoped_session, so it hands out one Session per thread and keeps it
-for the life of that thread. Helpers here run through asyncio.to_thread, whose
-worker threads are reused, so a Session outlives the call that opened it.
+SESSION is thread-local and helpers run on reused to_thread workers, so a
+Session outlives the call that opened it. A helper that staged a row and then
+raised would leave it pending for the next helper to commit.
 
-Anything staged but not committed when a helper raises therefore stays pending
-and is flushed by the next unrelated helper to call commit() on that same
-thread. That is not theoretical: it writes rows nobody asked for, and it makes
-the innocent call fail on a duplicate key. SQLAlchemy is not at fault here. A
-failed commit() rolls itself back and leaves nothing staged; the leak is the
-window between add() and commit(), which nothing used to close.
-
-unit_of_work_guard closes that window. Every helper is wrapped in it, so a
-helper starts from a clean session and discards its own on the way out, whether
-it returned or raised. The 150 commit sites did not need to change.
-
-The wrapper runs on the thread doing the work on purpose. A session belongs to
-the thread that created it, so an event loop cannot roll back a worker's, and a
-worker's must not be touched from another thread. That is also why the guarantee
-cannot live in middleware.
+unit_of_work_guard wraps every data helper so a failed one cannot hand state
+to the next. It runs on the calling thread on purpose: an event loop cannot
+roll back a worker's session, and must not touch it.
 """
 
 import os
