@@ -3013,6 +3013,24 @@ class PluginModNameTests(unittest.TestCase):
         )
 
 
+def _module_constants(path: Path, names) -> dict:
+    """Module-level constants, folding arithmetic that literal_eval rejects.
+
+    Defaults here are written as 5 * 60 rather than 300, so they read as the
+    documented duration. A bare literal_eval raises on a BinOp.
+    """
+    found = {}
+    for node in ast.parse(path.read_text(encoding="utf-8")).body:
+        if not isinstance(node, ast.Assign):
+            continue
+        name = getattr(node.targets[0], "id", "")
+        if name in names:
+            found[name] = ast.literal_eval(node.value) if isinstance(
+                node.value, ast.Constant
+            ) else eval(ast.unparse(node.value), {"__builtins__": {}}, {})
+    return found
+
+
 class AntiRaidTests(unittest.TestCase):
     """AntiRaid bans joiners for a window that has to expire on its own."""
 
@@ -3722,13 +3740,9 @@ class BotToBotTests(unittest.TestCase):
     SQL = ROOT / "Database" / "sql" / "bot2bot_sql.py"
 
     def test_modes_match_the_documented_set(self):
-        tree = ast.parse(self.SQL.read_text(encoding="utf-8"))
-        consts = {}
-        for node in tree.body:
-            if isinstance(node, ast.Assign):
-                name = getattr(node.targets[0], "id", "")
-                if name in ("MODE_OFF", "MODE_ADMIN", "MODE_ALL"):
-                    consts[name] = ast.literal_eval(node.value)
+        consts = _module_constants(
+            self.SQL, {"MODE_OFF", "MODE_ADMIN", "MODE_ALL"}
+        )
         self.assertEqual(
             (consts["MODE_OFF"], consts["MODE_ADMIN"], consts["MODE_ALL"]),
             ("off", "admin", "all"),
@@ -3837,6 +3851,173 @@ class BotToBotTests(unittest.TestCase):
         found = _registered_commands(self.PLUGIN)
         self.assertIn("bot2bot", found)
         self.assertIn("bot2botskipreview", found)
+
+
+class CaptchaTests(unittest.TestCase):
+    """A CAPTCHA mutes new members until they prove they are human.
+
+    The challenge generation and the solve-once rule are the parts that decide
+    whether this is a real obstacle or an obstacle a bot walks past, so both
+    are pinned here.
+    """
+
+    PLUGIN = ROOT / "Mikobot" / "plugins" / "captcha.py"
+    SQL = ROOT / "Database" / "sql" / "captcha_sql.py"
+
+    @classmethod
+    def setUpClass(cls):
+        import random
+        import string
+
+        tree = ast.parse(cls.PLUGIN.read_text(encoding="utf-8"))
+        wanted = (
+            "gen_math", "gen_text", "gen_text2",
+            "_neighbour", "_options", "_store_challenge", "_take_challenge",
+            "_drop_challenge",
+        )
+        keep = []
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef) and node.name in wanted:
+                keep.append(node)
+            elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+                target = (
+                    node.targets[0] if isinstance(node, ast.Assign) else node.target
+                )
+                if getattr(target, "id", "") in (
+                    "CHALLENGES", "CHALLENGE_TTL", "WORDS", "OPTIONS_PER_CHALLENGE",
+                ):
+                    keep.append(node)
+        namespace = {"random": random, "time": __import__("time"), "string": string}
+        exec(  # noqa: S102 - exercising the real source
+            compile(ast.Module(body=keep, type_ignores=[]), "<captcha>", "exec"),
+            namespace,
+        )
+        cls.math = staticmethod(namespace["gen_math"])
+        cls.text = staticmethod(namespace["gen_text"])
+        cls.text2 = staticmethod(namespace["gen_text2"])
+        cls.take = staticmethod(namespace["_take_challenge"])
+        cls.store = staticmethod(namespace["_store_challenge"])
+        cls.drop = staticmethod(namespace["_drop_challenge"])
+        cls.challenges = namespace["CHALLENGES"]
+
+    def tearDown(self):
+        self.challenges.clear()
+
+    def test_math_never_asks_for_a_negative_or_zero_answer(self):
+        # "2 - 10" with -8 as the answer, or anything answering 0, is a
+        # giveaway: one of a handful of guesses is always right.
+        for _ in range(3000):
+            _question, answer = self.math()
+            self.assertGreaterEqual(int(answer), 1, answer)
+
+    def test_every_challenge_offers_four_distinct_options(self):
+        # A shortened list is guessable, so near-miss decoys that collide are
+        # topped up rather than left as-is.
+        for _ in range(600):
+            for generator in (self.text, self.text2):
+                answer, options = generator()
+                self.assertEqual(len(options), 4, (answer, options))
+                self.assertIn(answer, options)
+                self.assertEqual(
+                    len({o.lower() for o in options}), 4, (answer, options)
+                )
+
+    def test_text2_decoys_never_differ_only_by_case(self):
+        # In the hard mode case is significant, so a decoy that is the answer
+        # in another case would make it unanswerable.
+        for _ in range(600):
+            answer, options = self.text2()
+            for option in options:
+                if option != answer:
+                    self.assertNotEqual(option.lower(), answer.lower())
+
+    def test_challenge_is_single_use(self):
+        # Answering twice, or reloading an old button, must not pass again.
+        self.store(-1, 5, "42", "math")
+        self.assertEqual(self.take(-1, 5)["answer"], "42")
+        self.drop(-1, 5)
+        self.assertIsNone(self.take(-1, 5))
+
+    def test_challenge_expires(self):
+        import time
+
+        self.store(-1, 6, "x", "math")
+        self.challenges[(-1, 6)]["expires"] = time.time() - 1
+        self.assertIsNone(self.take(-1, 6))
+
+    def test_documented_defaults(self):
+        consts = _module_constants(
+            self.SQL,
+            {
+                "MODE_BUTTON", "DEF_KICK_TIME", "DEF_MUTE_TIME",
+                "MIN_KICK_TIME", "MAX_KICK_TIME",
+            },
+        )
+        self.assertEqual(consts["MODE_BUTTON"], "button")
+        self.assertEqual(consts["DEF_KICK_TIME"], 5 * 60)
+        # 0 means stay muted until solved, which is the recommended setting.
+        self.assertEqual(consts["DEF_MUTE_TIME"], 0)
+        self.assertEqual(consts["MIN_KICK_TIME"], 5 * 60)
+        self.assertEqual(consts["MAX_KICK_TIME"], 24 * 60 * 60)
+
+    def test_documented_commands_are_registered(self):
+        found = _registered_commands(self.PLUGIN)
+        for command in (
+            "captcha", "captchamode", "captchabuttons", "resetcaptchatext",
+            "captchakick", "captchakicktime", "captchamutetime", "captcharules",
+        ):
+            self.assertIn(command, found, command)
+
+    def test_enabling_requires_welcome_messages(self):
+        # Otherwise the user is muted with nowhere to see the prompt.
+        tree = ast.parse(self.PLUGIN.read_text(encoding="utf-8"))
+        func = next(
+            n for n in tree.body
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "captcha"
+        )
+        body = ast.unparse(func)
+        self.assertIn("get_welcome_pref", body)
+
+    def test_bots_are_never_challenged(self):
+        # A bot cannot press a button or answer, so muting one just fills the
+        # member list.
+        tree = ast.parse(self.PLUGIN.read_text(encoding="utf-8"))
+        func = next(
+            n for n in tree.body
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "on_join"
+        )
+        body = ast.unparse(func)
+        self.assertIn("is_bot", body)
+
+    def test_solved_users_are_not_challenged_again(self):
+        tree = ast.parse(self.PLUGIN.read_text(encoding="utf-8"))
+        func = next(
+            n for n in tree.body
+            if isinstance(n, ast.FunctionDef) and n.name == "_should_challenge"
+        )
+        self.assertIn("has_solved", ast.unparse(func))
+
+    def test_wrong_answer_bans_rather_than_muting(self):
+        # Left muted, a bot simply waits; a short ban ends the attempt.
+        source = self.PLUGIN.read_text(encoding="utf-8")
+        self.assertIn("FAIL_BAN_SECONDS", source)
+        self.assertIn("ban_chat_member", source)
+
+    def test_join_requests_are_answered_before_admitting(self):
+        source = self.PLUGIN.read_text(encoding="utf-8")
+        self.assertIn("dp.chat_join_request.register", source)
+        self.assertIn("approve_chat_join_request", source)
+        # Approving must happen on a pass, not when the request arrives.
+        self.assertIn("approve=True", source)
+
+    def test_private_challenges_are_not_answered_in_group(self):
+        # A challenge answered in the chat is visible to every bot watching.
+        tree = ast.parse(self.PLUGIN.read_text(encoding="utf-8"))
+        func = next(
+            n for n in tree.body
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "math_answer"
+        )
+        self.assertIn("PRIVATE", ast.unparse(func))
 
 
 if __name__ == "__main__":
