@@ -8,7 +8,7 @@
 
 [![Python](https://img.shields.io/badge/python-3.14-blueviolet?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-blueviolet?style=for-the-badge)](https://github.com/bisug/YaeMiko-V2/blob/main/LICENSE)
-[![python-telegram-bot](https://img.shields.io/badge/PTB-22.8-2AABEE?style=for-the-badge&logo=python&logoColor=white)](https://pypi.org/project/python-telegram-bot/)
+[![aiogram](https://img.shields.io/badge/aiogram-3.31-2AABEE?style=for-the-badge&logo=telegram&logoColor=white)](https://pypi.org/project/aiogram/)
 [![Kurigram](https://img.shields.io/badge/Kurigram-2.2.26-2AABEE?style=for-the-badge&logo=python&logoColor=white)](https://pypi.org/project/Kurigram/)
 [![TgCryptoRust](https://img.shields.io/badge/TgCryptoRust-1.3.1-2AABEE?style=for-the-badge&logo=rust&logoColor=white)](https://pypi.org/project/TgCryptoRust/)
 [![Docker](https://img.shields.io/badge/docker-multistage-2496ED?style=for-the-badge&logo=docker&logoColor=white)](Dockerfile)
@@ -51,9 +51,9 @@ state in PostgreSQL and document shaped data in MongoDB, and ships 57 plugin mod
 | | |
 | --- | --- |
 | **Runtime** | Python 3.14.7, single `asyncio` event loop, long polling |
-| **Telegram** | PTB 22.8 on the Bot API, Kurigram 2.2.26 on MTProto, side by side |
+| **Telegram** | aiogram 3.31 on the Bot API, Kurigram 2.2.26 on MTProto, side by side |
 | **Storage** | PostgreSQL 16 through SQLAlchemy 2.1, MongoDB through PyMongo 4.18 |
-| **Modules** | 57 auto discovered plugins under `Mikobot/plugins` |
+| **Modules** | 61 auto discovered plugins under `Mikobot/plugins` |
 | **Requirements** | 512 MB RAM minimum, 1 GB recommended, Python 3.14.7 |
 | **Deployment** | Render, Railway, Heroku, Docker, or a bare VPS |
 | **Guarantees** | CI compile, unit, JSON and whitespace gates, weekly CodeQL, Dependabot updates |
@@ -67,18 +67,29 @@ state in PostgreSQL and document shaped data in MongoDB, and ships 57 plugin mod
 ## Highlights
 
 - **Dual client, one process.** Bot API and MTProto are both live. Commands that need user to user
-  features run on Kurigram, everything else stays on PTB.
+  features run on Kurigram, everything else stays on aiogram.
 - **Semantic inline buttons.** Every inline button declares an explicit style: `PRIMARY` for
   navigation, `SUCCESS` for confirming and positive actions, `DANGER` for destructive actions. A
   regression test parses the AST and fails the build if any button is missing one.
-- **Rate limiting and persistence.** `AIORateLimiter` throttles outbound calls and
-  `PicklePersistence` keeps chat and user context across restarts, so a dyno bounce does not lose
-  conversation state.
+- **Rate limiting and durable state.** `ThrottledSession` holds outbound calls to the Bot API's
+  rate limits, and chat settings live in PostgreSQL rather than process memory, so a dyno bounce
+  does not lose moderation state.
 - **Token safe logging.** A `RedactingFormatter` strips anything shaped like a bot token, and the
   `httpx` and `httpcore` loggers are pinned to `WARNING` because their INFO output contains the
   full Telegram API URL.
 - **Dual store design.** Structured chat state lives in PostgreSQL, user profiles, chats, AFK
   entries, whispers and karma live in MongoDB.
+- **Anti-abuse toolkit.** AntiRaid bans a flood of joins in bulk instead of one at a time; CAPTCHA
+  gates new members with a button, a text prompt, or a math question, and can verify pending join
+  requests. Flood limits accept per-type durations, and blocklists match user, chat, or channel.
+- **Lock allowlists.** A lock only applies to the types you list, so locking `sticker` no longer
+  silences text as a side effect.
+- **Command approvals.** Bot-initiated setting changes need human approval before they apply, and
+  destructive commands such as `ban`, `mute` and `delete` confirm with a button before acting.
+- **Self service.** `/echo`, `/say` and `/broadcast` relay messages, and `/export`, `/import` and
+  `/reset` move a chat's configuration in and out as JSON.
+- **Forum support.** Topics are created and routed per action topic, so each action can have its own
+  thread in a forum supergroup.
 - **Deploy anywhere.** The same `python -m Mikobot` entry point runs on Render, Railway, Heroku, in
   the multi stage Docker image, or on a plain VPS. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 - **Modular by drop in.** Plugins are discovered with `glob`; `LOAD` controls ordering and
@@ -95,7 +106,7 @@ Full walkthrough: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | Layer | Path | Responsibility |
 | --- | --- | --- |
 | Entry point | [`Mikobot/__main__.py`](Mikobot/__main__.py) | Handler registration, plugin discovery, chat migration, graceful shutdown |
-| Core runtime | [`Mikobot/__init__.py`](Mikobot/__init__.py) | Configuration, logging, event loop, PTB application, Kurigram client |
+| Core runtime | [`Mikobot/__init__.py`](Mikobot/__init__.py) | Configuration, logging, event loop, aiogram dispatcher, Kurigram client |
 | Plugin bus | [`Mikobot/events.py`](Mikobot/events.py) | Registers Kurigram handlers behind one signature |
 | HTTP client | [`Mikobot/state.py`](Mikobot/state.py) | One shared `httpx.AsyncClient` with HTTP/2 and a 20 second timeout |
 | Plugins | [`Mikobot/plugins`](Mikobot/plugins) | 57 feature modules, auto discovered |
@@ -110,8 +121,8 @@ Full walkthrough: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
    when `ENV` is truthy, otherwise from [`variables.py`](variables.py).
 2. Logging is configured with token redaction, a stream handler, and an optional rotating file
    handler.
-3. The `asyncio` event loop is created and the PTB `Application` is built with
-   `concurrent_updates(64)`, `AIORateLimiter()` and `PicklePersistence`.
+3. The `asyncio` event loop is created, the Bot is built with a `ThrottledSession`, and an
+   aiogram `Dispatcher` with `MemoryStorage` is created alongside it.
 4. The bot is initialized and `get_me()` supplies `BOT_ID`, `BOT_NAME` and `BOT_USERNAME`, so the
    display name is never hardcoded.
 5. The Kurigram `Client` is created and a boot message is pushed to the support chat.
@@ -149,9 +160,9 @@ execution. Persistence, reply construction and error handling surround that spin
 | python-telegram-bot | 22.8 | [PyPI](https://pypi.org/project/python-telegram-bot/) |
 | Kurigram | 2.2.26 | [PyPI](https://pypi.org/project/Kurigram/) |
 | TgCryptoRust | 1.3.1 | [PyPI](https://pypi.org/project/TgCryptoRust/) |
-| AIORateLimiter | bundled with PTB | [docs](https://docs.python-telegram-bot.org/en/stable/telegram.ext.aioratelimiter.html) |
-| PicklePersistence | bundled with PTB | [docs](https://docs.python-telegram-bot.org/en/stable/telegram.ext.picklepersistence.html) |
-| KeyboardButtonStyle | bundled with PTB | [docs](https://docs.python-telegram-bot.org/en/stable/telegram.constants.html) |
+| ThrottledSession | [`Mikobot/utils/throttle.py`](Mikobot/utils/throttle.py) | aiogram session subclass applying rate limits |
+| DataStore | [`Mikobot/utils/persistence.py`](Mikobot/utils/persistence.py) | JSON backed store for chat and user context |
+| ButtonStyle | from aiogram | [docs](https://docs.aiogram.dev/en/latest/api/enums/aiogram.enums.ButtonStyle.html) |
 
 ### Data stores
 
@@ -254,7 +265,7 @@ grep VmHWM /proc/$(pgrep -f "python -m Mikobot" | head -1)/status
 ```text
 YaeMiko/
 ├── Mikobot/                     Application package
-│   ├── __init__.py              Config, logging, event loop, PTB app, Kurigram client
+│   ├── __init__.py              Config, logging, event loop, aiogram dispatcher, Kurigram client
 │   ├── __main__.py              Handler registration and entry point
 │   ├── events.py                Kurigram handler registration helpers
 │   ├── state.py                 Shared httpx client
@@ -296,18 +307,18 @@ YaeMiko/
 
 ## Plugin catalogue
 
-57 modules are discovered automatically. Per module summaries live in
+61 modules are discovered automatically. Per module summaries live in
 [docs/PLUGINS.md](docs/PLUGINS.md).
 
 | Group | Modules |
 | --- | --- |
-| Moderation | `admin`, `ban`, `blacklist`, `blacklist_stickers`, `feds`, `flood`, `gban`, `locks`, `mute`, `purge`, `unbanall`, `warns`, `zombies` |
-| Chat control | `approve`, `botadmins`, `chatadmin`, `connection`, `cust_filters`, `disable`, `fsub`, `nekomode`, `rules` |
+| Moderation | `admin`, `antiraid`, `ban`, `blacklist`, `blacklist_stickers`, `feds`, `flood`, `gban`, `locks`, `mute`, `purge`, `unbanall`, `warns`, `zombies` |
+| Chat control | `approve`, `bot2bot`, `botadmins`, `captcha`, `chatadmin`, `connection`, `cust_filters`, `disable`, `fsub`, `nekomode`, `rules`, `settings_export`, `topics` |
 | Welcome and identity | `afk`, `newuserinfo`, `notes`, `users`, `welcome`, `whispers` |
-| Fun and media | `cosplay`, `couple`, `fun`, `hyperlink`, `imagegen`, `sangmata`, `stickers`, `telegraph` |
+| Fun and media | `cosplay`, `couple`, `echo`, `extra`, `fun`, `hyperlink`, `imagegen`, `sangmata`, `stickers`, `telegraph` |
 | Information | `alive`, `info`, `karma`, `log_channel`, `ping`, `speedtest` |
 | Search and translation | `bug`, `instadl`, `pkang`, `quotely`, `reverse`, `search`, `tr` |
-| Reference data | `anime`, `disasters`, `pokedex`, `sports` |
+| Reference data | `anime`, `antinsfw`, `disasters`, `pokedex`, `sports` |
 
 `LOAD` forces a start order and `NO_LOAD` skips modules entirely. Both accept a space separated list
 of module file names without the `.py` suffix.

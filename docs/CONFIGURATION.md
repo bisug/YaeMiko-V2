@@ -35,7 +35,7 @@ environment variables.
 | --- | --- | --- | --- |
 | `API_ID` | integer | Kurigram client | From [my.telegram.org/apps](https://my.telegram.org/apps) |
 | `API_HASH` | string | Kurigram client | Same page |
-| `TOKEN` | string | PTB application and Kurigram bot session | From [@BotFather](https://t.me/BotFather) |
+| `TOKEN` | string | aiogram `Bot` and Kurigram bot session | From [@BotFather](https://t.me/BotFather) |
 | `OWNER_ID` | integer | Rank checks | Parsed with `int()`, a bad value raises at startup |
 | `DATABASE_URL` | string | `Database/sql` | `postgres://` is rewritten to `postgresql+psycopg://` |
 | `DB_POOL_SIZE` | integer | `Database/sql` | Pooled connections held open. Default `min(20, cpu*2+4)` |

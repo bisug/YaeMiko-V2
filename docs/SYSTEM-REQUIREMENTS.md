@@ -187,8 +187,8 @@ Measured wheel sizes for the dependencies that actually matter:
 | All 23 direct dependencies | 64.3 MB | Download size, excluding transitive dependencies |
 
 So the install is roughly 64 MB of wheels plus transitive dependencies, and the runtime memory is
-dominated by two things: the ONNX session and the two concurrent clients, PTB and Kurigram, each
-holding its own connection state.
+dominated by two things: the ONNX session and the two concurrent clients, aiogram and Kurigram,
+each holding its own connection state.
 
 Two things are lazy on purpose, so you are not paying for them at startup:
 

@@ -13,7 +13,7 @@ Back to [README](../README.md).
 - [Design goals](#design-goals)
 - [Process model](#process-model)
 - [Core runtime](#core-runtime)
-- [PTB application](#ptb-application)
+- [Bot and dispatcher](#bot-and-dispatcher)
 - [Kurigram client](#kurigram-client)
 - [Plugin discovery](#plugin-discovery)
 - [Update handling](#update-handling)
@@ -35,7 +35,7 @@ Back to [README](../README.md).
 ## Process model
 
 A single `asyncio` event loop is created at import time by `_create_event_loop()` in
-`Mikobot/__init__.py`. The PTB `Application` is bound to it, the Kurigram `Client` is started on it,
+`Mikobot/__init__.py`. The aiogram `Bot` and `Dispatcher` are bound to it, the Kurigram `Client` is started on it,
 and `run_polling(close_loop=False)` drives updates on it. Shutdown stops the clients, closes the
 MongoDB client and the shared httpx client, then closes the loop.
 
@@ -51,7 +51,7 @@ MongoDB client and the shared httpx client, then closes the loop.
 4. Integer and list variables are validated. An unparsable `OWNER_ID` raises immediately.
 5. `RedactingFormatter` is attached to the root logger. The `httpx` and `httpcore` loggers are set
    to `WARNING` because their INFO records embed the full Telegram API URL, including the token.
-6. The event loop, the persistence object and the PTB application are built.
+6. The event loop, the throttled session and the aiogram dispatcher are built.
 7. `get_me()` supplies `BOT_ID`, `BOT_NAME` and `BOT_USERNAME`.
 8. The Kurigram `Client` is created and the boot message is sent to the support chat.
 
@@ -67,25 +67,22 @@ Ranks come from two places and are merged:
 | Wolf | `WOLVES` | `whitelists` | Cannot be banned |
 | Tiger | `TIGERS` | `tigers` | Never bannable by the bot |
 
-## PTB application
+## Bot and dispatcher
 
 ```python
-persistence = PicklePersistence(
-    filepath="ptb_persistence.pickle",
-    store_data=PersistenceInput(bot_data=False, chat_data=True, user_data=True, callback_data=False),
+bot = Bot(
+    token=TOKEN,
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    session=ThrottledSession(),
 )
-dispatcher = (
-    Application.builder()
-    .token(TOKEN)
-    .concurrent_updates(64)
-    .rate_limiter(AIORateLimiter())
-    .persistence(persistence)
-    .build()
-)
+dp = Dispatcher(storage=MemoryStorage())
 ```
 
-`chat_data` and `user_data` are persisted, so moderation state such as the settings button payload
-survives a restart. `callback_data` is deliberately not persisted, keeping the pickle small.
+`ThrottledSession` is an `AiohttpSession` subclass that holds outbound calls to the Bot API's rate
+limits instead of letting a burst draw a 429. `MemoryStorage` is deliberate: `Dispatcher` already
+keeps per-chat state in a lock guarded dict, and the moderation settings that used to be written to
+a pickle now live in PostgreSQL, where they are shared correctly across workers rather than only
+surviving within one process.
 
 ## Kurigram client
 
@@ -109,7 +106,7 @@ The resulting list is exported as `ALL_MODULES` and re-exported through `__all__
 
 | Stage | Mechanism |
 | --- | --- |
-| Transport | Long polling on PTB, MTProto socket on Kurigram |
+| Transport | Long polling on aiogram, MTProto socket on Kurigram |
 | Handler match | Handler groups and `filters` objects |
 | Permission gate | `Mikobot/plugins/helper_funcs/chat_status.py` and the rank sets |
 | Rate limiter | `AIORateLimiter` before every outbound Bot API call |
@@ -139,12 +136,24 @@ keywords to `__init_subclass__`, which takes no keywords.
 
 | Store | Driver | Contents |
 | --- | --- | --- |
-| PostgreSQL | SQLAlchemy 2.1, psycopg 3 pooled | Warns, locks, notes, rules, night mode, federation, filters, disabled commands |
+| PostgreSQL | SQLAlchemy 2.1, psycopg 3 pooled | Warns, locks, notes, rules, anti-raid, captcha, federation, filters, disabled commands |
 | MongoDB | PyMongo 4.18 | Users, chats, AFK, whispers, karma, locale selection, blacklist, fsub, sangmata |
-| Pickle file | `PicklePersistence` | PTB `chat_data` and `user_data` |
+| JSON file | `DataStore` | chat and user context across restarts |
 
 `Database/sql/__init__.py` rewrites `postgres://` to `postgresql+psycopg://`, creates the engine
 with `pool_pre_ping=True` and `pool_recycle=1800`, and calls `BASE.metadata.create_all(engine)`.
+
+The pool is sized from the worker count rather than left at the SQLAlchemy default of 5 plus 10
+overflow. Data helpers run on `asyncio.to_thread` workers, of which there can be up to
+`min(32, cpu+4)`, so a chat busy enough to fill the default pool left later callers waiting for the
+full `pool_timeout` and then raising `TimeoutError`. `DB_POOL_SIZE`, `DB_MAX_OVERFLOW` and
+`DB_POOL_TIMEOUT` override the defaults.
+
+Every data helper is wrapped in `unit_of_work_guard`. `SESSION` is a thread-local scoped session and
+the worker threads are reused, so a Session outlives the call that opened it; without the guard, a
+helper that staged a row and then raised would leave it pending for the next helper to commit. The
+guard runs on the calling thread, since a session belongs to the thread that created it and an event
+loop cannot roll back a worker's.
 
 ## Localization
 

@@ -55,7 +55,7 @@
 
   <rect class="panel" x="720" y="424" width="480" height="96"/>
   <text class="head" x="744" y="454">Plugin system</text>
-  <text class="sub" x="744" y="476">Mikobot/plugins: 57 modules auto discovered through glob</text>
+  <text class="sub" x="744" y="476">Mikobot/plugins: 61 modules auto discovered through glob</text>
   <text class="sub" x="744" y="498">LOAD and NO_LOAD control ordering and exclusions</text>
 
   <path class="edge" d="M 200 520 L 160 600"/>
@@ -65,7 +65,7 @@
   <rect class="accent-green" x="20" y="600" width="280" height="96"/>
   <text class="head" x="44" y="630">PostgreSQL</text>
   <text class="sub" x="44" y="652">SQLAlchemy scoped sessions</text>
-  <text class="sub" x="44" y="674">29 modules: warns, locks, notes, rules</text>
+  <text class="sub" x="44" y="674">24 modules: warns, locks, notes, rules</text>
 
   <rect class="accent-green" x="320" y="600" width="280" height="96"/>
   <text class="head" x="344" y="630">MongoDB</text>
