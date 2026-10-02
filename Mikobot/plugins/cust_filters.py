@@ -89,7 +89,7 @@ async def list_handlers(message: Message):
         chat_id = conn
         chat_obj = await bot.get_chat(conn)
         chat_name = chat_obj.title
-        filter_list = "*Filter in {}:*\n"
+        filter_list = f"*Filter in {escape_markdown(chat_name)}:*\n"
     else:
         chat_id = message.chat.id
         if chat.type == ChatType.PRIVATE:
@@ -97,7 +97,7 @@ async def list_handlers(message: Message):
             filter_list = "*local filters:*\n"
         else:
             chat_name = chat.title
-            filter_list = "*Filters in {}*:\n"
+            filter_list = f"*Filters in {escape_markdown(chat_name)}*:\n"
 
     all_handlers = sql.get_chat_triggers(chat_id)
 
@@ -108,12 +108,15 @@ async def list_handlers(message: Message):
         )
         return
 
+    # The trigger is whatever an admin typed between quotes, so it can contain
+    # braces. Substituting the header first keeps a "{...}" keyword from being
+    # read as a format field, which raised KeyError and broke /filters outright.
     for keyword in all_handlers:
         entry = " • `{}`\n".format(escape_markdown(keyword))
         if len(entry) + len(filter_list) > MessageLimit.MAX_TEXT_LENGTH:
             await send_message(
                 message,
-                filter_list.format(chat_name),
+                filter_list,
                 parse_mode=ParseMode.MARKDOWN,
             )
             filter_list = entry
@@ -122,7 +125,7 @@ async def list_handlers(message: Message):
 
     await send_message(
         message,
-        filter_list.format(chat_name),
+        filter_list,
         parse_mode=ParseMode.MARKDOWN,
     )
 

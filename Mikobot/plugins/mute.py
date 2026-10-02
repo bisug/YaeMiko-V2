@@ -94,7 +94,7 @@ async def mute(message: Message, command: CommandObject) -> str:
     )
 
     if reason:
-        log += f"\n<b>Reason:</b> {reason}"
+        log += f"\n<b>Reason:</b> {html.escape(reason)}"
 
     if member.status in RESTRICTED_OR_MEMBER:
         chat_permissions = ChatPermissions(can_send_messages=False)
@@ -218,7 +218,7 @@ async def temp_mute(message: Message, command: CommandObject) -> str:
         f"<b>Time:</b> {time_val}"
     )
     if reason:
-        log += f"\n<b>Reason:</b> {reason}"
+        log += f"\n<b>Reason:</b> {html.escape(reason)}"
 
     try:
         if member.status in RESTRICTED_OR_MEMBER:

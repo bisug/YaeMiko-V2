@@ -384,7 +384,7 @@ async def kick(message: Message, command: CommandObject) -> str:
             f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
         )
         if reason:
-            log += f"\n<b>Reason:</b> {reason}"
+            log += f"\n<b>Reason:</b> {html.escape(reason)}"
 
         return log
 
@@ -504,7 +504,7 @@ async def unban(message: Message, command: CommandObject) -> str:
         await message.answer("Yeah, this user can join!")
 
     if reason:
-        log += f"\n<b>Reason:</b> {reason}"
+        log += f"\n<b>Reason:</b> {html.escape(reason)}"
 
     return log
 
@@ -747,7 +747,7 @@ async def bans_callback(query: CallbackQuery):
             await message.answer("Yeah, this user can join!")
 
         if reason:
-            log += f"\n<b>Reason:</b> {reason}"
+            log += f"\n<b>Reason:</b> {html.escape(reason)}"
 
         await query.answer("Done unbanned user.")
         return log

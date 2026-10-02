@@ -86,7 +86,7 @@ async def warn(
             f"#WARN_BAN\n"
             f"<b>Admin:</b> {warner_tag}\n"
             f"<b>User:</b> {mention_html(user.id, user.first_name)}\n"
-            f"<b>Reason:</b> {reason}\n"
+            f"<b>Reason:</b> {html.escape(reason)}\n"
             f"<b>Counts:</b> <code>{num_warns}/{limit}</code>"
         )
 
@@ -115,7 +115,7 @@ async def warn(
             f"#WARN\n"
             f"<b>Admin:</b> {warner_tag}\n"
             f"<b>User:</b> {mention_html(user.id, user.first_name)}\n"
-            f"<b>Reason:</b> {reason}\n"
+            f"<b>Reason:</b> {html.escape(reason)}\n"
             f"<b>Counts:</b> <code>{num_warns}/{limit}</code>"
         )
 
@@ -253,7 +253,7 @@ async def warns(message: Message, command: CommandObject):
                 f"This user has {num_warns}/{limit} warns, for the following reasons:"
             )
             for reason in reasons:
-                text += f"\n • {reason}"
+                text += f"\n • {html.escape(reason)}"
 
             msgs = split_message(text)
             for msg in msgs:

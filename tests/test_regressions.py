@@ -4235,5 +4235,105 @@ class ConnectionPoolTests(unittest.TestCase):
             self.assertIn(name, docs, name)
 
 
+class ReasonEscapingTests(unittest.TestCase):
+    """A ban reason is attacker-controlled and lands in HTML log messages.
+
+    The bot is built with DefaultBotProperties(parse_mode=ParseMode.HTML), so a
+    send with no explicit parse_mode is HTML too. That makes an unescaped
+    reason an injection point into the moderation log: a user types
+    ``<b>pwned</b>`` as their reason and the admin log channel renders it as
+    bold, or ``"><a href=...>`` and breaks out of the anchor entirely.
+
+    Moderation reasons are stored and re-rendered later (warns list, unban
+    logs), so the value is not even under the control of whoever is reading it.
+    """
+
+    # Every site that interpolates a bare `reason` into a string Telegram
+    # parses as HTML. Each is (file, the variable, the surrounding function).
+    SITES = (
+        ("afk.py", "reason"),
+        ("ban.py", "reason"),
+        ("mute.py", "reason"),
+        ("warns.py", "reason"),
+        ("gban.py", "reason"),
+    )
+
+    def test_interpolated_reasons_are_escaped(self):
+        for name, variable in self.SITES:
+            path = ROOT / "Mikobot" / "plugins" / name
+            source = path.read_text(encoding="utf-8")
+            tree = ast.parse(source)
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.JoinedStr):
+                    continue
+                blob = ast.unparse(node)
+                if f"{{{variable}}}" not in blob:
+                    continue
+                self.assertIn(
+                    f"html.escape({variable})", blob,
+                    f"{name}:{node.lineno} interpolates a raw {variable} into "
+                    "HTML-parsed output; a user controls that text",
+                )
+
+    def test_a_reason_cannot_break_out_of_the_anchor(self):
+        """The gban link is an attribute context, so escaping matters most there."""
+        from html import escape
+
+        hostile = '"><a href="tg://user?id=1">click'
+        rendered = (
+            f'<a href="https://telegram.me/chat/1">{escape(hostile)}</a>'
+        )
+        # Exactly one anchor, and the injected href never became an attribute.
+        self.assertEqual(rendered.count("<a "), 1)
+        self.assertNotIn('href="tg://user?id=1"', rendered)
+
+    def test_escaping_survives_the_round_trip(self):
+        """A stored reason re-rendered later must not become markup either."""
+        from html import escape
+
+        reason = '<b>x</b> & "y"'
+        stored_then_listed = f"This user has 3/3 warns:\n • {escape(reason)}"
+        self.assertNotIn("<b>", stored_then_listed)
+        self.assertIn("&lt;b&gt;", stored_then_listed)
+
+
+class FilterListingTests(unittest.TestCase):
+    """A filter trigger is free-form admin text, so it breaks naive formatting.
+
+    ``/filters`` built its header as a ``{}`` template and only called
+    ``.format(chat_name)`` after every trigger had been appended. A trigger of
+    ``{chat_name}`` was therefore read as a format field and raised KeyError,
+    which took the whole command down for everyone, not just that chat.
+    """
+
+    def test_no_format_call_runs_over_accumulated_triggers(self):
+        source = (ROOT / "Mikobot" / "plugins" / "cust_filters.py").read_text(
+            encoding="utf-8"
+        )
+        tree = ast.parse(source)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Attribute) and node.attr == "format":
+                self.assertNotIn(
+                    "filter_list", ast.unparse(node),
+                    f"line {node.lineno} formats a string that already holds "
+                    "user-supplied triggers; a brace in a trigger raises KeyError",
+                )
+
+    def test_braced_trigger_survives_listing(self):
+        import re
+
+        def escape_markdown(text):
+            return re.sub(r"([%s])" % r"\*_`\[", r"\\\1", text)
+
+        chat_name = "My Group"
+        # Header is resolved up front, exactly as the fixed handler does it.
+        filter_list = f"*Filters in {escape_markdown(chat_name)}*:\n"
+        for trigger in ("swear", "{chat_name}", "{0}", "`weird`"):
+            filter_list += " • `{}`\n".format(escape_markdown(trigger))
+        # No .format() on the accumulated string, so nothing can raise.
+        self.assertIn("`{chat\\_name}`", filter_list)
+        self.assertIn("`{0}`", filter_list)
+
+
 if __name__ == "__main__":
     unittest.main()

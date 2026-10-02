@@ -153,9 +153,9 @@ async def gban(message: Message, command: CommandObject):
 
     if reason:
         if chat.type == ChatType.SUPERGROUP and chat.username:
-            log_message += f'\n<b>Reason:</b> <a href="https://telegram.me/{chat.username}/{message.message_id}">{reason}</a>'
+            log_message += f'\n<b>Reason:</b> <a href="https://telegram.me/{chat.username}/{message.message_id}">{html.escape(reason)}</a>'
         else:
-            log_message += f"\n<b>Reason:</b> <code>{reason}</code>"
+            log_message += f"\n<b>Reason:</b> <code>{html.escape(reason)}</code>"
 
     if EVENT_LOGS:
         try:

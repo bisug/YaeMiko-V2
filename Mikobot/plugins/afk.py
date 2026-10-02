@@ -46,7 +46,7 @@ async def afk(message: Message):
     try:
         if reason:
             await message.answer(
-                f"➲ {fname} is now away! \n\n➦ Reason: <code>{reason}</code> \n {notice}",
+                f"➲ {html.escape(fname or str(user.id))} is now away! \n\n➦ Reason: <code>{html.escape(reason)}</code> \n {notice}",
                 parse_mode=ParseMode.HTML,
             )
         else:

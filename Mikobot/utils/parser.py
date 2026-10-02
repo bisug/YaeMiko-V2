@@ -1,18 +1,11 @@
 # <============================================== IMPORTS =========================================================>
 from html import escape
-from re import compile as compilere
 from re import sub
 
 # <=======================================================================================================>
 
 
 # <================================================ FUNCTION =======================================================>
-async def cleanhtml(raw_html: str) -> str:
-    """Clean html data."""
-    cleanr = compilere("<.*?>")
-    return sub(cleanr, "", raw_html)
-
-
 def escape_markdown(text: str) -> str:
     """Escape markdown data."""
     escape_chars = r"\*_`\["
