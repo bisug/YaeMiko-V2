@@ -190,6 +190,7 @@ execution. Persistence, reply construction and error handling surround that spin
 | psutil | 7.2.2 | Runtime and host stats for `/alive` | [PyPI](https://pypi.org/project/psutil/) |
 | speedtest-cli | 2.1.3 | Bandwidth checks | [PyPI](https://pypi.org/project/speedtest-cli/) |
 | Telegraph | 2.2.0 | Image hosting for `/telegraph` | [PyPI](https://pypi.org/project/telegraph/) |
+| uvloop | 0.23.0 | Event loop for the polling process, skipped on Windows | [PyPI](https://pypi.org/project/uvloop/) |
 | ffmpeg | system package | Media muxing in the Docker image | [ffmpeg.org](https://ffmpeg.org/) |
 
 ### Text and localization
@@ -249,7 +250,7 @@ Where the memory and disk go, measured from PyPI wheel sizes for the pinned depe
 | Pillow | 6.8 MB | Image buffers |
 | Kurigram | 5.8 MB | MTProto client |
 | SQLAlchemy | 4.6 MB | Native extensions |
-| All 22 direct dependencies | 64.3 MB | Install footprint before transitive dependencies |
+| All 23 direct dependencies | 80.5 MB | Install footprint before transitive dependencies |
 
 The RAM figures are estimates, not measurements of a live bot. To size your own instance, read the
 peak rather than the current usage:

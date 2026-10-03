@@ -1,4 +1,5 @@
 import ast
+import builtins
 import copy
 import asyncio
 import importlib
@@ -17,6 +18,24 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _blocking_uvloop_import(namespace):
+    """A builtins dict where importing uvloop raises, for the fallback test.
+
+    Rebuilding the namespace rather than patching builtins globally keeps the
+    rest of the suite, and the already-imported Mikobot loop, untouched.
+    """
+    blocked = dict(namespace)
+    real_import = blocked["__import__"]
+
+    def guarded(name, *args, **kwargs):
+        if name == "uvloop" or name.startswith("uvloop."):
+            raise ImportError("No module named 'uvloop'")
+        return real_import(name, *args, **kwargs)
+
+    blocked["__import__"] = guarded
+    return blocked
+
+
 def requirements_pin(name: str) -> str:
     """The version requirements.txt pins for ``name``.
 
@@ -30,8 +49,12 @@ def requirements_pin(name: str) -> str:
         if "==" not in line:
             continue
         pinned, _, version = line.partition("==")
+        # uvloop==0.23.0; sys_platform != "win32": the marker is not part of
+        # the version, and a consumer comparing against importlib.metadata
+        # would never match it.
+        version = version.split(";", 1)[0].strip()
         if _pin_key(pinned) == _pin_key(name):
-            return version.strip()
+            return version
     raise AssertionError(f"{name} is not pinned in requirements.txt")
 
 
@@ -6006,6 +6029,122 @@ class DeprecatedCallTests(unittest.TestCase):
                 ):
                     offenders.append(f"{path.name}:{node.lineno}")
         self.assertEqual(offenders, [], "\n".join(offenders))
+
+
+class EventLoopSelectionTests(unittest.TestCase):
+    """The loop is built here, so the uvloop opt-in has to be here too.
+
+    aiogram only reaches for uvloop inside Dispatcher.run_polling. This bot
+    never calls that: Mikobot/__main__.py drives start_polling from the loop
+    Mikobot builds at import, so dropping uvloop from _create_event_loop looks
+    like it is installed and does nothing. These tests pin the choice on both
+    sides of the import, so the fallback cannot rot into a hard failure and the
+    opt-in cannot rot into silence.
+    """
+
+    def _build(self, uvloop_available: bool):
+        """Run _create_event_loop with uvloop present or absent, in isolation."""
+        import importlib
+
+        source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        func = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == "_create_event_loop"
+        )
+        # The docstring is prose about uvloop and mentions it by name; strip it
+        # so the import below is the only place the name appears.
+        func.body = func.body[1:] if isinstance(func.body[0], ast.Expr) else func.body
+        module = ast.Module(body=[func], type_ignores=[])
+        ast.fix_missing_locations(module)
+
+        scope = {"asyncio": asyncio}
+        if uvloop_available:
+            import uvloop
+
+            scope["uvloop"] = uvloop
+        else:
+            scope["__builtins__"] = _blocking_uvloop_import(builtins.__dict__)
+        exec(compile(module, "<loopfactory>", "exec"), scope)
+        return scope["_create_event_loop"]()
+
+    def test_uvloop_is_used_when_importable(self):
+        try:
+            import uvloop  # noqa: F401
+        except ImportError:
+            self.skipTest("uvloop is not installed")
+        loop = self._build(uvloop_available=True)
+        with self.subTest(loop=type(loop).__module__):
+            self.assertIn("uvloop", type(loop).__module__)
+        loop.close()
+
+    def test_the_stock_loop_is_used_when_uvloop_is_missing(self):
+        loop = self._build(uvloop_available=False)
+        with self.subTest(loop=type(loop).__module__):
+            self.assertEqual(type(loop).__module__, "asyncio.unix_events")
+        loop.close()
+
+    def test_the_fallback_is_the_loop_this_used_to_build(self):
+        # The fallback is not a new implementation: it must still be the plain
+        # asyncio loop, or a machine without uvloop behaves differently.
+        source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
+        self.assertIn("loop = asyncio.new_event_loop()", source)
+
+    def test_the_import_is_guarded(self):
+        # An unguarded import would break every Windows install at startup.
+        source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        func = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == "_create_event_loop"
+        )
+        guarded = [
+            node
+            for node in func.body
+            if isinstance(node, ast.Try) and node.handlers
+        ]
+        self.assertTrue(
+            guarded, "_create_event_loop imports uvloop without a fallback"
+        )
+        names = {
+            alias.name
+            for node in ast.walk(guarded[0])
+            if isinstance(node, ast.Import)
+            for alias in node.names
+        }
+        self.assertIn("uvloop", names)
+
+    def test_the_pin_is_marked_off_windows(self):
+        # uvloop publishes no Windows wheel. Without the marker, pip tries to
+        # build one from source on win32 and the install fails outright.
+        requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+        line = next(
+            line for line in requirements.splitlines() if line.startswith("uvloop==")
+        )
+        self.assertIn('sys_platform != "win32"', line)
+
+    def test_an_environment_marker_never_leaks_into_a_pin(self):
+        # The marker sits after the version on the same line, so a reader that
+        # splits on "==" and keeps the tail hands "0.23.0; sys_platform ..." to
+        # anything comparing it against importlib.metadata, which never matches.
+        for name in ("uvloop", "psycopg", "aiogram"):
+            with self.subTest(package=name):
+                pin = requirements_pin(name)
+                self.assertNotIn(";", pin)
+                self.assertRegex(pin, r"^\d+\.\d+\.\d+$")
+
+    def test_the_installed_version_matches_the_pin(self):
+        try:
+            from importlib.metadata import version
+        except ImportError:
+            self.skipTest("importlib.metadata is unavailable")
+        try:
+            import uvloop  # noqa: F401
+        except ImportError:
+            self.skipTest("uvloop is not installed")
+        self.assertEqual(version("uvloop"), requirements_pin("uvloop"))
 
 
 class ColumnWidthTests(unittest.TestCase):

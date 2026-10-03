@@ -99,7 +99,23 @@ StartTime = time.time()
 
 
 def _create_event_loop():
-    loop = asyncio.new_event_loop()
+    """uvloop where it exists, the stock selector loop where it does not.
+
+    aiogram only reaches for uvloop inside Dispatcher.run_polling, which this
+    bot never calls: the loop is built here and start_polling is driven from it
+    by __main__, so the opt-in has to happen at construction instead.
+
+    uvloop ships no Windows wheel, so it is marked out of requirements.txt on
+    win32, and the import is guarded twice: once for the platform and once for
+    the case where a Linux install skipped it. The fallback is the loop this
+    used to build unconditionally, so nothing changes for anyone without it.
+    """
+    try:
+        import uvloop
+
+        loop = uvloop.new_event_loop()
+    except ImportError:
+        loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     return loop
 

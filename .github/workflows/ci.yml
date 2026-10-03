@@ -73,7 +73,10 @@ jobs:
               if "==" in line:
                   name, pinned = line.split("==", 1)
                   # psycopg[binary,pool]==3.3.6 installs as psycopg.
-                  pins[name.split("[")[0].strip().lower()] = pinned.strip()
+                  # uvloop==0.23.0; sys_platform != "win32": an environment
+                  # marker is not part of the version to compare against.
+                  key = name.split("[")[0].strip().lower()
+                  pins[key] = pinned.split(";")[0].strip()
 
           wrong = []
           for name in ("aiogram", "sqlalchemy", "psycopg"):
