@@ -94,16 +94,14 @@ def check_admin(
     )
 
 
-def is_whitelist_plus(chat, user_id: int, member=None) -> bool:
-    return any(user_id in user for user in [DRAGONS, DEV_USERS])
-
-
-def is_support_plus(chat, user_id: int, member=None) -> bool:
+def _is_elevated(chat, user_id: int, member=None) -> bool:
     return user_id in DRAGONS or user_id in DEV_USERS
 
 
-def is_sudo_plus(chat, user_id: int, member=None) -> bool:
-    return user_id in DRAGONS or user_id in DEV_USERS
+# The three gate kinds below share one check and differ only in the refusal
+# GateMiddleware sends, which it owns. The names stay because gate.py
+# dispatches on the kind, not the predicate.
+is_whitelist_plus = is_support_plus = is_sudo_plus = _is_elevated
 
 
 async def is_user_admin(chat, user_id: int, member=None) -> bool:

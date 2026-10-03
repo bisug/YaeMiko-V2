@@ -8,7 +8,13 @@ from Mikobot.utils.gate import requirement
 
 # <================================================ FUNCTION =======================================================>
 async def send_message(message, text, *args, **kwargs):
-    """answer(), falling back to a plain send when quoting is rejected."""
+    """answer(), retried once when the Telegram API errors.
+
+    The original second attempt dropped PTB's do_quote kwarg, which aiogram
+    does not have, so the retry became a verbatim repeat of the first call and
+    did nothing for a rejected quote. It is kept as a single retry because a
+    TelegramNetworkError is transient and the repeat is what recovers from it.
+    """
     try:
         return await message.answer(text, *args, **kwargs)
     except TelegramAPIError:

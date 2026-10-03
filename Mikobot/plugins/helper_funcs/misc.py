@@ -86,11 +86,6 @@ def paginate_modules(page_n: int, module_dict: dict, prefix, chat=None) -> list:
 
     pairs = [modules[i * 3 : (i + 1) * 3] for i in range((len(modules) + 3 - 1) // 3)]
 
-    round_num = len(modules) / 3
-    calc = len(modules) - round(round_num)
-    if calc in [1, 2]:
-        pairs.append((modules[-1],))
-
     max_num_pages = ceil(len(pairs) / 6)
     modulo_page = page_n % max_num_pages
 

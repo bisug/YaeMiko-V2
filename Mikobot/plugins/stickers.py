@@ -32,7 +32,7 @@ from pyrogram.types import Message
 
 from Mikobot import LOGGER, MESSAGE_DUMP, app
 from Mikobot.state import state
-from Mikobot.utils.custom_filters import PREFIX_HANDLER
+from Mikobot.utils.cmdprefix import PREFIX_HANDLER
 from Mikobot.utils.localization import use_chat_lang
 from pyrogram.enums import ButtonStyle
 

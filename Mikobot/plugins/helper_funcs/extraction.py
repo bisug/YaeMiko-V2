@@ -4,6 +4,7 @@ from aiogram.types import Message
 
 from Mikobot.plugins.helper_funcs.string_handling import entities_map
 from Mikobot.plugins.users import get_user_id
+from Mikobot.utils.consts import ChatID
 
 # <=======================================================================================================>
 
@@ -17,8 +18,8 @@ async def id_from_reply(message: Message):
         return None, None
     user_id = prev_message.from_user.id
     # if user id is from channel bot, then fetch channel id from sender_chat
-    if user_id == 136817688:
-        user_id = message.reply_to_message.sender_chat.id
+    if user_id == ChatID.FAKE_CHANNEL:
+        user_id = prev_message.sender_chat.id
     res = message.text.split(None, 1)
     if len(res) < 2:
         return user_id, ""

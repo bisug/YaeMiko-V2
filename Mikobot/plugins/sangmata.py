@@ -13,7 +13,7 @@ from pyrogram.types import ReplyParameters
 
 from Mikobot import app
 from Mikobot.utils.can_restrict import can_restrict
-from Mikobot.utils.custom_filters import PREFIX_HANDLER
+from Mikobot.utils.cmdprefix import PREFIX_HANDLER
 from Mikobot.utils.localization import use_chat_lang
 
 

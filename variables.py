@@ -3,19 +3,11 @@
 # https://github.com/Team-ProjectCodeX
 
 
-import json
 import os
 
 
 def env_ids(name):
     return [int(value) for value in os.environ.get(name, "").split() if value]
-
-
-
-
-def get_user_list(config, key):
-    with open("{}/Mikobot/{}".format(os.getcwd(), config), "r") as json_file:
-        return json.load(json_file)[key]
 
 
 class Config(object):
@@ -84,13 +76,9 @@ class Config(object):
 
 class Production(Config):
     # Production configuration (inherits from Config)
-
-    # Enable or disable logging
-    LOGGER = os.environ.get("LOGGER", "True") == "True"
+    pass
 
 
 class Development(Config):
     # Development configuration (inherits from Config)
-
-    # Enable or disable logging
-    LOGGER = os.environ.get("LOGGER", "True") == "True"
+    pass

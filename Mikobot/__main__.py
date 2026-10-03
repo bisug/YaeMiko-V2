@@ -177,7 +177,6 @@ async def send_help(chat_id, text, keyboard=None):
 
 async def start(message: Message, command: CommandObject):
     args = command.args.split() if command.args else []
-    message = message
     uptime = get_readable_time((time.time() - StartTime))
     if message.chat.type == "private":
         if len(args) >= 1:

@@ -36,7 +36,7 @@ from pyrogram.types import (
 from Database.sql import anime_sql as db
 from Mikobot import BOT_USERNAME, MESSAGE_DUMP, OWNER_ID, app
 from Mikobot.state import state
-from Mikobot.utils.custom_filters import PREFIX_HANDLER
+from Mikobot.utils.cmdprefix import PREFIX_HANDLER
 from pyrogram.enums import ButtonStyle
 
 # <=======================================================================================================>
