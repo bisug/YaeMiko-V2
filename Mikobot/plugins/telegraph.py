@@ -7,7 +7,7 @@ from pathlib import Path
 from PIL import Image
 from pyrogram import Client, filters
 from pyrogram.types import Message
-from telegraph import exceptions, upload_file
+from telegraph import Telegraph, exceptions
 
 from Mikobot import app
 from Mikobot.utils.errors import capture_err
@@ -44,17 +44,19 @@ async def telegraph_upload(client: Client, message: Message):
 
         started = time.perf_counter()
         try:
-            media_urls = await asyncio.to_thread(upload_file, str(upload_path))
+            # The module level telegraph.upload_file warns and delegates here.
+            # Both hit the same endpoint; only this one is not deprecated.
+            uploaded = await asyncio.to_thread(Telegraph().upload_file, str(upload_path))
         except exceptions.TelegraphException:
             await status.edit_text("Telegraph rejected the upload. Please try again later.")
             return
 
-    if not media_urls or not media_urls[0]:
+    if not uploaded or not uploaded[0].get("src"):
         await status.edit_text("Telegraph did not return an upload URL.")
         return
 
     elapsed = time.perf_counter() - started
-    path = media_urls[0]
+    path = uploaded[0]["src"]
     await status.edit_text(
         f"➼ **Uploaded to [Telegraph](https://telegra.ph{path}) "
         f"in {elapsed:.2f} seconds.**\n\n"

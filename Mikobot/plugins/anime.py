@@ -15,7 +15,6 @@ from urllib.parse import quote
 from uuid import uuid4
 
 import requests
-import urllib3
 from bs4 import BeautifulSoup
 from pyrogram import Client, filters
 from pyrogram.enums import ChatMemberStatus, ChatType
@@ -383,8 +382,6 @@ DEFAULT_SERVICE_URLS = (
 )
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 URLS_SUFFIX = [
     re.search("translate.google.(.*)", url.strip()).group(1)

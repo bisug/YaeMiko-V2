@@ -7,6 +7,7 @@ import re
 import sys
 import threading
 import unittest
+import warnings
 from unittest import mock
 from pathlib import Path
 from types import SimpleNamespace
@@ -5945,6 +5946,66 @@ class RemovedStdlibApiTests(unittest.TestCase):
             "these attributes were removed; using one raises at call time with "
             "no deprecation warning first",
         )
+
+
+class DeprecatedCallTests(unittest.TestCase):
+    """Third party call-time deprecations, which an import-time scan cannot see.
+
+    telegraph.upload_file is the worked example: importing the module raises
+    nothing, and the warning fires inside the function body, so a suite that
+    only imports every module passes while the bot warns on every upload.
+    This reads the source and calls the function where it is safe to.
+    """
+
+    def test_the_module_level_telegraph_helper_is_not_used(self):
+        source = (ROOT / "Mikobot/plugins/telegraph.py").read_text(encoding="utf-8")
+        self.assertNotIn("upload_file,", source.replace("Telegraph().upload_file", ""))
+        self.assertNotIn("upload_file\n", source)
+        self.assertIn("Telegraph().upload_file", source)
+
+    def test_the_deprecated_helper_really_does_warn(self):
+        # Without this, the guard above could be satisfied by a spelling that
+        # happens not to warn. Assert the upstream deprecation is still live.
+        try:
+            from telegraph import upload_file
+        except ImportError:
+            self.skipTest("telegraph is not installed")
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            with self.assertRaises(Exception):
+                upload_file("nonexistent-path-for-this-test")
+        self.assertTrue(
+            any(issubclass(w.category, DeprecationWarning) for w in caught),
+            "telegraph.upload_file no longer warns, so the guard above is stale",
+        )
+
+    def test_the_telegraph_error_path_still_catches_every_failure(self):
+        # TelegraphApi raises RetryAfterError on a rate limit, and it is only
+        # caught because it subclasses TelegraphException.
+        try:
+            from telegraph.exceptions import RetryAfterError, TelegraphException
+        except ImportError:
+            self.skipTest("telegraph is not installed")
+        self.assertTrue(issubclass(RetryAfterError, TelegraphException))
+
+    def test_no_plugin_binds_a_name_from_a_deprecated_module_function(self):
+        # Generic half of the guard: any bare call to a name that a library
+        # deprecated at module level. Kept to the names actually imported here
+        # rather than every deprecated function in the dependency tree.
+        deprecated = {"upload_file"}
+        offenders = []
+        for path in sorted((ROOT / "Mikobot").rglob("*.py")):
+            if "__pycache__" in path.parts:
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name)
+                    and node.func.id in deprecated
+                ):
+                    offenders.append(f"{path.name}:{node.lineno}")
+        self.assertEqual(offenders, [], "\n".join(offenders))
 
 
 class ColumnWidthTests(unittest.TestCase):
