@@ -199,6 +199,14 @@ mongodump --uri "$MONGO_DB_URI" --out ./mongo-backup-$(date +%F)
 
 ### 2. Run the backfill with the bot stopped
 
+The backfill reads Mongo, so it needs `pymongo`, which is deliberately not in
+`requirements.txt`: nothing in the running bot imports it, and a test asserts
+it stays out. Install it only for this step.
+
+```
+python -m pip install "pymongo>=4"
+```
+
 The SQL modules create their tables with `checkfirst=True`, which creates a
 missing table but never alters an existing one. Two column types were corrected
 after the schema was first written, so an already-migrated database needs these
