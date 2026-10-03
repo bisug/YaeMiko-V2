@@ -575,6 +575,8 @@ If you do not have `aiogram` installed, that single test will report
 For new plugins, set `__mod_name__` so the module appears correctly in `/help`, and give every inline
 button an explicit `style`.
 
+Meaningful changes are recorded in [CHANGELOG.md](CHANGELOG.md).
+
 ---
 
 ## Credits
