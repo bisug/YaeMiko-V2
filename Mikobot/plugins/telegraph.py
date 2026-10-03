@@ -114,7 +114,7 @@ async def telegraph_upload(client: Client, message: Message):
                 InlineKeyboardButton(
                     text=f"🕐 Temporary ({LITTERBOX_HOURS}, Litterbox)",
                     callback_data=f"hostup_litterbox_{token}",
-                    style=ButtonStyle.SECONDARY,
+                    style=ButtonStyle.PRIMARY,
                 )
             ],
         ]

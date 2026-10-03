@@ -1171,6 +1171,29 @@ class DatabaseRegressionTests(unittest.TestCase):
                     unstyled.append(f"{path}:{node.lineno}")
         self.assertEqual(unstyled, [])
 
+    def test_button_styles_are_members_the_enum_actually_has(self):
+        # Presence is not enough: ButtonStyle has no SECONDARY in kurigram, so
+        # style=ButtonStyle.SECONDARY passed the check above and raised
+        # AttributeError the first time a user pressed the button.
+        try:
+            from pyrogram.enums import ButtonStyle
+        except ImportError:
+            self.skipTest("pyrogram is not installed")
+        valid = {member.name for member in ButtonStyle}
+
+        bad = []
+        for path in list((ROOT / "Mikobot").rglob("*.py")) + [ROOT / "Infamous/karma.py"]:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if (
+                    isinstance(node, ast.Attribute)
+                    and isinstance(node.value, ast.Name)
+                    and node.value.id == "ButtonStyle"
+                    and node.attr not in valid
+                ):
+                    bad.append(f"{path}:{node.lineno} ButtonStyle.{node.attr}")
+        self.assertEqual(bad, [], "unknown ButtonStyle members: " + ", ".join(bad))
+
     def test_telegram_at_constructors_use_aiogram_31_fields(self):
         # Skipped rather than failed when the pinned client is absent, so a
         # contributor without the dependency still gets a useful suite. CI
