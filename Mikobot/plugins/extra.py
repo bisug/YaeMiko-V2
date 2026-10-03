@@ -91,7 +91,7 @@ async def logs(message: Message):
         )
 
         # Store the message ID for later reference
-        user_data[message.from_user.id]["log_message_id"] = sent.message_id
+        user_data.setdefault(message.from_user.id, {})["log_message_id"] = sent.message_id
         store.save()
 
 

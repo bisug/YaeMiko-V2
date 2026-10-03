@@ -11,6 +11,7 @@ from aiogram.types import BufferedInputFile, LinkPreviewOptions, Message
 from cachetools import TTLCache
 from pyrogram import Client
 from pyrogram import filters as fil
+from pyrogram.errors import FloodWait
 
 import Database.sql.users_sql as sql
 import Database.sql.locale_sql as locale_sql
@@ -88,30 +89,41 @@ async def broadcast_cmd(client: Client, message):  # kurigram handler
     chats = await asyncio.to_thread(sql.get_all_chats) or []
     users = await asyncio.to_thread(get_all_users)
 
+    async def send_one(target_id):
+        if message.reply_to_message:
+            await message.reply_to_message.copy(target_id)
+        else:
+            await client.send_message(target_id, content)
+
+    async def fan_out(target_ids):
+        """One send per target, waiting out a FloodWait rather than failing.
+
+        A fan-out past a few hundred chats hits the rate limit by design, so
+        honouring the delay the API names is what actually delivers the rest.
+        """
+        sent = failed = 0
+        for target_id in target_ids:
+            for attempt in (1, 2):
+                try:
+                    await send_one(target_id)
+                    sent += 1
+                    break
+                except FloodWait as error:
+                    if attempt == 2:
+                        failed += 1
+                        break
+                    await asyncio.sleep(error.value)
+                except Exception:
+                    LOGGER.exception("Failed to broadcast to %s", target_id)
+                    failed += 1
+                    break
+            await asyncio.sleep(0.3)
+        return sent, failed
+
     if "-user" in targets:
-        for chat in users:
-            try:
-                if message.reply_to_message:
-                    await message.reply_to_message.copy(chat.user_id)
-                else:
-                    await client.send_message(chat.user_id, content)
-                usersss += 1
-            except Exception:
-                LOGGER.exception("Failed to broadcast to user %s", chat.user_id)
-                uerror += 1
-            await asyncio.sleep(0.3)
+        usersss, uerror = await fan_out([user.user_id for user in users])
     if "-group" in targets:
-        for chat in chats:
-            try:
-                if message.reply_to_message:
-                    await message.reply_to_message.copy(chat.chat_id)
-                else:
-                    await client.send_message(chat.chat_id, content)
-                chatttt += 1
-            except Exception:
-                LOGGER.exception("Failed to broadcast to chat %s", chat.chat_id)
-                cerror += 1
-            await asyncio.sleep(0.3)
+        chatttt, cerror = await fan_out([chat.chat_id for chat in chats])
 
     await tex.edit_text(
         f"<b>Message Successfully Sent</b> \nTotal Users: <code>{usersss}</code> \nFailed Users: <code>{uerror}</code> \nTotal GroupChats: <code>{chatttt}</code> \nFailed GroupChats: <code>{cerror}</code>"

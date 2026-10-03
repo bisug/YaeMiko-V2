@@ -457,7 +457,7 @@ async def handler(client, message):
         await message.reply("Provide some text please.")
         return
 
-    text = message.text.split("/mmf ", maxsplit=1)[1].strip()
+    text = " ".join(message.command[1:]).strip()
     if not text:
         return await message.reply("You might want to try `/mmf text`")
 

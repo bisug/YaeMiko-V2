@@ -17,6 +17,7 @@ from Mikobot import (
     DEV_USERS,
     DRAGONS,
     EVENT_LOGS,
+    LOGGER,
     OWNER_ID,
     STRICT_GBAN,
     SUPPORT_CHAT,

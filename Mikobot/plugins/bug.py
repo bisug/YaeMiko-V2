@@ -9,7 +9,7 @@ from Mikobot import app
 
 # Define a handler for the /bug command
 @app.on_message(filters.command("bug", prefixes="/"))
-def bug_command_handler(client, message):
+async def bug_command_handler(client, message):
     # Check if the command is a reply
     if message.reply_to_message:
         # Get the message being replied to
@@ -33,12 +33,12 @@ def bug_command_handler(client, message):
         report_message = f"**Bug reported by @{message.from_user.username}:**\n\n{content}\n\n{media_type}\n\n**Message Link:** {replied_message.link}"
 
         # Send the report message
-        client.send_message(
+        await client.send_message(
             BUG_REPORT_CHAT_IDS[0], report_message, parse_mode=ParseMode.MARKDOWN
         )
     else:
         # If not a reply, send a message to reply with /bug command to report a bug
-        client.send_message(
+        await client.send_message(
             message.chat.id,
             "To report a bug, please reply to the message with **/ bug** cmd.",
             parse_mode=ParseMode.MARKDOWN,

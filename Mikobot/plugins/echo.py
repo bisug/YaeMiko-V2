@@ -8,14 +8,15 @@ is an authority, and a borrowed voice is a convincing forgery.
 Formatting is preserved by copying the replied-to message when there is one,
 which keeps entities intact; plain text falls back to sending the string.
 
-Broadcast reuses the same delivery loop as /gcast and the same chat list, so
-there is only one way this fan-out is implemented.
+Broadcast mirrors /gcast's delivery loop and chat list; the two differ only in
+which client sends. A FloodWait is honoured rather than counted as a failure,
+because a fan-out past a few hundred chats hits the rate limit by design.
 """
 
 import asyncio
 
 from aiogram.enums import ParseMode
-from aiogram.exceptions import TelegramAPIError
+from aiogram.exceptions import TelegramAPIError, TelegramRetryAfter
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
@@ -83,24 +84,35 @@ async def _broadcast(message: Message, command: CommandObject) -> None:
         f"Broadcasting to <code>{len(chats)}</code> chats...", parse_mode=ParseMode.HTML
     )
 
-    sent = failed = 0
+    sent = failed = deferred = 0
     for chat in chats:
-        try:
-            if replied is not None:
-                await replied.copy(chat.chat_id)
-            else:
-                await bot.send_message(chat.chat_id, text, parse_mode=ParseMode.HTML)
-            sent += 1
-        except TelegramAPIError:
-            # A chat the bot was removed from, or one with posting disabled.
-            failed += 1
-        except Exception:
-            LOGGER.exception("Broadcast to %s failed", chat.chat_id)
-            failed += 1
+        for attempt in (1, 2):
+            try:
+                if replied is not None:
+                    await replied.copy(chat.chat_id)
+                else:
+                    await bot.send_message(chat.chat_id, text, parse_mode=ParseMode.HTML)
+                sent += 1
+                break
+            except TelegramRetryAfter as exc:
+                # The API named the wait; waiting is what this request needs.
+                if attempt == 2:
+                    deferred += 1
+                    break
+                await asyncio.sleep(exc.retry_after)
+            except TelegramAPIError:
+                # A chat the bot was removed from, or one with posting disabled.
+                failed += 1
+                break
+            except Exception:
+                LOGGER.exception("Broadcast to %s failed", chat.chat_id)
+                failed += 1
+                break
         await asyncio.sleep(BROADCAST_DELAY)
 
     await status.edit_text(
-        f"Broadcast finished.\nSent: <code>{sent}</code>\nFailed: <code>{failed}</code>",
+        f"Broadcast finished.\nSent: <code>{sent}</code>\nFailed: <code>{failed}</code>"
+        + (f"\nDeferred: <code>{deferred}</code>" if deferred else ""),
         parse_mode=ParseMode.HTML,
     )
 

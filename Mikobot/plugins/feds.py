@@ -88,13 +88,13 @@ async def new_fed(message: Message, command: CommandObject):
             "Federations can only be created by privately messaging me.",
         )
         return
-    if len(message.text) == 1:
+    if not command.args:
         await send_message(
             message,
             "Please write the name of the federation!",
         )
         return
-    fednam = message.text.split(None, 1)[1]
+    fednam = command.args.strip()
     if not fednam == "":
         fed_id = str(uuid.uuid4())
         fed_name = fednam

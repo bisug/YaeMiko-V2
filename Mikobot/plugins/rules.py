@@ -5,7 +5,7 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Message
 
 import Database.sql.rules_sql as sql
-from Mikobot import bot, dp
+from Mikobot import BOT_USERNAME, bot, dp
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.plugins.helper_funcs.string_handling import (
     markdown_parser,
@@ -62,7 +62,7 @@ async def send_rules(message, chat_id, from_pm=False):
                     [
                         InlineKeyboardButton(
                             text="RULES",
-                            url=f"t.me/{bot.username}?start={chat_id}",
+                            url=f"t.me/{BOT_USERNAME}?start={chat_id}",
                          style=ButtonStyle.PRIMARY),
                     ],
                 ],
@@ -76,7 +76,7 @@ async def send_rules(message, chat_id, from_pm=False):
                     [
                         InlineKeyboardButton(
                             text="RULES",
-                            url=f"t.me/{bot.username}?start={chat_id}",
+                            url=f"t.me/{BOT_USERNAME}?start={chat_id}",
                          style=ButtonStyle.PRIMARY),
                     ],
                 ],

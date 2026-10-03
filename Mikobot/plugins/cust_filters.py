@@ -349,7 +349,7 @@ async def reply_filter(message: Message):
             filt = sql.get_filter(chat.id, keyword)
             if filt.reply == "there is should be a new reply":
                 buttons = sql.get_buttons(chat.id, filt.keyword)
-                keyb = build_keyboard_parser(bot, chat.id, buttons)
+                keyb = build_keyboard_parser(chat.id, buttons)
                 keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
 
                 VALID_WELCOME_FORMATTERS = [
@@ -516,7 +516,7 @@ async def reply_filter(message: Message):
                     )
                 elif filt.has_buttons:
                     buttons = sql.get_buttons(chat.id, filt.keyword)
-                    keyb = build_keyboard_parser(bot, chat.id, buttons)
+                    keyb = build_keyboard_parser(chat.id, buttons)
                     keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
 
                     try:

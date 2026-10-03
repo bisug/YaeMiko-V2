@@ -1085,7 +1085,7 @@ class google_translator:
         try:
             lang = LANGUAGES[lang_tgt]
         except Exception:
-            lang_src = "auto"
+            lang_tgt = "auto"
         text = str(text)
         if len(text) >= 5000:
             return "Warning: Can only detect less than 5000 characters"
@@ -2359,8 +2359,9 @@ async def get_additional_info(
     if req == "desc":
         synopsis = data.get("description")
         if os.environ.get("PREFERRED_LANGUAGE"):
-            synopsis = tr.translate(
-                synopsis, lang_tgt=os.environ.get("PREFERRED_LANGUAGE")
+            # requests is blocking; the handler must not hold the loop.
+            synopsis = await asyncio.to_thread(
+                tr.translate, synopsis, lang_tgt=os.environ.get("PREFERRED_LANGUAGE")
             )
         return (pic if ctgry == "ANI" else data["image"]["large"]), synopsis
     elif req == "char":

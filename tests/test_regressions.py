@@ -6859,6 +6859,151 @@ class ColumnWidthTests(unittest.TestCase):
         )
 
 
+class UndefinedNameTests(unittest.TestCase):
+    """No module may read a global it never binds.
+
+    The port left four behind (karmadb in karma.py, topics_sql in welcome.py,
+    LOGGER in gban.py, reply in fun.py) and none of them raised until the
+    command was used, because nothing here resolves names: compileall and the
+    framework tests only exercise what the suite happens to call. The previous
+    guard for this was a hand-written list of the imports that had already been
+    fixed, which of course only knew about those.
+    """
+
+    ROOTS = ("Mikobot", "Database", "Infamous", "variables.py")
+
+    def _public_names(self, module_path: str) -> set:
+        """Top-level names a `from x import *` would bring in."""
+        names = set()
+        for candidate in (ROOT / (module_path.replace(".", "/") + ".py"),):
+            if not candidate.exists():
+                continue
+            for node in ast.parse(candidate.read_text(encoding="utf-8")).body:
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                    names.add(node.name)
+                elif isinstance(node, ast.Assign):
+                    names.update(t.id for t in node.targets if isinstance(t, ast.Name))
+                elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                    names.add(node.target.id)
+                elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                    names.update(
+                        (a.asname or a.name).split(".")[0] for a in node.names
+                    )
+        return names
+
+    def _bound(self, tree) -> set:
+        """Every name the module binds anywhere, so no local goes missing."""
+        names = set()
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                names.update((a.asname or a.name).split(".")[0] for a in node.names)
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                names.add(node.name)
+            elif isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
+                names.add(node.id)
+            elif isinstance(node, ast.arg):
+                names.add(node.arg)
+            elif isinstance(node, ast.ExceptHandler) and node.name:
+                names.add(node.name)
+            elif isinstance(node, (ast.Global, ast.Nonlocal)):
+                names.update(node.names)
+        return names
+
+    def test_no_module_reads_a_name_it_never_binds(self):
+        offenders = []
+        for root in self.ROOTS:
+            paths = [ROOT / root] if (ROOT / root).is_file() else sorted((ROOT / root).rglob("*.py"))
+            for path in paths:
+                tree = ast.parse(path.read_text(encoding="utf-8"))
+                bound = self._bound(tree) | set(dir(builtins)) | {
+                    "__name__",
+                    "__file__",
+                    "__doc__",
+                }
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.ImportFrom) and any(
+                        alias.name == "*" for alias in node.names
+                    ):
+                        bound |= self._public_names(node.module or "")
+                missing = sorted(
+                    {
+                        node.id
+                        for node in ast.walk(tree)
+                        if isinstance(node, ast.Name)
+                        and isinstance(node.ctx, ast.Load)
+                        and node.id not in bound
+                    }
+                )
+                relative = path.relative_to(ROOT).as_posix()
+                offenders += [f"{relative}: {name}" for name in missing]
+        self.assertEqual(offenders, [], "reads a name the module never binds")
+
+
+class BroadcastRetryTests(unittest.IsolatedAsyncioTestCase):
+    """A fan-out waits out the API's rate limit instead of counting a failure.
+
+    /broadcast is the one path that sends to every chat the bot knows, so a
+    swallowed 429 there truncates the broadcast and reports it as sent.
+    """
+
+    async def test_retry_after_waits_and_the_send_still_counts(self):
+        import asyncio as asyncio_module
+
+        import Mikobot.plugins.echo as echo
+        from aiogram.methods import SendMessage
+
+        from Mikobot import OWNER_ID
+        from aiogram.exceptions import TelegramRetryAfter
+
+        retry = TelegramRetryAfter(
+            SendMessage(chat_id=-1001, text="x"), "Flood control exceeded", 3
+        )
+        attempts = {"n": 0}
+
+        class _Bot:
+            async def send_message(self, chat_id, text, **kwargs):
+                attempts["n"] += 1
+                if attempts["n"] == 1:
+                    raise retry
+
+        class _Status:
+            def __init__(self):
+                self.edited = None
+
+            async def edit_text(self, text, **kwargs):
+                self.edited = text
+
+        status = _Status()
+
+        class _Message:
+            reply_to_message = None
+            from_user = SimpleNamespace(id=OWNER_ID)
+
+            async def reply(self, text, **kwargs):
+                return status
+
+        chats = [SimpleNamespace(chat_id="-1001"), SimpleNamespace(chat_id="-1002")]
+        slept = []
+
+        async def _sleep(seconds):
+            slept.append(seconds)
+
+        with (
+            mock.patch.object(echo, "bot", _Bot()),
+            mock.patch.object(echo.users_sql, "get_all_chats", return_value=chats),
+            mock.patch.object(asyncio_module, "sleep", _sleep),
+        ):
+            await echo._broadcast(
+                _Message(), SimpleNamespace(args="hello")
+            )
+
+        self.assertIn(3, slept, "the API's own delay must be the wait")
+        self.assertEqual(attempts["n"], 3, "one retried send plus the other chat")
+        self.assertIn("Sent: <code>2</code>", status.edited)
+        self.assertIn("Failed: <code>0</code>", status.edited)
+        self.assertNotIn("Deferred", status.edited)
+
+
 def _run(coro):
     import asyncio
 

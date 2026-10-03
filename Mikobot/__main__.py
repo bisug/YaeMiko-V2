@@ -40,6 +40,7 @@ from Infamous.karma import *
 from Mikobot import (
     ACTIVITY_LOG,
     BOT_NAME,
+    BOT_USERNAME,
     LOGGER,
     OWNER_ID,
     SUPPORT_CHAT,
@@ -51,7 +52,7 @@ from Mikobot import (
     send_booting_message,
 )
 from Mikobot.plugins import ALL_MODULES
-from Mikobot.plugins.helper_funcs.chat_status import is_user_admin
+from Mikobot.plugins.helper_funcs.chat_status import is_user_admin, sudo_plus
 from Mikobot.plugins.helper_funcs.misc import paginate_modules
 from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import escape_markdown
@@ -459,10 +460,13 @@ async def help_button(query: CallbackQuery):
         pass
 
 
+@sudo_plus
 async def stats_back(query: CallbackQuery):
     if query.data == "insider_":
         uptime = get_readable_time((time.time() - StartTime))
-        cpu = psutil.cpu_percent(interval=0.5)
+        # interval is a blocking sample; the loop must not stall every other
+        # chat while it waits.
+        cpu = await asyncio.to_thread(psutil.cpu_percent, 0.5)
         mem = psutil.virtual_memory().percent
         disk = psutil.disk_usage("/").percent
         text = f"""
@@ -547,7 +551,7 @@ async def Miko_about_callback(query: CallbackQuery):
         )
     elif query.data == "Miko_support":
         message_text = (
-            "*Our bot leverages SQL, MongoDB, Telegram, MTProto for secure and efficient operations. It resides on a high-speed server, integrates numerous APIs, ensuring quick and versatile responses to user queries.*"
+            "*Our bot leverages SQL, Telegram, MTProto for secure and efficient operations. It resides on a high-speed server, integrates numerous APIs, ensuring quick and versatile responses to user queries.*"
             f"\n\n*If you find any bug in {BOT_NAME} Please report it at the support chat.*"
         )
         await query.message.edit_text(
@@ -595,7 +599,7 @@ async def get_help(message: Message, command: CommandObject):
                             InlineKeyboardButton(
                                 text="HELP",
                                 url="https://t.me/{}?start=ghelp_{}".format(
-                                    bot.username, module
+                                    BOT_USERNAME, module
                                 ),
                              style=ButtonStyle.PRIMARY)
                         ]
@@ -611,7 +615,7 @@ async def get_help(message: Message, command: CommandObject):
                         InlineKeyboardButton(
                             text="OPEN IN PM",
                             url="https://t.me/{}?start=help".format(
-                                bot.username
+                                BOT_USERNAME
                             ),
                          style=ButtonStyle.PRIMARY)
                     ],
@@ -796,7 +800,7 @@ async def get_settings(message: Message, command: CommandObject):
                             InlineKeyboardButton(
                                 text="SETTINGS",
                                 url="t.me/{}?start=stngs_{}".format(
-                                    bot.username, chat.id
+                                    BOT_USERNAME, chat.id
                                 ),
                              style=ButtonStyle.PRIMARY)
                         ]

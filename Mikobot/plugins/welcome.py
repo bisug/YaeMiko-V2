@@ -31,12 +31,13 @@ from aiogram.types import (
     Message,
 )
 
-import Database.sql.topics_sql
+import Database.sql.topics_sql as topics_sql
 import Database.sql.welcome_sql as sql
 from Database.sql.toggle_sql import dwelcome_off, dwelcome_on, is_dwelcome_on
 from Database.sql.global_bans_sql import is_user_gbanned
 from Mikobot import (
     ALLOW_CHATS,
+    BOT_USERNAME,
     DEV_USERS,
     DRAGONS,
     EVENT_LOGS,
@@ -1480,7 +1481,7 @@ async def welcome_help(message: Message, command: CommandObject):
         "Welcome messages also support markdown, so you can make any elements bold/italic/code/links. "
         "Buttons are also supported, so you can make your welcomes look awesome with some nice intro buttons."
         "\nTo create a button linking to your rules, use this: `[rules](buttonurl://t.me/"
-        f"{bot.username}?start=group_id)`. Simply replace `group_id` with your group's ID,"
+        f"{BOT_USERNAME}?start=group_id)`. Simply replace `group_id` with your group's ID,"
         " which can be obtained via /id, and you're good to go. Note that group IDs are usually preceded by a `-` sign, so please don't remove it."
         " You can even set images/gifs/videos/voice messages as the welcome message by replying to the desired media,"
         " and calling `/setwelcome`."

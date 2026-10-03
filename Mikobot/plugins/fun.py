@@ -64,7 +64,7 @@ async def shrug(message: Message):
     reply_text = (
         msg.reply_to_message.answer if msg.reply_to_message else msg.answer
     )
-    await reply(r"¯\_(ツ)_/¯")
+    await reply_text(r"¯\_(ツ)_/¯")
 
 
 async def bluetext(message: Message):
@@ -72,7 +72,7 @@ async def bluetext(message: Message):
     reply_text = (
         msg.reply_to_message.answer if msg.reply_to_message else msg.answer
     )
-    await reply(
+    await reply_text(
         "/BLUE /TEXT\n/MUST /CLICK\n/I /AM /A /STUPID /ANIMAL /THAT /IS /ATTRACTED /TO /COLORS"
     )
 
@@ -93,7 +93,7 @@ async def decide(message: Message):
         if message.reply_to_message
         else message.answer
     )
-    await reply(random.choice(fun_strings.DECIDE))
+    await reply_text(random.choice(fun_strings.DECIDE))
 
 
 normiefont = [

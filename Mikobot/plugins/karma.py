@@ -15,7 +15,7 @@ from Database.sql.karma_sql import (
     int_to_alpha,
     update_karma,
 )
-from Database.sql.toggle_sql import is_karma_on
+from Database.sql.toggle_sql import is_karma_on, karma_off, karma_on
 from Mikobot import OWNER_ID, app
 from Mikobot.utils.can_restrict import can_restrict
 from Mikobot.utils.errors import capture_err
@@ -153,18 +153,16 @@ async def karma_toggle_xd(_, message):
     state = message.text.split(None, 1)[1].strip().lower()
 
     if state == "on":
-        disabled = await karmadb.find_one({"chat_id_toggle": chat_id})
-        if disabled:
-            await karmadb.delete_one({"chat_id_toggle": chat_id})
-            await message.reply("Enabled the karma system.")
-        else:
+        if is_karma_on(chat_id):
             await message.reply("Karma system is already enabled.")
+        else:
+            karma_on(chat_id)
+            await message.reply("Enabled the karma system.")
     elif state == "off":
-        disabled = await karmadb.find_one({"chat_id_toggle": chat_id})
-        if disabled:
+        if not is_karma_on(chat_id):
             await message.reply("Karma system is already disabled.")
         else:
-            await karmadb.insert_one({"chat_id_toggle": chat_id})
+            karma_off(chat_id)
             await message.reply("Disabled the karma system.")
     else:
         await message.reply(usage)
