@@ -6929,5 +6929,307 @@ class TranslatorLanguageTests(unittest.IsolatedAsyncioTestCase):
         )
 
 
+class RestrictGateTests(unittest.IsolatedAsyncioTestCase):
+    """The @can_restrict guard in front of /purge, /dwelcome and /setmataa.
+
+    The decorator is loaded from the real source with only its own module's
+    globals supplied, so these exercise the shipped logic rather than a copy.
+    """
+
+    @staticmethod
+    def _gate(status, privileges="unset", dev_users=(), error=None):
+        source = (ROOT / "Mikobot/utils/can_restrict.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        node = next(
+            item
+            for item in tree.body
+            if isinstance(item, ast.FunctionDef) and item.name == "can_restrict"
+        )
+        # functools.wraps is applied at decoration time, so it must resolve.
+        namespace = {
+            "wraps": __import__("functools").wraps,
+            "Callable": object,
+            "ChatMemberStatus": SimpleNamespace(
+                OWNER="OWNER", ADMINISTRATOR="ADMINISTRATOR", MEMBER="MEMBER"
+            ),
+            "RPCError": RuntimeError,
+            "DEV_USERS": list(dev_users),
+        }
+
+        if privileges == "unset":
+            # What kurigram actually returns for a chat owner:
+            # ChatParticipantCreator -> ChatMember(status=OWNER), no privileges.
+            class Member:
+                def __init__(self):
+                    self.status = status
+                    self.calls = 0
+
+            member = Member()
+
+            async def get_chat_member(chat_id, user_id):
+                member.calls += 1
+                if error is not None:
+                    raise error
+                return member
+        else:
+            member = SimpleNamespace(
+                status=status,
+                privileges=SimpleNamespace(can_restrict_members=privileges),
+            )
+
+            async def get_chat_member(chat_id, user_id):
+                if error is not None:
+                    raise error
+                return member
+
+        namespace["app"] = SimpleNamespace(get_chat_member=get_chat_member)
+        module = ast.Module(body=[node], type_ignores=[])
+        ast.fix_missing_locations(module)
+        exec(compile(module, "can_restrict.py", "exec"), namespace)
+
+        ran = []
+
+        async def handler(_, message):
+            ran.append(message)
+            return "ran"
+
+        guarded = namespace["can_restrict"](handler)
+        return guarded, ran, member
+
+    @staticmethod
+    def _message(sender_id=42, chat_id=-1001):
+        message = SimpleNamespace(
+            from_user=SimpleNamespace(id=sender_id),
+            chat=SimpleNamespace(id=chat_id),
+            replies=[],
+        )
+        return message
+
+    @staticmethod
+    def _with_reply(message):
+        async def reply(text):
+            message.replies.append(text)
+            return text
+
+        message.reply = reply
+        return message
+
+    async def test_a_chat_owner_runs_the_handler(self):
+        """The owner has no .privileges in kurigram, so reading it used to raise.
+
+        Reproduces the shipped bug: with privileges unset, dereferencing
+        .can_restrict_members on an OWNER member raises AttributeError.
+        """
+        guarded, ran, _member = self._gate("OWNER")
+        message = self._with_reply(self._message())
+        self.assertEqual(await guarded("client", message), "ran")
+        self.assertEqual(ran, [message])
+
+    async def test_an_owner_is_looked_up_only_once(self):
+        """The old code called get_chat_member twice per guarded command."""
+        guarded, ran, member = self._gate("OWNER")
+        message = self._with_reply(self._message())
+        await guarded("client", message)
+        self.assertEqual(member.calls, 1)
+
+    async def test_an_admin_without_the_right_is_refused(self):
+        guarded, ran, _member = self._gate("ADMINISTRATOR", privileges=False)
+        message = self._with_reply(self._message())
+        await guarded("client", message)
+        self.assertEqual(ran, [])
+        self.assertEqual(len(message.replies), 1)
+
+    async def test_the_refusal_message_has_balanced_markup(self):
+        """It shipped as "`You don't ... chat." with the closing backtick
+        missing, which renders a stray backtick to the user."""
+        guarded, ran, _member = self._gate("ADMINISTRATOR", privileges=False)
+        message = self._with_reply(self._message())
+        await guarded("client", message)
+        self.assertEqual(message.replies[0].count("`"), 2)
+
+    async def test_an_admin_with_the_right_runs_the_handler(self):
+        guarded, ran, _member = self._gate("ADMINISTRATOR", privileges=True)
+        message = self._with_reply(self._message())
+        self.assertEqual(await guarded("client", message), "ran")
+        self.assertEqual(ran, [message])
+
+    async def test_a_non_admin_is_refused(self):
+        guarded, ran, _member = self._gate("MEMBER", privileges=False)
+        message = self._with_reply(self._message())
+        await guarded("client", message)
+        self.assertEqual(ran, [])
+        self.assertIn("not an admin", message.replies[0])
+
+    async def test_a_lookup_failure_answers_instead_of_raising(self):
+        guarded, ran, _member = self._gate(
+            "ADMINISTRATOR", privileges=True, error=RuntimeError("boom")
+        )
+        message = self._with_reply(self._message())
+        await guarded("client", message)
+        self.assertEqual(ran, [])
+        self.assertEqual(len(message.replies), 1)
+
+    async def test_a_developer_skips_the_lookup_entirely(self):
+        guarded, ran, member = self._gate("MEMBER", dev_users=[42])
+        message = self._with_reply(self._message(sender_id=42))
+        self.assertEqual(await guarded("client", message), "ran")
+        self.assertEqual(member.calls, 0)
+
+    def test_the_wrapper_keeps_the_handler_name(self):
+        source = (ROOT / "Mikobot/utils/can_restrict.py").read_text(encoding="utf-8")
+        self.assertIn("from functools import wraps", source)
+        self.assertIn("@wraps(func)", source)
+
+
+class AfkMentionTests(unittest.IsolatedAsyncioTestCase):
+    """reply_afk resolves the mentioned user and then must answer."""
+
+    @staticmethod
+    def _handler(check_afk):
+        source = (ROOT / "Mikobot/plugins/afk.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        func = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.AsyncFunctionDef) and node.name == "reply_afk"
+        )
+        func.decorator_list = []
+        # get_user_id is awaited in the handler, so the fake is a coroutine.
+        cell = []
+
+        async def _resolved_id(raw):
+            return cell[0]
+
+        namespace = {
+            "entities_map": lambda msg, types: msg.entity_map,
+            "MENTION_ENTITIES": ["text_mention", "mention"],
+            "get_user_id": _resolved_id,
+            "check_afk": check_afk,
+            "_cell": cell,
+        }
+        module = ast.Module(body=[func], type_ignores=[])
+        ast.fix_missing_locations(module)
+        exec(compile(module, "afk.py", "exec"), namespace)
+        return namespace["reply_afk"], cell
+
+    @staticmethod
+    def _entity(kind):
+        # entities_map keys its result by the entity object, so this has to be
+        # hashable the way an aiogram MessageEntity is.
+        class Entity:
+            def __init__(self):
+                self.type = kind
+                self.offset = 0
+                self.length = 7
+                self.user = SimpleNamespace(id=77, first_name="Mentioned")
+
+            def __hash__(self):
+                return hash((self.type, self.offset, self.length))
+
+        return Entity()
+
+    @staticmethod
+    def _message(ent, reply_to=None, resolved=None):
+        return SimpleNamespace(
+            from_user=SimpleNamespace(id=1),
+            text="mention-text",
+            entities=[ent] if ent is not None else [],
+            entity_map={ent: "mention-text"} if ent is not None else {},
+            reply_to_message=reply_to,
+            resolved=resolved,
+        )
+
+    async def test_a_text_mention_is_answered(self):
+        """A mention with no @username is a text_mention, and this branch
+        resolved the user and then fell out of the if without replying."""
+        calls = []
+
+        async def check_afk(message, user_id, fst_name, userc_id):
+            calls.append((user_id, fst_name))
+
+        reply_afk, _cell = self._handler(check_afk)
+        await reply_afk(self._message(self._entity("text_mention")))
+        self.assertEqual(calls, [(77, "Mentioned")])
+
+    async def test_a_username_mention_still_replies(self):
+        calls = []
+
+        async def check_afk(message, user_id, fst_name, userc_id):
+            calls.append((user_id, fst_name))
+
+        reply_afk, cell = self._handler(check_afk)
+        cell.append(77)
+        await reply_afk(self._message(self._entity("mention")))
+        # fst_name is the sliced message text with the @ stripped.
+        self.assertEqual(calls, [(77, "mention")])
+
+    async def test_a_reply_from_a_channel_post_is_skipped(self):
+        """from_user is None on a channel post, and reading .id off it raised."""
+        calls = []
+
+        async def check_afk(message, user_id, fst_name, userc_id):
+            calls.append(user_id)
+
+        reply_afk, _cell = self._handler(check_afk)
+        message = self._message(None, reply_to=SimpleNamespace(from_user=None))
+        await reply_afk(message)
+        self.assertEqual(calls, [])
+
+    async def test_a_reply_with_a_sender_is_still_answered(self):
+        calls = []
+
+        async def check_afk(message, user_id, fst_name, userc_id):
+            calls.append(user_id)
+
+        reply_afk, _cell = self._handler(check_afk)
+        reply_to = SimpleNamespace(
+            from_user=SimpleNamespace(id=88, first_name="Replied")
+        )
+        await reply_afk(self._message(None, reply_to=reply_to))
+        self.assertEqual(calls, [88])
+
+
+class PaginationTests(unittest.TestCase):
+    @staticmethod
+    def _paginate():
+        class Button:
+            """Stands in for EqInlineKeyboardButton, which sorts by .text."""
+
+            def __init__(self, **kwargs):
+                self.text = kwargs.get("text")
+                self.callback_data = kwargs.get("callback_data")
+
+            def __lt__(self, other):
+                return self.text < other.text
+
+        namespace = {
+            "ButtonStyle": SimpleNamespace(PRIMARY="primary"),
+            "InlineKeyboardButton": Button,
+            "EqInlineKeyboardButton": Button,
+            "ceil": __import__("math").ceil,
+        }
+        load_function(
+            ROOT / "Mikobot/plugins/helper_funcs/misc.py",
+            "paginate_modules",
+            namespace,
+        )
+        return namespace["paginate_modules"]
+
+    def test_an_empty_module_dict_does_not_divide_by_zero(self):
+        """ceil(0/6) is 0, so page_n % 0 raised on a chat with no modules."""
+        pages = self._paginate()(0, {}, "help")
+        self.assertTrue(pages)
+
+    def test_a_populated_module_dict_still_paginates(self):
+        class Module:
+            def __init__(self, name):
+                self.__mod_name__ = name
+
+        modules = {str(index): Module(f"Module{index}") for index in range(20)}
+        pages = self._paginate()(0, modules, "help")
+        self.assertTrue(pages)
+        self.assertLessEqual(len(pages), 7)
+
+
 if __name__ == "__main__":
     unittest.main()
