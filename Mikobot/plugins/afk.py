@@ -96,9 +96,9 @@ async def reply_afk(message: Message):
     userc_id = userc.id
     chk_users = []
 
-    if message.entities and entities_map(message, MENTION_ENTITIES):
-        entities = list(entities_map(message, MENTION_ENTITIES))
-        ent = entities[0] if entities else None
+    mention_map = entities_map(message, MENTION_ENTITIES)
+    if message.entities and mention_map:
+        ent = next(iter(mention_map))
         if ent.type == "text_mention":
             user_id = ent.user.id
             fst_name = ent.user.first_name
@@ -106,6 +106,10 @@ async def reply_afk(message: Message):
             if user_id in chk_users:
                 return
             chk_users.append(user_id)
+            # This branch used to fall through to the end of the if/elif/else
+            # without answering, so a mention of someone without a @username
+            # resolved the user and then reported nothing.
+            await check_afk(message, user_id, fst_name, userc_id)
         elif ent.type != "mention":
             return
         else:
@@ -123,8 +127,13 @@ async def reply_afk(message: Message):
             await check_afk(message, user_id, fst_name, userc_id)
 
     elif message.reply_to_message:
-        user_id = message.reply_to_message.from_user.id
-        fst_name = message.reply_to_message.from_user.first_name
+        # A channel post or a service message has no from_user, and reading
+        # .id off it raised AttributeError on every reply to one.
+        replied_user = message.reply_to_message.from_user
+        if replied_user is None:
+            return
+        user_id = replied_user.id
+        fst_name = replied_user.first_name
         await check_afk(message, user_id, fst_name, userc_id)
 
 
