@@ -1,5 +1,6 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
+import os
 import tempfile
 import time
 from pathlib import Path
@@ -30,12 +31,26 @@ async def telegraph_upload(client: Client, message: Message):
         await status.edit_text("That media is too large to upload (20 MB maximum).")
         return
     with tempfile.TemporaryDirectory(prefix="yae-telegraph-") as temp_dir:
-        downloaded_file = await client.download_media(replied, file_name=temp_dir)
+        # file_name has to name the file, not the directory holding it.
+        # os.path.split() turns the bare directory into (parent, "yae-telegraph-x"),
+        # so kurigram downloads onto the temp dir's own path and shutil.move ends
+        # up dropping the file inside it, leaving the directory as the return
+        # value. The trailing separator is what makes split() yield the directory
+        # itself and an empty name, which is also what keeps kurigram's own
+        # naming, and therefore the .webp suffix check below, working.
+        downloaded_file = await client.download_media(
+            replied, file_name=temp_dir + os.sep
+        )
         if not downloaded_file:
             await status.edit_text("The replied media could not be downloaded.")
             return
 
         upload_path = Path(downloaded_file)
+        # kurigram hands back the directory rather than a file when the two
+        # collide, so this is checked instead of assumed.
+        if not upload_path.is_file():
+            await status.edit_text("The replied media could not be downloaded.")
+            return
         if upload_path.suffix.lower() == ".webp":
             png_path = upload_path.with_suffix(".png")
             with Image.open(upload_path) as image:

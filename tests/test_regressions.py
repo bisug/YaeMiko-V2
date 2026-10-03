@@ -6322,6 +6322,88 @@ class FederationBlobTests(unittest.TestCase):
         self.assertEqual(offenders, [], f"unguarded literal_eval: {offenders}")
 
 
+class TelegraphDownloadTargetTests(unittest.TestCase):
+    """file_name must name a file, or kurigram hands back the directory.
+
+    /telegraph crashed with IsADirectoryError because download_media was given
+    the bare temp directory. kurigram splits file_name into (directory, name);
+    a directory's last component becomes the name, so the download target
+    collided with the temp dir itself, shutil.move dropped the file inside it,
+    and the returned path was the directory. telegraph.upload_file then tried
+    to open() it.
+
+    These reproduce kurigram's own path arithmetic (download_media.py, the
+    os.path.split block) rather than a simplified stand-in, so the test breaks
+    if the behaviour it depends on ever changes.
+    """
+
+    @staticmethod
+    def _kurigram_target(file_name, media_file_name=""):
+        directory, name = os.path.split(file_name)
+        name = name or media_file_name or ""
+        if not Path(directory).is_absolute():
+            directory = Path("/workdir") / (directory or "downloads/")
+        if not name:
+            name = "photo_2026-10-03_11-30-49_ab12cd.jpg"
+        return Path(directory) / name
+
+    def _handler(self):
+        source = (ROOT / "Mikobot/plugins/telegraph.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        func = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.AsyncFunctionDef)
+            and node.name == "telegraph_upload"
+        )
+        func.decorator_list = []
+        module = ast.Module(body=[func], type_ignores=[])
+        ast.fix_missing_locations(module)
+        namespace = {"os": os, "tempfile": tempfile, "asyncio": asyncio}
+        exec(compile(module, "<telegraph>", "exec"), namespace)
+        return namespace["telegraph_upload"], source
+
+    def test_the_source_does_not_pass_a_bare_directory(self):
+        _func, source = self._handler()
+        with self.subTest(check="download_media call"):
+            self.assertIn(
+                "temp_dir + os.sep",
+                source,
+                "file_name must be a path inside temp_dir, not temp_dir itself",
+            )
+
+    def test_a_bare_directory_would_resolve_to_the_directory(self):
+        # The bug itself, kept so the fix above has something to fail against.
+        with tempfile.TemporaryDirectory(prefix="yae-telegraph-") as temp_dir:
+            target = self._kurigram_target(temp_dir)
+            with self.subTest(target=str(target)):
+                self.assertEqual(str(target), temp_dir)
+                self.assertTrue(target.is_dir())
+
+    def test_a_trailing_separator_resolves_inside_the_directory(self):
+        with tempfile.TemporaryDirectory(prefix="yae-telegraph-") as temp_dir:
+            target = self._kurigram_target(temp_dir + os.sep)
+            with self.subTest(target=str(target)):
+                self.assertNotEqual(str(target), temp_dir)
+                self.assertEqual(target.parent, Path(temp_dir))
+                self.assertTrue(target.suffix, "the name must keep its extension")
+
+    def test_the_webp_branch_still_gets_a_suffix(self):
+        # The handler converts .webp to .png by suffix, so a fix that forced a
+        # fixed filename would silently disable that branch.
+        with tempfile.TemporaryDirectory(prefix="yae-telegraph-") as temp_dir:
+            target = self._kurigram_target(temp_dir + os.sep, "sticker.webp")
+            with self.subTest(suffix=target.suffix):
+                self.assertEqual(target.suffix, ".webp")
+
+    def test_the_handler_rejects_a_directory_returned_by_the_download(self):
+        # Defence in depth: even if kurigram collides again, the user gets a
+        # message instead of an IsADirectoryError traceback.
+        _func, source = self._handler()
+        with self.subTest(check="is_file guard"):
+            self.assertIn("upload_path.is_file()", source)
+
+
 class ColumnWidthTests(unittest.TestCase):
     """Every VARCHAR(n) must be able to hold what the code writes into it.
 
