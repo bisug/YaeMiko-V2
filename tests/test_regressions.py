@@ -5984,10 +5984,15 @@ class DeprecatedCallTests(unittest.TestCase):
     """
 
     def test_the_module_level_telegraph_helper_is_not_used(self):
+        # This command no longer uploads to Telegraph at all. Telegram disabled
+        # media uploads there, so telegra.ph/upload answers 400 with a bare
+        # JSON string and the library raises AttributeError on it. Catbox and
+        # Litterbox replaced it.
+        # quotely.py still posts to telegra.ph/upload and is deliberately not
+        # covered here; switching /q to another host is a separate change.
         source = (ROOT / "Mikobot/plugins/telegraph.py").read_text(encoding="utf-8")
-        self.assertNotIn("upload_file,", source.replace("Telegraph().upload_file", ""))
-        self.assertNotIn("upload_file\n", source)
-        self.assertIn("Telegraph().upload_file", source)
+        self.assertNotIn("Telegraph().upload_file", source)
+        self.assertNotIn("telegra.ph/upload", source)
 
     def test_the_deprecated_helper_really_does_warn(self):
         # Without this, the guard above could be satisfied by a spelling that
@@ -6397,11 +6402,239 @@ class TelegraphDownloadTargetTests(unittest.TestCase):
                 self.assertEqual(target.suffix, ".webp")
 
     def test_the_handler_rejects_a_directory_returned_by_the_download(self):
-        # Defence in depth: even if kurigram collides again, the user gets a
-        # message instead of an IsADirectoryError traceback.
+        # Defence in depth: if kurigram ever hands back the directory again,
+        # the user gets a message instead of an IsADirectoryError traceback.
         _func, source = self._handler()
         with self.subTest(check="is_file guard"):
-            self.assertIn("upload_path.is_file()", source)
+            self.assertIn("Path(downloaded).is_file()", source)
+
+
+class CaptureErrArityTests(unittest.TestCase):
+    """capture_err has to suit both handler registration styles.
+
+    app.on_message calls a handler as (client, message). The decorators in
+    Mikobot.events wrap a handler so only the event is passed, which is how
+    callbackquery delivers one. A two-argument capture_err raised TypeError on
+    every callback click, so /tgm's host buttons could never have worked.
+    """
+
+    def _errors(self):
+        path = ROOT / "Mikobot/utils/errors.py"
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        nodes = [
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name
+            in ("capture_err", "_event", "_event_chat_id", "_event_user_id")
+        ]
+        module = ast.Module(body=nodes, type_ignores=[])
+        ast.fix_missing_locations(module)
+        logged = []
+        namespace = {
+            "wraps": __import__("functools").wraps,
+            "ChatWriteForbidden": type("ChatWriteForbidden", (Exception,), {}),
+            "LOGGER": SimpleNamespace(
+                info=lambda *a, **k: logged.append(a),
+                exception=lambda *a, **k: logged.append(a),
+            ),
+        }
+        exec(compile(module, str(path), "exec"), namespace)
+        return namespace["capture_err"], logged
+
+    @staticmethod
+    def _with_client(callback):
+        """Verbatim from Mikobot/events.py."""
+        async def handler(client, event):
+            return await callback(event)
+
+        return handler
+
+    def test_a_two_argument_handler_still_works(self):
+        capture_err, _logged = self._errors()
+
+        @capture_err
+        async def handler(client, message):
+            return f"ok:{message}"
+
+        self.assertEqual(asyncio.run(handler(None, "msg")), "ok:msg")
+
+    def test_a_single_argument_handler_works(self):
+        capture_err, _logged = self._errors()
+
+        @capture_err
+        async def handler(event):
+            return f"ok:{event}"
+
+        wrapped = self._with_client(handler)
+        self.assertEqual(asyncio.run(wrapped(None, "event")), "ok:event")
+
+    def test_a_failure_still_re_raises_and_names_the_chat(self):
+        capture_err, logged = self._errors()
+
+        @capture_err
+        async def handler(event):
+            raise RuntimeError("boom")
+
+        query = SimpleNamespace(
+            chat=None,
+            message=SimpleNamespace(chat=SimpleNamespace(id=-1001)),
+            from_user=SimpleNamespace(id=42),
+        )
+        with self.assertRaises(RuntimeError):
+            asyncio.run(self._with_client(handler)(None, query))
+        # A CallbackQuery carries no .chat of its own, so the chat is read off
+        # the message it is attached to rather than crashing the logger.
+        self.assertTrue(
+            any(-1001 in entry for entry in logged),
+            f"chat id missing from log line: {logged}",
+        )
+
+
+class CatboxLitterboxTests(unittest.TestCase):
+    """The upload request shape, pinned against the real endpoints' answers.
+
+    Both were probed live: reqtype must be lowercase or the API answers 412
+    "No request type given?", and only 1h/12h/24h/72h are accepted.
+    """
+
+    def _module(self):
+        path = ROOT / "Mikobot/plugins/telegraph.py"
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        nodes = [
+            n
+            for n in tree.body
+            # _upload is an async def, and AsyncFunctionDef does not inherit
+            # from FunctionDef.
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and n.name == "_upload"
+        ]
+        module = ast.Module(body=nodes, type_ignores=[])
+        ast.fix_missing_locations(module)
+
+        class State:
+            def __init__(self):
+                self.calls = []
+                self.response = None
+
+            async def post(self, url, **kwargs):
+                self.calls.append((url, kwargs))
+                return self.response
+
+        namespace = {
+            "Path": __import__("pathlib").Path,
+            "state": State(),
+            "CATBOX_API": "https://catbox.moe/user/api.php",
+            "LITTERBOX_API": "https://litterbox.catbox.moe/resources/internals/api.php",
+            "CATBOX_REQTYPE": "fileupload",
+            "LITTERBOX_HOURS": "72h",
+            "UPLOAD_TIMEOUT": 300,
+        }
+        exec(compile(module, str(path), "exec"), namespace)
+        return namespace, namespace["state"]
+
+    def _response(self, text):
+        return SimpleNamespace(
+            text=text, raise_for_status=lambda: None, status_code=200
+        )
+
+    def test_reqtype_is_lowercase(self):
+        source = (ROOT / "Mikobot/plugins/telegraph.py").read_text(encoding="utf-8")
+        match = re.search(r'CATBOX_REQTYPE = "([^"]+)"', source)
+        self.assertIsNotNone(match)
+        # "fileUpload", the form almost every tutorial shows, gets 412.
+        self.assertEqual(match.group(1), "fileupload")
+
+    def test_catbox_posts_to_catbox_without_a_time(self):
+        namespace, state = self._module()
+        state.response = self._response("https://files.catbox.moe/abc.png\n")
+        with tempfile.NamedTemporaryFile(suffix=".png") as handle:
+            link = asyncio.run(namespace["_upload"](Path(handle.name), "catbox"))
+        url, kwargs = state.calls[0]
+        self.assertEqual(url, "https://catbox.moe/user/api.php")
+        self.assertEqual(kwargs["data"], {"reqtype": "fileupload"})
+        self.assertIn("fileToUpload", kwargs["files"])
+        self.assertEqual(link, "https://files.catbox.moe/abc.png")
+
+    def test_litterbox_posts_the_expiry_and_its_own_endpoint(self):
+        namespace, state = self._module()
+        state.response = self._response("https://litter.catbox.moe/xyz.png")
+        with tempfile.NamedTemporaryFile(suffix=".png") as handle:
+            asyncio.run(namespace["_upload"](Path(handle.name), "litterbox"))
+        url, kwargs = state.calls[0]
+        self.assertEqual(
+            url, "https://litterbox.catbox.moe/resources/internals/api.php"
+        )
+        self.assertEqual(kwargs["data"], {"reqtype": "fileupload", "time": "72h"})
+
+    def test_the_valid_expiries_are_the_four_the_api_accepts(self):
+        source = (ROOT / "Mikobot/plugins/telegraph.py").read_text(encoding="utf-8")
+        match = re.search(r"LITTERBOX_EXPIRY = \(([^)]*)\)", source)
+        self.assertIsNotNone(match)
+        values = tuple(re.findall(r'"([^"]+)"', match.group(1)))
+        # 48h looks plausible and is refused with 412 "No expire time specified."
+        self.assertEqual(values, ("1h", "12h", "24h", "72h"))
+
+    def test_an_empty_body_is_rejected(self):
+        # Catbox was seen answering 200 with an empty body while rate limiting,
+        # which would otherwise post an empty link to the user.
+        namespace, state = self._module()
+        state.response = self._response("")
+        with tempfile.NamedTemporaryFile(suffix=".png") as handle:
+            with self.assertRaises(RuntimeError):
+                asyncio.run(namespace["_upload"](Path(handle.name), "catbox"))
+
+    def test_a_plain_text_error_is_rejected(self):
+        namespace, state = self._module()
+        state.response = self._response("No request type given?")
+        with tempfile.NamedTemporaryFile(suffix=".png") as handle:
+            with self.assertRaises(RuntimeError):
+                asyncio.run(namespace["_upload"](Path(handle.name), "catbox"))
+
+    def test_a_valid_url_passes_through(self):
+        namespace, state = self._module()
+        state.response = self._response("  https://files.catbox.moe/ok.png  ")
+        with tempfile.NamedTemporaryFile(suffix=".png") as handle:
+            link = asyncio.run(namespace["_upload"](Path(handle.name), "catbox"))
+        self.assertEqual(link, "https://files.catbox.moe/ok.png")
+
+
+class UploadButtonTests(unittest.TestCase):
+    """The two buttons, and who is allowed to press them."""
+
+    def _source(self):
+        return (ROOT / "Mikobot/plugins/telegraph.py").read_text(encoding="utf-8")
+
+    def test_both_hosts_have_a_button(self):
+        source = self._source()
+        self.assertIn("hostup_catbox_", source)
+        self.assertIn("hostup_litterbox_", source)
+
+    def test_the_pending_key_records_the_source_message_not_a_path(self):
+        # The temp dir dies with the handler, so only the message is kept.
+        source = self._source()
+        for field in ('"chat_id"', '"message_id"', '"user_id"'):
+            self.assertIn(field, source)
+        self.assertIn("await app.get_messages(", source)
+
+    def test_only_the_requester_may_click(self):
+        self.assertIn('query.from_user.id != pending["user_id"]', self._source())
+
+    def test_the_token_is_spent_before_the_upload(self):
+        source = self._source()
+        self.assertLess(
+            source.index("chat_data.pop(key, None)"),
+            source.index("link = await _upload("),
+            "one button press must be one attempt",
+        )
+
+    def test_the_dead_telegraph_endpoint_is_no_longer_called(self):
+        source = self._source()
+        # The /telegraph command name is kept so existing muscle memory works,
+        # and a comment may still mention Telegraph, so this checks the calls.
+        self.assertNotIn("from telegraph import", source)
+        self.assertNotIn("Telegraph()", source)
+        self.assertNotIn("telegra.ph", source)
 
 
 class ColumnWidthTests(unittest.TestCase):
