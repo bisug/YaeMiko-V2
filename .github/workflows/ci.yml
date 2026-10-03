@@ -47,27 +47,45 @@ jobs:
         with:
           python-version: "3.14"
 
-      # The suite asserts framework constructors against the real package, so
-      # the pinned version has to be importable. Without this the test only
-      # passes on a machine that happens to have the dependency installed.
-      - name: Install the Telegram client under test
-        run: python -m pip install --disable-pip-version-check "aiogram==3.31.0"
-
-      # Pinned to the versions in requirements.txt; the SQL-layer tests need
-      # a real driver to reach the postgres service above.
-      - name: Install database drivers
+      # The suite asserts framework constructors against the real package, and
+      # the SQL-layer tests need a real driver to reach the postgres service
+      # above. Both versions are read out of requirements.txt rather than
+      # repeated here, so a Dependabot bump touches one file: without that a
+      # bump to requirements.txt left these literals behind and the run failed
+      # against an install nobody had asked for.
+      - name: Install the dependencies under test
         run: |
-          python -m pip install --disable-pip-version-check \
-            "SQLAlchemy==2.1.3" "psycopg[binary,pool]==3.3.6"
+          pins=$(grep -E '^(aiogram|SQLAlchemy|psycopg)(\[|==)' requirements.txt | tr '\n' ' ')
+          echo "installing: $pins"
+          python -m pip install --disable-pip-version-check $pins
 
-      - name: Verify the installed version
+      # Guards the install above rather than the pin itself: a requirements.txt
+      # edit that fails to install must not pass as a green build.
+      - name: Verify the installed versions match the pins
         run: |
-          version=$(python -c "import aiogram; print(aiogram.__version__)")
-          echo "aiogram $version"
-          if [ "$version" != "3.31.0" ]; then
-            echo "FAIL expected aiogram 3.31.0, found $version"
-            exit 1
-          fi
+          python - <<'PY'
+          import re, sys
+          from importlib.metadata import version
+
+          pins = {}
+          for line in open("requirements.txt"):
+              line = line.split("#")[0].strip()
+              if "==" in line:
+                  name, pinned = line.split("==", 1)
+                  # psycopg[binary,pool]==3.3.6 installs as psycopg.
+                  pins[name.split("[")[0].strip().lower()] = pinned.strip()
+
+          wrong = []
+          for name in ("aiogram", "sqlalchemy", "psycopg"):
+              pinned = pins[name]
+              installed = version(name)
+              print(f"{name} pinned {pinned}, installed {installed}")
+              if installed != pinned:
+                  wrong.append(f"{name}: pinned {pinned}, installed {installed}")
+          if wrong:
+              print("FAIL " + "; ".join(wrong), file=sys.stderr)
+              raise SystemExit(1)
+          PY
 
       - name: Validate JSON manifests
         run: |

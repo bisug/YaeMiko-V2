@@ -16,6 +16,33 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def requirements_pin(name: str) -> str:
+    """The version requirements.txt pins for ``name``.
+
+    The gates compare an installed distribution against this rather than
+    against a literal, so bumping a pin does not mean editing each assertion
+    that mentions it. A name that is not pinned raises, which is what should
+    happen when a dependency is dropped while a test still expects it.
+    """
+    for line in (ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines():
+        line = line.split("#", 1)[0].strip()
+        if "==" not in line:
+            continue
+        pinned, _, version = line.partition("==")
+        if _pin_key(pinned) == _pin_key(name):
+            return version.strip()
+    raise AssertionError(f"{name} is not pinned in requirements.txt")
+
+
+def _pin_key(name: str) -> str:
+    """The distribution name, with any extras dropped.
+
+    psycopg[binary,pool]==3.3.6 is imported and installed as psycopg, so both
+    sides of the comparison have to drop the extras or neither matches.
+    """
+    return name.split("[", 1)[0].strip().lower()
+
+
 def _without_annotations(node):
     """A copy of a function with every annotation stripped.
 
@@ -230,7 +257,7 @@ class EnvironmentTests(unittest.TestCase):
         jobs = (ROOT / "Mikobot/utils/jobs.py").read_text(encoding="utf-8")
         self.assertIn("AsyncIOScheduler", jobs)
         requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
-        self.assertIn("aiogram==3.31.0", requirements)
+        self.assertIn("aiogram==", requirements)
         self.assertNotIn("python-telegram-bot", requirements)
 
     def test_disabled_antiflood_skips_admin_lookup(self):
@@ -977,7 +1004,7 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('DB_URI.startswith(("postgres://", "postgresql://"))', source)
         self.assertIn('"postgresql+psycopg://"', source)
         requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
-        self.assertIn("psycopg[binary,pool]==3.3.6", requirements)
+        self.assertIn("psycopg[binary,pool]==", requirements)
         self.assertNotIn("psycopg2-binary", requirements)
 
         main_source = (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8")
@@ -1120,8 +1147,8 @@ class DatabaseRegressionTests(unittest.TestCase):
     def test_telegram_at_constructors_use_aiogram_31_fields(self):
         # Skipped rather than failed when the pinned client is absent, so a
         # contributor without the dependency still gets a useful suite. CI
-        # installs aiogram 3.31.0 and fails if the version differs, so this
-        # assertion always runs there.
+        # installs the pin from requirements.txt and fails if the installed
+        # version differs, so this assertion always runs there.
         try:
             import aiogram
         except ModuleNotFoundError:
@@ -1134,7 +1161,10 @@ class DatabaseRegressionTests(unittest.TestCase):
             WebAppInfo,
         )
 
-        self.assertEqual(aiogram.__version__, "3.31.0")
+        # Against the pin rather than a literal: this test is about the Bot API
+        # 9.1 fields below, which every aiogram 3.x carries, so freezing the
+        # version here only meant a Dependabot bump broke a green suite.
+        self.assertEqual(aiogram.__version__, requirements_pin("aiogram"))
 
         result = InlineQueryResultArticle(
             id="article-1",
@@ -1621,6 +1651,109 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('is_silent = parts[3] == "1"', (ROOT / "Mikobot/plugins/admin.py").read_text(encoding="utf-8"))
         self.assertIn('chat_data.pop(f"anon_ban_{parts[3]}", None)', (ROOT / "Mikobot/plugins/ban.py").read_text(encoding="utf-8"))
         self.assertIn("Contact me in PM to get your current settings.", (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8"))
+
+
+class SingleSourcePinTests(unittest.TestCase):
+    """A version may be written down once, in requirements.txt.
+
+    Dependabot edits that file and nothing else, so a pin repeated in CI or in
+    a test is a pin that silently rots: the run fails against a version
+    nobody chose, or the assertion stops checking anything. These tests fail
+    the moment a literal comes back.
+    """
+
+    VERSION_LITERAL = re.compile(r"\b\d+\.\d+\.\d+\b")
+
+    def test_the_helper_reads_a_pin_rather_than_a_literal(self):
+        for name in ("aiogram", "sqlalchemy", "psycopg"):
+            with self.subTest(package=name):
+                pin = requirements_pin(name)
+                self.assertRegex(pin, self.VERSION_LITERAL)
+                requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+                self.assertIn(
+                    f"=={pin}", requirements, f"{name} pin is not the one in requirements.txt"
+                )
+
+    def test_the_helper_ignores_extras_and_comments(self):
+        # psycopg[binary,pool]==... must resolve to psycopg, not to the extras
+        # spelling, or every lookup for it raises.
+        self.assertEqual(requirements_pin("psycopg"), requirements_pin("psycopg[binary,pool]"))
+        self.assertEqual(requirements_pin("SQLAlchemy"), requirements_pin("sqlalchemy"))
+        self.assertRegex(requirements_pin("psycopg"), r"^\d+\.\d+\.\d+$")
+
+    def test_the_helper_raises_for_a_package_that_is_not_pinned(self):
+        # Guards the failure mode this replaces: a dropped dependency whose
+        # name is still asserted somewhere would otherwise compare against None.
+        with self.assertRaises(AssertionError):
+            requirements_pin("alphabet-detector")
+
+    def test_ci_does_not_repeat_a_pinned_version(self):
+        # ci.yml installs and verifies the packages the suite asserts against.
+        # Reading them from requirements.txt is what makes a bump a one-file
+        # change; a literal here is the drift this class exists to prevent.
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        for name in ("aiogram", "SQLAlchemy", "psycopg"):
+            pin = requirements_pin(name)
+            with self.subTest(package=name):
+                self.assertNotIn(
+                    f"{name}=={pin}",
+                    workflow,
+                    f"ci.yml repeats the {name} pin that requirements.txt owns",
+                )
+        self.assertIn("requirements.txt", workflow)
+
+    def test_no_test_freezes_a_dependency_version(self):
+        # Walks the parsed tree rather than scanning lines, so it sees only
+        # literals an assertion actually compares. A regex over source text
+        # cannot tell a version from the 127.0.0.1 the database guard compares,
+        # and flags it on every run.
+        tree = ast.parse((ROOT / "tests/test_regressions.py").read_text(encoding="utf-8"))
+        allowed = self._helper_lines(tree)
+        offenders = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not self._is_assertion(node.func):
+                continue
+            if node.lineno in allowed:
+                continue
+            offenders.extend(f"{node.lineno}: {v}" for v in self._version_literals(node))
+        self.assertEqual(offenders, [], "\n".join(offenders[:15]))
+
+    @staticmethod
+    def _is_assertion(func) -> bool:
+        """An assertion is a call on self whose name starts with assert."""
+        return (
+            isinstance(func, ast.Attribute)
+            and isinstance(func.value, ast.Name)
+            and func.value.id == "self"
+            and func.attr.startswith("assert")
+        )
+
+    def _version_literals(self, call) -> list[str]:
+        """Version-shaped strings the assertion compares.
+
+        fullmatch, not search: "127.0.0.1" in the database guard is a complete
+        string that a version pattern also matches, and it must not be flagged.
+        """
+        found = []
+        for node in ast.walk(call):
+            if (
+                isinstance(node, ast.Constant)
+                and isinstance(node.value, str)
+                and self.VERSION_LITERAL.fullmatch(node.value)
+            ):
+                found.append(node.value)
+        return found
+
+    @staticmethod
+    def _helper_lines(tree) -> set[int]:
+        """Lines belonging to requirements_pin, found by parsing rather than by
+        slicing the text: everything after its def is most of the file, so a
+        substring split would excuse every literal written below it."""
+        allowed = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "requirements_pin":
+                allowed.update(range(node.lineno, node.end_lineno + 1))
+        return allowed
 
 
 class RepositoryGateTests(unittest.TestCase):
