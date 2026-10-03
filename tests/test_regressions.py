@@ -1041,7 +1041,6 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         expected_imports = {
             "Mikobot/plugins/welcome.py": {("Mikobot", "SUPPORT_STAFF")},
             "Mikobot/plugins/disasters.py": {("Mikobot.utils.parser", "mention_html")},
-            "Mikobot/plugins/tr.py": {("Mikobot.plugins.anime", "google_new_transError")},
         }
         for relative, required in expected_imports.items():
             tree = ast.parse((ROOT / relative).read_text(encoding="utf-8"))
@@ -1052,6 +1051,21 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
                 for alias in node.names
             }
             self.assertTrue(required <= imports, relative)
+
+        # tr.py imported google_new_transError because its own copy of the
+        # translator raised it. It now imports the shared class from anime.py,
+        # so the name is needed where the class is defined, not at the call
+        # site -- and anime.py does define both together.
+        anime_tree = ast.parse(
+            (ROOT / "Mikobot/plugins/anime.py").read_text(encoding="utf-8")
+        )
+        anime_names = {
+            node.name
+            for node in anime_tree.body
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+        }
+        self.assertIn("google_translator", anime_names)
+        self.assertIn("google_new_transError", anime_names)
 
         main_source = (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8")
         self.assertNotIn("traceback.format_exception", main_source)
@@ -1823,6 +1837,29 @@ class RepositoryGateTests(unittest.TestCase):
 
     def test_documentation_is_valid(self):
         self.assertEqual(self._errors("validate_docs"), [])
+
+    def test_no_class_name_is_defined_twice(self):
+        """A second class of the same name silently replaces the first.
+
+        This file carried three byte-identical copies of PluginModNameTests and
+        two of MentionHelperTests. unittest only ever collected the last
+        binding, so the earlier copies were dead weight and the collected count
+        overstated what the suite actually exercised. Nothing failed, and
+        nothing warned, which is the worst part.
+        """
+        tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
+        seen = {}
+        duplicates = []
+        for node in tree.body:
+            if not isinstance(node, ast.ClassDef):
+                continue
+            if node.name in seen:
+                duplicates.append(
+                    f"{node.name} at line {node.lineno} shadows the copy at "
+                    f"line {seen[node.name]}"
+                )
+            seen[node.name] = node.lineno
+        self.assertEqual(duplicates, [], "\n".join(duplicates))
 
 
 class ElevatedUserBaselineTests(unittest.TestCase):
@@ -5131,24 +5168,33 @@ class ExceptionHandlingTests(unittest.TestCase):
 
         An unknown destination left lang_tgt holding the bad value while
         lang_src was reset, so Google was asked to translate into a language
-        code that does not exist.
+        code that does not exist. tr.py used to hold its own copy of this
+        class; it now imports the shared one from anime.py, so the guard
+        follows the code rather than the file it used to live in.
         """
-        source = (ROOT / "Mikobot" / "plugins" / "tr.py").read_text(encoding="utf-8")
-        tree = ast.parse(source)
-        translate = next(
-            node
-            for node in ast.walk(tree)
-            if isinstance(node, ast.FunctionDef) and node.name == "translate"
-        )
-        reassigned = []
-        for handler in ast.walk(translate):
-            if not isinstance(handler, ast.ExceptHandler):
+        for plugin in ("anime.py", "tr.py"):
+            source = (ROOT / "Mikobot" / "plugins" / plugin).read_text(encoding="utf-8")
+            tree = ast.parse(source)
+            translate = next(
+                (
+                    node
+                    for node in ast.walk(tree)
+                    if isinstance(node, ast.FunctionDef) and node.name == "translate"
+                ),
+                None,
+            )
+            if translate is None:
+                # tr.py only calls the translator, it no longer defines it.
                 continue
-            for inner in ast.walk(handler):
-                if isinstance(inner, ast.Assign) and isinstance(inner.targets[0], ast.Name):
-                    reassigned.append(inner.targets[0].id)
-        # One handler per language, and each must reset the language it looked up.
-        self.assertEqual(sorted(reassigned), ["lang_src", "lang_tgt"])
+            reassigned = []
+            for handler in ast.walk(translate):
+                if not isinstance(handler, ast.ExceptHandler):
+                    continue
+                for inner in ast.walk(handler):
+                    if isinstance(inner, ast.Assign) and isinstance(inner.targets[0], ast.Name):
+                        reassigned.append(inner.targets[0].id)
+            # One handler per language, and each must reset the language it looked up.
+            self.assertEqual(sorted(reassigned), ["lang_src", "lang_tgt"], plugin)
 
     def test_scheduled_captcha_kick_is_referenced_and_reported(self):
         """A bare create_task can be collected mid-sleep, losing the failure."""
