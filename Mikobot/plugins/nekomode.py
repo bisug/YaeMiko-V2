@@ -14,39 +14,24 @@ from Mikobot.state import state  # Import the state function
 
 # <=======================================================================================================>
 
-url_sfw = "https://api.waifu.pics/sfw/"
+# api.waifu.pics stopped resolving, which took all 31 of the commands below with
+# it. nekos.life serves the same category names and is the backend the nekos.py
+# dependency already talks to, so the surviving ten are fetched from there.
+# Probed live: every name listed here returns a URL, and these are the ones
+# among the old list that the service actually answers. The removed twenty
+# return HTTP 500 and have no equivalent, so advertising them was the bug.
+url_sfw = "https://nekos.life/api/v2/img/"
 
 allowed_commands = [
     "waifu",
     "neko",
-    "shinobu",
-    "megumin",
-    "bully",
     "cuddle",
-    "cry",
     "hug",
-    "awoo",
     "kiss",
-    "lick",
     "pat",
     "smug",
-    "bonk",
-    "yeet",
-    "blush",
-    "smile",
     "spank",
-    "wave",
-    "highfive",
-    "handhold",
-    "nom",
-    "bite",
-    "glomp",
     "slap",
-    "hTojiy",
-    "wink",
-    "poke",
-    "dance",
-    "cringe",
     "tickle",
 ]
 
@@ -60,7 +45,11 @@ async def wallpaper(_, event):
         import nekos
 
         target = "wallpaper"
-        img_url = await asyncio.to_thread(nekos.img, target)
+        try:
+            img_url = await asyncio.to_thread(nekos.img, target)
+        except Exception:
+            await event.reply("The neko service is unavailable. Please try again later.")
+            return
         await event.reply(file=img_url)
 
 
@@ -87,12 +76,23 @@ async def nekomode_commands(_, event):
         if target in allowed_commands:
             url = f"{url_sfw}{target}"
 
-            response = await state.get(url)
-            result = response.json()
-            animation_url = result["url"]
+            try:
+                response = await state.get(url, timeout=10)
+                response.raise_for_status()
+                media_url = response.json().get("url")
+                if not isinstance(media_url, str) or not media_url.startswith("http"):
+                    raise ValueError("The neko service returned an invalid response.")
+            except Exception:
+                await event.reply("The neko service is unavailable. Please try again later.")
+                return
 
-            # Send animation
-            await event.reply_animation(animation_url)
+            # Most categories answer with a gif, but spank and neko return a
+            # still image often enough that sending everything as an animation
+            # fails on the upload.
+            if media_url.lower().endswith((".gif", ".mp4")):
+                await event.reply_animation(media_url)
+            else:
+                await event.reply_photo(media_url)
 
 
 __help__ = """
@@ -101,31 +101,17 @@ __help__ = """
 ➥ /nekomode on : Enables fun neko mode.
 ➥ /nekomode off : Disables fun neko mode
 
-» /bully: sends random bully gifs.
-» /neko: sends random neko gifs.
+» /waifu: sends a random waifu.
+» /neko: sends a random neko.
 » /wallpaper: sends random wallpapers.
-» /highfive: sends random highfive gifs.
 » /tickle: sends random tickle GIFs.
-» /wave: sends random wave GIFs.
-» /smile: sends random smile GIFs.
-» /feed: sends random feeding GIFs.
-» /blush: sends random blush GIFs.
-» /avatar: sends random avatar stickers.
-» /waifu: sends random waifu stickers.
 » /kiss: sends random kissing GIFs.
 » /cuddle: sends random cuddle GIFs.
-» /cry: sends random cry GIFs.
-» /bonk: sends random cuddle GIFs.
 » /smug: sends random smug GIFs.
 » /slap: sends random slap GIFs.
-» /hug: get hugged or hug a user.
-» /pat: pats a user or get patted.
-» /spank: sends a random spank gif.
-» /dance: sends a random dance gif.
-» /poke: sends a random poke gif.
-» /wink: sends a random wink gif.
-» /bite: sends random bite GIFs.
-» /handhold: sends random handhold GIFs.
+» /hug: sends a random hug GIF.
+» /pat: sends a random pat GIF.
+» /spank: sends a random spank.
 """
 
 __mod_name__ = "NEKO"
