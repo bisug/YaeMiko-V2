@@ -12,7 +12,6 @@ from aiogram.types import (
     CallbackQuery,
     InlineKeyboardMarkup,
     InputMediaPhoto,
-    InputRichBlockBlockQuotation,
     InputRichBlockDivider,
     InputRichBlockList,
     InputRichBlockListItem,

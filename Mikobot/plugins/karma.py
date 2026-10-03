@@ -14,7 +14,7 @@ from Database.sql.karma_sql import (
     int_to_alpha,
     update_karma,
 )
-from Database.sql.toggle_sql import is_karma_on, karma_off, karma_on
+from Database.sql.toggle_sql import is_karma_on
 from Mikobot import OWNER_ID, app
 from Mikobot.utils.can_restrict import can_restrict
 from Mikobot.utils.errors import capture_err
