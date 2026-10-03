@@ -11,7 +11,7 @@ were never persistence.
 
 import threading
 
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import BigInteger, Column, Integer, String
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -34,8 +34,10 @@ class Couple(BASE):
 
     chat_id = Column(String(14), primary_key=True)
     date = Column(String(16), primary_key=True)
-    c1_id = Column(Integer)
-    c2_id = Column(Integer)
+    # BigInteger, not Integer: Telegram user ids are past 2**31, and every other
+    # user-id column in this package already uses BigInteger for that reason.
+    c1_id = Column(BigInteger)
+    c2_id = Column(BigInteger)
 
     def __init__(self, chat_id, date, c1_id, c2_id):
         self.chat_id = str(chat_id)

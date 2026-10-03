@@ -199,6 +199,27 @@ mongodump --uri "$MONGO_DB_URI" --out ./mongo-backup-$(date +%F)
 
 ### 2. Run the backfill with the bot stopped
 
+The SQL modules create their tables with `checkfirst=True`, which creates a
+missing table but never alters an existing one. Two column types were corrected
+after the schema was first written, so an already-migrated database needs these
+by hand. Both are widenings, so neither rewrites or loses data:
+
+```sql
+ALTER TABLE whispers ALTER COLUMN id TYPE VARCHAR(32);
+ALTER TABLE couple  ALTER COLUMN c1_id TYPE BIGINT;
+ALTER TABLE couple  ALTER COLUMN c2_id TYPE BIGINT;
+```
+
+`whispers.id` was `VARCHAR(20)` against a 32-character `uuid4().hex`, so every
+whisper insert failed with `value too long for type character varying(20)`.
+`couple.c1_id` and `c2_id` were 32-bit `INTEGER` while every other user-id
+column in the codebase is `BIGINT`; Telegram ids passed 2**31 in 2021.
+
+Skip this if the database was created by the current code. Confirm with
+`\d whispers` and `\d couple` if you are unsure.
+
+Then run the backfill:
+
 ```
 python scripts/backfill_mongo_to_sql.py --dry-run
 ```
@@ -230,7 +251,7 @@ be read wrong. Check in a real group:
 | --- | --- |
 | Ban buttons | Name shows, not `user(123)` |
 | `/karma`, couple | Counts survive; `alpha_to_int` round-trips |
-| Whisper | Send and open one |
+| Whisper | Send one, open it, confirm it is not a 500. This is the row that catches the `VARCHAR(20)` bug above |
 | Locale | `/setlang`, then a message in that language |
 | Welcome / nsfw / nekomode | Toggle off, confirm it stays off |
 | Force-subscribe | `/fsub on`, confirm a non-member is muted |

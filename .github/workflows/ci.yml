@@ -21,7 +21,7 @@ jobs:
     # those tests skip and a broken column type or query would go unnoticed.
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres

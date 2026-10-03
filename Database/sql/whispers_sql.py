@@ -15,7 +15,11 @@ from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 class Whisper(BASE):
     __tablename__ = "whispers"
 
-    id = Column(String(20), primary_key=True)
+    # 32 chars, not 20: whispers.py generates the id with uuid4().hex and
+    # PostgreSQL raises "value too long for type character varying(20)" on the
+    # insert. SQLite does not enforce VARCHAR length, so only a real server
+    # catches it.
+    id = Column(String(32), primary_key=True)
     data = Column(JSONB, nullable=False)
     created = Column(DateTime, default=datetime.now)
 

@@ -5358,6 +5358,86 @@ class RemovedStdlibApiTests(unittest.TestCase):
         )
 
 
+class ColumnWidthTests(unittest.TestCase):
+    """Every VARCHAR(n) must be able to hold what the code writes into it.
+
+    PostgreSQL raises `value too long for type character varying(n)` on an
+    over-length insert, but SQLite ignores the declared width entirely, so a
+    schema written against SQLite passes the suite and fails only in
+    production. whispers.id was String(20) against a 32-character uuid4().hex
+    and every whisper insert was a 500.
+    """
+
+    # Generated ids whose length is fixed by the standard library, not by us.
+    GENERATED_LENGTHS = (
+        # whispers.py: whisperId = uuid4().hex
+        ("Database/sql/whispers_sql.py", "id", 32),
+    )
+
+    def _declared_width(self, path, column):
+        source = (ROOT / path).read_text(encoding="utf-8")
+        match = re.search(
+            rf"^\s*{column} = Column\(String\((\d+)\)", source, re.MULTILINE
+        )
+        return int(match.group(1)) if match else None
+
+    def test_generated_ids_fit_their_column(self):
+        offenders = []
+        for path, column, needed in self.GENERATED_LENGTHS:
+            declared = self._declared_width(path, column)
+            if declared is None:
+                offenders.append(f"{path}: {column} is no longer a String(n)")
+            elif declared < needed:
+                offenders.append(
+                    f"{path}: {column} is String({declared}) but {needed} chars "
+                    f"are written to it"
+                )
+        self.assertEqual(offenders, [])
+
+    def test_uuid_hex_is_the_width_whispers_declares(self):
+        import uuid
+
+        declared = self._declared_width("Database/sql/whispers_sql.py", "id")
+        self.assertIsNotNone(declared)
+        self.assertGreaterEqual(
+            declared,
+            len(uuid.uuid4().hex),
+            "uuid4().hex must fit the whispers primary key",
+        )
+
+    def test_alpha_encoded_karma_name_fits_its_column(self):
+        """int_to_alpha emits one character per digit of the user id.
+
+        Telegram ids are 10-13 digits today and the column allows 16, so the
+        encoding has three digits of headroom before it can overflow.
+        """
+        declared = self._declared_width("Database/sql/karma_sql.py", "name")
+        self.assertIsNotNone(declared)
+        self.assertGreaterEqual(
+            declared,
+            len(str(9999999999999)),
+            "int_to_alpha writes one character per digit of the user id",
+        )
+
+    def test_telegram_user_ids_are_not_stored_in_32_bit_integers(self):
+        """Telegram ids passed 2**31 in 2021; a 32-bit column silently overflows."""
+        widest = 9999999999999
+        offenders = []
+        for path in sorted((ROOT / "Database/sql").glob("*_sql.py")):
+            source = path.read_text(encoding="utf-8")
+            for match in re.finditer(
+                r"^\s*(\w*user_id|\w*_id|c1_id|c2_id) = Column\(Integer\)",
+                source,
+                re.MULTILINE,
+            ):
+                offenders.append(f"{path.name}: {match.group(1)} is Integer")
+        self.assertEqual(
+            offenders,
+            [],
+            f"these hold Telegram user ids, which exceed Integer's {widest // 2}",
+        )
+
+
 def _run(coro):
     import asyncio
 

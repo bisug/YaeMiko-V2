@@ -23,6 +23,12 @@ Back to [README](../README.md).
 Pick a tier before you pick a platform. Full detail in
 [SYSTEM-REQUIREMENTS.md](SYSTEM-REQUIREMENTS.md).
 
+**PostgreSQL 18** is what `app.json` provisions and what CI tests against. The
+driver supports 10 through 18, and the only version-sensitive feature in use is
+`JSONB` (9.4), so an older server still runs the bot — but keep every
+environment on the same major version, and note that Aiven upgrades one major
+version at a time, so 16 reaches 18 via 17.
+
 | | Minimum | Recommended | Best |
 | --- | --- | --- | --- |
 | CPU | 1 shared vCPU | 1 dedicated vCPU | 2 dedicated vCPU |
@@ -163,7 +169,7 @@ Railway redeploys automatically. Watch the deploy log for `Mikobot is starting`.
 
 ## Heroku
 
-The repository ships [`app.json`](../app.json), which declares the worker dyno, the PostgreSQL 16
+The repository ships [`app.json`](../app.json), which declares the worker dyno, the PostgreSQL 18
 addon, and every required variable.
 
 <p align="center">
@@ -267,6 +273,10 @@ sudo -u postgres psql -c "CREATE DATABASE yaemiko OWNER yaemiko;"
 
 Use that password in `DATABASE_URL` in the `.env` file.
 
+Debian's default `postgresql` package tracks the current stable major, which is
+18 or newer. If `psql -c "SHOW server_version;"` reports something older and you
+intend to stay on it, that is fine for running but it is not what CI covers.
+
 ### Step 7: test the bot in the foreground first
 
 ```bash
@@ -360,7 +370,7 @@ services:
     depends_on:
       - postgres
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: yaemiko

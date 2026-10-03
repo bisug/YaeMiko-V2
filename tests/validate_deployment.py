@@ -147,9 +147,47 @@ def check_start_command_is_uniform(errors):
         errors.append("Dockerfile: CMD must run python -m Mikobot")
 
 
+def check_app_json(errors):
+    """The Heroku addon version must match what the docs and CI use.
+
+    It is the only place the production PostgreSQL major version is declared, so
+    nothing else catches a bump that skips the README and the CI service image.
+    """
+    manifest = json.loads((ROOT / "app.json").read_text(encoding="utf-8"))
+    addons = manifest.get("addons", [])
+    postgres = [
+        addon
+        for addon in addons
+        if addon.get("plan", "").startswith("heroku-postgresql")
+    ]
+    if not postgres:
+        errors.append("app.json: no heroku-postgresql addon")
+        return
+    version = postgres[0].get("options", {}).get("version")
+    if not version:
+        errors.append("app.json: heroku-postgresql addon pins no version")
+        return
+    if not re.fullmatch(r"\d+", version):
+        errors.append(f"app.json: postgres version {version!r} is not a major number")
+        return
+
+    for path in ("README.md", "docs/DEPLOYMENT.md"):
+        if f'PostgreSQL {version}' not in (ROOT / path).read_text(encoding="utf-8"):
+            errors.append(f"{path}: does not mention PostgreSQL {version}")
+
+    ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    if f"image: postgres:{version}" not in ci:
+        errors.append(f"ci.yml: no postgres:{version} service image")
+
+
 def main():
     errors = []
-    for check in (check_railway, check_render, check_start_command_is_uniform):
+    for check in (
+        check_railway,
+        check_render,
+        check_start_command_is_uniform,
+        check_app_json,
+    ):
         check(errors)
     if errors:
         for error in errors:

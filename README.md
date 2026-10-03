@@ -52,7 +52,7 @@ state in PostgreSQL, and ships 61 plugin modules.
 | --- | --- |
 | **Runtime** | Python 3.14.7, single `asyncio` event loop, long polling |
 | **Telegram** | aiogram 3.31 on the Bot API, Kurigram 2.2.26 on MTProto, side by side |
-| **Storage** | PostgreSQL 16 through SQLAlchemy 2.1 |
+| **Storage** | PostgreSQL 18 through SQLAlchemy 2.1 |
 | **Modules** | 61 auto discovered plugins under `Mikobot/plugins` |
 | **Requirements** | 512 MB RAM minimum, 1 GB recommended, Python 3.14.7 |
 | **Deployment** | Render, Railway, Heroku, Docker, or a bare VPS |
@@ -445,7 +445,7 @@ Railway volume at `/root/Mikobot` to keep it.
 
 ### Heroku
 
-The repository ships [`app.json`](app.json), which declares the worker dyno, the PostgreSQL 16
+The repository ships [`app.json`](app.json), which declares the worker dyno, the PostgreSQL 18
 addon, and every required environment variable with an inline description.
 
 <p align="center">
