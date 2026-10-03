@@ -2166,8 +2166,10 @@ class GateMiddlewareTests(unittest.TestCase):
         async def get_chat_member(chat_id, user_id):
             return members.get(user_id)
 
-        async def send_chat_action(chat_id, action):
-            bot.actions.append(action)
+        # aiogram's ChatActionSender passes message_thread_id, so the fake has
+        # to accept it; recording it is what proves the gate picks the topic.
+        async def send_chat_action(chat_id, action, message_thread_id=None):
+            bot.actions.append((action, message_thread_id))
 
         bot.get_chat_member = get_chat_member
         bot.send_chat_action = send_chat_action
@@ -2270,9 +2272,126 @@ class GateMiddlewareTests(unittest.TestCase):
 
         event = self._event()
         bot = self._bot({5: SimpleNamespace(status="administrator", user=SimpleNamespace(id=5))})
-        self.assertEqual(self._run(cmd, event, bot), "HANDLED")
+        result, actions = self._run_capturing_actions(cmd, event, bot)
+        self.assertEqual(result, "HANDLED")
         self.assertEqual(event.replies, [])
-        self.assertEqual(bot.actions, ["typing"])
+        self.assertEqual(actions, [("typing", None)])
+
+    def _run_capturing_actions(self, callback, event, bot):
+        """Run the middleware and collect chat actions from inside the loop.
+
+        ChatActionSender delivers the action on a background task, so the
+        collection has to happen before the loop asyncio.run closes, not after.
+        """
+
+        async def driver():
+            middleware = self._middleware()
+            data = {"bot": bot, "handler": SimpleNamespace(callback=callback)}
+            result = await middleware(self._handler, event, data)
+            for _ in range(50):
+                if bot.actions:
+                    break
+                await asyncio.sleep(0)
+            return result, list(bot.actions)
+
+        return asyncio.run(driver())
+
+    def test_chat_action_repeats_for_a_slow_handler(self):
+        # Telegram expires a chat action about five seconds after it is sent, so
+        # a single send covers only a fast handler. aiogram ships
+        # ChatActionSender for exactly this and the gate uses it, so the
+        # indicator survives a slow handler instead of vanishing mid-command.
+        from Mikobot.plugins.helper_funcs import alternate
+        from Mikobot.utils import gate as gate_module
+
+        @alternate.typing_action
+        async def cmd(message):
+            return None
+
+        event = self._event()
+        bot = self._bot({})
+
+        async def slow_handler(event, data):
+            await asyncio.sleep(0.12)
+            return "SLOW"
+
+        # aiogram's own interval is five seconds, far longer than a test run, so
+        # the gate's constant is shortened rather than the assertion loosened.
+        middleware = self._middleware()
+        data = {"bot": bot, "handler": SimpleNamespace(callback=cmd)}
+
+        async def driver():
+            with unittest.mock.patch.object(gate_module, "CHAT_ACTION_INTERVAL", 0.01):
+                return await middleware(slow_handler, event, data)
+
+        self.assertEqual(asyncio.run(driver()), "SLOW")
+        # One send is the inline call; the rest are the sender's repeats. Two
+        # total proves it repeated, without pinning the exact tick count.
+        self.assertGreaterEqual(
+            len(bot.actions),
+            2,
+            "a slow handler must re-send the chat action rather than send it once",
+        )
+
+    def test_chat_action_stops_when_the_handler_returns(self):
+        # The sender must not outlive the command, or a finished handler would
+        # leave an indicator running until its own next timeout.
+        from Mikobot.plugins.helper_funcs import alternate
+        from Mikobot.utils import gate as gate_module
+
+        @alternate.typing_action
+        async def cmd(message):
+            return None
+
+        event = self._event()
+        bot = self._bot({})
+        middleware = self._middleware()
+        data = {"bot": bot, "handler": SimpleNamespace(callback=cmd)}
+
+        async def driver():
+            with unittest.mock.patch.object(gate_module, "CHAT_ACTION_INTERVAL", 0.01):
+                await middleware(self._handler, event, data)
+                after_handler = len(bot.actions)
+                await asyncio.sleep(0.08)
+                return after_handler, len(bot.actions)
+
+        after, later = asyncio.run(driver())
+        self.assertGreaterEqual(after, 1, "the action should fire at least once")
+        self.assertEqual(later, after, "the action kept being sent after the handler")
+
+    def test_chat_action_targets_the_forum_topic(self):
+        # A chat action without message_thread_id is dropped by Telegram in a
+        # forum chat, so the indicator would land in General instead of the
+        # topic the command came from.
+        from Mikobot.plugins.helper_funcs import alternate
+
+        @alternate.typing_action
+        async def cmd(message):
+            return None
+
+        event = self._event()
+        event.chat.is_forum = True
+        event.message_thread_id = 42
+        bot = self._bot({})
+
+        result, actions = self._run_capturing_actions(cmd, event, bot)
+        self.assertEqual(result, "HANDLED")
+        self.assertEqual(actions, [("typing", 42)])
+
+    def test_chat_action_is_absent_in_a_non_forum_chat(self):
+        from Mikobot.plugins.helper_funcs import alternate
+
+        @alternate.typing_action
+        async def cmd(message):
+            return None
+
+        event = self._event()
+        event.chat.is_forum = False
+        event.message_thread_id = 42
+        bot = self._bot({})
+
+        _, actions = self._run_capturing_actions(cmd, event, bot)
+        self.assertEqual(actions, [("typing", None)])
 
     def test_private_chat_skips_the_permission_gate(self):
         from Mikobot.plugins.helper_funcs import chat_status

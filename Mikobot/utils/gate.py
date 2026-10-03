@@ -13,12 +13,18 @@ list order matches the source order.
 
 import asyncio
 import logging
+from contextlib import AsyncExitStack
 from functools import wraps
 
 from aiogram import BaseMiddleware
 from aiogram.dispatcher.event.bases import SkipHandler
 from aiogram.enums import ChatMemberStatus
 from aiogram.exceptions import TelegramAPIError
+from aiogram.utils.chat_action import DEFAULT_INTERVAL, ChatActionSender
+
+# Telegram drops a chat action roughly five seconds after it is sent, so the
+# repeat interval is aiogram's own rather than a second number to keep in step.
+CHAT_ACTION_INTERVAL = DEFAULT_INTERVAL
 
 
 def requirement(**spec):
@@ -118,43 +124,68 @@ class GateMiddleware(BaseMiddleware):
             # CallableObject, whose .callback is the decorated function carrying
             # the gate requirements.
             callback = data["handler"].callback
-            for spec in getattr(callback, "requirements", ()):
-                action = spec.get("chat_action")
-                if action:
-                    chat_id = self._chat_id(event)
-                    if chat_id is not None:
-                        await bot.send_chat_action(chat_id=chat_id, action=action)
-                    continue
+            # Telegram expires a chat action about five seconds after it is
+            # sent, so one call covers only a fast handler. The first send is
+            # awaited here rather than left to ChatActionSender: that class
+            # sends from a background task, so a handler that finishes before
+            # the loop ever runs it would show no indicator at all, which is
+            # what the awaited call guaranteed. The sender is then opened with
+            # initial_sleep set to the interval, so its first send lands on the
+            # next tick instead of duplicating the one just made.
+            actions = AsyncExitStack()
+            try:
+                for spec in getattr(callback, "requirements", ()):
+                    action = spec.get("chat_action")
+                    if action:
+                        chat_id = self._chat_id(event)
+                        if chat_id is not None:
+                            await bot.send_chat_action(
+                                chat_id=chat_id,
+                                action=action,
+                                message_thread_id=self._thread_id(event),
+                            )
+                            await actions.enter_async_context(
+                                ChatActionSender(
+                                    bot=bot,
+                                    chat_id=chat_id,
+                                    action=action,
+                                    message_thread_id=self._thread_id(event),
+                                    initial_sleep=CHAT_ACTION_INTERVAL,
+                                )
+                            )
+                        continue
 
-                if spec["kind"] == "connection_status":
-                    resolved = await self._connected_chat(bot, event)
-                    if resolved is not None:
-                        data["connected_chat"] = resolved
-                    elif self._is_private(event):
-                        await _action_reply(
-                            event,
-                            "Send /connect in a group that you and I have in common first.",
-                        )
+                    if spec["kind"] == "connection_status":
+                        resolved = await self._connected_chat(bot, event)
+                        if resolved is not None:
+                            data["connected_chat"] = resolved
+                        elif self._is_private(event):
+                            await _action_reply(
+                                event,
+                                "Send /connect in a group that you and I have in common first.",
+                            )
+                            return None
+                        continue
+
+                    # Skips quietly when the sender is an admin, matching PTB,
+                    # which only reached the handler for a non-admin user. It is
+                    # not a denial: no reply and no command deletion.
+                    if spec["kind"] == "user_not_admin":
+                        if not await self._sender_is_not_admin(event):
+                            return None
+                        continue
+
+                    denial = await self._denial(bot, event, spec)
+                    if denial is not None:
+                        text, drop = denial
+                        if drop and await _silently_drop(event):
+                            return None
+                        await _action_reply(event, text)
                         return None
-                    continue
 
-                # Skips quietly when the sender is an admin, matching PTB, which
-                # only reached the handler for a non-admin user. It is not a
-                # denial: no reply and no command deletion.
-                if spec["kind"] == "user_not_admin":
-                    if not await self._sender_is_not_admin(event):
-                        return None
-                    continue
-
-                denial = await self._denial(bot, event, spec)
-                if denial is not None:
-                    text, drop = denial
-                    if drop and await _silently_drop(event):
-                        return None
-                    await _action_reply(event, text)
-                    return None
-
-            return await handler(event, data)
+                return await handler(event, data)
+            finally:
+                await actions.aclose()
         finally:
             _end_database_unit_of_work()
 
@@ -250,6 +281,23 @@ class GateMiddleware(BaseMiddleware):
             return chat.id
         message = getattr(event, "message", None)
         return getattr(message, "chat", None) and message.chat.id
+
+    @staticmethod
+    def _thread_id(event):
+        """The forum topic to show the action in, when the chat has topics.
+
+        Telegram drops a chat action sent without message_thread_id in a forum
+        chat, so the indicator would otherwise land in General instead of the
+        topic the command was issued in. The event carries chat and thread
+        itself; a CallbackQuery carries the message that does.
+        """
+        chat = getattr(event, "chat", None)
+        if chat is None:
+            chat = getattr(getattr(event, "message", None), "chat", None)
+            event = getattr(event, "message", None)
+        if getattr(chat, "is_forum", False):
+            return getattr(event, "message_thread_id", None)
+        return None
 
     @staticmethod
     def _is_private(event) -> bool:

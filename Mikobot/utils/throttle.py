@@ -11,11 +11,23 @@ import asyncio
 import time
 
 from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.client.session.base import DEFAULT_TIMEOUT
 
 
 class ThrottledSession(AiohttpSession):
-    def __init__(self, rate: float = 30.0, burst: int = 30, min_delay: float = 0.05, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(
+        self,
+        rate: float = 30.0,
+        burst: int = 30,
+        min_delay: float = 0.05,
+        timeout: float = DEFAULT_TIMEOUT,
+        limit: int = 100,
+        **kwargs,
+    ):
+        # aiogram's AiohttpSession takes limit as the aiohttp connection pool
+        # size and forwards the rest to ClientSession, so timeout has to be
+        # passed through explicitly rather than set after construction.
+        super().__init__(limit=limit, timeout=timeout, **kwargs)
         self.rate = rate
         self.burst = burst
         self.min_delay = min_delay
