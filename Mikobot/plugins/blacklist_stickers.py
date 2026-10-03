@@ -36,9 +36,14 @@ async def blackliststicker(message: Message, command: CommandObject):
         chat_id = message.chat.id
         chat_name = chat.title
 
-    sticker_list = "<b>List blacklisted stickers currently in {}:</b>\n".format(
-        chat_name,
+    # The header goes into an HTML payload sent below, so the title is escaped
+    # here and the emptiness check compares against this same header rather than
+    # rebuilding it. It used to re-run .format() on an already-formatted string,
+    # which is a no-op, so the two sides only matched by accident.
+    header = "<b>List blacklisted stickers currently in {}:</b>\n".format(
+        html.escape(chat_name),
     )
+    sticker_list = header
 
     all_stickerlist = sql.get_chat_stickers(chat_id)
 
@@ -49,24 +54,22 @@ async def blackliststicker(message: Message, command: CommandObject):
         for trigger in all_stickerlist:
             sticker_list += " - <code>{}</code>\n".format(html.escape(trigger))
 
-    split_text = split_message(sticker_list)
-    for text in split_text:
-        if sticker_list == "<b>List blacklisted stickers currently in {}:</b>\n".format(
-            chat_name,
-        ).format(html.escape(chat_name)):
-            await send_message(
-                message,
-                "There are no blacklist stickers in <b>{}</b>!".format(
-                    html.escape(chat_name),
-                ),
-                parse_mode=ParseMode.HTML,
-            )
-            return
-    await send_message(
-        message,
-        text,
-        parse_mode=ParseMode.HTML,
-    )
+    if sticker_list == header:
+        await send_message(
+            message,
+            "There are no blacklist stickers in <b>{}</b>!".format(
+                html.escape(chat_name),
+            ),
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    for text in split_message(sticker_list):
+        await send_message(
+            message,
+            text,
+            parse_mode=ParseMode.HTML,
+        )
 
 
 @check_admin(is_user=True)

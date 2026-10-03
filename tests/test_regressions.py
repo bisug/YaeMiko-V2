@@ -3,9 +3,12 @@ import builtins
 import copy
 import asyncio
 import importlib
+import importlib.util
 import os
+import pickle
 import re
 import sys
+import tempfile
 import threading
 import unittest
 import warnings
@@ -6145,6 +6148,178 @@ class EventLoopSelectionTests(unittest.TestCase):
         except ImportError:
             self.skipTest("uvloop is not installed")
         self.assertEqual(version("uvloop"), requirements_pin("uvloop"))
+
+
+class StorePruningTests(unittest.TestCase):
+    """Pending-confirmation tokens must not accumulate without bound.
+
+    ban.py and admin.py each write a chat_data entry per anonymous-admin
+    command, keyed by a random token, and only remove it when the button is
+    clicked. An admin who issues the command and walks away leaks one entry
+    forever, and every store.save() rewrites the whole file.
+    """
+
+    def _module(self, name):
+        spec = importlib.util.spec_from_file_location(
+            name, ROOT / "Mikobot/utils/persistence.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        self.addCleanup(sys.modules.pop, name, None)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_a_fresh_token_survives_a_save(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            module = self._module("persistence_fresh")
+            store = module.DataStore(str(Path(tmp) / "store.pickle"))
+            store.chat_data["anon_ban_abc"] = {"reason": "spam"}
+            store.save()
+            reloaded = module.DataStore(store.filepath)
+            with self.subTest(entries=len(reloaded.chat_data)):
+                self.assertEqual(reloaded.chat_data["anon_ban_abc"], {"reason": "spam"})
+
+    def test_an_aged_token_is_pruned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            module = self._module("persistence_aged")
+            store = module.DataStore(str(Path(tmp) / "store.pickle"))
+            store.chat_data["anon_ban_abc"] = {"reason": "spam"}
+            store.chat_data["anon_admin_def"] = {"user_id": 5}
+            aged = module.TOKEN_TTL_SECONDS + 1
+            for key in list(store.chat_data):
+                store.chat_data._table()[key] -= aged
+            removed = store.chat_data.prune(module.TOKEN_TTL_SECONDS)
+            with self.subTest(removed=removed):
+                self.assertEqual(removed, 2)
+                self.assertEqual(dict(store.chat_data), {})
+
+    def test_saving_drops_an_aged_token_from_the_file(self):
+        # The wiring, not just the helper: removing the prune call from save()
+        # leaves this file growing forever, which is the actual leak.
+        with tempfile.TemporaryDirectory() as tmp:
+            module = self._module("persistence_wired")
+            path = str(Path(tmp) / "store.pickle")
+            store = module.DataStore(path)
+            store.chat_data["anon_ban_stale"] = {"reason": "r"}
+            store.save()
+            aged = module.DataStore(path)
+            aged.chat_data._table()["anon_ban_stale"] -= module.TOKEN_TTL_SECONDS + 1
+            aged.save()
+            with self.subTest(on_disk=dict(module.DataStore(path).chat_data)):
+                self.assertEqual(dict(module.DataStore(path).chat_data), {})
+
+    def test_pruning_keeps_tokens_that_are_still_live(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            module = self._module("persistence_live")
+            store = module.DataStore(str(Path(tmp) / "store.pickle"))
+            store.chat_data["old"] = {}
+            store.chat_data["new"] = {}
+            store.chat_data._table()["old"] -= module.TOKEN_TTL_SECONDS + 1
+            store.chat_data.prune(module.TOKEN_TTL_SECONDS)
+            with self.subTest(remaining=list(store.chat_data)):
+                self.assertEqual(list(store.chat_data), ["new"])
+
+    def test_the_store_still_behaves_like_a_plain_dict(self):
+        # feds.py reads chat_data[chat_id]["federation"] and extra.py nests a
+        # write, so the value type must not change to carry the timestamp.
+        with tempfile.TemporaryDirectory() as tmp:
+            module = self._module("persistence_dict")
+            store = module.DataStore(str(Path(tmp) / "store.pickle"))
+            store.chat_data["anon_ban_x"] = {"reason": "r"}
+            with self.subTest(read="subscript"):
+                self.assertEqual(store.chat_data["anon_ban_x"], {"reason": "r"})
+                self.assertEqual(store.chat_data.get("anon_ban_x"), {"reason": "r"})
+                self.assertIsNone(store.chat_data.get("missing"))
+                self.assertEqual(store.chat_data.pop("anon_ban_x"), {"reason": "r"})
+            store.chat_data[-100] = {"federation": {"status": 1}}
+            store.chat_data[-100]["federation"]["status"] = 2
+            with self.subTest(nested="feds.py style"):
+                self.assertEqual(store.chat_data[-100]["federation"]["status"], 2)
+
+    def test_a_pickle_from_an_earlier_build_still_loads(self):
+        # Before the change the file held plain dicts, so those must not crash.
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "legacy.pickle"
+            with open(path, "wb") as handle:
+                pickle.dump(
+                    {"chat_data": {"anon_ban_old": {"reason": "r"}}, "user_data": {}},
+                    handle,
+                )
+            module = self._module("persistence_legacy")
+            store = module.DataStore(str(path))
+            with self.subTest(entry=store.chat_data.get("anon_ban_old")):
+                self.assertEqual(store.chat_data["anon_ban_old"], {"reason": "r"})
+
+
+class FederationBlobTests(unittest.TestCase):
+    """fusers is str(dict) with str(list) inside, so reads need two evals.
+
+    Every read used to call ast.literal_eval directly, so one unparseable row
+    raised ValueError out of whichever handler touched that federation.
+    """
+
+    GOOD = "{'owner': '9', 'members': '[1, 2, 3]'}"
+    BAD = ("not-a-dict", "{'owner': '1', 'members': 'oops'}", "{}", None, 7)
+
+    def setUp(self):
+        # This module imports Database.sql, which opens a real engine and a pool.
+        # The rest of the suite lifts functions out with load_function rather
+        # than importing it, and these two helpers are pure string parsing, so
+        # they are lifted the same way.
+        namespace = {
+            "ast": ast,
+            "LOGGER": SimpleNamespace(warning=lambda *a, **k: None),
+        }
+        path = ROOT / "Database/sql/feds_sql.py"
+        self.fed_members = load_function(path, "_fed_members", namespace)
+        self.fed_owner = load_function(path, "_fed_owner", namespace)
+
+    def test_a_good_blob_parses_as_before(self):
+        # The owner is str()'d on the way in, so the outer eval yields the int
+        # the old inline ast.literal_eval(...["owner"]) also produced.
+        with self.subTest(blob=self.GOOD):
+            self.assertEqual(self.fed_members(self.GOOD), [1, 2, 3])
+            self.assertEqual(self.fed_owner(self.GOOD), 9)
+
+    def test_a_bad_blob_reads_as_empty_instead_of_raising(self):
+        for blob in self.BAD:
+            with self.subTest(blob=str(blob)):
+                self.assertEqual(self.fed_members(blob), [])
+        # owner is a separate field, so a blob can have a readable owner and an
+        # unreadable member list. Only a blob with no readable owner is None.
+        with self.subTest(blob="{'owner': '1', 'members': 'oops'}"):
+            self.assertEqual(self.fed_owner(self.BAD[1]), 1)
+        for blob in ("not-a-dict", "{}", None, 7):
+            with self.subTest(owner=str(blob)):
+                self.assertIsNone(self.fed_owner(blob))
+
+    def test_no_unguarded_literal_eval_is_left_in_the_reads(self):
+        # Every remaining call must sit inside the two helpers, so a new caller
+        # cannot reintroduce the unguarded pattern.
+        tree = ast.parse((ROOT / "Database/sql/feds_sql.py").read_text("utf-8"))
+        helpers = {
+            node.name
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name.startswith("_fed_")
+        }
+        self.assertEqual(helpers, {"_fed_members", "_fed_owner"})
+        functions = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)]
+        offenders = []
+        for node in ast.walk(tree):
+            if not (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "literal_eval"
+            ):
+                continue
+            enclosing = [
+                fn.name
+                for fn in functions
+                if any(child is node for child in ast.walk(fn))
+            ]
+            if not any(name in helpers for name in enclosing):
+                offenders.append((node.lineno, enclosing))
+        self.assertEqual(offenders, [], f"unguarded literal_eval: {offenders}")
 
 
 class ColumnWidthTests(unittest.TestCase):

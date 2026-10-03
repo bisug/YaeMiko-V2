@@ -127,6 +127,32 @@ FEDS_SUBSCRIBER = {}
 MYFEDS_SUBSCRIBER = {}
 
 
+def _fed_members(raw):
+    """The member list from a federation's stored fusers blob, or [].
+
+    fusers is str(dict) with the member list itself str()'d inside it, so reading
+    it needs two literal_eval passes. A row that does not parse used to raise
+    ValueError out of whatever handler happened to read it, taking down a chat's
+    whole federation view for one bad record; an unreadable row now reads as
+    having no members.
+    """
+    try:
+        members = ast.literal_eval(ast.literal_eval(raw)["members"])
+    except (ValueError, SyntaxError, KeyError, TypeError):
+        LOGGER.warning("Unreadable federation member list, treating it as empty")
+        return []
+    return members if isinstance(members, list) else []
+
+
+def _fed_owner(raw, default=None):
+    """The owner id from a federation's stored fusers blob, or default."""
+    try:
+        return ast.literal_eval(ast.literal_eval(raw)["owner"])
+    except (ValueError, SyntaxError, KeyError, TypeError):
+        LOGGER.warning("Unreadable federation owner field")
+        return default
+
+
 def get_fed_info(fed_id):
     get = FEDERATION_BYFEDID.get(str(fed_id))
     if get is None:
@@ -162,9 +188,7 @@ def get_user_fban(fed_id, user_id):
 def get_user_admin_fed_name(user_id):
     user_feds = []
     for f in FEDERATION_BYFEDID:
-        if int(user_id) in ast.literal_eval(
-            ast.literal_eval(FEDERATION_BYFEDID[f]["fusers"])["members"]
-        ):
+        if int(user_id) in _fed_members(FEDERATION_BYFEDID[f]["fusers"]):
             user_feds.append(FEDERATION_BYFEDID[f]["fname"])
     return user_feds
 
@@ -172,9 +196,8 @@ def get_user_admin_fed_name(user_id):
 def get_user_owner_fed_name(user_id):
     user_feds = []
     for f in FEDERATION_BYFEDID:
-        if int(user_id) == int(
-            ast.literal_eval(FEDERATION_BYFEDID[f]["fusers"])["owner"]
-        ):
+        owner = _fed_owner(FEDERATION_BYFEDID[f]["fusers"])
+        if owner is not None and int(user_id) == int(owner):
             user_feds.append(FEDERATION_BYFEDID[f]["fname"])
     return user_feds
 
@@ -182,9 +205,7 @@ def get_user_owner_fed_name(user_id):
 def get_user_admin_fed_full(user_id):
     user_feds = []
     for f in FEDERATION_BYFEDID:
-        if int(user_id) in ast.literal_eval(
-            ast.literal_eval(FEDERATION_BYFEDID[f]["fusers"])["members"]
-        ):
+        if int(user_id) in _fed_members(FEDERATION_BYFEDID[f]["fusers"]):
             user_feds.append({"fed_id": f, "fed": FEDERATION_BYFEDID[f]})
     return user_feds
 
@@ -192,9 +213,8 @@ def get_user_admin_fed_full(user_id):
 def get_user_owner_fed_full(user_id):
     user_feds = []
     for f in FEDERATION_BYFEDID:
-        if int(user_id) == int(
-            ast.literal_eval(FEDERATION_BYFEDID[f]["fusers"])["owner"]
-        ):
+        owner = _fed_owner(FEDERATION_BYFEDID[f]["fusers"])
+        if owner is not None and int(user_id) == int(owner):
             user_feds.append({"fed_id": f, "fed": FEDERATION_BYFEDID[f]})
     return user_feds
 
@@ -371,11 +391,7 @@ def search_user_in_fed(fed_id, user_id):
     getfed = FEDERATION_BYFEDID.get(fed_id)
     if getfed is None:
         return False
-    getfed = ast.literal_eval(getfed["fusers"])["members"]
-    if user_id in ast.literal_eval(getfed):
-        return True
-    else:
-        return False
+    return int(user_id) in _fed_members(getfed["fusers"])
 
 
 @unit_of_work_guard
@@ -384,16 +400,20 @@ def user_demote_fed(fed_id, user_id):
         global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME
         # Variables
         getfed = FEDERATION_BYFEDID.get(str(fed_id))
+        if getfed is None:
+            return False
         owner_id = getfed["owner"]
         fed_name = getfed["fname"]
         fed_rules = getfed["frules"]
         fed_log = getfed["flog"]
         # Temp set
-        try:
-            members = ast.literal_eval(ast.literal_eval(getfed["fusers"])["members"])
-        except ValueError:
+        members = _fed_members(getfed["fusers"])
+        # remove() raises ValueError when the id is not there, which the caller
+        # only reaches after a stale read, and that used to surface as a crash
+        # rather than a failed demotion.
+        if int(user_id) not in members:
             return False
-        members.remove(user_id)
+        members = [member for member in members if int(member) != int(user_id)]
         fed_users = str({"owner": str(owner_id), "members": str(members)})
         fed = Federations(
             str(owner_id),
@@ -417,13 +437,16 @@ def user_join_fed(fed_id, user_id):
         global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME
         # Variables
         getfed = FEDERATION_BYFEDID.get(str(fed_id))
+        if getfed is None:
+            return False
         owner_id = getfed["owner"]
         fed_name = getfed["fname"]
         fed_rules = getfed["frules"]
         fed_log = getfed["flog"]
         # Temp set
-        members = ast.literal_eval(ast.literal_eval(getfed["fusers"])["members"])
-        members.append(user_id)
+        members = _fed_members(getfed["fusers"])
+        if int(user_id) not in members:
+            members.append(int(user_id))
         fed_users = str({"owner": str(owner_id), "members": str(members)})
         fed = Federations(
             str(owner_id),
@@ -478,17 +501,19 @@ def all_fed_users(fed_id):
         getfed = FEDERATION_BYFEDID.get(str(fed_id))
         if getfed is None:
             return False
-        fed_owner = ast.literal_eval(ast.literal_eval(getfed["fusers"])["owner"])
-        fed_admins = ast.literal_eval(ast.literal_eval(getfed["fusers"])["members"])
-        fed_admins.append(fed_owner)
+        fed_admins = _fed_members(getfed["fusers"])
+        fed_owner = _fed_owner(getfed["fusers"])
+        if fed_owner is not None:
+            fed_admins.append(int(fed_owner))
         return fed_admins
 
 
 def all_fed_members(fed_id):
     with FEDS_LOCK:
         getfed = FEDERATION_BYFEDID.get(str(fed_id))
-        fed_admins = ast.literal_eval(ast.literal_eval(getfed["fusers"])["members"])
-        return fed_admins
+        if getfed is None:
+            return False
+        return _fed_members(getfed["fusers"])
 
 
 @unit_of_work_guard

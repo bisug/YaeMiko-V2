@@ -429,7 +429,7 @@ async def set_title(message: Message, command: CommandObject):
 
     await bot.send_message(
         chat.id,
-        f"Successfully set title for <code>{user_member.user.first_name or user_id}</code> "
+        f"Successfully set title for <code>{html.escape(user_member.user.first_name or str(user_id))}</code> "
         f"to <code>{html.escape(title[:16])}</code>!",
         parse_mode=ParseMode.HTML,
         message_thread_id=message.message_thread_id if chat.is_forum else None,
@@ -969,7 +969,7 @@ async def admin_callback(query: CallbackQuery):
             return
 
         await message.edit_text(
-            text=f"Successfully set title for <code>{user_member.user.first_name or user_id}</code> "
+            text=f"Successfully set title for <code>{html.escape(user_member.user.first_name or str(user_id))}</code> "
             f"to <code>{html.escape(title[:16])}</code>!",
             parse_mode=ParseMode.HTML,
         )
