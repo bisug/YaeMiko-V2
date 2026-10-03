@@ -26,7 +26,7 @@
 
   <rect class="accent-blue" x="80" y="100" width="480" height="70"/>
   <text class="head" x="104" y="128">Telegram Bot API</text>
-  <text class="sub" x="104" y="150">Long polling transport used by python-telegram-bot</text>
+  <text class="sub" x="104" y="150">Long polling transport used by aiogram</text>
 
   <rect class="accent-purple" x="720" y="100" width="480" height="70"/>
   <text class="head" x="744" y="128">Telegram MTProto</text>
@@ -37,7 +37,7 @@
 
   <rect class="accent-blue" x="80" y="250" width="480" height="96"/>
   <text class="head" x="104" y="280">aiogram Dispatcher</text>
-  <text class="sub" x="104" y="302">concurrent_updates 64, AIORateLimiter, PicklePersistence</text>
+  <text class="sub" x="104" y="302">MemoryStorage, ThrottledSession, GateMiddleware</text>
   <text class="sub" x="104" y="324">CommandHandler, CallbackQueryHandler, MessageHandler, TypeHandler</text>
 
   <rect class="accent-purple" x="720" y="250" width="480" height="96"/>

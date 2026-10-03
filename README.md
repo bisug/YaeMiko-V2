@@ -197,7 +197,6 @@ execution. Persistence, reply construction and error handling surround that spin
 | Component | Version | Purpose | Link |
 | --- | --- | --- | --- |
 | Unidecode | 1.4.0 | Transliteration for search and fonts | [PyPI](https://pypi.org/project/unidecode/) |
-| alphabet-detector | 0.0.7 | Language guessing for `/tr` | [PyPI](https://pypi.org/project/alphabet-detector/) |
 | humanize | 4.16.0 | Relative timestamps | [PyPI](https://pypi.org/project/humanize/) |
 | locales | bundled | `en-US`, `id-ID`, `id-JW` catalogs | [locales](locales) |
 
@@ -250,7 +249,7 @@ Where the memory and disk go, measured from PyPI wheel sizes for the pinned depe
 | Pillow | 6.8 MB | Image buffers |
 | Kurigram | 5.8 MB | MTProto client |
 | SQLAlchemy | 4.6 MB | Native extensions |
-| All 23 direct dependencies | 64.3 MB | Install footprint before transitive dependencies |
+| All 22 direct dependencies | 64.3 MB | Install footprint before transitive dependencies |
 
 The RAM figures are estimates, not measurements of a live bot. To size your own instance, read the
 peak rather than the current usage:
