@@ -1,3 +1,4 @@
+import asyncio
 import html
 import re
 import unicodedata
@@ -593,7 +594,9 @@ async def unlock(message: Message, command: CommandObject) -> str:
 async def del_lockables(message: Message):
     chat = message.chat
     user = message.from_user
-    locks = sql.get_locks(chat.id)
+    # Both reads run on a worker thread: this handler fires on every group
+    # message, and a query on the event loop stalls every other update.
+    locks = await asyncio.to_thread(sql.get_locks, chat.id)
     if not locks or not any(getattr(locks, lockable, False) for lockable in LOCK_TYPES):
         return
     if not user:
@@ -609,7 +612,7 @@ async def del_lockables(message: Message):
         return
     if await is_user_admin(chat, user.id):
         return
-    if is_approved(chat.id, user.id):
+    if await asyncio.to_thread(is_approved, chat.id, user.id):
         return
     for lockable, filter in LOCK_TYPES.items():
         if lockable == "rtl":

@@ -1,4 +1,5 @@
 # <============================================== IMPORTS =========================================================>
+import asyncio
 import html
 import time
 from datetime import datetime, timezone
@@ -394,7 +395,7 @@ async def check_and_ban(message: Message, user_id, should_message=True):
                 f"<b>Appeal chat</b>: @{SUPPORT_CHAT}\n"
                 f"<b>User ID</b>: <code>{user_id}</code>"
             )
-            user = sql.get_gbanned_user(user_id)
+            user = await asyncio.to_thread(sql.get_gbanned_user, user_id)
             if user.reason:
                 text += f"\n<b>Ban Reason:</b> <code>{html.escape(user.reason)}</code>"
             await message.reply(text, parse_mode=ParseMode.HTML)

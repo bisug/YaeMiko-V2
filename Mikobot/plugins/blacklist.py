@@ -1,3 +1,4 @@
+import asyncio
 import html
 import re
 import unicodedata
@@ -756,7 +757,7 @@ async def del_blacklist(message: Message):
     to_match = await extract_text(message)
     if not to_match:
         return
-    if is_approved(chat.id, user.id):
+    if await asyncio.to_thread(is_approved, chat.id, user.id):
         return
     getmode, value = sql.get_blacklist_setting(chat.id)
 
@@ -771,7 +772,7 @@ async def del_blacklist(message: Message):
             try:
                 # /blocklistdelete controls the message separately from the
                 # action, so an admin can ban without the text being removed.
-                if sql.get_delete_message(chat.id) and getmode != 0:
+                if await asyncio.to_thread(sql.get_delete_message, chat.id) and getmode != 0:
                     try:
                         await message.delete()
                     except TelegramAPIError:

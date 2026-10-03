@@ -32,7 +32,13 @@ from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
 DEF_COUNT = 1
 DEF_LIMIT = 0
-DEF_OBJ = (None, DEF_COUNT, DEF_LIMIT)
+DEF_TIMER = 0
+DEF_CLEARFLOOD = False
+# (user_id, count, limit, timer, clearflood). Every row of the table is cached,
+# so timer and clearflood are read here rather than from the database: they were
+# dropped from this tuple before, which sent both back to PostgreSQL on every
+# message in a chat with antiflood configured.
+DEF_OBJ = (None, DEF_COUNT, DEF_LIMIT, DEF_TIMER, DEF_CLEARFLOOD)
 
 
 class FloodControl(BASE):
@@ -131,7 +137,13 @@ def set_flood(chat_id, amount):
         flood.user_id = None
         flood.limit = amount
 
-        CHAT_FLOOD[str(chat_id)] = (None, DEF_COUNT, amount)
+        CHAT_FLOOD[str(chat_id)] = (
+            None,
+            DEF_COUNT,
+            int(flood.limit),
+            int(flood.timer or 0),
+            bool(flood.clearflood),
+        )
 
         SESSION.add(flood)
         SESSION.commit()
@@ -141,22 +153,24 @@ def update_flood(chat_id: str, user_id) -> bool:
     if str(chat_id) not in CHAT_FLOOD:
         return
 
-    curr_user_id, count, limit = CHAT_FLOOD.get(str(chat_id), DEF_OBJ)
+    curr_user_id, count, limit, timer, clearflood = CHAT_FLOOD.get(
+        str(chat_id), DEF_OBJ
+    )
 
     if limit == 0:  # no antiflood
         return False
 
     if user_id != curr_user_id or user_id is None:  # other user
-        CHAT_FLOOD[str(chat_id)] = (user_id, DEF_COUNT, limit)
+        CHAT_FLOOD[str(chat_id)] = (user_id, DEF_COUNT, limit, timer, clearflood)
         return False
 
     count += 1
     if count > limit:  # too many msgs, kick
-        CHAT_FLOOD[str(chat_id)] = (None, DEF_COUNT, limit)
+        CHAT_FLOOD[str(chat_id)] = (None, DEF_COUNT, limit, timer, clearflood)
         return True
 
     # default -> update
-    CHAT_FLOOD[str(chat_id)] = (user_id, count, limit)
+    CHAT_FLOOD[str(chat_id)] = (user_id, count, limit, timer, clearflood)
     return False
 
 
@@ -211,7 +225,13 @@ def set_flood_timer(chat_id, amount, seconds):
         flood.limit = int(amount)
         flood.timer = int(seconds)
         flood.user_id = None
-        CHAT_FLOOD[str(chat_id)] = (None, DEF_COUNT, int(amount))
+        CHAT_FLOOD[str(chat_id)] = (
+            None,
+            DEF_COUNT,
+            int(amount),
+            int(seconds),
+            bool(flood.clearflood),
+        )
         SESSION.add(flood)
         SESSION.commit()
     FLOOD_WINDOWS.pop((str(chat_id), None), None)
@@ -227,25 +247,21 @@ def set_clearflood(chat_id, enabled: bool) -> None:
         flood.clearflood = bool(enabled)
         SESSION.add(flood)
         SESSION.commit()
+        # The counter columns are not part of this command, so the cached entry
+        # keeps them and only clearflood changes.
+        current_user_id, count, limit, timer, _ = CHAT_FLOOD.get(
+            str(chat_id), DEF_OBJ
+        )
+        CHAT_FLOOD[str(chat_id)] = (current_user_id, count, limit, timer, bool(enabled))
 
 
-@unit_of_work_guard
 def get_clearflood(chat_id) -> bool:
-    try:
-        flood = SESSION.get(FloodControl, str(chat_id))
-        return bool(flood and flood.clearflood)
-    finally:
-        SESSION.close()
+    return CHAT_FLOOD.get(str(chat_id), DEF_OBJ)[4]
 
 
-@unit_of_work_guard
 def get_flood_timer(chat_id) -> int:
     """The timed window in seconds, or 0 when consecutive mode is in use."""
-    try:
-        flood = SESSION.get(FloodControl, str(chat_id))
-        return int(flood.timer or 0) if flood else 0
-    finally:
-        SESSION.close()
+    return CHAT_FLOOD.get(str(chat_id), DEF_OBJ)[3]
 
 
 def track_message(chat_id, user_id, message_id) -> None:
@@ -305,7 +321,8 @@ def clear_flood_state(chat_id, user_id=None) -> None:
         for key in [k for k in store if k[0] == str(chat_id)]:
             store.pop(key, None)
     with INSERTION_FLOOD_LOCK:
-        CHAT_FLOOD[str(chat_id)] = (None, DEF_COUNT, get_flood_limit(chat_id))
+        _, _, limit, timer, clearflood = CHAT_FLOOD.get(str(chat_id), DEF_OBJ)
+        CHAT_FLOOD[str(chat_id)] = (None, DEF_COUNT, limit, timer, clearflood)
 
 
 @unit_of_work_guard
@@ -324,7 +341,16 @@ def __load_flood_settings():
     global CHAT_FLOOD
     try:
         all_chats = SESSION.query(FloodControl).all()
-        CHAT_FLOOD = {chat.chat_id: (None, DEF_COUNT, chat.limit) for chat in all_chats}
+        CHAT_FLOOD = {
+            chat.chat_id: (
+                None,
+                DEF_COUNT,
+                int(chat.limit or 0),
+                int(chat.timer or 0),
+                bool(chat.clearflood),
+            )
+            for chat in all_chats
+        }
     finally:
         SESSION.close()
 

@@ -13,12 +13,12 @@ import os
 import threading
 from functools import wraps
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
 
 from Mikobot import DB_URI
 from Mikobot import LOGGER as log
-from Mikobot import env_int
+from Mikobot import env_bool, env_int
 
 if DB_URI and DB_URI.startswith(("postgres://", "postgresql://")):
     DB_URI = DB_URI.replace("postgres://", "postgresql+psycopg://", 1).replace(
@@ -30,6 +30,36 @@ ENGINE = None
 SESSION = None
 
 BASE = declarative_base()
+
+
+def top_statements(limit: int = 5) -> list[tuple[str, int]]:
+    """The statement shapes executed most often, for naming a slow path."""
+    return sorted(STATEMENT_COUNTS.items(), key=lambda item: -item[1])[:limit]
+
+
+# Best effort rather than exact: two worker threads can lose an increment, which
+# a diagnostic counter tolerates and a lock on the hot path would not.
+STATEMENT_COUNTS: dict[str, int] = {}
+STATEMENT_TOTAL = 0
+STATEMENT_LOG_EVERY = max(1, env_int("DB_STATEMENT_LOG_EVERY", 500))
+
+
+def _count_statement(conn, cursor, statement, parameters, context, executemany):
+    """Log the statement mix every STATEMENT_LOG_EVERY statements.
+
+    Query count is what the per-message paths actually cost, so it is the
+    number worth watching: each one is a round trip plus its rollback.
+    """
+    global STATEMENT_TOTAL
+    head = " ".join(statement.split()[:4])
+    STATEMENT_COUNTS[head] = STATEMENT_COUNTS.get(head, 0) + 1
+    STATEMENT_TOTAL += 1
+    if STATEMENT_TOTAL % STATEMENT_LOG_EVERY == 0:
+        log.info(
+            "[PostgreSQL] %s statements executed, top shapes: %s",
+            STATEMENT_TOTAL,
+            top_statements(),
+        )
 
 
 def start() -> scoped_session:
@@ -49,10 +79,22 @@ def start() -> scoped_session:
     max_overflow = env_int("DB_MAX_OVERFLOW", 20)
     pool_timeout = env_int("DB_POOL_TIMEOUT", 30)
 
+    # A handler waiting on a query holds a pooled connection for as long as it
+    # waits. These bound that hold: a slow query, a contended lock and an
+    # abandoned transaction each give the connection back instead of holding
+    # it until pool_timeout turns into TimeoutError.
+    statement_timeout = env_int("DB_STATEMENT_TIMEOUT_MS", 5000)
+    lock_timeout = env_int("DB_LOCK_TIMEOUT_MS", 2000)
+    idle_in_transaction = env_int("DB_IDLE_IN_TRANSACTION_MS", 30000)
+
     engine = create_engine(
         DB_URI,
         client_encoding="utf8",
-        pool_pre_ping=True,
+        # pre_ping is a round trip on every checkout, and the message handlers
+        # check out several times per update. pool_recycle already retires
+        # connections before a host drops them; DB_PRE_PING restores the check
+        # for a proxy with a shorter idle timeout.
+        pool_pre_ping=env_bool("DB_PRE_PING", True),
         pool_recycle=1800,
         pool_size=pool_size,
         max_overflow=max_overflow,
@@ -60,7 +102,19 @@ def start() -> scoped_session:
         # absorbs a normal burst; a long one only turns congestion into a
         # stalled event loop.
         pool_timeout=pool_timeout,
+        connect_args={
+            # Without it every session shows up as an anonymous client in
+            # pg_stat_activity, which is the wrong place to look when a query
+            # is holding a lock.
+            "application_name": "yaemiko",
+            "options": (
+                f"-c statement_timeout={statement_timeout}"
+                f" -c lock_timeout={lock_timeout}"
+                f" -c idle_in_transaction_session_timeout={idle_in_transaction}"
+            ),
+        },
     )
+    event.listen(engine, "before_cursor_execute", _count_statement)
     ENGINE = engine
     log.info("[PostgreSQL] Connecting to database......")
     BASE.metadata.create_all(engine)

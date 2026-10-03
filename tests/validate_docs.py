@@ -19,6 +19,7 @@ DOCS = [
     "README.md",
     "docs/ARCHITECTURE.md",
     "docs/CONFIGURATION.md",
+    "docs/DATABASE.md",
     "docs/DEPLOYMENT.md",
     "docs/MIGRATION-MONGO-TO-SQL.md",
     "docs/PLUGINS.md",

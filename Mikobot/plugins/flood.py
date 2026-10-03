@@ -1,4 +1,5 @@
 # <============================================== IMPORTS =========================================================>
+import asyncio
 import html
 import re
 import time
@@ -41,7 +42,7 @@ async def check_flood(message: Message):
         sql.clear_flood_state(chat.id, user.id)
         return ""
 
-    if is_approved(chat.id, user.id):
+    if await asyncio.to_thread(is_approved, chat.id, user.id):
         sql.update_flood(chat.id, None)
         sql.clear_flood_state(chat.id, user.id)
         return
@@ -57,7 +58,7 @@ async def check_flood(message: Message):
         return ""
 
     try:
-        getmode, getvalue = sql.get_flood_setting(chat.id)
+        getmode, getvalue = await asyncio.to_thread(sql.get_flood_setting, chat.id)
         if getmode == 1:
             await bot.ban_chat_member(chat.id, user.id)
             execstrings = "BANNED"
@@ -125,7 +126,7 @@ async def check_flood(message: Message):
         await msg.answer(
             "I can't restrict people here, give me permissions first! Until then, I'll disable anti-flood.",
         )
-        sql.set_flood(chat.id, 0)
+        await asyncio.to_thread(sql.set_flood, chat.id, 0)
         return (
             "<b>{}:</b>"
             "\n#INFO"

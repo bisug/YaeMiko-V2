@@ -136,9 +136,12 @@ keywords to `__init_subclass__`, which takes no keywords.
 
 | Store | Driver | Contents |
 | --- | --- | --- |
-| PostgreSQL | SQLAlchemy 2.1, psycopg 3 pooled | Warns, locks, notes, rules, anti-raid, captcha, federation, filters, disabled commands, users, chats, AFK, whispers, karma, couples, toggles, locale, sangmata, fsub |
-| MongoDB | PyMongo 4.18 | Anime plugin group settings only; see [MIGRATION-MONGO-TO-SQL.md](MIGRATION-MONGO-TO-SQL.md) |
+| PostgreSQL | SQLAlchemy 2.1, psycopg 3 pooled | Every feature: warns, locks, notes, rules, anti-raid, captcha, federation, filters, disabled commands, users, chats, AFK, whispers, karma, couples, toggles, locale, sangmata, fsub, anime settings |
 | Pickle file | `DataStore` | chat and user context across restarts |
+
+MongoDB is gone, anime plugin settings included; see
+[MIGRATION-MONGO-TO-SQL.md](MIGRATION-MONGO-TO-SQL.md). The schema table by table is in
+[DATABASE.md](DATABASE.md).
 
 `Database/sql/__init__.py` rewrites `postgres://` to `postgresql+psycopg://`, creates the engine
 with `pool_pre_ping=True` and `pool_recycle=1800`, and calls `BASE.metadata.create_all(engine)`.

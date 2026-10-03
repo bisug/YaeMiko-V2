@@ -234,9 +234,10 @@ class EnvironmentTests(unittest.TestCase):
         )
         locks_body = ast.get_source_segment(locks_source, del_lockables)
         # The cheap lock-table read must come before the API call for the bot's
-        # own membership, or every message pays a round trip.
+        # own membership, or every message pays a round trip. The read is handed
+        # to a worker thread, so match the call rather than the whole line.
         self.assertLess(
-            locks_body.index("locks = sql.get_locks(chat.id)"),
+            locks_body.index("sql.get_locks"),
             locks_body.index("await bot.get_chat_member(chat.id, bot.id)"),
         )
         self.assertNotIn("sql.is_locked(chat.id, lockable)", locks_body)
@@ -993,7 +994,9 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
 class DatabaseRegressionTests(unittest.TestCase):
     def test_sqlalchemy_pool_validates_and_recycles_connections(self):
         source = (ROOT / "Database/sql/__init__.py").read_text(encoding="utf-8")
-        self.assertIn("pool_pre_ping=True", source)
+        # Default on: a dropped connection is checked before it is handed out.
+        # DB_PRE_PING exists because the check is a round trip per checkout.
+        self.assertIn('pool_pre_ping=env_bool("DB_PRE_PING", True)', source)
         self.assertIn("pool_recycle=1800", source)
 
     def test_primary_key_lookups_replace_full_table_federation_scans(self):
@@ -2428,8 +2431,8 @@ class SqlLayerDatabaseTests(unittest.TestCase):
         self._clear_probe_state()
 
     def _clear_probe_state(self):
-        # These helpers are not idempotent (approve inserts unconditionally),
-        # so a rerun against the same database would trip the primary key.
+        # approve is idempotent now, but the cache it writes would survive a
+        # rerun, so the row is removed rather than assumed absent.
         from Database.sql import approve_sql, blacklist_sql, disable_sql, warns_sql
 
         for call in (
@@ -2508,6 +2511,183 @@ class SqlLayerDatabaseTests(unittest.TestCase):
         self.assertIn(self.UID, [row.user_id for row in approve_sql.list_approved(self.CID)])
         self.assertTrue(approve_sql.disapprove(self.CID, self.UID))
         self.assertIsNone(approve_sql.is_approved(self.CID, self.UID))
+
+    def test_antiflood_settings_are_served_from_the_cache(self):
+        # get_flood_timer and get_clearflood ran a query per message while the
+        # row they read was already cached in CHAT_FLOOD.
+        from Database.sql import STATEMENT_TOTAL, antiflood_sql
+
+        antiflood_sql.set_flood_timer(self.CID, 5, 30)
+        antiflood_sql.set_clearflood(self.CID, True)
+        try:
+            before = STATEMENT_TOTAL
+            self.assertEqual(antiflood_sql.get_flood_limit(self.CID), 5)
+            self.assertEqual(antiflood_sql.get_flood_timer(self.CID), 30)
+            self.assertIs(antiflood_sql.get_clearflood(self.CID), True)
+            self.assertEqual(
+                STATEMENT_TOTAL,
+                before,
+                "the antiflood settings were read from PostgreSQL instead of CHAT_FLOOD",
+            )
+        finally:
+            antiflood_sql.set_flood(self.CID, 0)
+            antiflood_sql.set_clearflood(self.CID, False)
+
+    def test_antiflood_cache_agrees_with_the_row(self):
+        from Database.sql import SESSION, antiflood_sql
+
+        antiflood_sql.set_flood_timer(self.CID, 4, 15)
+        antiflood_sql.set_clearflood(self.CID, True)
+        try:
+            row = SESSION.get(antiflood_sql.FloodControl, str(self.CID))
+            SESSION.close()
+            _, _, limit, timer, clearflood = antiflood_sql.CHAT_FLOOD[str(self.CID)]
+            self.assertEqual((limit, timer, clearflood), (row.limit, row.timer, row.clearflood))
+        finally:
+            antiflood_sql.set_flood(self.CID, 0)
+            antiflood_sql.set_clearflood(self.CID, False)
+
+    def test_antiflood_counting_still_trips_the_limit(self):
+        from Database.sql import antiflood_sql
+
+        antiflood_sql.set_flood(self.CID, 3)
+        try:
+            antiflood_sql.clear_flood_state(self.CID)
+            results = [antiflood_sql.update_flood(self.CID, self.UID) for _ in range(4)]
+            self.assertEqual(results, [False, False, False, True])
+        finally:
+            antiflood_sql.set_flood(self.CID, 0)
+
+    def test_approval_lookup_is_cached_and_approve_is_idempotent(self):
+        from Database.sql import STATEMENT_TOTAL, approve_sql
+
+        approve_sql.disapprove(self.CID, self.UID)
+        # A cold miss is still a query; only hits are cached.
+        self.assertIsNone(approve_sql.is_approved(self.CID, self.UID))
+        approve_sql.approve(self.CID, self.UID)
+        # The second approve used to raise IntegrityError on the primary key.
+        approve_sql.approve(self.CID, self.UID)
+        try:
+            before = STATEMENT_TOTAL
+            self.assertTrue(approve_sql.is_approved(self.CID, self.UID))
+            self.assertEqual(
+                STATEMENT_TOTAL,
+                before,
+                "a cached approval still queried PostgreSQL",
+            )
+        finally:
+            approve_sql.disapprove(self.CID, self.UID)
+        # disapprove drops the entry, so the next lookup sees the deletion.
+        self.assertIsNone(approve_sql.is_approved(self.CID, self.UID))
+
+    def test_the_engine_bounds_a_session_and_names_it(self):
+        from Database.sql import ENGINE
+
+        with ENGINE.connect() as connection:
+            settings = {
+                name: connection.exec_driver_sql(f"SHOW {name}").scalar()
+                for name in (
+                    "application_name",
+                    "statement_timeout",
+                    "lock_timeout",
+                    "idle_in_transaction_session_timeout",
+                )
+            }
+        self.assertEqual(settings["application_name"], "yaemiko")
+        for name in ("statement_timeout", "lock_timeout"):
+            self.assertNotEqual(settings[name], "0", f"{name} is not bounded")
+
+    def test_the_statement_counter_ranks_the_query_mix(self):
+        import Database.sql as dbsql
+
+        before = dbsql.STATEMENT_TOTAL
+        with dbsql.ENGINE.connect() as connection:
+            connection.exec_driver_sql("SELECT 1")
+        self.assertGreater(dbsql.STATEMENT_TOTAL, before)
+        top = dbsql.top_statements(limit=5)
+        self.assertTrue(top, "no statement shape was recorded")
+        counts = [count for _, count in top]
+        self.assertEqual(counts, sorted(counts, reverse=True))
+
+
+class MessagePathDatabaseTests(unittest.TestCase):
+    """A per-message handler must not run a query on the event loop.
+
+    Each handler below is registered for every group message, so a database
+    call made straight from the coroutine holds the event loop for the length of
+    a round trip. asyncio.to_thread hands it to the worker pool the SQL layer
+    already expects.
+    """
+
+    PER_MESSAGE = {
+        "flood.py": ("check_flood",),
+        "blacklist.py": ("del_blacklist",),
+        "blacklist_stickers.py": ("del_blackliststicker",),
+        "locks.py": ("del_lockables",),
+    }
+
+    def _database_backed_helpers(self):
+        """Helper names whose body reads or writes through the session.
+
+        The decorator alone is too coarse: get_blacklist_setting carries it but
+        answers from CHAT_SETTINGS_BLACKLISTS and never reaches the database.
+        """
+        session_calls = re.compile(
+            r"SESSION\.(get|query|execute|merge|add|delete|scalar|flush)\b"
+        )
+        backed = set()
+        for path in sorted((ROOT / "Database/sql").glob("*_sql.py")):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in tree.body:
+                if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+                source = ast.unparse(node)
+                if "unit_of_work_guard" in source and session_calls.search(source):
+                    backed.add(node.name)
+        return backed
+
+    def _database_aliases(self, tree):
+        aliases = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
+                "Database.sql"
+            ):
+                aliases.update(alias.asname or alias.name for alias in node.names)
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name.startswith("Database.sql.") and alias.asname:
+                        aliases.add(alias.asname)
+        return aliases
+
+    def test_per_message_handlers_reach_the_database_through_to_thread(self):
+        backed = self._database_backed_helpers()
+        offenders = []
+        for filename, functions in self.PER_MESSAGE.items():
+            path = ROOT / "Mikobot/plugins" / filename
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            aliases = self._database_aliases(tree)
+            for name in functions:
+                node = next(
+                    item
+                    for item in tree.body
+                    if isinstance(item, ast.AsyncFunctionDef) and item.name == name
+                )
+                for call in ast.walk(node):
+                    if not isinstance(call, ast.Call):
+                        continue
+                    target = call.func
+                    if isinstance(target, ast.Attribute):
+                        if getattr(target.value, "id", None) not in aliases:
+                            continue
+                    elif getattr(target, "id", None) not in aliases:
+                        continue
+                    called = target.attr if isinstance(target, ast.Attribute) else target.id
+                    if called in backed:
+                        # Passed to to_thread it is spelled
+                        # asyncio.to_thread(sql.helper, ...), so it is not a bare
+                        # attribute call and never lands here.
+                        offenders.append(f"{filename}:{call.lineno} {called}")
+        self.assertEqual(offenders, [], "database calls on the event loop in a per-message handler")
 
 
 class AiogramModelKeywordTests(unittest.TestCase):

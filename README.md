@@ -102,7 +102,8 @@ state in PostgreSQL, and ships 61 plugin modules.
 
 ![YaeMiko runtime architecture](docs/assets/architecture.svg)
 
-Full walkthrough: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Full walkthrough: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Schema of the 61 tables:
+[docs/DATABASE.md](docs/DATABASE.md).
 
 PostgreSQL is the only store. MongoDB was retired after every feature moved across:
 [docs/MIGRATION-MONGO-TO-SQL.md](docs/MIGRATION-MONGO-TO-SQL.md).
@@ -114,7 +115,7 @@ PostgreSQL is the only store. MongoDB was retired after every feature moved acro
 | Plugin bus | [`Mikobot/events.py`](Mikobot/events.py) | Registers Kurigram handlers behind one signature |
 | HTTP client | [`Mikobot/state.py`](Mikobot/state.py) | One shared `httpx.AsyncClient` with HTTP/2 and a 20 second timeout |
 | Plugins | [`Mikobot/plugins`](Mikobot/plugins) | 57 feature modules, auto discovered |
-| SQL layer | [`Database/sql`](Database/sql) | 29 SQLAlchemy modules backed by PostgreSQL |
+| SQL layer | [`Database/sql`](Database/sql) | 31 SQLAlchemy model modules, 61 tables, backed by PostgreSQL; see [docs/DATABASE.md](docs/DATABASE.md) |
 | Shared helpers | [`Mikobot/utils`](Mikobot/utils), [`Mikobot/plugins/helper_funcs`](Mikobot/plugins/helper_funcs) | Caching, custom filters, error capture, localization, message parsing, readable sizes |
 | Static assets | [`Extra`](Extra), [`locales`](locales) | Fonts, default avatars, catalogs for `en-US`, `id-ID`, `id-JW` |
 
@@ -274,7 +275,7 @@ YaeMiko/
 │   ├── plugins/                 57 feature modules + helper_funcs
 │   └── utils/                   Caching, filters, error capture, localization, parsing
 ├── Database/
-│   └── sql/                     34 SQLAlchemy modules
+│   └── sql/                     31 SQLAlchemy model modules
 ├── Infamous/                    Static start and repo keyboards
 ├── Extra/                       Fonts and default images
 ├── locales/                     en-US, id-ID, id-JW catalogs
@@ -282,6 +283,7 @@ YaeMiko/
 ├── docs/                        Documentation and SVG diagrams
 │   ├── ARCHITECTURE.md
 │   ├── CONFIGURATION.md
+│   ├── DATABASE.md
 │   ├── DEPLOYMENT.md
 │   ├── MIGRATION-MONGO-TO-SQL.md
 │   ├── PLUGINS.md

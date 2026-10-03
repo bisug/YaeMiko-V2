@@ -41,6 +41,11 @@ environment variables.
 | `DB_POOL_SIZE` | integer | `Database/sql` | Pooled connections held open. Default `min(20, cpu*2+4)` |
 | `DB_MAX_OVERFLOW` | integer | `Database/sql` | Extra connections above the pool size. Default `20` |
 | `DB_POOL_TIMEOUT` | integer | `Database/sql` | Seconds a caller waits for a connection. Default `30` |
+| `DB_PRE_PING` | boolean | `Database/sql` | Liveness check on every checkout, one round trip each. Default `True`; `False` is enough where `pool_recycle` already retires connections |
+| `DB_STATEMENT_TIMEOUT_MS` | integer | `Database/sql` | Milliseconds a single statement may run. Default `5000` |
+| `DB_LOCK_TIMEOUT_MS` | integer | `Database/sql` | Milliseconds a statement waits for a lock. Default `2000` |
+| `DB_IDLE_IN_TRANSACTION_MS` | integer | `Database/sql` | Milliseconds an open transaction may sit idle. Default `30000` |
+| `DB_STATEMENT_LOG_EVERY` | integer | `Database/sql` | Statements between query mix log lines. Default `500`, `0` is not allowed |
 | `EVENT_LOGS` | integer | Logging plugins | Channel ID for bot level events |
 | `MESSAGE_DUMP` | integer | Logging plugins | Dump chat ID |
 | `SUPPORT_CHAT` | string | Start and about keyboards | Username without the `@` |

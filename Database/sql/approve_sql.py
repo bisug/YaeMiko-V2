@@ -23,8 +23,11 @@ SOFTWARE.
 """
 
 import threading
+from time import monotonic
 
+from cachetools import TTLCache
 from sqlalchemy import BigInteger, Column, String
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -46,27 +49,59 @@ Approvals.__table__.create(bind=ENGINE, checkfirst=True)
 
 APPROVE_INSERTION_LOCK = threading.RLock()
 
+# is_approved runs once per message from antiflood, the blacklist, locks and
+# warn filters, so the same row was read four times per update. Only hits are
+# cached: a miss stays a query, so a user approved by another path is picked up
+# within the TTL rather than being remembered as absent.
+APPROVED_TTL = 30.0
+APPROVED = TTLCache(maxsize=16384, ttl=APPROVED_TTL, timer=monotonic)
+
+
+def _approval_key(chat_id, user_id):
+    return str(chat_id), int(user_id)
+
+
+def _remember_approved(key) -> None:
+    # TTLCache is not thread safe and the helpers run on reused worker threads.
+    with APPROVE_INSERTION_LOCK:
+        APPROVED[key] = True
+
 
 @unit_of_work_guard
 def approve(chat_id, user_id):
+    key = _approval_key(chat_id, user_id)
     with APPROVE_INSERTION_LOCK:
-        approve_user = Approvals(str(chat_id), user_id)
-        SESSION.add(approve_user)
+        # One statement, and a second approve is a no-op instead of an
+        # IntegrityError on the composite primary key.
+        SESSION.execute(
+            pg_insert(Approvals.__table__)
+            .values(chat_id=key[0], user_id=key[1])
+            .on_conflict_do_nothing()
+        )
         SESSION.commit()
+    _remember_approved(key)
 
 
 @unit_of_work_guard
 def is_approved(chat_id, user_id):
+    key = _approval_key(chat_id, user_id)
+    if key in APPROVED:
+        return True
     try:
-        return SESSION.get(Approvals, (str(chat_id), user_id))
+        row = SESSION.get(Approvals, key)
+        if row:
+            _remember_approved(key)
+        return row
     finally:
         SESSION.close()
 
 
 @unit_of_work_guard
 def disapprove(chat_id, user_id):
+    key = _approval_key(chat_id, user_id)
     with APPROVE_INSERTION_LOCK:
-        disapprove_user = SESSION.get(Approvals, (str(chat_id), user_id))
+        disapprove_user = SESSION.get(Approvals, key)
+        APPROVED.pop(key, None)
         if disapprove_user:
             SESSION.delete(disapprove_user)
             SESSION.commit()
