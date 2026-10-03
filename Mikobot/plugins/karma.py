@@ -7,7 +7,14 @@ import asyncio
 
 from pyrogram import filters
 
-from Database.mongodb.karma_mongo import *
+from Database.sql.karma_sql import (
+    alpha_to_int,
+    get_karma,
+    get_karmas,
+    int_to_alpha,
+    update_karma,
+)
+from Database.sql.toggle_sql import is_karma_on, karma_off, karma_on
 from Mikobot import OWNER_ID, app
 from Mikobot.utils.can_restrict import can_restrict
 from Mikobot.utils.errors import capture_err
@@ -33,7 +40,7 @@ karma_negative_group = 4
 )
 @capture_err
 async def upvote(_, message):
-    if not await is_karma_on(message.chat.id):
+    if not is_karma_on(message.chat.id):
         return
     reply_user = message.reply_to_message.from_user
     current_user = message.from_user
@@ -48,10 +55,10 @@ async def upvote(_, message):
     chat_id = message.chat.id
     user_id = reply_user.id
     user_mention = reply_user.mention
-    current_karma = await get_karma(chat_id, await int_to_alpha(user_id))
+    current_karma = get_karma(chat_id, int_to_alpha(user_id))
     karma = current_karma["karma"] + 1 if current_karma else 1
     new_karma = {"karma": karma}
-    await update_karma(chat_id, await int_to_alpha(user_id), new_karma)
+    update_karma(chat_id, int_to_alpha(user_id), new_karma)
     await message.reply(
         f"𝗜𝗻𝗰𝗿𝗲𝗺𝗲𝗻𝘁𝗲𝗱 𝗸𝗮𝗿𝗺𝗮 𝗼𝗳 {user_mention} 𝗯𝘆 1.\n**⭐️ 𝗧𝗢𝗧𝗔𝗟 𝗣𝗢𝗜𝗡𝗧𝗦:** {karma}"
     )
@@ -69,7 +76,7 @@ async def upvote(_, message):
 )
 @capture_err
 async def downvote(_, message):
-    if not await is_karma_on(message.chat.id):
+    if not is_karma_on(message.chat.id):
         return
     reply_user = message.reply_to_message.from_user
     current_user = message.from_user
@@ -83,10 +90,10 @@ async def downvote(_, message):
 
     user_id = reply_user.id
     user_mention = reply_user.mention
-    current_karma = await get_karma(message.chat.id, await int_to_alpha(user_id))
+    current_karma = get_karma(message.chat.id, int_to_alpha(user_id))
     karma = current_karma["karma"] - 1 if current_karma else 0
     new_karma = {"karma": karma}
-    await update_karma(message.chat.id, await int_to_alpha(user_id), new_karma)
+    update_karma(message.chat.id, int_to_alpha(user_id), new_karma)
     await message.reply(
         f"𝗗𝗲𝗰𝗿𝗲𝗺𝗲𝗻𝘁𝗲𝗱 𝗸𝗮𝗿𝗺𝗮 𝗼𝗳 {user_mention} 𝗯𝘆 1.\n**⭐️ 𝗧𝗢𝗧𝗔𝗟 𝗣𝗢𝗜𝗡𝗧𝗦:** {karma}"
     )
@@ -97,7 +104,7 @@ async def downvote(_, message):
 async def karma(_, message):
     if not message.reply_to_message:
         m = await message.reply("Analyzing karma... This may take a while.")
-        karma = await get_karmas(message.chat.id)
+        karma = get_karmas(message.chat.id)
         if not karma:
             await m.edit_text("No karma in the database for this chat.")
             return
@@ -105,7 +112,7 @@ async def karma(_, message):
         limit = 0
         karma_dicc = {}
         for i in karma:
-            user_id = await alpha_to_int(i)
+            user_id = alpha_to_int(i)
             user_karma = karma[i]["karma"]
             karma_dicc[str(user_id)] = user_karma
             karma_arranged = dict(
@@ -130,7 +137,7 @@ async def karma(_, message):
         await m.edit_text(msg)
     else:
         user_id = message.reply_to_message.from_user.id
-        karma = await get_karma(message.chat.id, await int_to_alpha(user_id))
+        karma = get_karma(message.chat.id, int_to_alpha(user_id))
         karma = karma["karma"] if karma else 0
         await message.reply(f"**⭐️ 𝗧𝗢𝗧𝗔𝗟 𝗣𝗢𝗜𝗡𝗧𝗦:** {karma}")
 

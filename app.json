@@ -49,11 +49,6 @@
          "required": true,
          "value": "-100"
       },
-      "MONGO_DB_URI": {
-         "description": "Required for MongoDB database connections.",
-         "required": true,
-         "value": "mongodb+srv://"
-      },
       "DATABASE_URL": {
          "description": "Required for SQL database connections.",
          "required": true,
@@ -102,11 +97,6 @@
          "description": "Support chat ID.",
          "required": true,
          "value": "-100"
-      },
-      "DB_NAME": {
-         "description": "Your MongoDB name.",
-         "required": true,
-         "value": "MikoDB"
       },
       "TOKEN": {
          "description": "Bot token obtained from @BotFather on Telegram.",

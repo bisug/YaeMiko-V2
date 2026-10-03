@@ -6,7 +6,7 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
 
-from Database.mongodb.toggle_mongo import is_nekomode_on, nekomode_off, nekomode_on
+from Database.sql.toggle_sql import is_nekomode_on, nekomode_off, nekomode_on
 from pyrogram import filters
 
 from Mikobot import app
@@ -55,7 +55,7 @@ allowed_commands = [
 @app.on_message(filters.regex(r"^/wallpaper(?:@\S+)?$"), group=1)
 async def wallpaper(_, event):
     chat_id = event.chat.id
-    nekomode_status = await is_nekomode_on(chat_id)
+    nekomode_status = is_nekomode_on(chat_id)
     if nekomode_status:
         import nekos
 
@@ -67,21 +67,21 @@ async def wallpaper(_, event):
 @app.on_message(filters.regex(r"^/nekomode on(?:@\S+)?$"), group=1)
 async def enable_nekomode(_, event):
     chat_id = event.chat.id
-    await nekomode_on(chat_id)
+    nekomode_on(chat_id)
     await event.reply("Nekomode has been enabled.")
 
 
 @app.on_message(filters.regex(r"^/nekomode off(?:@\S+)?$"), group=1)
 async def disable_nekomode(_, event):
     chat_id = event.chat.id
-    await nekomode_off(chat_id)
+    nekomode_off(chat_id)
     await event.reply("Nekomode has been disabled.")
 
 
 @app.on_message(filters.regex(r"^/(?:{})(?:@\S+)?$".format("|".join(allowed_commands))), group=1)
 async def nekomode_commands(_, event):
     chat_id = event.chat.id
-    nekomode_status = await is_nekomode_on(chat_id)
+    nekomode_status = is_nekomode_on(chat_id)
     if nekomode_status:
         target = event.text.split()[0].split("@", 1)[0][1:].lower()  # Remove the slash before the command
         if target in allowed_commands:

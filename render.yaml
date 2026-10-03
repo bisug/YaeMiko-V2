@@ -55,12 +55,6 @@ services:
       - key: BL_CHATS
         sync: false
 
-      # Render has no MongoDB service. Paste an Atlas free tier SRV string here.
-      - key: MONGO_DB_URI
-        sync: false
-      - key: DB_NAME
-        value: MikoDB
-
       # Wired from the Postgres instance below, never hardcoded.
       - key: DATABASE_URL
         fromDatabase:

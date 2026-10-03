@@ -48,7 +48,6 @@ YaeMiko needs four things. Gather them first, because every platform below asks 
 | `API_ID` and `API_HASH` | [my.telegram.org/apps](https://my.telegram.org/apps) | Create an application, keep both values |
 | `TOKEN` | [@BotFather](https://t.me/BotFather) | Send `/newbot`, copy the token |
 | `OWNER_ID` | Your Telegram user ID | [userid.bot](https://t.me/userid_bot) reports it |
-| `MONGO_DB_URI` | [MongoDB Atlas](https://www.mongodb.com/atlas) | The free M0 tier is enough. Copy the SRV string |
 | PostgreSQL connection | Provided by the platform, or your own | Free tier is enough |
 
 Two more IDs come from the group you want the bot to log into:
@@ -99,7 +98,6 @@ Render asks for every variable marked `sync: false`. Paste the values you gather
 ```text
 API_ID, API_HASH, TOKEN, OWNER_ID,
 SUPPORT_CHAT, SUPPORT_ID, EVENT_LOGS, MESSAGE_DUMP,
-MONGO_DB_URI,
 DEV_USERS, DRAGONS, DEMONS, WOLVES, TIGERS, BL_CHATS (optional, space separated IDs)
 ```
 
@@ -143,8 +141,6 @@ API_ID           = <from my.telegram.org>
 API_HASH         = <from my.telegram.org>
 TOKEN            = <from BotFather>
 OWNER_ID         = <your numeric id>
-MONGO_DB_URI     = <Atlas SRV string>
-DB_NAME          = MikoDB
 EVENT_LOGS       = <-100...>
 MESSAGE_DUMP     = <-100...>
 SUPPORT_CHAT     = <group username>
@@ -160,8 +156,6 @@ Railway redeploys automatically. Watch the deploy log for `Mikobot is starting`.
 
 ### Notes
 
-- Railway MongoDB is available as a plugin, but any MongoDB works. Atlas M0 is free and reachable
-  from anywhere, which is the simpler path.
 - The container filesystem is ephemeral. `ptb_persistence.pickle` is recreated empty on every
   deploy, so moderation state that lives in `context.chat_data` resets. Attach a Railway volume
   mounted at `/root/Mikobot` if you want it to survive.
@@ -183,7 +177,6 @@ addon, and every required variable.
 
 1. Create the Telegram application and the bot as described in
    [Before you start](#before-you-start).
-2. Create a free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster.
 3. Press the deploy button and fill the prompted variables.
 4. Confirm the dyno, then check the startup banner in the support chat.
 
@@ -242,7 +235,6 @@ TOKEN=123456:AAyourtokenhere
 OWNER_ID=123456789
 
 DATABASE_URL=postgresql://user:pass@localhost:5432/yaemiko
-MONGO_DB_URI=mongodb+srv://user:pass@cluster.mongodb.net
 DB_NAME=MikoDB
 
 EVENT_LOGS=-1001234567890
@@ -264,7 +256,7 @@ sudo -u yaemiko -H chmod 600 /home/yaemiko/YaeMiko/.env
 
 ### Step 6: install PostgreSQL locally
 
-Atlas only covers MongoDB, so PostgreSQL has to come from somewhere.
+There is no managed store to fall back on, so PostgreSQL has to come from somewhere.
 
 ```bash
 sudo apt-get install -y postgresql postgresql-contrib
@@ -380,7 +372,7 @@ volumes:
   pgdata:
 ```
 
-MongoDB still comes from Atlas, so `MONGO_DB_URI` stays in `.env`.
+PostgreSQL holds everything, so `DATABASE_URL` is the only database setting in `.env`.
 
 ## Troubleshooting
 
@@ -389,7 +381,7 @@ MongoDB still comes from Atlas, so `MONGO_DB_URI` stays in `.env`.
 | `TypeError: ... takes no keyword arguments` at import | A class keyword was added to a Telegram object subclass | Class keywords go to `__init_subclass__`. Pass `style` to the constructor instead |
 | Bot starts, no replies | The bot is not an admin, or lacks the message content permission | Promote it and grant the permissions the module needs |
 | `[PostgreSQL] Failed to connect` then exit | Bad `DATABASE_URL`, or the database is not reachable | Check the scheme is `postgresql://`, and that the host is public or on the same network |
-| `Error in Mongodb` then exit | Bad `MONGO_DB_URI` | Copy the SRV string again, it usually ends with `?retryWrites=true&w=majority` |
+| `[PostgreSQL] Failed to connect` then exit | Bad `DATABASE_URL` | Check the scheme is `postgres://` or `postgresql://` and the host is reachable |
 | `Your OWNER_ID env variable is not a valid integer` | A stray space or text in the value | It must be digits only |
 | Module does not appear in `/help` | `__mod_name__` missing, or the file ends in `.txt` | Set `__mod_name__` and rename the file to `.py` |
 | Deploys fine, then restarts repeatedly | Crash loop, usually a database or token problem | Read the deploy log, the first traceback is the cause |

@@ -7,7 +7,7 @@ from glob import glob
 from pyrogram.enums import ChatType
 from pyrogram.types import CallbackQuery, InlineQuery, Message
 
-from Database.mongodb.locale_db import get_db_lang
+from Database.sql.locale_sql import get_db_lang
 
 enabled_locales: list[str] = [
     # "en-GB",  # English (United Kingdom)
@@ -83,7 +83,7 @@ async def get_lang(message) -> str:
     else:
         raise TypeError(f"Update type '{message.__name__}' is not supported.")
 
-    lang = await get_db_lang(chat.id)
+    lang = get_db_lang(chat.id)
 
     if chat.type == ChatType.PRIVATE:
         lang = lang or message.from_user.language_code or default_language

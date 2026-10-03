@@ -167,9 +167,7 @@ if ENV:
     EVENT_LOGS = os.environ.get("EVENT_LOGS", None)
     INFOPIC = env_bool("INFOPIC", True)
     MESSAGE_DUMP = os.environ.get("MESSAGE_DUMP", None)
-    DB_NAME = os.environ.get("DB_NAME", "MikoDB")
     LOAD = os.environ.get("LOAD", "").split()
-    MONGO_DB_URI = os.environ.get("MONGO_DB_URI")
     NO_LOAD = os.environ.get("NO_LOAD", "").split()
     STRICT_GBAN = env_bool("STRICT_GBAN", True)
     ACTIVITY_LOG = env_bool("ACTIVITY_LOG", False)
@@ -216,7 +214,6 @@ else:
     API_HASH = Config.API_HASH
     ALLOW_CHATS = Config.ALLOW_CHATS
     ALLOW_EXCL = Config.ALLOW_EXCL
-    DB_NAME = Config.DB_NAME
     DB_URI = Config.DATABASE_URL
     BAN_STICKER = Config.BAN_STICKER
     MESSAGE_DUMP = Config.MESSAGE_DUMP
@@ -225,7 +222,6 @@ else:
     EVENT_LOGS = Config.EVENT_LOGS
     INFOPIC = Config.INFOPIC
     LOAD = Config.LOAD
-    MONGO_DB_URI = Config.MONGO_DB_URI
     NO_LOAD = Config.NO_LOAD
     STRICT_GBAN = Config.STRICT_GBAN
     ACTIVITY_LOG = env_bool("ACTIVITY_LOG", False)

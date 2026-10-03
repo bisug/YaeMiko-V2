@@ -146,28 +146,6 @@ class FakeSession:
     def rollback(self):
         self.rollbacks += 1
 
-class CleanmodeCacheTests(unittest.IsolatedAsyncioTestCase):
-    async def test_disabled_cleanmode_is_cached(self):
-        calls = 0
-
-        class Collection:
-            async def find_one(self, query):
-                nonlocal calls
-                calls += 1
-                return {"chat_id": query["chat_id"]}
-
-        namespace = {"cleanmode": {}, "cleandb": Collection()}
-        is_cleanmode_on = load_function(
-            ROOT / "Database/mongodb/afk_db.py",
-            "is_cleanmode_on",
-            namespace,
-        )
-
-        self.assertFalse(await is_cleanmode_on(123))
-        self.assertFalse(await is_cleanmode_on(123))
-        self.assertEqual(calls, 1)
-
-
 
 class EnvironmentTests(unittest.TestCase):
     def test_aiogram_application_is_imported(self):
@@ -931,17 +909,29 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(anti_spam.check_user(123))
         self.assertEqual(calls, [(123, {"blocking": False})])
 
-    def test_async_mongodb_uses_one_client_and_explicit_close(self):
-        client_paths = [
-            path
-            for path in (ROOT / "Database/mongodb").glob("*.py")
-            if "AsyncMongoClient(" in path.read_text(encoding="utf-8")
-        ]
-        self.assertEqual(client_paths, [ROOT / "Database/mongodb/db.py"])
-        anime_source = (ROOT / "Mikobot/plugins/anime.py").read_text(encoding="utf-8")
-        self.assertIn('mongo["MikobotAnime"]', anime_source)
+    def test_no_mongodb_remains_in_the_runtime(self):
+        # The migration replaced MongoDB outright, so nothing may import it or
+        # name its driver again. This is the migration doc's completion gate,
+        # kept as a test so it cannot silently regress.
+        for path in (ROOT / "Mikobot").rglob("*.py"):
+            source = path.read_text(encoding="utf-8")
+            self.assertNotIn("Database.mongodb", source, f"{path.name} still imports MongoDB")
+            self.assertNotIn("MONGO_DB_URI", source, f"{path.name} still reads MONGO_DB_URI")
+        requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+        self.assertNotIn("pymongo", requirements)
+        self.assertFalse((ROOT / "Database/mongodb").exists())
         main_source = (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8")
-        self.assertIn("close_db()", main_source)
+        self.assertNotIn("close_db", main_source)
+
+    def test_anime_settings_use_one_key_value_table(self):
+        # anime.py replaced thirteen collections; the flags share one table and
+        # the AniList tokens have their own, rather than a collection per flag.
+        source = (ROOT / "Database/sql/anime_sql.py").read_text(encoding="utf-8")
+        self.assertIn('__tablename__ = "anime_group_settings"', source)
+        self.assertIn('__tablename__ = "anime_tokens"', source)
+        anime_source = (ROOT / "Mikobot/plugins/anime.py").read_text(encoding="utf-8")
+        self.assertIn("from Database.sql import anime_sql as db", anime_source)
+        self.assertNotIn("mongo[", anime_source)
 
     def test_sqlalchemy_uses_psycopg3_driver(self):
         source = (ROOT / "Database/sql/__init__.py").read_text(encoding="utf-8")
@@ -1542,18 +1532,13 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
             ROOT / "Mikobot/plugins/whispers.py",
             "showWhisper",
             {
-                "Whispers": SimpleNamespace(
-                    del_whisper=lambda whisper_id: asyncio.sleep(0),
-                    get_whisper=lambda whisper_id: asyncio.sleep(
-                        0,
-                        {
-                            "user": 1,
-                            "withuser": 2,
-                            "usertype": "id",
-                            "message": "secret",
-                        },
-                    )
-                )
+                "get_whisper": lambda whisper_id: {
+                    "user": 1,
+                    "withuser": 2,
+                    "usertype": "id",
+                    "message": "secret",
+                },
+                "del_whisper": lambda whisper_id: None,
             },
         )
         await show_whisper(CallbackQuery())

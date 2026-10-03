@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from pyrogram import filters
 
-from Database.mongodb.karma_mongo import get_couple, save_couple
+from Database.sql.karma_sql import get_couple, save_couple
 from Mikobot import app
 
 # <=======================================================================================================>
@@ -72,7 +72,7 @@ async def nibba_nibbi(_, message):
         return
     try:
         chat_id = message.chat.id
-        is_selected = await get_couple(chat_id, today)
+        is_selected = get_couple(chat_id, today)
         if not is_selected:
             list_of_users = []
             async for member in _.get_chat_members(message.chat.id, limit=100):
@@ -88,7 +88,7 @@ async def nibba_nibbi(_, message):
                 photo=COUPLES_PIC,
                 caption=CAP.format(c1_mention, c2_mention, tomorrow),
             )
-            await save_couple(chat_id, today, {"c1_id": c1_id, "c2_id": c2_id})
+            save_couple(chat_id, today, {"c1_id": c1_id, "c2_id": c2_id})
         else:
             c1_id = int(is_selected["c1_id"])
             c2_id = int(is_selected["c2_id"])

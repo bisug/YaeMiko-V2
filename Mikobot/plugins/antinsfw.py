@@ -5,7 +5,7 @@ from pathlib import Path
 
 from pyrogram import filters
 
-from Database.mongodb.toggle_mongo import is_nsfw_on, nsfw_off, nsfw_on
+from Database.sql.toggle_sql import is_nsfw_on, nsfw_off, nsfw_on
 from Mikobot import BOT_USERNAME, DRAGONS, app
 from Mikobot.utils.can_restrict import can_restrict
 from Mikobot.utils.errors import capture_err
@@ -108,7 +108,7 @@ async def prepare_scan_file(client, message, temp_dir):
 )
 @capture_err
 async def detect_nsfw(_, message):
-    if not await is_nsfw_on(message.chat.id):
+    if not is_nsfw_on(message.chat.id):
         return
     if not message.from_user:
         return
@@ -193,18 +193,18 @@ async def nsfw_enable_disable(_, message):
     status = status.lower()
     chat_id = message.chat.id
     if status in ("on", "yes"):
-        if await is_nsfw_on(chat_id):
+        if is_nsfw_on(chat_id):
             await message.reply("Antinsfw is already enabled.")
             return
-        await nsfw_on(chat_id)
+        nsfw_on(chat_id)
         await message.reply(
             "Enabled AntiNSFW System. I will Delete Messages Containing Inappropriate Content."
         )
     elif status in ("off", "no"):
-        if not await is_nsfw_on(chat_id):
+        if not is_nsfw_on(chat_id):
             await message.reply("Antinsfw is already disabled.")
             return
-        await nsfw_off(chat_id)
+        nsfw_off(chat_id)
         await message.reply("Disabled AntiNSFW System.")
     else:
         await message.reply("Unknown Suffix, Use /antinsfw [on/off]")

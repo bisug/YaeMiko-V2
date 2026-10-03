@@ -164,7 +164,6 @@ Both stores are small unless the group is large. This is the least demanding par
 | Store | Minimum | Comfortable | What grows it |
 | --- | --- | --- | --- |
 | PostgreSQL | 1 GB | 5 GB | One row per warning, lock, note, rule, and filter |
-| MongoDB | 512 MB shared | 5 GB | User profiles, chat metadata, AFK entries, whispers, karma |
 
 Atlas M0 gives 512 MB, Render Free Postgres gives 1 GB, and both are enough for a small group. The
 connection pool is the thing to watch rather than the data volume: `pool_pre_ping=True` and
@@ -182,7 +181,6 @@ Measured wheel sizes for the dependencies that actually matter:
 | Pillow | 6.8 MB | Native image codecs |
 | Kurigram | 5.8 MB | MTProto implementation |
 | SQLAlchemy | 4.6 MB | Includes the native C extensions |
-| pymongo | 1.1 MB | BSON and the wire protocol |
 | aiogram | 9.6 MB | Bot API dispatcher, pulls aiohttp and pydantic |
 | All 23 direct dependencies | 64.3 MB | Download size, excluding transitive dependencies |
 

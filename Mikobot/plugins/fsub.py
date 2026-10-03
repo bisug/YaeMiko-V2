@@ -6,7 +6,7 @@ from pyrogram.enums import ChatMemberStatus, ChatType
 from pyrogram.errors import ChatAdminRequired, UserNotParticipant
 from pyrogram.types import ChatPermissions, InlineKeyboardButton, InlineKeyboardMarkup
 
-from Database.mongodb import fsub_db as db
+from Database.sql import fsub_sql as db
 from Mikobot import BOT_ID, DRAGONS as DEVS, LOGGER, OWNER_ID, app
 from Mikobot.events import register
 from pyrogram.enums import ButtonStyle
@@ -52,7 +52,7 @@ async def force_subscribe(message):
     parts = message.text.split(None, 1)
     channel = parts[1] if len(parts) > 1 else None
     if not channel:
-        chat_db = await db.fs_settings(message.chat.id)
+        chat_db = db.fs_settings(message.chat.id)
         if not chat_db:
             await message.reply("Force subscribe is disabled in this chat.")
         else:
@@ -61,7 +61,7 @@ async def force_subscribe(message):
     if channel.lower() in FORCESUBSCRIBE_ON:
         return await message.reply("Please specify the channel username.")
     if channel.lower() in FORCESUBSCRIBE_OFF:
-        await db.disapprove(message.chat.id)
+        db.disapprove(message.chat.id)
         return await message.reply("**Force subscribe is disabled successfully.**")
     try:
         channel_entity = await app.get_chat(channel)
@@ -72,13 +72,13 @@ async def force_subscribe(message):
         return await message.reply("That's not a valid channel.")
     if not await participant_check(username, BOT_ID):
         return await message.reply(f"**Not an admin in the channel**\nI am not an admin in the [channel](https://t.me/{username}). Add me as an admin to enable force subscribe.")
-    await db.add_channel(message.chat.id, str(username))
+    db.add_channel(message.chat.id, str(username))
     await message.reply(f"Force subscribe is enabled to @{username}.")
 
 
 @app.on_message(filters.group & filters.incoming)
 async def force_subscribe_new_message(_, message):
-    settings = await db.fs_settings(message.chat.id)
+    settings = db.fs_settings(message.chat.id)
     if not settings:
         return
     if not message.from_user or message.from_user.id in DEVS or message.from_user.id == OWNER_ID:
@@ -126,7 +126,7 @@ async def unmute_force_subscribe(client, callback):
     user_id = int(callback.matches[0].group(1))
     if callback.from_user.id != user_id:
         return await callback.answer("This is not meant for you.", show_alert=True)
-    settings = await db.fs_settings(callback.message.chat.id)
+    settings = db.fs_settings(callback.message.chat.id)
     if not settings:
         return await callback.answer("Force subscribe is disabled.", show_alert=True)
     channel = settings["channel"]

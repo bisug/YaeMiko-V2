@@ -33,7 +33,7 @@ from aiogram.types import (
 
 import Database.sql.topics_sql
 import Database.sql.welcome_sql as sql
-from Database.mongodb.toggle_mongo import dwelcome_off, dwelcome_on, is_dwelcome_on
+from Database.sql.toggle_sql import dwelcome_off, dwelcome_on, is_dwelcome_on
 from Database.sql.global_bans_sql import is_user_gbanned
 from Mikobot import (
     ALLOW_CHATS,
@@ -153,7 +153,7 @@ async def member_has_joined(client, member: ChatMemberUpdated):
         return
     else:
         chat_id = member.chat.id
-        welcome_enabled = await is_dwelcome_on(chat_id)
+        welcome_enabled = is_dwelcome_on(chat_id)
         if not welcome_enabled:
             return
         if f"welcome-{chat_id}" in WELCOME_MESSAGES:
@@ -204,11 +204,11 @@ async def member_has_joined(client, member: ChatMemberUpdated):
 @can_restrict
 async def enable_welcome(_, message: Message):
     chat_id = message.chat.id
-    welcome_enabled = await is_dwelcome_on(chat_id)
+    welcome_enabled = is_dwelcome_on(chat_id)
     if welcome_enabled:
         await message.answer("Default welcome is already enabled")
         return
-    await dwelcome_on(chat_id)
+    dwelcome_on(chat_id)
     await message.answer("New default welcome message enabled for this chat.")
 
 
@@ -216,11 +216,11 @@ async def enable_welcome(_, message: Message):
 @can_restrict
 async def disable_welcome(_, message: Message):
     chat_id = message.chat.id
-    welcome_enabled = await is_dwelcome_on(chat_id)
+    welcome_enabled = is_dwelcome_on(chat_id)
     if not welcome_enabled:
         await message.answer("Default welcome is already disabled")
         return
-    await dwelcome_off(chat_id)
+    dwelcome_off(chat_id)
     await message.answer("New default welcome disabled for this chat.")
 
 

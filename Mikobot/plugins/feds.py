@@ -26,7 +26,7 @@ from aiogram.types import (
 from sqlalchemy.exc import SQLAlchemyError
 
 import Database.sql.feds_sql as sql
-from Database.mongodb.users_db import Users
+from Database.sql.userinfo_sql import get_user_info
 from Mikobot import (
     DRAGONS,
     EVENT_LOGS,
@@ -622,7 +622,7 @@ async def fed_ban(message: Message, command: CommandObject):
         return
 
     fban_user_id = int(user_id)
-    user_info = await Users.get_user_info(fban_user_id) or {}
+    user_info = get_user_info(fban_user_id) or {}
     fban_user_name = user_info.get("name") or f"user({fban_user_id})"
     fban_user_lname = None
     fban_user_uname = user_info.get("username") or None
@@ -979,7 +979,7 @@ async def unfban(message: Message, command: CommandObject):
         return
 
     fban_user_id = int(user_id)
-    user_info = await Users.get_user_info(fban_user_id) or {}
+    user_info = get_user_info(fban_user_id) or {}
     fban_user_name = user_info.get("name") or f"user({fban_user_id})"
     fban_user_lname = None
     fban_user_uname = user_info.get("username") or None

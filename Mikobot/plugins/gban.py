@@ -10,7 +10,7 @@ from aiogram.filters import Command, CommandObject
 from aiogram.types import BufferedInputFile, Message
 
 import Database.sql.global_bans_sql as sql
-from Database.mongodb.users_db import Users
+from Database.sql.userinfo_sql import get_user_info
 from Database.sql.users_sql import get_user_com_chats
 from Mikobot import (
     DEV_USERS,
@@ -101,7 +101,7 @@ async def gban(message: Message, command: CommandObject):
         await message.answer("Fool! You can't attack Telegram's native tech!")
         return
 
-    user_info = await Users.get_user_info(user_id) or {}
+    user_info = get_user_info(user_id) or {}
     user_name = user_info.get("name") or str(user_id)
     user_username = user_info.get("username") or None
     user_target = mention_html(user_id, user_name)
@@ -262,7 +262,7 @@ async def ungban(message: Message, command: CommandObject):
         )
         return
 
-    user_info = await Users.get_user_info(user_id) or {}
+    user_info = get_user_info(user_id) or {}
     user_name = user_info.get("name") or str(user_id)
     user_target = mention_html(user_id, user_name)
 

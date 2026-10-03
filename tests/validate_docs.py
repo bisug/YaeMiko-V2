@@ -20,6 +20,7 @@ DOCS = [
     "docs/ARCHITECTURE.md",
     "docs/CONFIGURATION.md",
     "docs/DEPLOYMENT.md",
+    "docs/MIGRATION-MONGO-TO-SQL.md",
     "docs/PLUGINS.md",
     "docs/SYSTEM-REQUIREMENTS.md",
 ]
@@ -43,7 +44,9 @@ def root_files():
     tracked = subprocess.run(
         ["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True
     ).stdout.split()
-    return [ROOT / name for name in tracked]
+    # A deletion that has not been staged is still in `ls-files` but gone from
+    # disk, which would crash every reader below.
+    return [path for path in (ROOT / name for name in tracked) if path.exists()]
 
 
 def check_relative_targets(errors):
@@ -100,6 +103,7 @@ def check_repository_tree_is_documented(errors):
         "docs/ARCHITECTURE.md",
         "docs/CONFIGURATION.md",
         "docs/DEPLOYMENT.md",
+        "docs/MIGRATION-MONGO-TO-SQL.md",
         "docs/PLUGINS.md",
         "docs/SYSTEM-REQUIREMENTS.md",
         "app.json",

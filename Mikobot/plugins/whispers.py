@@ -20,7 +20,7 @@ from aiogram.types import (
 
 from Mikobot import BOT_USERNAME, bot, dp
 
-from Database.mongodb.whispers import Whispers
+from Database.sql.whispers_sql import add_whisper, del_whisper, get_whisper
 from Mikobot.utils.gate import chain
 
 # <==================================================== BOOT FUNCTION ===================================================>
@@ -62,7 +62,7 @@ async def mainwhisper(query: InlineQuery):
     whisperId = uuid4().hex
 
     # Add the whisper to the database
-    await Whispers.add_whisper(whisperId, whisperData)
+    add_whisper(whisperId, whisperData)
 
     answers = [
         InlineQueryResultArticle(
@@ -91,7 +91,7 @@ async def mainwhisper(query: InlineQuery):
 # Callback query handler
 async def showWhisper(callback_query: CallbackQuery):
     whisperId = callback_query.data.split("_")[-1]
-    whisper = await Whispers.get_whisper(whisperId)
+    whisper = get_whisper(whisperId)
 
     if not whisper:
         await callback_query.answer("This whisper is not valid anymore!", show_alert=True)
@@ -117,7 +117,7 @@ async def showWhisper(callback_query: CallbackQuery):
         return
 
     if not is_sender:
-        await Whispers.del_whisper(whisperId)
+        del_whisper(whisperId)
 
 
 # Function to parse user message

@@ -34,7 +34,7 @@ from pyrogram.types import (
     Message,
 )
 
-from Database.mongodb.db import mongo
+from Database.sql import anime_sql as db
 from Mikobot import BOT_USERNAME, MESSAGE_DUMP, OWNER_ID, app
 from Mikobot.state import state
 from Mikobot.utils.custom_filters import PREFIX_HANDLER
@@ -46,22 +46,6 @@ FILLERS = {}
 
 BOT_OWNER = {OWNER_ID}
 
-_DATABASE = mongo["MikobotAnime"]
-
-
-def get_collection(name: str):
-    """Create or Get Collection from your database"""
-    return _DATABASE[name]
-
-
-GROUPS = get_collection("GROUPS")
-SFW_GRPS = get_collection("SFW_GROUPS")
-DC = get_collection("DISABLED_CMDS")
-AG = get_collection("AIRING_GROUPS")
-CG = get_collection("CRUNCHY_GROUPS")
-SG = get_collection("SUBSPLEASE_GROUPS")
-HD = get_collection("HEADLINES_GROUPS")
-MHD = get_collection("MAL_HEADLINES_GROUPS")
 CHAT_OWNER = ChatMemberStatus.OWNER
 MEMBER = ChatMemberStatus.MEMBER
 ADMINISTRATOR = ChatMemberStatus.ADMINISTRATOR
@@ -78,10 +62,6 @@ no_pic = [
 
 DOWN_PATH = "Mikobot/downloads/"
 
-AUTH_USERS = get_collection("AUTH_USERS")
-IGNORE = get_collection("IGNORED_USERS")
-PIC_DB = get_collection("PIC_DB")
-CC = get_collection("CONNECTED_CHANNELS")
 USER_JSON = {}
 USER_WC = {}
 
@@ -422,14 +402,14 @@ def control_user(func):
         msg = json.loads(str(message))
         gid = msg["chat"]["id"]
         gidtype = msg["chat"]["type"]
-        if gidtype in [ChatType.SUPERGROUP, ChatType.GROUP] and not (
-            await GROUPS.find_one({"_id": gid})
+        if gidtype in [ChatType.SUPERGROUP, ChatType.GROUP] and not db.exists(
+            "GROUPS", gid
         ):
             try:
                 gidtitle = msg["chat"]["username"]
             except KeyError:
                 gidtitle = msg["chat"]["title"]
-            await GROUPS.insert_one({"_id": gid, "grp": gidtitle})
+            db.set_value("GROUPS", gid, "grp", gidtitle)
             await clog(
                 "Mikobot",
                 f"Bot added to a new group\n\n{gidtitle}\nID: `{gid}`",
@@ -439,7 +419,7 @@ def control_user(func):
             user = msg["from_user"]["id"]
         except KeyError:
             user = msg["chat"]["id"]
-        if await IGNORE.find_one({"_id": user}):
+        if db.exists("IGNORE", user):
             return
         nut = time()
         if user not in BOT_OWNER:
@@ -453,7 +433,7 @@ def control_user(func):
                         )
                         await clog("Mikobot", f"UserID: {user}", "SPAM")
                     if USER_WC[user] == 5:
-                        await IGNORE.insert_one({"_id": user})
+                        db.add("IGNORE", user)
                         await message.reply(
                             (
                                 "You have been exempted from using this bot "
@@ -499,17 +479,13 @@ def check_user(func):
     async def wrapper(_, c_q: CallbackQuery):
         cq = json.loads(str(c_q))
         user = cq["from_user"]["id"]
-        if await IGNORE.find_one({"_id": user}):
+        if db.exists("IGNORE", user):
             return
         cqowner_is_ch = False
         cqowner = cq["data"].split("_").pop()
         if "-100" in cqowner:
             cqowner_is_ch = True
-            ccdata = await CC.find_one({"_id": cqowner})
-            if ccdata and ccdata["usr"] == user:
-                user_valid = True
-            else:
-                user_valid = False
+            user_valid = db.owns_channel(cqowner, user)
         if user in BOT_OWNER or user == int(cqowner):
             if user not in BOT_OWNER:
                 nt = time()
@@ -667,10 +643,7 @@ async def take_screen_shot(
 
 
 async def get_user_from_channel(cid):
-    try:
-        return (await CC.find_one({"_id": str(cid)}))["usr"]
-    except TypeError:
-        return None
+    return db.get_channel_owner(cid)
 
 
 gcc = get_user_from_channel
@@ -684,7 +657,7 @@ async def return_json_senpai(
     if auth:
         headers = {
             "Authorization": (
-                "Bearer " + str((await AUTH_USERS.find_one({"id": int(user)}))["token"])
+                "Bearer " + str(db.get_token(int(user)))
             ),
             "Content-Type": "application/json",
             "Accept": "application/json",
@@ -1255,12 +1228,11 @@ class google_translator:
 
 
 async def uidata(id_):
-    data = await GUI.find_one({"_id": str(id_)})
+    data = db.get_ui(id_)
     if data is not None:
-        bullet = str(data["bl"]) + " "
-        if data["bl"] is None:
-            bullet = ""
-        return bullet, data["cs"]
+        bl, cs = data
+        bullet = "" if bl is None else str(bl) + " "
+        return bullet, cs
     return ["➤ ", "UPPER"]
 
 
@@ -1305,7 +1277,6 @@ async def get_ui_text(case):
 
 tr = google_translator()
 ANIME_DB, MANGA_DB, CHAR_DB, STUDIO_DB, AIRING_DB = {}, {}, {}, {}, {}
-GUI = get_collection("GROUP_UI")
 
 #### Anilist part ####
 
@@ -3113,9 +3084,8 @@ async def anime_cmd(client: Client, message: Message, mdata: dict):
             auser = ufc
         else:
             auser = user
-    find_gc = await DC.find_one({"_id": gid})
-    if find_gc is not None and "anime" in find_gc["cmd_list"].split():
-        return
+        if db.command_disabled(gid, "anime"):
+            return
     if len(text) == 1:
         k = await message.reply(
             """Please give a query to search about
@@ -3129,7 +3099,7 @@ example: /anime Sword Art Online"""
     vars_ = {"search": query}
     if query.isdigit():
         vars_ = {"id": int(query)}
-    if await AUTH_USERS.find_one({"id": auser}):
+    if db.has_token(auser):
         auth = True
     result = await get_anime(
         vars_, user=auser, auth=auth, cid=gid if gid != user else None
@@ -3141,7 +3111,7 @@ example: /anime Sword Art Online"""
         await asyncio.sleep(5)
         return await k.delete()
     buttons = get_btns("ANIME", result=result, user=user, auth=auth)
-    if await SFW_GRPS.find_one({"id": gid}) and result[2].pop() == "True":
+    if db.exists("SFW_GRPS", gid) and result[2].pop() == "True":
         await client.send_photo(
             gid,
             no_pic[random.randint(0, 4)],
@@ -3173,8 +3143,7 @@ async def manga_cmd(client: Client, message: Message, mdata: dict):
             auser = ufc
         else:
             auser = user
-    find_gc = await DC.find_one({"_id": gid})
-    if find_gc is not None and "manga" in find_gc["cmd_list"].split():
+    if db.command_disabled(gid, "manga"):
         return
     if len(text) == 1:
         k = await message.reply(
@@ -3188,7 +3157,7 @@ example: /manga Sword Art Online"""
     qdb = rand_key()
     MANGA_DB[qdb] = query
     auth = False
-    if await AUTH_USERS.find_one({"id": auser}):
+    if db.has_token(auser):
         auth = True
     result = await get_manga(
         qdb, 1, auth=auth, user=auser, cid=gid if gid != user else None
@@ -3201,7 +3170,7 @@ example: /manga Sword Art Online"""
     buttons = get_btns(
         "MANGA", lsqry=qdb, lspage=1, user=user, result=result, auth=auth
     )
-    if await SFW_GRPS.find_one({"id": gid}) and result[2].pop() == "True":
+    if db.exists("SFW_GRPS", gid) and result[2].pop() == "True":
         buttons = get_btns(
             "MANGA",
             lsqry=qdb,
@@ -3243,8 +3212,7 @@ async def character_cmd(client: Client, message: Message, mdata: dict):
             auser = ufc
         else:
             auser = user
-    find_gc = await DC.find_one({"_id": gid})
-    if find_gc is not None and "character" in find_gc["cmd_list"].split():
+    if db.command_disabled(gid, "character"):
         return
     if len(text) == 1:
         k = await message.reply(
@@ -3256,7 +3224,7 @@ async def character_cmd(client: Client, message: Message, mdata: dict):
     qdb = rand_key()
     CHAR_DB[qdb] = query
     auth = False
-    if await AUTH_USERS.find_one({"id": auser}):
+    if db.has_token(auser):
         auth = True
     result = await get_character(qdb, 1, auth=auth, user=auser)
     if len(result) == 1:
@@ -3292,8 +3260,7 @@ async def anilist_cmd(client: Client, message: Message, mdata: dict):
             auser = ufc
         else:
             auser = user
-    find_gc = await DC.find_one({"_id": gid})
-    if find_gc is not None and "anilist" in find_gc["cmd_list"].split():
+    if db.command_disabled(gid, "anilist"):
         return
     if len(text) == 1:
         k = await message.reply(
@@ -3305,7 +3272,7 @@ async def anilist_cmd(client: Client, message: Message, mdata: dict):
     qdb = rand_key()
     ANIME_DB[qdb] = query
     auth = False
-    if await AUTH_USERS.find_one({"id": auser}):
+    if db.has_token(auser):
         auth = True
     result = await get_anilist(
         qdb, 1, auth=auth, user=auser, cid=gid if gid != user else None
@@ -3318,7 +3285,7 @@ async def anilist_cmd(client: Client, message: Message, mdata: dict):
     buttons = get_btns(
         "ANIME", lsqry=qdb, lspage=1, result=result, user=user, auth=auth
     )
-    if await SFW_GRPS.find_one({"id": gid}) and result[2].pop() == "True":
+    if db.exists("SFW_GRPS", gid) and result[2].pop() == "True":
         buttons = get_btns(
             "ANIME",
             lsqry=qdb,
@@ -3347,8 +3314,7 @@ async def anilist_cmd(client: Client, message: Message, mdata: dict):
 async def top_tags_cmd(client: Client, message: Message, mdata: dict):
     query = mdata["text"].split(" ", 1)
     gid = mdata["chat"]["id"]
-    find_gc = await DC.find_one({"_id": gid})
-    if find_gc is not None and "top" in find_gc["cmd_list"].split():
+    if db.command_disabled(gid, "top"):
         return
     get_tag = "None"
     if len(query) == 2:
@@ -3362,7 +3328,7 @@ async def top_tags_cmd(client: Client, message: Message, mdata: dict):
         k = await message.reply(result[0])
         await asyncio.sleep(5)
         return await k.delete()
-    if await SFW_GRPS.find_one({"id": gid}) and str(result[0][1]) == "True":
+    if db.exists("SFW_GRPS", gid) and str(result[0][1]) == "True":
         return await message.reply("No nsfw stuff allowed in this group!!!")
     msg, buttons = result
     await client.send_message(
@@ -3377,8 +3343,7 @@ async def top_tags_cmd(client: Client, message: Message, mdata: dict):
 async def studio_cmd(client: Client, message: Message, mdata: dict):
     text = mdata["text"].split(" ", 1)
     gid = mdata["chat"]["id"]
-    find_gc = await DC.find_one({"_id": gid})
-    if find_gc is not None and "studio" in find_gc["cmd_list"].split():
+    if db.command_disabled(gid, "studio"):
         return
     if len(text) == 1:
         x = await message.reply(
@@ -3401,7 +3366,7 @@ async def studio_cmd(client: Client, message: Message, mdata: dict):
             auser = ufc
         else:
             auser = user
-    if await AUTH_USERS.find_one({"id": auser}):
+    if db.has_token(auser):
         auth = True
     result = await get_studios(qdb, 1, user=auser, duser=user, auth=auth)
     if len(result) == 1:
@@ -3420,8 +3385,7 @@ async def airing_cmd(client: Client, message: Message, mdata: dict):
     """Get Airing Detail of Anime"""
     text = mdata["text"].split(" ", 1)
     gid = mdata["chat"]["id"]
-    find_gc = await DC.find_one({"_id": gid})
-    if find_gc is not None and "airing" in find_gc["cmd_list"].split():
+    if db.command_disabled(gid, "airing"):
         return
     if len(text) == 1:
         k = await message.reply(
@@ -3445,7 +3409,7 @@ example: /airing Sword Art Online"""
             auser = ufc
         else:
             auser = user
-    if await AUTH_USERS.find_one({"id": auser}):
+    if db.has_token(auser):
         auth = True
     result = await get_airing(qdb, 1, auth=auth, user=auser)
     if len(result) == 1:
@@ -3454,7 +3418,7 @@ example: /airing Sword Art Online"""
         return await k.delete()
     coverImg, out = result[0]
     btn = get_btns("AIRING", user=user, result=result, auth=auth, lsqry=qdb, lspage=1)
-    if await SFW_GRPS.find_one({"id": gid}) and result[2].pop() == "True":
+    if db.exists("SFW_GRPS", gid) and result[2].pop() == "True":
         btn = get_btns(
             "AIRING",
             user=user,
@@ -3517,16 +3481,16 @@ async def settings_cmd(client: Client, message: Message, mdata: dict):
         or user == cid
     ):
         sfw = "NSFW: Allowed"
-        if await SFW_GRPS.find_one({"id": cid}):
+        if db.exists("SFW_GRPS", cid):
             sfw = "NSFW: Not Allowed"
         notif = "Airing notifications: OFF"
-        if await AG.find_one({"_id": cid}):
+        if db.exists("AG", cid):
             notif = "Airing notifications: ON"
         cr = "Crunchyroll Updates: OFF"
-        if await CG.find_one({"_id": cid}):
+        if db.exists("CG", cid):
             cr = "Crunchyroll Updates: ON"
         sp = "Subsplease Updates: OFF"
-        if await SG.find_one({"_id": cid}):
+        if db.exists("SG", cid):
             sp = "Subsplease Updates: ON"
         await message.reply(
             text=setting_text,
@@ -3569,8 +3533,7 @@ async def browse_cmd(client: Client, message: Message, mdata: dict):
     except KeyError:
         user = mdata["sender_chat"]["id"]
     gid = mdata["chat"]["id"]
-    find_gc = await DC.find_one({"_id": gid})
-    if find_gc is not None and "browse" in find_gc["cmd_list"].split():
+    if db.command_disabled(gid, "browse"):
         return
     up = "Upcoming"
     tr = "• Trending •"
@@ -3596,16 +3559,11 @@ async def browse_cmd(client: Client, message: Message, mdata: dict):
 async def list_tags_genres_cmd(client, message: Message, mdata: dict):
     gid = mdata["chat"]["id"]
     text = mdata["text"]
-    find_gc = await DC.find_one({"_id": gid})
-    if find_gc is not None and "gettags" in (
-        text.split()[0] and find_gc["cmd_list"].split()
-    ):
+    if db.command_disabled(gid, "gettags"):
         return
-    if find_gc is not None and "getgenres" in (
-        text.split()[0] and find_gc["cmd_list"].split()
-    ):
+    if db.command_disabled(gid, "getgenres"):
         return
-    if await SFW_GRPS.find_one({"id": gid}) and "nsfw" in text:
+    if db.exists("SFW_GRPS", gid) and "nsfw" in text:
         return await message.reply("No nsfw allowed here!!!")
     msg = (
         (await get_all_tags(text))
@@ -3667,7 +3625,7 @@ async def page_btn(client: Client, cq: CallbackQuery, cdata: dict):
         media, lsqry=query, lspage=int(page), result=result, user=user, auth=authbool
     )
     if (
-        await SFW_GRPS.find_one({"id": gid})
+        db.exists("SFW_GRPS", gid)
         and media != "CHARACTER"
         and result[2].pop() == "True"
     ):
@@ -3792,50 +3750,42 @@ async def nsfw_toggle_btn(client: Client, cq: CallbackQuery):
         )
         return
     query = cq.data.split("_")
-    if await SFW_GRPS.find_one({"id": int(query[2])}):
+    if db.exists("SFW_GRPS", int(query[2])):
         sfw = "NSFW: Not Allowed"
     else:
         sfw = "NSFW: Allowed"
-    if await AG.find_one({"_id": int(query[2])}):
+    if db.exists("AG", int(query[2])):
         notif = "Airing notifications: ON"
     else:
         notif = "Airing notifications: OFF"
-    if await CG.find_one({"_id": int(query[2])}):
+    if db.exists("CG", int(query[2])):
         cr = "Crunchyroll Updates: ON"
     else:
         cr = "Crunchyroll Updates: OFF"
-    if await SG.find_one({"_id": int(query[2])}):
+    if db.exists("SG", int(query[2])):
         sp = "Subsplease Updates: ON"
     else:
         sp = "Subsplease Updates: OFF"
     if query[1] == "sfw":
-        if await SFW_GRPS.find_one({"id": int(query[2])}):
-            await SFW_GRPS.find_one_and_delete({"id": int(query[2])})
+        if db.toggle("SFW_GRPS", int(query[2])):
             sfw = "NSFW: Allowed"
         else:
-            await SFW_GRPS.insert_one({"id": int(query[2])})
             sfw = "NSFW: Not Allowed"
     if query[1] == "notif":
-        if await AG.find_one({"_id": int(query[2])}):
-            await AG.find_one_and_delete({"_id": int(query[2])})
-            notif = "Airing notifications: OFF"
-        else:
-            await AG.insert_one({"_id": int(query[2])})
+        if db.toggle("AG", int(query[2])):
             notif = "Airing notifications: ON"
+        else:
+            notif = "Airing notifications: OFF"
     if query[1] == "cr":
-        if await CG.find_one({"_id": int(query[2])}):
-            await CG.find_one_and_delete({"_id": int(query[2])})
-            cr = "Crunchyroll Updates: OFF"
-        else:
-            await CG.insert_one({"_id": int(query[2])})
+        if db.toggle("CG", int(query[2])):
             cr = "Crunchyroll Updates: ON"
-    if query[1] == "sp":
-        if await SG.find_one({"_id": int(query[2])}):
-            await SG.find_one_and_delete({"_id": int(query[2])})
-            sp = "Subsplease Updates: OFF"
         else:
-            await SG.insert_one({"_id": int(query[2])})
+            cr = "Crunchyroll Updates: OFF"
+    if query[1] == "sp":
+        if db.toggle("SG", int(query[2])):
             sp = "Subsplease Updates: ON"
+        else:
+            sp = "Subsplease Updates: OFF"
     btns = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text=sfw, callback_data=f"settogl_sfw_{query[2]}", style=ButtonStyle.PRIMARY)],
@@ -4522,62 +4472,55 @@ async def headlines_btn(client: Client, cq: CallbackQuery):
             "You don't have enough permissions to change this!!!", show_alert=True
         )
         return
-    lcdata = await HD.find_one({"_id": gid})
-    maldata = await MHD.find_one({"_id": gid})
+    lcdata = db.key_exists("HD", gid, "on")
+    maldata = db.key_exists("MHD", gid, "on")
     lchd = "LiveChart: OFF"
     malhd = "MyAnimeList: OFF"
     malhdpin = lchdpin = "Auto Pin: OFF"
     malpin = lcpin = None
     if lcdata:
         lchd = "LiveChart: ON"
-        try:
-            lcpin = lcdata["pin"]
+        lcpin = db.get_value("HD", gid, "pin")
+        if lcpin is not None:
             lchdpin = f"Auto Pin: {lcpin}"
-        except KeyError:
-            pass
     if maldata:
         malhd = "MyAnimeList: ON"
-        try:
-            malpin = maldata["pin"]
+        malpin = db.get_value("MHD", gid, "pin")
+        if malpin is not None:
             malhdpin = f"Auto Pin: {malpin}"
-        except KeyError:
-            pass
     if "mal" in qry:
         data = maldata
         pin = malpin
         pin_msg = malhdpin
-        collection = MHD
+        coll = "MHD"
         src_status = malhd
         srcname = "MyAnimeList"
     else:
         data = lcdata
         pin = lcpin
         pin_msg = lchdpin
-        collection = HD
+        coll = "HD"
         src_status = lchd
         srcname = "LiveChart"
     if re.match(r"^(mal|lc)hd$", qry):
         if data:
-            await collection.find_one_and_delete(data)
+            db.remove(coll, gid)
             src_status = f"{srcname}: OFF"
-            pin_msg = f"Auto Pin: OFF"
+            pin_msg = "Auto Pin: OFF"
         else:
-            await collection.insert_one({"_id": gid})
+            db.add(coll, gid)
             src_status = f"{srcname}: ON"
-            pin_msg = f"Auto Pin: OFF"
+            pin_msg = "Auto Pin: OFF"
     if re.match(r"^(mal|lc)hdpin$", qry):
         if data:
             if pin:
                 switch = "ON" if pin == "OFF" else "OFF"
-                await collection.find_one_and_update(
-                    data, {"$set": {"pin": switch, "unpin": None}}, upsert=True
-                )
+                db.set_value(coll, gid, "pin", switch)
+                db.set_value(coll, gid, "unpin", None)
                 pin_msg = f"Auto Pin: {switch}"
             else:
-                await collection.find_one_and_update(
-                    data, {"$set": {"pin": "ON"}}, upsert=True
-                )
-                pin_msg = f"Auto Pin: ON"
+                db.set_value(coll, gid, "pin", "ON")
+                pin_msg = "Auto Pin: ON"
         else:
             await cq.answer(f"Please enable {srcname} first!!!", show_alert=True)
     if "mal" in qry:
@@ -4643,41 +4586,36 @@ async def auto_unpin(client: Client, cq: CallbackQuery):
     cancel = False
     if src == "lc":
         srcname = "LiveChart"
-        collection = HD
+        coll = "HD"
     else:
         srcname = "MyAnimeList"
-        collection = MHD
-    data = await collection.find_one({"_id": gid})
-    if data:
-        try:
-            data["pin"]
-            try:
-                unpin = data["unpin"]
-            except KeyError:
-                unpin = None
-        except KeyError:
-            cancel = True
+        coll = "MHD"
+    data = db.key_exists(coll, gid, "on")
+    if data and not db.key_exists(coll, gid, "pin"):
+        # The original required a pin setting before an unpin could be chosen.
+        cancel = True
+    elif data:
+        unpin = db.get_number(coll, gid, "unpin")
     else:
         cancel = True
     if cancel:
         return await cq.answer(
             f"Please enable {srcname} and Auto Pin option for them!!!", show_alert=True
         )
-    setting = None
-    if qry == "call":
-        pass
-    elif qry == "None":
-        setting = {"unpin": None}
+    setting = {}
+    if qry == "None":
+        setting["unpin"] = None
     elif qry.isdigit():
         if int(qry) == 0:
             unpin = int(qry)
-            setting = {"unpin": 0}
+            setting["unpin"] = 0
         else:
             now = round(time.time(), -2)
             unpin = int(qry)
-            setting = {"unpin": int(qry), "next_unpin": int(qry) + int(now)}
-    if setting:
-        await collection.find_one_and_update(data, {"$set": setting})
+            setting["unpin"] = int(qry)
+            setting["next_unpin"] = int(qry) + int(now)
+    for field, val in setting.items():
+        db.set_number(coll, gid, field, val)
     btn = []
     row = []
     count = 0
@@ -4741,24 +4679,21 @@ async def change_ui_btn(client: Client, cq: CallbackQuery):
     )
     btn.append([InlineKeyboardButton(text="BACK", callback_data=f"settogl_call_{gid}", style=ButtonStyle.PRIMARY)])
     if qry in ["Caps", "UPPER"]:
-        if await GUI.find_one({"_id": gid}):
-            await GUI.update_one({"_id": gid}, {"$set": {"cs": qry}})
-        else:
-            await GUI.insert_one({"_id": gid, "bl": "➤", "cs": qry})
+        if not db.key_exists("GUI", gid, "cs"):
+            db.set_value("GUI", gid, "bl", "➤")
+        db.set_value("GUI", gid, "cs", qry)
     elif qry != "call":
         bullet = qry
         if qry == "None":
             bullet = None
-        if await GUI.find_one({"_id": gid}):
-            await GUI.update_one({"_id": gid}, {"$set": {"bl": bullet}})
-        else:
-            await GUI.insert_one({"_id": gid, "bl": bullet, "cs": "UPPER"})
+        if not db.key_exists("GUI", gid, "bl"):
+            db.set_value("GUI", gid, "cs", "UPPER")
+        db.set_value("GUI", gid, "bl", bullet)
     bl = "➤"
     cs = "UPPER"
-    if await GUI.find_one({"_id": gid}):
-        data = await GUI.find_one({"_id": gid})
-        bl = data["bl"]
-        cs = data["cs"]
+    data = db.get_ui(gid)
+    if data is not None:
+        bl, cs = data
     text = f"""Selected bullet in this group: {bl}
 Selected text case in this group: {cs}"""
     await cq.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=btn))
@@ -4850,8 +4785,7 @@ async def studio_edit_cmd(client: Client, message: Message):
 async def get_schuled(client: Client, message: Message, mdata: dict):
     """Get List of Scheduled Anime"""
     gid = mdata["chat"]["id"]
-    find_gc = await DC.find_one({"_id": gid})
-    if find_gc is not None and "schedule" in find_gc["cmd_list"].split():
+    if db.command_disabled(gid, "schedule"):
         return
     x = await client.send_message(gid, "<code>Fetching Scheduled Animes</code>")
     try:
@@ -4887,8 +4821,7 @@ async def get_schuled_edit(client: Client, message: Message):
 async def get_watch_order(client: Client, message: Message, mdata: dict):
     """Get List of Scheduled Anime"""
     gid = mdata["chat"]["id"]
-    find_gc = await DC.find_one({"_id": gid})
-    if find_gc is not None and "watch" in find_gc["cmd_list"].split():
+    if db.command_disabled(gid, "watch"):
         return
     x = message.text.split(" ", 1)
     if len(x) == 1:
@@ -4992,12 +4925,12 @@ async def get_watch_order_edit(client: Client, message: Message):
 )
 @control_user
 async def fillers_cmd(client: app, message: Message, mdata: dict):
-    find_gc = await DC.find_one({"_id": mdata["chat"]["id"]})
+    gid = mdata["chat"]["id"]
     try:
         user = mdata["from_user"]["id"]
     except KeyError:
         user = mdata["sender_chat"]["id"]
-    if find_gc is not None and "watch" in find_gc["cmd_list"].split():
+    if db.command_disabled(gid, "watch"):
         return
     qry = mdata["text"].split(" ", 1)
     if len(qry) == 1:

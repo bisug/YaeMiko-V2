@@ -71,7 +71,7 @@
   <rect class="red" x="480" y="540" width="420" height="120"/>
   <text class="head" x="504" y="572">Required inputs, identical everywhere</text>
   <text class="sub" x="504" y="596">ENV=True, API_ID, API_HASH, TOKEN, OWNER_ID</text>
-  <text class="sub" x="504" y="618">DATABASE_URL, MONGO_DB_URI, DB_NAME</text>
+  <text class="sub" x="504" y="618">DATABASE_URL</text>
   <text class="sub" x="504" y="640">EVENT_LOGS, MESSAGE_DUMP, SUPPORT_CHAT, SUPPORT_ID</text>
 
   <rect class="panel" x="20" y="420" width="400" height="240"/>

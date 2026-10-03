@@ -22,7 +22,7 @@
   <rect class="bg" x="0" y="0" width="1280" height="840"/>
 
   <text class="title" x="48" y="46">YaeMiko runtime architecture</text>
-  <text class="sub" x="48" y="70">Two Telegram clients, one process, PostgreSQL and MongoDB persistence</text>
+  <text class="sub" x="48" y="70">Two Telegram clients, one process, PostgreSQL persistence</text>
 
   <rect class="accent-blue" x="80" y="100" width="480" height="70"/>
   <text class="head" x="104" y="128">Telegram Bot API</text>
@@ -59,18 +59,12 @@
   <text class="sub" x="744" y="498">LOAD and NO_LOAD control ordering and exclusions</text>
 
   <path class="edge" d="M 200 520 L 160 600"/>
-  <path class="edge" d="M 400 520 L 440 600"/>
   <path class="edge" d="M 800 520 L 800 600"/>
 
-  <rect class="accent-green" x="20" y="600" width="280" height="96"/>
+  <rect class="accent-green" x="20" y="600" width="580" height="96"/>
   <text class="head" x="44" y="630">PostgreSQL</text>
   <text class="sub" x="44" y="652">SQLAlchemy scoped sessions</text>
-  <text class="sub" x="44" y="674">24 modules: warns, locks, notes, rules</text>
-
-  <rect class="accent-green" x="320" y="600" width="280" height="96"/>
-  <text class="head" x="344" y="630">MongoDB</text>
-  <text class="sub" x="344" y="652">PyMongo collections</text>
-  <text class="sub" x="344" y="674">10 modules: users, chats, afk, whispers</text>
+  <text class="sub" x="44" y="674">35 modules: warns, locks, notes, karma, users, chats, anime</text>
 
   <rect class="accent-orange" x="620" y="600" width="280" height="96"/>
   <text class="head" x="644" y="630">External HTTP APIs</text>

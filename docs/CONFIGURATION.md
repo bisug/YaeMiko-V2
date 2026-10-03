@@ -41,8 +41,6 @@ environment variables.
 | `DB_POOL_SIZE` | integer | `Database/sql` | Pooled connections held open. Default `min(20, cpu*2+4)` |
 | `DB_MAX_OVERFLOW` | integer | `Database/sql` | Extra connections above the pool size. Default `20` |
 | `DB_POOL_TIMEOUT` | integer | `Database/sql` | Seconds a caller waits for a connection. Default `30` |
-| `MONGO_DB_URI` | string | `Database/mongodb` | Atlas SRV string |
-| `DB_NAME` | string | `Database/mongodb` | Mongo database name |
 | `EVENT_LOGS` | integer | Logging plugins | Channel ID for bot level events |
 | `MESSAGE_DUMP` | integer | Logging plugins | Dump chat ID |
 | `SUPPORT_CHAT` | string | Start and about keyboards | Username without the `@` |
@@ -115,6 +113,5 @@ contains the complete Telegram API URL with the token in the path.
 | `Mikobot/__init__.py` | Everything the runtime needs, plus `LOG_LEVEL` and `ACTIVITY_LOG` |
 | `variables.py` | The `ENV` disabled path, class attributes read through `Config` |
 | `Database/sql/__init__.py` | `DATABASE_URL` through `DB_URI` |
-| `Database/mongodb/mongodb.py` | `MONGO_DB_URI` and `DB_NAME` |
 | `app.json` | The Heroku configuration manifest shown during deploy |
 | `Infamous/karma.py` and `Mikobot/__main__.py` | `BOT_NAME`, `BOT_USERNAME`, `OWNER_ID`, `SUPPORT_CHAT` |

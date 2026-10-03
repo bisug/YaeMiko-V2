@@ -46,13 +46,13 @@
 **YaeMiko** is a modular Telegram group management bot that runs two Telegram clients in a single
 process: [aiogram](https://docs.aiogram.dev/) for the Bot API and
 [Kurigram](https://docs.kurigram.live/) for MTProto features. It targets Python 3.14, stores chat
-state in PostgreSQL and document shaped data in MongoDB, and ships 61 plugin modules.
+state in PostgreSQL, and ships 61 plugin modules.
 
 | | |
 | --- | --- |
 | **Runtime** | Python 3.14.7, single `asyncio` event loop, long polling |
 | **Telegram** | aiogram 3.31 on the Bot API, Kurigram 2.2.26 on MTProto, side by side |
-| **Storage** | PostgreSQL 16 through SQLAlchemy 2.1, MongoDB through PyMongo 4.18 |
+| **Storage** | PostgreSQL 16 through SQLAlchemy 2.1 |
 | **Modules** | 61 auto discovered plugins under `Mikobot/plugins` |
 | **Requirements** | 512 MB RAM minimum, 1 GB recommended, Python 3.14.7 |
 | **Deployment** | Render, Railway, Heroku, Docker, or a bare VPS |
@@ -77,8 +77,9 @@ state in PostgreSQL and document shaped data in MongoDB, and ships 61 plugin mod
 - **Token safe logging.** A `RedactingFormatter` strips anything shaped like a bot token, and the
   `httpx` and `httpcore` loggers are pinned to `WARNING` because their INFO output contains the
   full Telegram API URL.
-- **Dual store design.** Structured chat state lives in PostgreSQL, user profiles, chats, AFK
-  entries, whispers and karma live in MongoDB.
+- **One store.** Everything lives in PostgreSQL: chat state, users, AFK, whispers, karma,
+  couples, per-chat toggles, locale, force-subscribe and the anime plugin's group settings.
+  MongoDB was removed; see [docs/MIGRATION-MONGO-TO-SQL.md](docs/MIGRATION-MONGO-TO-SQL.md).
 - **Anti-abuse toolkit.** AntiRaid bans a flood of joins in bulk instead of one at a time; CAPTCHA
   gates new members with a button, a text prompt, or a math question, and can verify pending join
   requests. Flood limits accept per-type durations, and blocklists match user, chat, or channel.
@@ -103,6 +104,9 @@ state in PostgreSQL and document shaped data in MongoDB, and ships 61 plugin mod
 
 Full walkthrough: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+PostgreSQL is the only store. MongoDB was retired after every feature moved across:
+[docs/MIGRATION-MONGO-TO-SQL.md](docs/MIGRATION-MONGO-TO-SQL.md).
+
 | Layer | Path | Responsibility |
 | --- | --- | --- |
 | Entry point | [`Mikobot/__main__.py`](Mikobot/__main__.py) | Handler registration, plugin discovery, chat migration, graceful shutdown |
@@ -111,7 +115,6 @@ Full walkthrough: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | HTTP client | [`Mikobot/state.py`](Mikobot/state.py) | One shared `httpx.AsyncClient` with HTTP/2 and a 20 second timeout |
 | Plugins | [`Mikobot/plugins`](Mikobot/plugins) | 57 feature modules, auto discovered |
 | SQL layer | [`Database/sql`](Database/sql) | 29 SQLAlchemy modules backed by PostgreSQL |
-| Mongo layer | [`Database/mongodb`](Database/mongodb) | 10 collection modules plus a shared client |
 | Shared helpers | [`Mikobot/utils`](Mikobot/utils), [`Mikobot/plugins/helper_funcs`](Mikobot/plugins/helper_funcs) | Caching, custom filters, error capture, localization, message parsing, readable sizes |
 | Static assets | [`Extra`](Extra), [`locales`](locales) | Fonts, default avatars, catalogs for `en-US`, `id-ID`, `id-JW` |
 
@@ -128,7 +131,7 @@ Full walkthrough: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 5. The Kurigram `Client` is created and a boot message is pushed to the support chat.
 6. `Mikobot/__main__.py` registers the core handlers, imports every module listed by `ALL_MODULES`,
    and starts long polling.
-7. On exit the Kurigram client, the MongoDB client, the httpx client and the loop are closed in
+7. On exit the Kurigram client, the httpx client and the loop are closed in
    order.
 
 ---
@@ -171,8 +174,6 @@ execution. Persistence, reply construction and error handling surround that spin
 | PostgreSQL | 16 (Heroku addon) | [postgresql.org](https://www.postgresql.org/) |
 | SQLAlchemy | 2.1.2 | [sqlalchemy.org](https://www.sqlalchemy.org/) |
 | psycopg (binary, pool) | 3.3.6 | [psycopg.org](https://www.psycopg.org/) |
-| MongoDB Atlas | free or serverless tier | [mongodb.com](https://www.mongodb.com/atlas) |
-| PyMongo | 4.18.2 | [PyPI](https://pypi.org/project/pymongo/) |
 
 ### HTTP, media and processing
 
@@ -273,8 +274,7 @@ YaeMiko/
 │   ├── plugins/                 57 feature modules + helper_funcs
 │   └── utils/                   Caching, filters, error capture, localization, parsing
 ├── Database/
-│   ├── mongodb/                 10 PyMongo collection modules + client
-│   └── sql/                     29 SQLAlchemy modules
+│   └── sql/                     34 SQLAlchemy modules
 ├── Infamous/                    Static start and repo keyboards
 ├── Extra/                       Fonts and default images
 ├── locales/                     en-US, id-ID, id-JW catalogs
@@ -283,6 +283,7 @@ YaeMiko/
 │   ├── ARCHITECTURE.md
 │   ├── CONFIGURATION.md
 │   ├── DEPLOYMENT.md
+│   ├── MIGRATION-MONGO-TO-SQL.md
 │   ├── PLUGINS.md
 │   ├── SYSTEM-REQUIREMENTS.md
 │   └── assets/
@@ -346,8 +347,6 @@ Full reference with defaults and elevated user ranks:
 | `TOKEN` | Bot token from [@BotFather](https://t.me/BotFather) | `123456:AA...` |
 | `OWNER_ID` | Your numeric Telegram user ID | `123456789` |
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/db` |
-| `MONGO_DB_URI` | MongoDB connection string | `mongodb+srv://user:pass@cluster.mongodb.net` |
-| `DB_NAME` | MongoDB database name | `MikoDB` |
 | `EVENT_LOGS` | Channel ID for bot level event logs | `-1001234567890` |
 | `MESSAGE_DUMP` | Dump chat ID for archived messages | `-1001234567890` |
 | `SUPPORT_CHAT` | Support group username without the `@` | `MySupportGroup` |
@@ -407,7 +406,6 @@ a background worker, never a web service, or health checks will fail forever.
 | `API_ID`, `API_HASH` | [my.telegram.org/apps](https://my.telegram.org/apps) |
 | `TOKEN` | [@BotFather](https://t.me/BotFather) |
 | `OWNER_ID` | [userid.bot](https://t.me/userid_bot) |
-| `MONGO_DB_URI` | [MongoDB Atlas](https://www.mongodb.com/atlas) free M0 cluster |
 | PostgreSQL | Provided by the platform, or install it on a VPS |
 
 Full variable list with defaults: [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
@@ -428,7 +426,7 @@ Full variable list with defaults: [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
 2. Keep the plan `0.5c-512mb`. Render Free instances cover web services, Postgres and Key Value
    only, so a worker needs a paid plan.
 3. Fill the prompted values: `API_ID`, `API_HASH`, `TOKEN`, `OWNER_ID`, `SUPPORT_CHAT`,
-   `SUPPORT_ID`, `EVENT_LOGS`, `MESSAGE_DUMP`, `MONGO_DB_URI`, and the optional lists.
+   `SUPPORT_ID`, `EVENT_LOGS`, `MESSAGE_DUMP`, and the optional lists.
 4. Apply. The first build installs every wheel, so allow 5 to 10 minutes.
 5. Send `/start` to the bot.
 
@@ -464,7 +462,6 @@ Steps:
 1. Create a Telegram application at [my.telegram.org/apps](https://my.telegram.org/apps) for
    `API_ID` and `API_HASH`.
 2. Create the bot with [@BotFather](https://t.me/BotFather) for `TOKEN`.
-3. Create a free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster for `MONGO_DB_URI`.
 4. Press the deploy button, fill the prompted variables, and confirm the dyno.
 5. Verify the startup banner lands in the support chat and that `/start` replies.
 
@@ -596,7 +593,6 @@ button an explicit `style`.
 - [TgCryptoRust](https://pypi.org/project/TgCryptoRust/) for accelerated encryption
 - [SQLAlchemy](https://github.com/sqlalchemy/sqlalchemy) and
   [psycopg](https://github.com/psycopg/psycopg) for the PostgreSQL layer
-- [PyMongo](https://github.com/mongodb/mongo-python-driver) for the MongoDB layer
 - [httpx](https://github.com/encode/httpx) for the shared asynchronous HTTP client
 
 ### External data sources
@@ -614,7 +610,6 @@ button an explicit `style`.
 
 - [Heroku](https://www.heroku.com/) for worker hosting and the PostgreSQL addon
 - [Render](https://render.com/) and [Railway](https://railway.app/) for one click container deploys
-- [MongoDB Atlas](https://www.mongodb.com/atlas) for the document store
 - [GitHub Actions](https://github.com/features/actions),
   [CodeQL](https://github.com/github/codeql) and
   [Dependabot](https://docs.github.com/en/code-security/dependabot) for CI and security

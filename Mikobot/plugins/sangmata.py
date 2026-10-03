@@ -1,7 +1,7 @@
 from pyrogram import filters
 from pyrogram.types import Message
 
-from Database.mongodb.sangmata_db import (
+from Database.sql.sangmata_sql import (
     add_userdata,
     cek_userdata,
     get_userdata,
@@ -24,16 +24,16 @@ from Mikobot.utils.localization import use_chat_lang
 )
 @use_chat_lang()
 async def cek_mataa(_, ctx: Message, strings):
-    if ctx.sender_chat or not await is_sangmata_on(ctx.chat.id):
+    if ctx.sender_chat or not is_sangmata_on(ctx.chat.id):
         return
-    if not await cek_userdata(ctx.from_user.id):
-        return await add_userdata(
+    if not cek_userdata(ctx.from_user.id):
+        return add_userdata(
             ctx.from_user.id,
             ctx.from_user.username,
             ctx.from_user.first_name,
             ctx.from_user.last_name,
         )
-    usernamebefore, first_name, lastname_before = await get_userdata(ctx.from_user.id)
+    usernamebefore, first_name, lastname_before = get_userdata(ctx.from_user.id)
     msg = ""
     if (
         usernamebefore != ctx.from_user.username
@@ -49,7 +49,7 @@ async def cek_mataa(_, ctx: Message, strings):
             else strings("no_uname")
         )
         msg += strings("uname_change_msg").format(bef=usernamebefore, aft=usernameafter)
-        await add_userdata(
+        add_userdata(
             ctx.from_user.id,
             ctx.from_user.username,
             ctx.from_user.first_name,
@@ -59,7 +59,7 @@ async def cek_mataa(_, ctx: Message, strings):
         msg += strings("firstname_change_msg").format(
             bef=first_name, aft=ctx.from_user.first_name
         )
-        await add_userdata(
+        add_userdata(
             ctx.from_user.id,
             ctx.from_user.username,
             ctx.from_user.first_name,
@@ -71,7 +71,7 @@ async def cek_mataa(_, ctx: Message, strings):
         msg += strings("lastname_change_msg").format(
             bef=lastname_before, aft=lastname_after
         )
-        await add_userdata(
+        add_userdata(
             ctx.from_user.id,
             ctx.from_user.username,
             ctx.from_user.first_name,
@@ -100,18 +100,18 @@ async def set_mataa(_, ctx: Message, strings):
     if len(ctx.command) == 1:
         return await ctx.reply(strings("set_sangmata_help").format(cmd=ctx.command[0]))
     if ctx.command[1] == "on":
-        cekset = await is_sangmata_on(ctx.chat.id)
+        cekset = is_sangmata_on(ctx.chat.id)
         if cekset:
             await ctx.reply(strings("sangmata_already_on"))
         else:
-            await sangmata_on(ctx.chat.id)
+            sangmata_on(ctx.chat.id)
             await ctx.reply(strings("sangmata_enabled"))
     elif ctx.command[1] == "off":
-        cekset = await is_sangmata_on(ctx.chat.id)
+        cekset = is_sangmata_on(ctx.chat.id)
         if not cekset:
             await ctx.reply(strings("sangmata_already_off"))
         else:
-            await sangmata_off(ctx.chat.id)
+            sangmata_off(ctx.chat.id)
             await ctx.reply(strings("sangmata_disabled"))
     else:
         await ctx.reply(strings("wrong_param"))

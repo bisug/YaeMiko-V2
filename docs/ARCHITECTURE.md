@@ -37,7 +37,7 @@ Back to [README](../README.md).
 A single `asyncio` event loop is created at import time by `_create_event_loop()` in
 `Mikobot/__init__.py`. The aiogram `Bot` and `Dispatcher` are bound to it, the Kurigram `Client` is started on it,
 and `run_polling(close_loop=False)` drives updates on it. Shutdown stops the clients, closes the
-MongoDB client and the shared httpx client, then closes the loop.
+shared httpx client, then closes the loop.
 
 ## Core runtime
 
@@ -136,8 +136,8 @@ keywords to `__init_subclass__`, which takes no keywords.
 
 | Store | Driver | Contents |
 | --- | --- | --- |
-| PostgreSQL | SQLAlchemy 2.1, psycopg 3 pooled | Warns, locks, notes, rules, anti-raid, captcha, federation, filters, disabled commands |
-| MongoDB | PyMongo 4.18 | Users, chats, AFK, whispers, karma, locale selection, blacklist, fsub, sangmata |
+| PostgreSQL | SQLAlchemy 2.1, psycopg 3 pooled | Warns, locks, notes, rules, anti-raid, captcha, federation, filters, disabled commands, users, chats, AFK, whispers, karma, couples, toggles, locale, sangmata, fsub |
+| MongoDB | PyMongo 4.18 | Anime plugin group settings only; see [MIGRATION-MONGO-TO-SQL.md](MIGRATION-MONGO-TO-SQL.md) |
 | Pickle file | `DataStore` | chat and user context across restarts |
 
 `Database/sql/__init__.py` rewrites `postgres://` to `postgresql+psycopg://`, creates the engine
@@ -158,8 +158,8 @@ loop cannot roll back a worker's.
 ## Localization
 
 `Mikobot/utils/localization.py` loads JSON catalogs from `locales/`. `en-US` is enabled, with
-`id-ID` and `id-JW` available. The per user and per chat language is stored in MongoDB through
-`Database/mongodb/locale_db.py`.
+`id-ID` and `id-JW` available. The per user and per chat language is stored in PostgreSQL through
+`Database/sql/locale_sql.py`.
 
 ## Chat migration
 
@@ -172,7 +172,6 @@ update. Missing hooks are ignored via `contextlib.suppress`.
 `finally` in `__main__.py` runs a fixed order, each step guarded and logged:
 
 1. `app.stop()` stops the Kurigram client.
-2. `close_db()` closes the MongoDB client.
 3. `state.aclose()` closes the shared httpx client.
 4. The event loop is stopped if still running, then closed.
 

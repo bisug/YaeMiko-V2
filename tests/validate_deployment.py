@@ -20,7 +20,6 @@ SECRETS = {
     "API_HASH",
     "TOKEN",
     "OWNER_ID",
-    "MONGO_DB_URI",
     "SUPPORT_CHAT",
     "SUPPORT_ID",
     "EVENT_LOGS",

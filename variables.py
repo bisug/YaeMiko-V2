@@ -36,15 +36,9 @@ class Config(object):
     EVENT_LOGS = int(os.environ.get("EVENT_LOGS", "-100"))
     MESSAGE_DUMP = int(os.environ.get("MESSAGE_DUMP", "-100"))
 
-    # MongoDB configuration
-    MONGO_DB_URI = os.environ.get("MONGO_DB_URI", "")
-
     # Support chat and support ID
     SUPPORT_CHAT = os.environ.get("SUPPORT_CHAT", "")
     SUPPORT_ID = int(os.environ.get("SUPPORT_ID", "-100"))
-
-    # Database name
-    DB_NAME = os.environ.get("DB_NAME", "")
 
     # Bot token
     TOKEN = os.environ.get("TOKEN", "")

@@ -52,7 +52,7 @@
   <rect class="accent-green" x="40" y="250" width="560" height="90"/>
   <text class="head" x="64" y="282">Persistence split</text>
   <text class="sub" x="64" y="304">PostgreSQL holds chat state: warnings, locks, notes, rules, night mode, feds</text>
-  <text class="sub" x="64" y="326">MongoDB holds document data: user profiles, chat metadata, AFK, whispers, karma</text>
+  <text class="sub" x="64" y="326">PostgreSQL holds everything: chat state, users, AFK, whispers, karma, anime settings</text>
 
   <rect class="panel" x="640" y="250" width="600" height="90"/>
   <text class="head" x="664" y="282">Context persistence</text>
@@ -69,7 +69,7 @@
   <text class="head" x="664" y="422">Error handling</text>
   <text class="sub" x="664" y="444">error_callback answers the user, then logs the traceback with the bot token redacted</text>
   <text class="sub" x="664" y="466">Chat migration is intercepted and every module __migrate__ hook is called for the chat ID change</text>
-  <text class="sub" x="664" y="488">Shutdown closes MongoDB, the httpx client, and the event loop in order</text>
+  <text class="sub" x="664" y="488">Shutdown closes the httpx client and the event loop in order</text>
 
   <rect class="accent-red" x="40" y="546" width="1200" height="112"/>
   <text class="head" x="64" y="578">Operational guards</text>

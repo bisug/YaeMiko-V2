@@ -70,7 +70,7 @@ name in that list, so dropping a new file into the directory is enough to regist
 | --- | --- | --- |
 | `welcome` | WELCOME | `setwelcome`, `resetwelcome`, `setgoodbye`, `resetgoodbye`, `cleanservice`, `nocleanservice`, `cleanservicetypes`, `cleanwelcome`, `welcome`, `goodbye`, `welcomemute`, plus help variants |
 | `newuserinfo` | none | `/userinfo` for a member profile card |
-| `afk` | AFK | `afk`, with a MongoDB backed clean mode cache |
+| `afk` | AFK | `afk` |
 | `notes` | NOTES | `save`, `get`, `clear`, `removeallnotes` |
 | `users` | USERS | `groups` |
 | `echo` | ECHO | `echo`, `say`, `broadcast` (bot owners only) |
@@ -100,7 +100,7 @@ name in that list, so dropping a new file into the directory is enough to regist
 | `alive` | ALIVE | Uptime card with `psutil` host statistics |
 | `speedtest` | SpeedTest | `speedtest` |
 | `info` | INFO | Chat and user information cards |
-| `karma` | KARMA | Karma counters stored in MongoDB |
+| `karma` | KARMA | Karma counters stored in PostgreSQL |
 
 ## Search, AI and translation
 
@@ -165,6 +165,6 @@ Rules to follow:
 3. Register handlers through `function(...)`, which is `dispatcher.add_handler`.
 4. Give every inline button an explicit `style`: `PRIMARY` for navigation, `SUCCESS` for
    confirming actions, `DANGER` for destructive actions.
-5. Store structured chat state in `Database/sql`, document shaped data in `Database/mongodb`.
+5. Store state in `Database/sql`. It is the only database; there is no MongoDB layer.
 6. Use the shared `state` httpx client from `Mikobot.state` for outbound HTTP.
 7. Add a check to `tests/test_regressions.py` if the module fixes a regression.

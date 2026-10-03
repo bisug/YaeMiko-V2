@@ -893,12 +893,6 @@ if __name__ == "__main__":
         except Exception:
             LOGGER.exception("Failed to stop Kurigram client")
         try:
-            from Database.mongodb.db import close_db
-
-            loop.run_until_complete(close_db())
-        except Exception:
-            LOGGER.exception("Failed to close MongoDB client")
-        try:
             from Mikobot.state import state
 
             loop.run_until_complete(state.aclose())
