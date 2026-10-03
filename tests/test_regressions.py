@@ -6859,5 +6859,75 @@ def _run(coro):
     return asyncio.new_event_loop().run_until_complete(coro)
 
 
+class TranslatorLanguageTests(unittest.IsolatedAsyncioTestCase):
+    """``/tr`` bound dest_lang and text only on some paths.
+
+    dest_lang was assigned inside the loop that looks for a hyphenated locale,
+    so ``/tr de-at`` -- one dash, no table entry -- reached the read with the
+    name never bound and died on NameError. text was assigned for a reply's
+    text and its caption, and a photo reply has neither, so that command died
+    on the same error. Neither path is reachable from the existing tests,
+    which only ever call the handler with a text reply.
+    """
+
+    SOURCE = ROOT / "Mikobot/plugins/tr.py"
+
+    def _handler(self, langs):
+        """The real totranslate, lifted out of its module, plus its answers."""
+
+        class Message:
+            def __init__(self, body, reply):
+                self.text = body
+                self.reply_to_message = reply
+                self.answers = []
+
+            async def answer(self, body, **kwargs):
+                self.answers.append(body)
+
+        totranslate = load_function(
+            self.SOURCE,
+            "totranslate",
+            {
+                "LANGUAGES": langs,
+                "EMOJI_DATA": {},
+                "google_translator": lambda: SimpleNamespace(
+                    translate=lambda *a, **k: "translated",
+                    detect=lambda *a, **k: ["en", "english"],
+                ),
+                "asyncio": asyncio,
+                "ParseMode": SimpleNamespace(MARKDOWN="Markdown"),
+            },
+        )
+        return totranslate, Message
+
+    async def test_one_dash_source_without_a_table_entry_still_translates(self):
+        """/tr de-at is one dash and no table entry, so the loop binds nothing."""
+        totranslate, Message = self._handler(
+            {"en": "english", "de": "german", "zh-cn": "chinese"}
+        )
+        message = Message(
+            "/tr de-at",
+            SimpleNamespace(text="Hallo", caption=None, forum_topic_created=None),
+        )
+        # Before the fix this raised NameError: name 'dest_lang' is not defined.
+        await totranslate(message, None)
+        self.assertEqual(
+            message.answers, ["📒 *Translated from* `de` to `at`:\n`translated`"]
+        )
+
+    async def test_a_reply_with_no_text_or_caption_says_so(self):
+        """A photo reply carries neither, so the handler must answer, not raise."""
+        totranslate, Message = self._handler({"en": "english"})
+        message = Message(
+            "/tr en",
+            SimpleNamespace(text=None, caption=None, forum_topic_created=None),
+        )
+        # Before the fix this raised NameError: name 'text' is not defined.
+        await totranslate(message, None)
+        self.assertEqual(
+            message.answers, ["There is no text in the message you replied to."]
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
