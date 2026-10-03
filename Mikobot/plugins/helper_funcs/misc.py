@@ -86,7 +86,10 @@ def paginate_modules(page_n: int, module_dict: dict, prefix, chat=None) -> list:
 
     pairs = [modules[i * 3 : (i + 1) * 3] for i in range((len(modules) + 3 - 1) // 3)]
 
-    max_num_pages = ceil(len(pairs) / 6)
+    # ceil(0/6) is 0, so a module dict with nothing in it made the modulo below
+    # a ZeroDivisionError. Only the single-row path is reachable with no
+    # modules, so one page is enough to keep the back button.
+    max_num_pages = max(ceil(len(pairs) / 6), 1)
     modulo_page = page_n % max_num_pages
 
     # can only have a certain amount of buttons side by side
