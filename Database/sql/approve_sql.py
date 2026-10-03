@@ -26,7 +26,7 @@ import threading
 from time import monotonic
 
 from cachetools import TTLCache
-from sqlalchemy import BigInteger, Column, String
+from sqlalchemy import BigInteger, Column, String, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
@@ -115,10 +115,9 @@ def disapprove(chat_id, user_id):
 def list_approved(chat_id):
     try:
         return (
-            SESSION.query(Approvals)
-            .filter(Approvals.chat_id == str(chat_id))
-            .order_by(Approvals.user_id.asc())
-            .all()
+            SESSION.scalars(select(Approvals)
+            .where(Approvals.chat_id == str(chat_id))
+            .order_by(Approvals.user_id.asc())).all()
         )
     finally:
         SESSION.close()
@@ -128,9 +127,8 @@ def list_approved(chat_id):
 def migrate_chat(old_chat_id, new_chat_id):
     with APPROVE_INSERTION_LOCK:
         rows = (
-            SESSION.query(Approvals)
-            .filter(Approvals.chat_id == str(old_chat_id))
-            .all()
+            SESSION.scalars(select(Approvals)
+            .where(Approvals.chat_id == str(old_chat_id))).all()
         )
         for row in rows:
             row.chat_id = str(new_chat_id)

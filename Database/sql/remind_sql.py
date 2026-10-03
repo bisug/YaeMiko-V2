@@ -25,7 +25,7 @@ SOFTWARE.
 import threading
 import time
 
-from sqlalchemy import Column, Integer, String, UnicodeText
+from sqlalchemy import Column, Integer, String, UnicodeText, func, select
 from sqlalchemy.sql.sqltypes import BigInteger
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
@@ -109,9 +109,9 @@ def get_remind_in_chat(chat_id, timestamp):
 @unit_of_work_guard
 def num_reminds_in_chat(chat_id):
     try:
-        return SESSION.query(Reminds).filter(
+        return SESSION.scalar(select(func.count()).select_from(Reminds).where(
             Reminds.chat_id == str(chat_id)
-        ).count()
+        ))
     finally:
         SESSION.close()
 
@@ -120,10 +120,9 @@ def num_reminds_in_chat(chat_id):
 def get_reminds_in_chat(chat_id):
     try:
         return (
-            SESSION.query(Reminds)
-            .filter(Reminds.chat_id == str(chat_id))
-            .order_by(Reminds.time_seconds.asc())
-            .all()
+            SESSION.scalars(select(Reminds)
+            .where(Reminds.chat_id == str(chat_id))
+            .order_by(Reminds.time_seconds.asc())).all()
         )
     finally:
         SESSION.close()
@@ -131,7 +130,7 @@ def get_reminds_in_chat(chat_id):
 
 def __get_all_reminds():
     try:
-        chats = SESSION.query(Reminds).all()
+        chats = SESSION.scalars(select(Reminds)).all()
         for chat in chats:
             if (chat.time_seconds <= round(time.time())) or chat.user_id == 0:
                 try:

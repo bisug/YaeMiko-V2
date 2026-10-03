@@ -343,7 +343,7 @@ service on the same box, open only the ports that service needs.
 ## Docker anywhere
 
 The [Dockerfile](../Dockerfile) is a two stage build. The builder installs the wheels, and the
-runtime stage is `python:3.14.7-slim` with `ffmpeg`, `curl` and `libgomp1`.
+runtime stage is `python:3.14.8-slim` with `ffmpeg`, `curl` and `libgomp1`.
 
 ```bash
 docker build -t yaemiko .

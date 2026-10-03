@@ -50,11 +50,11 @@ state in PostgreSQL, and ships 61 plugin modules.
 
 | | |
 | --- | --- |
-| **Runtime** | Python 3.14.7, single `asyncio` event loop, long polling |
+| **Runtime** | Python 3.14.8, single `asyncio` event loop, long polling |
 | **Telegram** | aiogram 3.31 on the Bot API, Kurigram 2.2.26 on MTProto, side by side |
 | **Storage** | PostgreSQL 18 through SQLAlchemy 2.1 |
 | **Modules** | 61 auto discovered plugins under `Mikobot/plugins` |
-| **Requirements** | 512 MB RAM minimum, 1 GB recommended, Python 3.14.7 |
+| **Requirements** | 512 MB RAM minimum, 1 GB recommended, Python 3.14.8 |
 | **Deployment** | Render, Railway, Heroku, Docker, or a bare VPS |
 | **Guarantees** | CI compile, unit, JSON and whitespace gates, weekly CodeQL, Dependabot updates |
 
@@ -152,10 +152,10 @@ execution. Persistence, reply construction and error handling surround that spin
 
 | Component | Version | Link |
 | --- | --- | --- |
-| Python | 3.14.7 | [python.org](https://www.python.org/) |
+| Python | 3.14.8 | [python.org](https://www.python.org/) |
 | ffmpeg and libgomp1 | system packages | Frame extraction and ONNX Runtime |
 | asyncio event loop | stdlib | [docs](https://docs.python.org/3/library/asyncio.html) |
-| Pinned interpreter | `python-3.14.7` | [.python-version](.python-version) |
+| Pinned interpreter | `python-3.14.8` | [.python-version](.python-version) |
 
 ### Telegram clients
 
@@ -172,8 +172,8 @@ execution. Persistence, reply construction and error handling surround that spin
 
 | Component | Version | Link |
 | --- | --- | --- |
-| PostgreSQL | 16 (Heroku addon) | [postgresql.org](https://www.postgresql.org/) |
-| SQLAlchemy | 2.1.2 | [sqlalchemy.org](https://www.sqlalchemy.org/) |
+| PostgreSQL | 18 | [postgresql.org](https://www.postgresql.org/) |
+| SQLAlchemy | 2.1.3 | [sqlalchemy.org](https://www.sqlalchemy.org/) |
 | psycopg (binary, pool) | 3.3.6 | [psycopg.org](https://www.psycopg.org/) |
 
 ### HTTP, media and processing
@@ -226,7 +226,7 @@ scale down: [docs/SYSTEM-REQUIREMENTS.md](docs/SYSTEM-REQUIREMENTS.md).
 | **Disk** | 5 GB | 10 GB | 20 GB |
 | **Swap** | 1 GB | none needed | none needed |
 | **OS** | Debian 12, Ubuntu 24.04, or any Docker host | same | same |
-| **Python** | 3.14.7 | 3.14.7 | 3.14.7 |
+| **Python** | 3.14.8 | 3.14.8 | 3.14.8 |
 | **Network** | 1 Mbps up, 5 GB per month | 10 Mbps up, 100 GB | 25 Mbps up, unmetered |
 | **Groups** | 1 to 3 | 10 to 30 | 100 or more |
 | **Platform fit** | Render `0.5c-512mb` | Render `1c-2g`, Railway, 1 GB VPS | 2 GB VPS |
@@ -470,7 +470,7 @@ Steps:
 ### Docker
 
 [`Dockerfile`](Dockerfile) is a two stage build: a `builder` stage installs the wheels, and the
-runtime stage is `python:3.14.7-slim` with `ffmpeg`, `curl` and `libgomp1` for ONNX Runtime.
+runtime stage is `python:3.14.8-slim` with `ffmpeg`, `curl` and `libgomp1` for ONNX Runtime.
 
 ```bash
 docker build -t yaemiko .

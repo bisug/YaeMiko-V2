@@ -82,5 +82,5 @@ services:
 databases:
   - name: yaemiko-db
     plan: free
-    postgresMajorVersion: "16"
+    postgresMajorVersion: "18"
     databaseName: yaemiko

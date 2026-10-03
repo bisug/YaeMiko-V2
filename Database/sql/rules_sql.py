@@ -1,6 +1,6 @@
 import threading
 
-from sqlalchemy import Column, String, UnicodeText, distinct, func
+from sqlalchemy import Column, String, UnicodeText, distinct, func, select
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -48,7 +48,7 @@ def get_rules(chat_id):
 @unit_of_work_guard
 def num_chats():
     try:
-        return SESSION.query(func.count(distinct(Rules.chat_id))).scalar()
+        return SESSION.scalar(select(func.count(distinct(Rules.chat_id))))
     finally:
         SESSION.close()
 

@@ -24,7 +24,7 @@ SOFTWARE.
 
 import threading
 
-from sqlalchemy import Boolean, Column, UnicodeText
+from sqlalchemy import Boolean, Column, UnicodeText, select
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -207,20 +207,20 @@ def __load_cleaner_list():
 
     try:
         GLOBAL_IGNORE_COMMANDS = {
-            x.command for x in SESSION.query(CleanerBlueTextGlobal).all()
+            x.command for x in SESSION.scalars(select(CleanerBlueTextGlobal)).all()
         }
     finally:
         SESSION.close()
 
     try:
-        for x in SESSION.query(CleanerBlueTextChatSettings).all():
+        for x in SESSION.scalars(select(CleanerBlueTextChatSettings)).all():
             CLEANER_CHATS.setdefault(x.chat_id, {"setting": False, "commands": set()})
             CLEANER_CHATS[x.chat_id]["setting"] = x.is_enable
     finally:
         SESSION.close()
 
     try:
-        for x in SESSION.query(CleanerBlueTextChat).all():
+        for x in SESSION.scalars(select(CleanerBlueTextChat)).all():
             CLEANER_CHATS.setdefault(x.chat_id, {"setting": False, "commands": set()})
             CLEANER_CHATS[x.chat_id]["commands"].add(x.command)
     finally:

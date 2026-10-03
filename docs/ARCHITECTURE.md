@@ -188,5 +188,5 @@ traceback through the redacting formatter, so users get feedback and operators g
 | Target | Mechanism |
 | --- | --- |
 | Heroku worker dyno | `app.json` manifest, `heroku.yml` Docker build, `Procfile` fallback |
-| Docker | Two stage build, runtime stage `python:3.14.7-slim` with `ffmpeg`, `curl`, `libgomp1` |
+| Docker | Two stage build, runtime stage `python:3.14.8-slim` with `ffmpeg`, `curl`, `libgomp1` |
 | VPS | Virtual environment, `python -m Mikobot`, tmux or a process supervisor |

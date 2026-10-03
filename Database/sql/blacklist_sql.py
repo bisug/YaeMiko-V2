@@ -24,7 +24,18 @@ SOFTWARE.
 
 import threading
 
-from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, distinct, func, inspect, text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    String,
+    UnicodeText,
+    distinct,
+    func,
+    inspect,
+    select,
+    text,
+)
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -154,7 +165,7 @@ def get_chat_blacklist(chat_id):
 @unit_of_work_guard
 def num_blacklist_filters():
     try:
-        return SESSION.query(BlackListFilters).count()
+        return SESSION.scalar(select(func.count()).select_from(BlackListFilters))
     finally:
         SESSION.close()
 
@@ -163,9 +174,8 @@ def num_blacklist_filters():
 def num_blacklist_chat_filters(chat_id):
     try:
         return (
-            SESSION.query(BlackListFilters.chat_id)
-            .filter(BlackListFilters.chat_id == str(chat_id))
-            .count()
+            SESSION.scalar(select(func.count()).select_from(BlackListFilters)
+            .where(BlackListFilters.chat_id == str(chat_id)))
         )
     finally:
         SESSION.close()
@@ -174,7 +184,7 @@ def num_blacklist_chat_filters(chat_id):
 @unit_of_work_guard
 def num_blacklist_filter_chats():
     try:
-        return SESSION.query(func.count(distinct(BlackListFilters.chat_id))).scalar()
+        return SESSION.scalar(select(func.count(distinct(BlackListFilters.chat_id))))
     finally:
         SESSION.close()
 
@@ -305,11 +315,11 @@ def is_silent_type(chat_id, blacklist_type: int) -> bool:
 def __load_chat_blacklists():
     global CHAT_BLACKLISTS
     try:
-        chats = SESSION.query(BlackListFilters.chat_id).distinct().all()
+        chats = SESSION.execute(select(BlackListFilters.chat_id).distinct()).scalars().all()
         for (chat_id,) in chats:  # remove tuple by ( ,)
             CHAT_BLACKLISTS[chat_id] = []
 
-        all_filters = SESSION.query(BlackListFilters).all()
+        all_filters = SESSION.scalars(select(BlackListFilters)).all()
         for x in all_filters:
             CHAT_BLACKLISTS[x.chat_id] += [x.trigger]
 
@@ -322,7 +332,7 @@ def __load_chat_blacklists():
 def __load_chat_settings_blacklists():
     global CHAT_SETTINGS_BLACKLISTS
     try:
-        chats_settings = SESSION.query(BlacklistSettings).all()
+        chats_settings = SESSION.scalars(select(BlacklistSettings)).all()
         for x in chats_settings:  # remove tuple by ( ,)
             CHAT_SETTINGS_BLACKLISTS[x.chat_id] = {
                 "blacklist_type": x.blacklist_type,
@@ -342,9 +352,8 @@ def __load_chat_settings_blacklists():
 def migrate_chat(old_chat_id, new_chat_id):
     with BLACKLIST_FILTER_INSERTION_LOCK:
         chat_filters = (
-            SESSION.query(BlackListFilters)
-            .filter(BlackListFilters.chat_id == str(old_chat_id))
-            .all()
+            SESSION.scalars(select(BlackListFilters)
+            .where(BlackListFilters.chat_id == str(old_chat_id))).all()
         )
         for filt in chat_filters:
             filt.chat_id = str(new_chat_id)

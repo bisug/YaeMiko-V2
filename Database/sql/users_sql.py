@@ -32,6 +32,7 @@ from sqlalchemy import (
     UnicodeText,
     UniqueConstraint,
     func,
+    select,
 )
 
 from Database.sql import BASE, ENGINE, SESSION, ensure_index, unit_of_work_guard
@@ -139,9 +140,8 @@ def update_user(user_id, username, chat_id=None, chat_name=None):
             chat.chat_name = chat_name
 
         member = (
-            SESSION.query(ChatMembers)
-            .filter(ChatMembers.chat == chat.chat_id, ChatMembers.user == user.user_id)
-            .first()
+            SESSION.scalars(select(ChatMembers)
+            .where(ChatMembers.chat == chat.chat_id, ChatMembers.user == user.user_id)).first()
         )
         if not member:
             chat_member = ChatMembers(chat.chat_id, user.user_id)
@@ -154,9 +154,8 @@ def update_user(user_id, username, chat_id=None, chat_name=None):
 def get_userid_by_name(username):
     try:
         return (
-            SESSION.query(Users)
-            .filter(func.lower(Users.username) == username.lower())
-            .all()
+            SESSION.scalars(select(Users)
+            .where(func.lower(Users.username) == username.lower())).all()
         )
     finally:
         SESSION.close()
@@ -173,7 +172,7 @@ def get_name_by_userid(user_id):
 @unit_of_work_guard
 def get_chat_members(chat_id):
     try:
-        return SESSION.query(ChatMembers).filter(ChatMembers.chat == str(chat_id)).all()
+        return SESSION.scalars(select(ChatMembers).where(ChatMembers.chat == str(chat_id))).all()
     finally:
         SESSION.close()
 
@@ -181,7 +180,7 @@ def get_chat_members(chat_id):
 @unit_of_work_guard
 def get_all_chats():
     try:
-        return SESSION.query(Chats).all()
+        return SESSION.scalars(select(Chats)).all()
     finally:
         SESSION.close()
 
@@ -189,7 +188,7 @@ def get_all_chats():
 @unit_of_work_guard
 def get_all_users():
     try:
-        return SESSION.query(Users).all()
+        return SESSION.scalars(select(Users)).all()
     finally:
         SESSION.close()
 
@@ -198,7 +197,7 @@ def get_all_users():
 def get_user_num_chats(user_id):
     try:
         return (
-            SESSION.query(ChatMembers).filter(ChatMembers.user == int(user_id)).count()
+            SESSION.scalar(select(func.count()).select_from(ChatMembers).where(ChatMembers.user == int(user_id)))
         )
     finally:
         SESSION.close()
@@ -208,7 +207,7 @@ def get_user_num_chats(user_id):
 def get_user_com_chats(user_id):
     try:
         chat_members = (
-            SESSION.query(ChatMembers).filter(ChatMembers.user == int(user_id)).all()
+            SESSION.scalars(select(ChatMembers).where(ChatMembers.user == int(user_id))).all()
         )
         return [i.chat for i in chat_members]
     finally:
@@ -218,7 +217,7 @@ def get_user_com_chats(user_id):
 @unit_of_work_guard
 def num_chats():
     try:
-        return SESSION.query(Chats).count()
+        return SESSION.scalar(select(func.count()).select_from(Chats))
     finally:
         SESSION.close()
 
@@ -226,7 +225,7 @@ def num_chats():
 @unit_of_work_guard
 def num_users():
     try:
-        return SESSION.query(Users).count()
+        return SESSION.scalar(select(func.count()).select_from(Users))
     finally:
         SESSION.close()
 
@@ -239,9 +238,8 @@ def migrate_chat(old_chat_id, new_chat_id):
             chat.chat_id = str(new_chat_id)
 
         chat_members = (
-            SESSION.query(ChatMembers)
-            .filter(ChatMembers.chat == str(old_chat_id))
-            .all()
+            SESSION.scalars(select(ChatMembers)
+            .where(ChatMembers.chat == str(old_chat_id))).all()
         )
         for member in chat_members:
             member.chat = str(new_chat_id)

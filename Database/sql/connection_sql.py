@@ -25,7 +25,7 @@ SOFTWARE.
 import threading
 import time
 
-from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText
+from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, select
 
 from Database.sql import BASE, ENGINE, SESSION, ensure_index, unit_of_work_guard
 
@@ -135,7 +135,7 @@ def get_connected_chat(user_id):
 @unit_of_work_guard
 def curr_connection(chat_id):
     try:
-        return SESSION.query(Connection).filter(Connection.chat_id == str(chat_id)).first()
+        return SESSION.scalars(select(Connection).where(Connection.chat_id == str(chat_id))).first()
     finally:
         SESSION.close()
 
@@ -193,9 +193,9 @@ def clear_history_conn(user_id):
     global HISTORY_CONNECT
     user_id = int(user_id)
     with CONNECTION_HISTORY_LOCK:
-        SESSION.query(ConnectionHistory).filter(
+        SESSION.scalars(select(ConnectionHistory).where(
             ConnectionHistory.user_id == user_id
-        ).delete(synchronize_session=False)
+        )).delete(synchronize_session=False)
         SESSION.commit()
         HISTORY_CONNECT[user_id] = {}
     return True
@@ -208,9 +208,8 @@ def migrate_chat(old_chat_id, new_chat_id):
         if allowed:
             allowed.chat_id = str(new_chat_id)
         rows = (
-            SESSION.query(Connection)
-            .filter(Connection.chat_id == str(old_chat_id))
-            .all()
+            SESSION.scalars(select(Connection)
+            .where(Connection.chat_id == str(old_chat_id))).all()
         )
         for row in rows:
             row.chat_id = str(new_chat_id)
@@ -218,9 +217,8 @@ def migrate_chat(old_chat_id, new_chat_id):
 
     with CONNECTION_HISTORY_LOCK:
         rows = (
-            SESSION.query(ConnectionHistory)
-            .filter(ConnectionHistory.chat_id == str(old_chat_id))
-            .all()
+            SESSION.scalars(select(ConnectionHistory)
+            .where(ConnectionHistory.chat_id == str(old_chat_id))).all()
         )
         for row in rows:
             row.chat_id = str(new_chat_id)
@@ -238,7 +236,7 @@ def migrate_chat(old_chat_id, new_chat_id):
 def __load_user_history():
     global HISTORY_CONNECT
     try:
-        qall = SESSION.query(ConnectionHistory).all()
+        qall = SESSION.scalars(select(ConnectionHistory)).all()
         HISTORY_CONNECT = {}
         for x in qall:
             check = HISTORY_CONNECT.get(x.user_id)

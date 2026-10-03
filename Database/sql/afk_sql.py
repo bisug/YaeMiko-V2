@@ -1,7 +1,7 @@
 import threading
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, UnicodeText
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, UnicodeText, select
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -90,7 +90,7 @@ def toggle_afk(user_id, reason=""):
 def __load_afk_users():
     global AFK_USERS
     try:
-        all_afk = SESSION.query(AFK).all()
+        all_afk = SESSION.scalars(select(AFK)).all()
         AFK_USERS = {
             user.user_id: {"reason": user.reason, "time": user.time}
             for user in all_afk

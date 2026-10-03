@@ -24,7 +24,7 @@ SOFTWARE.
 
 import threading
 
-from sqlalchemy import Column, String, UnicodeText, distinct, func
+from sqlalchemy import Column, String, UnicodeText, distinct, func, select
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -93,7 +93,7 @@ def get_all_disabled(chat_id):
 @unit_of_work_guard
 def num_chats():
     try:
-        return SESSION.query(func.count(distinct(Disable.chat_id))).scalar()
+        return SESSION.scalar(select(func.count(distinct(Disable.chat_id))))
     finally:
         SESSION.close()
 
@@ -101,7 +101,7 @@ def num_chats():
 @unit_of_work_guard
 def num_disabled():
     try:
-        return SESSION.query(Disable).count()
+        return SESSION.scalar(select(func.count()).select_from(Disable))
     finally:
         SESSION.close()
 
@@ -109,7 +109,7 @@ def num_disabled():
 @unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with DISABLE_INSERTION_LOCK:
-        chats = SESSION.query(Disable).filter(Disable.chat_id == str(old_chat_id)).all()
+        chats = SESSION.scalars(select(Disable).where(Disable.chat_id == str(old_chat_id))).all()
         for chat in chats:
             chat.chat_id = str(new_chat_id)
             SESSION.add(chat)
@@ -123,7 +123,7 @@ def migrate_chat(old_chat_id, new_chat_id):
 def __load_disabled_commands():
     global DISABLED
     try:
-        all_chats = SESSION.query(Disable).all()
+        all_chats = SESSION.scalars(select(Disable)).all()
         for chat in all_chats:
             DISABLED.setdefault(chat.chat_id, set()).add(chat.command)
 

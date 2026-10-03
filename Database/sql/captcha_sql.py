@@ -11,7 +11,7 @@ challenge is answered or expires.
 
 import threading
 
-from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText
+from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, select
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -199,9 +199,8 @@ def migrate_chat(old_chat_id, new_chat_id) -> None:
                 settings.chat_id = str(new_chat_id)
                 SESSION.add(settings)
         for row in (
-            SESSION.query(CaptchaSolved)
-            .filter(CaptchaSolved.chat_id == str(old_chat_id))
-            .all()
+            SESSION.scalars(select(CaptchaSolved)
+            .where(CaptchaSolved.chat_id == str(old_chat_id))).all()
         ):
             SESSION.delete(row)
         SESSION.commit()

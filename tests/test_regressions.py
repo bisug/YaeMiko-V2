@@ -2,6 +2,7 @@ import ast
 import copy
 import asyncio
 import importlib
+import os
 import re
 import sys
 import threading
@@ -9,6 +10,7 @@ import unittest
 from unittest import mock
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import urlparse
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -80,6 +82,28 @@ def load_function(path, name, namespace):
     return namespace[name]
 
 
+def require_local_database():
+    """Refuse to run the database tests against a remote server.
+
+    These tests insert, migrate and delete rows in whatever DATABASE_URL points
+    at, which is the production database whenever a local .env is present. A
+    connection is not proof of a scratch database, so the host is checked before
+    anything is written. YM_ALLOW_REMOTE_DB_TESTS=1 overrides it.
+    """
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        raise unittest.SkipTest("DATABASE_URL is not set")
+    if os.environ.get("YM_ALLOW_REMOTE_DB_TESTS") == "1":
+        return url
+    host = urlparse(url).hostname
+    if host and host not in ("localhost", "127.0.0.1", "::1"):
+        raise unittest.SkipTest(
+            f"refusing to write to the remote database at {host}; the tests "
+            "create and drop rows. Set YM_ALLOW_REMOTE_DB_TESTS=1 to override."
+        )
+    return url
+
+
 def load_nested_function(path, name, namespace):
     tree = ast.parse(path.read_text(encoding="utf-8"))
     function = next(
@@ -102,12 +126,18 @@ class FakeQuery:
     def __init__(self):
         self.filters = []
 
-    def filter(self, *conditions):
+    def where(self, *conditions):
         self.filters.extend(conditions)
         return self
 
+    def filter(self, *conditions):
+        return self.where(*conditions)
+
     def delete(self, synchronize_session=False):
         return 1
+
+    def scalars(self):
+        return []
 
 
     def all(self):
@@ -133,6 +163,12 @@ class FakeSession:
         return self.federation
 
     def query(self, model):
+        return FakeQuery()
+
+    def scalars(self, statement):
+        return FakeQuery()
+
+    def execute(self, statement):
         return FakeQuery()
 
     def delete(self, instance):
@@ -434,11 +470,13 @@ class FederationDeletionTests(unittest.TestCase):
         return {
             "FEDS_LOCK": threading.RLock(),
             "Federations": object,
-            "ChatF": SimpleNamespace(fed_id=object()),
+            "ChatF": SimpleNamespace(fed_id=object(), chat_id=object()),
             "BansF": SimpleNamespace(fed_id=object()),
             "FedSubs": SimpleNamespace(
                 fed_id=object(), fed_subs=object()
             ),
+            "select": lambda *args, **kw: FakeQuery(),
+            "delete": lambda *args, **kw: FakeQuery(),
             "OWNER_ID": 999,
             "Session": lambda engine: session,
             "ENGINE": object(),
@@ -1252,7 +1290,7 @@ class DatabaseRegressionTests(unittest.TestCase):
             def __init__(self):
                 self.closed = False
 
-            def query(self, model):
+            def scalars(self, statement):
                 return SimpleNamespace(
                     all=lambda: [
                         SimpleNamespace(fed_id="source", fed_subs="target")
@@ -1266,6 +1304,7 @@ class DatabaseRegressionTests(unittest.TestCase):
         namespace = {
             "SESSION": session,
             "FedSubs": object,
+            "select": lambda *args, **kw: None,
             "FEDS_SUBSCRIBER": {"stale": {"value"}},
             "MYFEDS_SUBSCRIBER": {"stale": {"value"}},
         }
@@ -1365,7 +1404,7 @@ class DatabaseRegressionTests(unittest.TestCase):
                 self.user_id = 1
 
         class Session:
-            def query(self, model):
+            def scalars(self, statement):
                 return SimpleNamespace(
                     all=lambda: [Reminder("chat1"), Reminder("chat2")]
                 )
@@ -1381,6 +1420,7 @@ class DatabaseRegressionTests(unittest.TestCase):
                 "Reminds": object,
                 "SESSION": Session(),
                 "REMINDERS": reminders,
+                "select": lambda *args, **kw: None,
                 "time": SimpleNamespace(time=lambda: 0),
                 "rem_remind": lambda *args: True,
             },
@@ -2390,9 +2430,7 @@ class SqlLayerDatabaseTests(unittest.TestCase):
         import socket
         from urllib.parse import urlparse
 
-        url = os.environ.get("DATABASE_URL")
-        if not url:
-            raise unittest.SkipTest("DATABASE_URL is not set")
+        url = require_local_database()
         host = urlparse(url).hostname
         if host:
             try:
@@ -2721,9 +2759,7 @@ class ChatMigrationTests(unittest.TestCase):
         import sys
         from urllib.parse import urlparse
 
-        url = os.environ.get("DATABASE_URL")
-        if not url:
-            raise unittest.SkipTest("DATABASE_URL is not set")
+        url = require_local_database()
         host = urlparse(url).hostname
         if host:
             try:
@@ -4571,7 +4607,7 @@ class UnitOfWorkTests(unittest.TestCase):
         )
         body = source.split("def set_custom_welcome", 1)[1].split("\n\ndef ", 1)[0]
         self.assertIn("SESSION.add(", body)
-        self.assertIn("SESSION.query(", body)
+        self.assertIn("SESSION.scalars(select(", body)
         # The commit is still inside the helper, not pushed out to the caller.
         self.assertIn("SESSION.commit()", body)
 

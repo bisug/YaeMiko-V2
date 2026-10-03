@@ -1,6 +1,6 @@
 import threading
 
-from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText
+from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, select
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -101,7 +101,7 @@ def get_gbanned_user(user_id):
 @unit_of_work_guard
 def get_gban_list():
     try:
-        return [x.to_dict() for x in SESSION.query(GloballyBannedUsers).all()]
+        return [x.to_dict() for x in SESSION.scalars(select(GloballyBannedUsers)).all()]
     finally:
         SESSION.close()
 
@@ -144,7 +144,7 @@ def num_gbanned_users():
 def __load_gbanned_userid_list():
     global GBANNED_LIST
     try:
-        GBANNED_LIST = {x.user_id for x in SESSION.query(GloballyBannedUsers).all()}
+        GBANNED_LIST = {x.user_id for x in SESSION.scalars(select(GloballyBannedUsers)).all()}
     finally:
         SESSION.close()
 
@@ -153,7 +153,7 @@ def __load_gban_stat_list():
     global GBANSTAT_LIST
     try:
         GBANSTAT_LIST = {
-            x.chat_id for x in SESSION.query(GbanSettings).all() if not x.setting
+            x.chat_id for x in SESSION.scalars(select(GbanSettings)).all() if not x.setting
         }
     finally:
         SESSION.close()

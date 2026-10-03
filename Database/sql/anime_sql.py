@@ -30,7 +30,7 @@ every key is normalised to str on the way in and on the way out.
 
 import threading
 
-from sqlalchemy import BigInteger, Column, Integer, String, UnicodeText
+from sqlalchemy import BigInteger, Column, Integer, String, UnicodeText, select
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 from Database.sql.disable_sql import is_command_disabled
@@ -83,12 +83,11 @@ AnimeToken.__table__.create(bind=ENGINE, checkfirst=True)
 def exists(collection: str, chat_id) -> bool:
     try:
         return (
-            SESSION.query(AnimeGroupSetting)
-            .filter(
+            SESSION.scalars(select(AnimeGroupSetting)
+            .where(
                 AnimeGroupSetting.collection == collection,
                 AnimeGroupSetting.chat_id == str(chat_id),
-            )
-            .first()
+            )).first()
             is not None
         )
     finally:
@@ -109,12 +108,11 @@ def add(collection: str, chat_id) -> bool:
 def remove(collection: str, chat_id) -> bool:
     with INSERTION_LOCK:
         rows = (
-            SESSION.query(AnimeGroupSetting)
-            .filter(
+            SESSION.scalars(select(AnimeGroupSetting)
+            .where(
                 AnimeGroupSetting.collection == collection,
                 AnimeGroupSetting.chat_id == str(chat_id),
-            )
-            .all()
+            )).all()
         )
         if not rows:
             return False
@@ -237,9 +235,8 @@ def owns_channel(cid, user_id) -> bool:
 def migrate_chat(old_chat_id, new_chat_id):
     with INSERTION_LOCK:
         rows = (
-            SESSION.query(AnimeGroupSetting)
-            .filter(AnimeGroupSetting.chat_id == str(old_chat_id))
-            .all()
+            SESSION.scalars(select(AnimeGroupSetting)
+            .where(AnimeGroupSetting.chat_id == str(old_chat_id))).all()
         )
         for row in rows:
             row.chat_id = str(new_chat_id)

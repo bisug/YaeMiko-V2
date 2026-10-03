@@ -30,7 +30,7 @@ Diagrams are Mermaid and render on GitHub and in VS Code preview.
 ## The one store
 
 PostgreSQL is the only persistent store. `Database/sql/` holds 31 model modules; 30 of them declare
-60 tables and 240 columns, all created by SQLAlchemy 2.1.2 over
+60 tables and 240 columns, all created by SQLAlchemy 2.1.3 over
 psycopg 3. MongoDB was retired once the last plugin moved across; see
 [MIGRATION-MONGO-TO-SQL.md](MIGRATION-MONGO-TO-SQL.md). The `Extra/` fonts and the pickle
 `DataStore` are files, not tables.

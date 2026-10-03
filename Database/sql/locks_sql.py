@@ -26,7 +26,7 @@ SOFTWARE.
 import threading
 from dataclasses import dataclass
 
-from sqlalchemy import Boolean, Column, String
+from sqlalchemy import Boolean, Column, String, select
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -357,7 +357,7 @@ def migrate_chat(old_chat_id, new_chat_id):
 def __load_locks_cache():
     """Read every chat's locks once, so the message path never queries."""
     try:
-        rows = SESSION.query(Permissions).all()
+        rows = SESSION.scalars(select(Permissions)).all()
         with PERM_LOCK:
             PERM_CACHE.clear()
             for row in rows:
@@ -389,7 +389,7 @@ def unallow_item(chat_id, lockable, item):
 @unit_of_work_guard
 def rmallow_all(chat_id):
     with PERM_LOCK:
-        for row in SESSION.query(AllowedItem).filter_by(chat_id=str(chat_id)).all():
+        for row in SESSION.scalars(select(AllowedItem).where(chat_id=str(chat_id))).all():
             SESSION.delete(row)
         SESSION.commit()
 
@@ -400,7 +400,7 @@ def list_allowed(chat_id):
     try:
         return [
             (row.lockable, row.item)
-            for row in SESSION.query(AllowedItem).filter_by(chat_id=str(chat_id)).all()
+            for row in SESSION.scalars(select(AllowedItem).where(chat_id=str(chat_id))).all()
         ]
     finally:
         SESSION.close()
@@ -412,9 +412,8 @@ def allowed_for(chat_id, lockable):
     try:
         return {
             row.item
-            for row in SESSION.query(AllowedItem)
-            .filter_by(chat_id=str(chat_id), lockable=lockable)
-            .all()
+            for row in SESSION.scalars(select(AllowedItem)
+            .where(chat_id=str(chat_id), lockable=lockable)).all()
         }
     finally:
         SESSION.close()

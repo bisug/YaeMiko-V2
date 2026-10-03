@@ -24,7 +24,7 @@ SOFTWARE.
 
 import threading
 
-from sqlalchemy import Boolean, Column, String, distinct, func, inspect, text
+from sqlalchemy import Boolean, Column, String, distinct, func, inspect, select, text
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -186,7 +186,7 @@ def stop_chat_logging(chat_id):
 @unit_of_work_guard
 def num_logchannels():
     try:
-        return SESSION.query(func.count(distinct(GroupLogs.chat_id))).scalar()
+        return SESSION.scalar(select(func.count(distinct(GroupLogs.chat_id))))
     finally:
         SESSION.close()
 
@@ -207,7 +207,7 @@ def migrate_chat(old_chat_id, new_chat_id):
 def __load_log_channels():
     global CHANNELS
     try:
-        all_chats = SESSION.query(GroupLogs).all()
+        all_chats = SESSION.scalars(select(GroupLogs)).all()
         CHANNELS = {chat.chat_id: chat.log_channel for chat in all_chats}
     finally:
         SESSION.close()

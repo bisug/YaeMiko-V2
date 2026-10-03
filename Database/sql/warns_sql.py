@@ -24,7 +24,7 @@ SOFTWARE.
 
 import threading
 
-from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, distinct, func
+from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, distinct, func, select
 from sqlalchemy.dialects import postgresql
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
@@ -204,7 +204,7 @@ def get_chat_warn_triggers(chat_id):
 def get_chat_warn_filters(chat_id):
     try:
         return (
-            SESSION.query(WarnFilters).filter(WarnFilters.chat_id == str(chat_id)).all()
+            SESSION.scalars(select(WarnFilters).where(WarnFilters.chat_id == str(chat_id))).all()
         )
     finally:
         SESSION.close()
@@ -260,7 +260,7 @@ def get_warn_setting(chat_id):
 def get_all_warns_for_chat(chat_id) -> dict:
     """user_id -> warn count, so a chat's whole warn state can be exported."""
     try:
-        rows = SESSION.query(Warns).filter(Warns.chat_id == str(chat_id)).all()
+        rows = SESSION.scalars(select(Warns).where(Warns.chat_id == str(chat_id))).all()
         return {str(row.user_id): row.num_warns for row in rows if row.num_warns}
     finally:
         SESSION.close()
@@ -269,7 +269,7 @@ def get_all_warns_for_chat(chat_id) -> dict:
 @unit_of_work_guard
 def num_warns():
     try:
-        return SESSION.query(func.sum(Warns.num_warns)).scalar() or 0
+        return SESSION.scalar(select(func.sum(Warns.num_warns))) or 0
     finally:
         SESSION.close()
 
@@ -277,7 +277,7 @@ def num_warns():
 @unit_of_work_guard
 def num_warn_chats():
     try:
-        return SESSION.query(func.count(distinct(Warns.chat_id))).scalar()
+        return SESSION.scalar(select(func.count(distinct(Warns.chat_id))))
     finally:
         SESSION.close()
 
@@ -285,7 +285,7 @@ def num_warn_chats():
 @unit_of_work_guard
 def num_warn_filters():
     try:
-        return SESSION.query(WarnFilters).count()
+        return SESSION.scalar(select(func.count()).select_from(WarnFilters))
     finally:
         SESSION.close()
 
@@ -294,9 +294,8 @@ def num_warn_filters():
 def num_warn_chat_filters(chat_id):
     try:
         return (
-            SESSION.query(WarnFilters.chat_id)
-            .filter(WarnFilters.chat_id == str(chat_id))
-            .count()
+            SESSION.scalar(select(func.count()).select_from(WarnFilters)
+            .where(WarnFilters.chat_id == str(chat_id)))
         )
     finally:
         SESSION.close()
@@ -305,7 +304,7 @@ def num_warn_chat_filters(chat_id):
 @unit_of_work_guard
 def num_warn_filter_chats():
     try:
-        return SESSION.query(func.count(distinct(WarnFilters.chat_id))).scalar()
+        return SESSION.scalar(select(func.count(distinct(WarnFilters.chat_id))))
     finally:
         SESSION.close()
 
@@ -313,11 +312,11 @@ def num_warn_filter_chats():
 def __load_chat_warn_filters():
     global WARN_FILTERS
     try:
-        chats = SESSION.query(WarnFilters.chat_id).distinct().all()
+        chats = SESSION.execute(select(WarnFilters.chat_id).distinct()).scalars().all()
         for (chat_id,) in chats:  # remove tuple by ( ,)
             WARN_FILTERS[chat_id] = []
 
-        all_filters = SESSION.query(WarnFilters).all()
+        all_filters = SESSION.scalars(select(WarnFilters)).all()
         for x in all_filters:
             WARN_FILTERS[x.chat_id] += [x.keyword]
 
@@ -334,7 +333,7 @@ def __load_chat_warn_filters():
 def migrate_chat(old_chat_id, new_chat_id):
     with WARN_INSERTION_LOCK:
         chat_notes = (
-            SESSION.query(Warns).filter(Warns.chat_id == str(old_chat_id)).all()
+            SESSION.scalars(select(Warns).where(Warns.chat_id == str(old_chat_id))).all()
         )
         for note in chat_notes:
             note.chat_id = str(new_chat_id)
@@ -342,9 +341,8 @@ def migrate_chat(old_chat_id, new_chat_id):
 
     with WARN_FILTER_INSERTION_LOCK:
         chat_filters = (
-            SESSION.query(WarnFilters)
-            .filter(WarnFilters.chat_id == str(old_chat_id))
-            .all()
+            SESSION.scalars(select(WarnFilters)
+            .where(WarnFilters.chat_id == str(old_chat_id))).all()
         )
         for filt in chat_filters:
             filt.chat_id = str(new_chat_id)
@@ -356,9 +354,8 @@ def migrate_chat(old_chat_id, new_chat_id):
 
     with WARN_SETTINGS_LOCK:
         chat_settings = (
-            SESSION.query(WarnSettings)
-            .filter(WarnSettings.chat_id == str(old_chat_id))
-            .all()
+            SESSION.scalars(select(WarnSettings)
+            .where(WarnSettings.chat_id == str(old_chat_id))).all()
         )
         for setting in chat_settings:
             setting.chat_id = str(new_chat_id)

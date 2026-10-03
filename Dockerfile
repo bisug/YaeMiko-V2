@@ -1,4 +1,4 @@
-FROM python:3.14.7 AS builder
+FROM python:3.14.8 AS builder
 
 ENV PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
@@ -18,7 +18,7 @@ RUN python -m venv /opt/venv \
     && /opt/venv/bin/pip install -r requirements.txt
 
 
-FROM python:3.14.7-slim
+FROM python:3.14.8-slim
 
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \

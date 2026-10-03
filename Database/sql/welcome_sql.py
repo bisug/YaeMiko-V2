@@ -33,6 +33,7 @@ from sqlalchemy import (
     String,
     UnicodeText,
     inspect,
+    select,
     text,
 )
 
@@ -368,9 +369,8 @@ def set_custom_welcome(
 
         with WELC_BTN_LOCK:
             prev_buttons = (
-                SESSION.query(WelcomeButtons)
-                .filter(WelcomeButtons.chat_id == str(chat_id))
-                .all()
+                SESSION.scalars(select(WelcomeButtons)
+                .where(WelcomeButtons.chat_id == str(chat_id))).all()
             )
             for btn in prev_buttons:
                 SESSION.delete(btn)
@@ -415,9 +415,8 @@ def set_custom_gdbye(chat_id, custom_goodbye, goodbye_type, buttons=None):
 
         with LEAVE_BTN_LOCK:
             prev_buttons = (
-                SESSION.query(GoodbyeButtons)
-                .filter(GoodbyeButtons.chat_id == str(chat_id))
-                .all()
+                SESSION.scalars(select(GoodbyeButtons)
+                .where(GoodbyeButtons.chat_id == str(chat_id))).all()
             )
             for btn in prev_buttons:
                 SESSION.delete(btn)
@@ -444,10 +443,9 @@ def get_custom_gdbye(chat_id):
 def get_welc_buttons(chat_id):
     try:
         return (
-            SESSION.query(WelcomeButtons)
-            .filter(WelcomeButtons.chat_id == str(chat_id))
-            .order_by(WelcomeButtons.id)
-            .all()
+            SESSION.scalars(select(WelcomeButtons)
+            .where(WelcomeButtons.chat_id == str(chat_id))
+            .order_by(WelcomeButtons.id)).all()
         )
     finally:
         SESSION.close()
@@ -457,10 +455,9 @@ def get_welc_buttons(chat_id):
 def get_gdbye_buttons(chat_id):
     try:
         return (
-            SESSION.query(GoodbyeButtons)
-            .filter(GoodbyeButtons.chat_id == str(chat_id))
-            .order_by(GoodbyeButtons.id)
-            .all()
+            SESSION.scalars(select(GoodbyeButtons)
+            .where(GoodbyeButtons.chat_id == str(chat_id))
+            .order_by(GoodbyeButtons.id)).all()
         )
     finally:
         SESSION.close()
@@ -520,18 +517,16 @@ def migrate_chat(old_chat_id, new_chat_id):
 
         with WELC_BTN_LOCK:
             chat_buttons = (
-                SESSION.query(WelcomeButtons)
-                .filter(WelcomeButtons.chat_id == str(old_chat_id))
-                .all()
+                SESSION.scalars(select(WelcomeButtons)
+                .where(WelcomeButtons.chat_id == str(old_chat_id))).all()
             )
             for btn in chat_buttons:
                 btn.chat_id = str(new_chat_id)
 
         with LEAVE_BTN_LOCK:
             chat_buttons = (
-                SESSION.query(GoodbyeButtons)
-                .filter(GoodbyeButtons.chat_id == str(old_chat_id))
-                .all()
+                SESSION.scalars(select(GoodbyeButtons)
+                .where(GoodbyeButtons.chat_id == str(old_chat_id))).all()
             )
             for btn in chat_buttons:
                 btn.chat_id = str(new_chat_id)
@@ -581,7 +576,7 @@ def toggleRaidStatus(chat_id):
 @unit_of_work_guard
 def _ResetRaidOnRestart():
     with RAID_LOCK:
-        raid = SESSION.query(RaidMode).all()
+        raid = SESSION.scalars(select(RaidMode)).all()
         for r in raid:
             r.status = False
         SESSION.commit()

@@ -170,11 +170,11 @@ matches the local convention rather than adding a second one.
 `python tests/validate_deployment.py` all pass.
 
 The suite does not pass on a machine that is not the pinned runtime, and it did
-not pass before this work either. `.python-version` pins 3.14.7; on 3.12 with
+not pass before this work either. `.python-version` pins 3.14.8; on 3.12 with
 `aiogram` absent it reports 49 failures and 67 errors, nearly all from
 `RemovedStdlibApiTests` asserting that 3.14-removed APIs are gone. The count
 was compared against a pristine `git worktree` of `HEAD` before and after, and
-is unchanged: **zero regressions**. Run it on 3.14.7 with the requirements
+is unchanged: **zero regressions**. Run it on 3.14.8 with the requirements
 installed for a meaningful result.
 
 Each new module was also exercised directly against a real SQL database for

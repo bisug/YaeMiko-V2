@@ -24,7 +24,7 @@ SOFTWARE.
 
 import threading
 
-from sqlalchemy import BigInteger, Column, String, UnicodeText, distinct, func
+from sqlalchemy import BigInteger, Column, String, UnicodeText, distinct, func, select
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -114,7 +114,7 @@ def get_chat_stickers(chat_id):
 @unit_of_work_guard
 def num_stickers_filters():
     try:
-        return SESSION.query(StickersFilters).count()
+        return SESSION.scalar(select(func.count()).select_from(StickersFilters))
     finally:
         SESSION.close()
 
@@ -123,9 +123,8 @@ def num_stickers_filters():
 def num_stickers_chat_filters(chat_id):
     try:
         return (
-            SESSION.query(StickersFilters.chat_id)
-            .filter(StickersFilters.chat_id == str(chat_id))
-            .count()
+            SESSION.scalar(select(func.count()).select_from(StickersFilters)
+            .where(StickersFilters.chat_id == str(chat_id)))
         )
     finally:
         SESSION.close()
@@ -134,7 +133,7 @@ def num_stickers_chat_filters(chat_id):
 @unit_of_work_guard
 def num_stickers_filter_chats():
     try:
-        return SESSION.query(func.count(distinct(StickersFilters.chat_id))).scalar()
+        return SESSION.scalar(select(func.count(distinct(StickersFilters.chat_id))))
     finally:
         SESSION.close()
 
@@ -186,11 +185,11 @@ def get_blacklist_setting(chat_id):
 def __load_CHAT_STICKERS():
     global CHAT_STICKERS
     try:
-        chats = SESSION.query(StickersFilters.chat_id).distinct().all()
+        chats = SESSION.execute(select(StickersFilters.chat_id).distinct()).scalars().all()
         for (chat_id,) in chats:  # remove tuple by ( ,)
             CHAT_STICKERS[chat_id] = []
 
-        all_filters = SESSION.query(StickersFilters).all()
+        all_filters = SESSION.scalars(select(StickersFilters)).all()
         for x in all_filters:
             CHAT_STICKERS[x.chat_id] += [x.trigger]
 
@@ -203,7 +202,7 @@ def __load_CHAT_STICKERS():
 def __load_chat_stickerset_blacklists():
     global CHAT_BLSTICK_BLACKLISTS
     try:
-        chats_settings = SESSION.query(StickerSettings).all()
+        chats_settings = SESSION.scalars(select(StickerSettings)).all()
         for x in chats_settings:  # remove tuple by ( ,)
             CHAT_BLSTICK_BLACKLISTS[x.chat_id] = {
                 "blacklist_type": x.blacklist_type,
@@ -218,9 +217,8 @@ def __load_chat_stickerset_blacklists():
 def migrate_chat(old_chat_id, new_chat_id):
     with STICKERS_FILTER_INSERTION_LOCK:
         chat_filters = (
-            SESSION.query(StickersFilters)
-            .filter(StickersFilters.chat_id == str(old_chat_id))
-            .all()
+            SESSION.scalars(select(StickersFilters)
+            .where(StickersFilters.chat_id == str(old_chat_id))).all()
         )
         for filt in chat_filters:
             filt.chat_id = str(new_chat_id)

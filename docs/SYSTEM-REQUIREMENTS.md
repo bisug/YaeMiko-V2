@@ -30,7 +30,7 @@ Back to [README](../README.md).
 | **Disk** | 5 GB | 10 GB | 20 GB |
 | **Swap** | 1 GB | none needed | none needed |
 | **OS** | Debian 12, Ubuntu 24.04, or any Docker host | same | same |
-| **Python** | 3.14.7 | 3.14.7 | 3.14.7 |
+| **Python** | 3.14.8 | 3.14.8 | 3.14.8 |
 | **Network** | 1 Mbps up, 5 GB per month | 10 Mbps up, 100 GB | 25 Mbps up, unmetered |
 | **Groups served** | 1 to 3 | 10 to 30 | 100 or more |
 | **Platform fit** | Render `0.5c-512mb` | Render `1c-2g`, Railway, 1 GB VPS | 2 GB VPS or better |
@@ -48,11 +48,11 @@ Being precise about this, because the numbers below drive real hosting choices.
 | --- | --- |
 | Repository size, 9.2 MB without `.git` | `du -sh --exclude=.git .` on this checkout |
 | 129 Python files, 38,708 lines | `find ... | wc -l` on this checkout |
-| 64.3 MB of direct dependency wheels | wheel sizes read from the PyPI JSON API for every pin in `requirements.txt` |
-| ONNX Runtime 1.30.0 wheel, 22.5 MB | `https://pypi.org/pypi/onnxruntime/1.30.0/json` |
-| opennsfw-onnx 0.1.0 wheel, 20.9 MB | same API, the wheel ships the model |
-| Pillow 12.3.0 wheel, 6.8 MB | same API |
-| Kurigram 2.2.26 wheel, 5.8 MB | same API |
+| 66.1 MB of direct dependency wheels | `pip download --no-deps -r requirements.txt`, the CPython 3.14 x86_64 wheels |
+| ONNX Runtime 1.30.0 wheel, 23.6 MB | `pip download`, cp314 manylinux x86_64 |
+| opennsfw-onnx 0.1.0 wheel, 22.0 MB | same, the wheel ships the model |
+| Pillow 12.3.0 wheel, 6.9 MB | same |
+| Kurigram 2.2.26 wheel, 6.0 MB | same |
 | `concurrent_updates(64)` | `Mikobot/__init__.py:296` |
 | 20 second HTTP timeout | `Mikobot/state.py` |
 | Disk figures | Wheel sizes plus the source tree, with room for logs, temp media and the pickle file |
@@ -71,7 +71,7 @@ CPU    1 shared vCPU
 RAM    512 MB
 Disk   5 GB free
 Swap   1 GB configured
-Python 3.14.7
+Python 3.14.8
 ```
 
 What you give up:

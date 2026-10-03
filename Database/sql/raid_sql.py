@@ -26,7 +26,7 @@ import threading
 import time
 from collections import deque
 
-from sqlalchemy import BigInteger, Boolean, Column, String, inspect, text
+from sqlalchemy import BigInteger, Boolean, Column, String, inspect, select, text
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -219,7 +219,7 @@ def mark_notified(chat_id) -> None:
 @unit_of_work_guard
 def get_all_raid_chats():
     try:
-        return [row.chat_id for row in SESSION.query(RaidChats).all()]
+        return [row.chat_id for row in SESSION.scalars(select(RaidChats)).all()]
     finally:
         SESSION.close()
 

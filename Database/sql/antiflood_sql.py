@@ -26,7 +26,7 @@ import threading
 import time
 from collections import deque
 
-from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, inspect, text
+from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, inspect, select, text
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -340,7 +340,7 @@ def migrate_chat(old_chat_id, new_chat_id):
 def __load_flood_settings():
     global CHAT_FLOOD
     try:
-        all_chats = SESSION.query(FloodControl).all()
+        all_chats = SESSION.scalars(select(FloodControl)).all()
         CHAT_FLOOD = {
             chat.chat_id: (
                 None,

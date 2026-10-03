@@ -11,7 +11,7 @@ were never persistence.
 
 import threading
 
-from sqlalchemy import BigInteger, Column, Integer, String
+from sqlalchemy import BigInteger, Column, Integer, String, select
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -68,7 +68,7 @@ def get_karmas(chat_id) -> dict:
     try:
         return {
             row.name: {"karma": row.karma}
-            for row in SESSION.query(Karma).filter(Karma.chat_id == str(chat_id)).all()
+            for row in SESSION.scalars(select(Karma).where(Karma.chat_id == str(chat_id))).all()
         }
     finally:
         SESSION.close()
@@ -108,7 +108,7 @@ def save_couple(chat_id, date: str, couple: dict):
 def migrate_chat(old_chat_id, new_chat_id):
     with INSERTION_LOCK:
         for model in (Karma, Couple):
-            rows = SESSION.query(model).filter(model.chat_id == str(old_chat_id)).all()
+            rows = SESSION.scalars(select(model).where(model.chat_id == str(old_chat_id))).all()
             for row in rows:
                 row.chat_id = str(new_chat_id)
         SESSION.commit()

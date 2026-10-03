@@ -35,7 +35,7 @@
   <text class="big" x="64" y="206">512 MB</text>
   <text class="unit" x="64" y="226">RAM, 1 shared vCPU</text>
   <text class="sub" x="64" y="262">Disk 5 GB, swap 1 GB</text>
-  <text class="sub" x="64" y="284">Python 3.14.7</text>
+  <text class="sub" x="64" y="284">Python 3.14.8</text>
   <text class="sub" x="64" y="306">1 to 3 groups</text>
   <text class="sub" x="64" y="344">What you give up:</text>
   <text class="sub" x="64" y="366">ONNX loads a 20.9 MB model on first use</text>
@@ -50,7 +50,7 @@
   <text class="big" x="474" y="206">1 GB</text>
   <text class="unit" x="474" y="226">RAM, 1 dedicated vCPU</text>
   <text class="sub" x="474" y="262">Disk 10 GB</text>
-  <text class="sub" x="474" y="284">Python 3.14.7</text>
+  <text class="sub" x="474" y="284">Python 3.14.8</text>
   <text class="sub" x="474" y="306">10 to 30 groups</text>
   <text class="sub" x="474" y="344">What you gain:</text>
   <text class="sub" x="474" y="366">Room for the ONNX session and buffers</text>
@@ -65,7 +65,7 @@
   <text class="big" x="884" y="206">2 GB</text>
   <text class="unit" x="884" y="226">RAM, 2 dedicated vCPU</text>
   <text class="sub" x="884" y="262">Disk 20 GB</text>
-  <text class="sub" x="884" y="284">Python 3.14.7</text>
+  <text class="sub" x="884" y="284">Python 3.14.8</text>
   <text class="sub" x="884" y="306">100 or more groups</text>
   <text class="sub" x="884" y="344">What you gain:</text>
   <text class="sub" x="884" y="366">ONNX uses one thread per core</text>

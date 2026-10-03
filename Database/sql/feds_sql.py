@@ -2,7 +2,16 @@ import ast
 import asyncio
 import threading
 
-from sqlalchemy import BigInteger, Boolean, Column, Integer, String, UnicodeText
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    Integer,
+    String,
+    UnicodeText,
+    delete,
+    select,
+)
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from aiogram.exceptions import TelegramAPIError
@@ -255,21 +264,19 @@ def del_fed(fed_id, user_id):
             owner_id = str(curr.owner_id)
             fed_name = curr.fed_name
             chat_ids = [
-                str(chat.chat_id)
-                for chat in session.query(ChatF)
-                .filter(ChatF.fed_id == fed_id)
-                .all()
+                str(chat_id)
+                for chat_id in session.execute(
+                    select(ChatF.chat_id).where(ChatF.fed_id == fed_id)
+                ).scalars()
             ]
 
-            session.query(ChatF).filter(ChatF.fed_id == fed_id).delete(
-                synchronize_session=False
+            session.execute(delete(ChatF).where(ChatF.fed_id == fed_id))
+            session.execute(delete(BansF).where(BansF.fed_id == fed_id))
+            session.execute(
+                delete(FedSubs).where(
+                    (FedSubs.fed_id == fed_id) | (FedSubs.fed_subs == fed_id)
+                )
             )
-            session.query(BansF).filter(BansF.fed_id == fed_id).delete(
-                synchronize_session=False
-            )
-            session.query(FedSubs).filter(
-                (FedSubs.fed_id == fed_id) | (FedSubs.fed_subs == fed_id)
-            ).delete(synchronize_session=False)
             session.delete(curr)
             session.commit()
         except SQLAlchemyError:
@@ -816,7 +823,7 @@ def get_subscriber(fed_id):
 def __load_all_feds():
     global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME
     try:
-        feds = SESSION.query(Federations).all()
+        feds = SESSION.scalars(select(Federations)).all()
         for x in feds:  # remove tuple by ( ,)
             # Fed by Owner
             check = FEDERATION_BYOWNER.get(x.owner_id)
@@ -858,7 +865,7 @@ def __load_all_feds():
 def __load_all_feds_chats():
     global FEDERATION_CHATS, FEDERATION_CHATS_BYID
     try:
-        qall = SESSION.query(ChatF).all()
+        qall = SESSION.scalars(select(ChatF)).all()
         FEDERATION_CHATS = {}
         FEDERATION_CHATS_BYID = {}
         for x in qall:
@@ -881,7 +888,7 @@ def __load_all_feds_banned():
     try:
         FEDERATION_BANNED_USERID = {}
         FEDERATION_BANNED_FULL = {}
-        qall = SESSION.query(BansF).all()
+        qall = SESSION.scalars(select(BansF)).all()
         for x in qall:
             check = FEDERATION_BANNED_USERID.get(x.fed_id)
             if check is None:
@@ -905,7 +912,7 @@ def __load_all_feds_banned():
 def __load_all_feds_settings():
     global FEDERATION_NOTIFICATION
     try:
-        getuser = SESSION.query(FedsUserSettings).all()
+        getuser = SESSION.scalars(select(FedsUserSettings)).all()
         for x in getuser:
             FEDERATION_NOTIFICATION[str(x.user_id)] = x.should_report
     finally:
@@ -918,7 +925,7 @@ def __load_feds_subscriber():
     try:
         FEDS_SUBSCRIBER = {}
         MYFEDS_SUBSCRIBER = {}
-        for subscription in SESSION.query(FedSubs).all():
+        for subscription in SESSION.scalars(select(FedSubs)).all():
             FEDS_SUBSCRIBER.setdefault(subscription.fed_id, set()).add(
                 subscription.fed_subs
             )

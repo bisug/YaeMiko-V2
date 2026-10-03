@@ -10,7 +10,7 @@ than in the schema.
 
 import threading
 
-from sqlalchemy import Boolean, Column, String
+from sqlalchemy import Boolean, Column, String, select
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -95,9 +95,8 @@ is_karma_on, karma_on, karma_off = _feature_api(KARMA)
 def migrate_chat(old_chat_id, new_chat_id):
     with INSERTION_LOCK:
         rows = (
-            SESSION.query(ChatToggle)
-            .filter(ChatToggle.chat_id == str(old_chat_id))
-            .all()
+            SESSION.scalars(select(ChatToggle)
+            .where(ChatToggle.chat_id == str(old_chat_id))).all()
         )
         for row in rows:
             row.chat_id = str(new_chat_id)

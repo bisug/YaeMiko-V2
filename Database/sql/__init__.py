@@ -10,11 +10,12 @@ roll back a worker's session, and must not touch it.
 """
 
 import os
+import sys
 import threading
 from functools import wraps
 
 from sqlalchemy import create_engine, event, text
-from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, scoped_session, sessionmaker
 
 from Mikobot import DB_URI
 from Mikobot import LOGGER as log
@@ -29,7 +30,9 @@ if DB_URI and DB_URI.startswith(("postgres://", "postgresql://")):
 ENGINE = None
 SESSION = None
 
-BASE = declarative_base()
+
+class BASE(DeclarativeBase):
+    pass
 
 
 def top_statements(limit: int = 5) -> list[tuple[str, int]]:
@@ -143,7 +146,8 @@ class UnitOfWorkSession:
 
     _PASSTHROUGH = (
         "get", "query", "add", "delete", "merge", "flush", "close",
-        "expunge", "expunge_all", "refresh", "execute", "scalar", "connection",
+        "expunge", "expunge_all", "refresh", "execute", "scalar", "scalars",
+        "scalar_or_none", "connection",
     )
 
     def __init__(self, factory: scoped_session):
@@ -227,7 +231,7 @@ try:
     SESSION = UnitOfWorkSession(start())
 except Exception as e:
     log.exception(f"[PostgreSQL] Failed to connect due to {e}")
-    exit()
+    sys.exit()
 
 log.info("[PostgreSQL] Connection successful, session started.")
 

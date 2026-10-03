@@ -1,6 +1,6 @@
 import threading
 
-from sqlalchemy import Boolean, Column, Integer, String, UnicodeText, distinct, func
+from sqlalchemy import Boolean, Column, Integer, String, UnicodeText, distinct, func, select
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 from Mikobot import LOGGER
@@ -102,7 +102,7 @@ CHAT_FILTERS = {}
 @unit_of_work_guard
 def get_all_filters():
     try:
-        return SESSION.query(CustomFilters).all()
+        return SESSION.scalars(select(CustomFilters)).all()
     finally:
         SESSION.close()
 
@@ -130,9 +130,8 @@ def add_filter(
         if prev:
             with BUTTON_LOCK:
                 prev_buttons = (
-                    SESSION.query(Buttons)
-                    .filter(Buttons.chat_id == str(chat_id), Buttons.keyword == keyword)
-                    .all()
+                    SESSION.scalars(select(Buttons)
+                    .where(Buttons.chat_id == str(chat_id), Buttons.keyword == keyword)).all()
                 )
                 for btn in prev_buttons:
                     SESSION.delete(btn)
@@ -177,9 +176,8 @@ def new_add_filter(
         if prev:
             with BUTTON_LOCK:
                 prev_buttons = (
-                    SESSION.query(Buttons)
-                    .filter(Buttons.chat_id == str(chat_id), Buttons.keyword == keyword)
-                    .all()
+                    SESSION.scalars(select(Buttons)
+                    .where(Buttons.chat_id == str(chat_id), Buttons.keyword == keyword)).all()
                 )
                 for btn in prev_buttons:
                     SESSION.delete(btn)
@@ -224,9 +222,8 @@ def remove_filter(chat_id, keyword):
 
             with BUTTON_LOCK:
                 prev_buttons = (
-                    SESSION.query(Buttons)
-                    .filter(Buttons.chat_id == str(chat_id), Buttons.keyword == keyword)
-                    .all()
+                    SESSION.scalars(select(Buttons)
+                    .where(Buttons.chat_id == str(chat_id), Buttons.keyword == keyword)).all()
                 )
                 for btn in prev_buttons:
                     SESSION.delete(btn)
@@ -247,11 +244,10 @@ def get_chat_triggers(chat_id):
 def get_chat_filters(chat_id):
     try:
         return (
-            SESSION.query(CustomFilters)
-            .filter(CustomFilters.chat_id == str(chat_id))
+            SESSION.scalars(select(CustomFilters)
+            .where(CustomFilters.chat_id == str(chat_id))
             .order_by(func.length(CustomFilters.keyword).desc())
-            .order_by(CustomFilters.keyword.asc())
-            .all()
+            .order_by(CustomFilters.keyword.asc())).all()
         )
     finally:
         SESSION.close()
@@ -277,10 +273,9 @@ def add_note_button_to_db(chat_id, keyword, b_name, url, same_line):
 def get_buttons(chat_id, keyword):
     try:
         return (
-            SESSION.query(Buttons)
-            .filter(Buttons.chat_id == str(chat_id), Buttons.keyword == keyword)
-            .order_by(Buttons.id)
-            .all()
+            SESSION.scalars(select(Buttons)
+            .where(Buttons.chat_id == str(chat_id), Buttons.keyword == keyword)
+            .order_by(Buttons.id)).all()
         )
     finally:
         SESSION.close()
@@ -289,7 +284,7 @@ def get_buttons(chat_id, keyword):
 @unit_of_work_guard
 def num_filters():
     try:
-        return SESSION.query(CustomFilters).count()
+        return SESSION.scalar(select(func.count()).select_from(CustomFilters))
     finally:
         SESSION.close()
 
@@ -297,7 +292,7 @@ def num_filters():
 @unit_of_work_guard
 def num_chats():
     try:
-        return SESSION.query(func.count(distinct(CustomFilters.chat_id))).scalar()
+        return SESSION.scalar(select(func.count(distinct(CustomFilters.chat_id))))
     finally:
         SESSION.close()
 
@@ -305,11 +300,11 @@ def num_chats():
 def __load_chat_filters():
     global CHAT_FILTERS
     try:
-        chats = SESSION.query(CustomFilters.chat_id).distinct().all()
+        chats = SESSION.execute(select(CustomFilters.chat_id).distinct()).scalars().all()
         for (chat_id,) in chats:  # remove tuple by ( ,)
             CHAT_FILTERS[chat_id] = []
 
-        all_filters = SESSION.query(CustomFilters).all()
+        all_filters = SESSION.scalars(select(CustomFilters)).all()
         for x in all_filters:
             CHAT_FILTERS[x.chat_id] += [x.keyword]
 
@@ -325,7 +320,7 @@ def __load_chat_filters():
 # ONLY USE FOR MIGRATE OLD FILTERS TO NEW FILTERS
 def __migrate_filters():
     try:
-        all_filters = SESSION.query(CustomFilters).distinct().all()
+        all_filters = SESSION.scalars(select(CustomFilters).distinct()).all()
         for x in all_filters:
             if x.is_document:
                 file_type = Types.DOCUMENT
@@ -363,9 +358,8 @@ def __migrate_filters():
 def migrate_chat(old_chat_id, new_chat_id):
     with CUST_FILT_LOCK:
         chat_filters = (
-            SESSION.query(CustomFilters)
-            .filter(CustomFilters.chat_id == str(old_chat_id))
-            .all()
+            SESSION.scalars(select(CustomFilters)
+            .where(CustomFilters.chat_id == str(old_chat_id))).all()
         )
         for filt in chat_filters:
             filt.chat_id = str(new_chat_id)
@@ -378,7 +372,7 @@ def migrate_chat(old_chat_id, new_chat_id):
 
         with BUTTON_LOCK:
             chat_buttons = (
-                SESSION.query(Buttons).filter(Buttons.chat_id == str(old_chat_id)).all()
+                SESSION.scalars(select(Buttons).where(Buttons.chat_id == str(old_chat_id))).all()
             )
             for btn in chat_buttons:
                 btn.chat_id = str(new_chat_id)
