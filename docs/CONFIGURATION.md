@@ -62,7 +62,7 @@ environment variables.
 | `STRICT_GBAN` | `True` | Enforce global bans in new groups |
 | `BAN_STICKER` | empty | Sticker file ID banned in every group |
 | `TEMP_DOWNLOAD_DIRECTORY` | `./` | Scratch directory for downloaded media |
-| `LOGGER` | `True` | Write rotating log files |
+| `LOGGER` | `True` | Unused, kept so existing deployments do not break. Log files are always written |
 | `LOG_LEVEL` | `INFO` | Root log level, one of `CRITICAL ERROR WARNING INFO DEBUG NOTSET` |
 | `ACTIVITY_LOG` | `False` | Log a summary line for every incoming update |
 
@@ -98,9 +98,12 @@ those two entirely.
 
 ## Logging
 
-`LOGGER=True` attaches a rotating file handler through `logging.handlers.RotatingFileHandler` in
-addition to the stream handler. `LOG_LEVEL` controls the root level, and the `pyrogram` and
-`pyrate_limiter` loggers are pinned to `ERROR`.
+A rotating file handler is always attached through `logging.handlers.RotatingFileHandler`,
+in addition to the stream handler. It is skipped when the working directory is not
+writable, as it often is not on a container filesystem. `LOGGER` is accepted for
+backwards compatibility but no longer read: log files are written whether it is set or
+not, so set `LOG_LEVEL=CRITICAL` if you need the volume down. `LOG_LEVEL` controls the
+root level, and the `pyrogram` and `pyrate_limiter` loggers are pinned to `ERROR`.
 
 `RedactingFormatter` rewrites any token shaped like `bot<digits>:<30 or more characters>` to
 `bot<redacted>`. The `httpx` and `httpcore` loggers are set to `WARNING` because their INFO output

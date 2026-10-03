@@ -371,7 +371,7 @@ Full reference with defaults and elevated user ranks:
 | `ALLOW_CHATS` | `True` | Accept private chat usage |
 | `ALLOW_EXCL` | `True` | Accept excluded chat usage |
 | `INFOPIC` | `True` | Use the image info card instead of a text card |
-| `LOGGER` | `True` | Write rotating log files |
+| `LOGGER` | `True` | Unused. Log files are always written; see [Logging](docs/CONFIGURATION.md#logging) |
 | `LOG_LEVEL` | `INFO` | Root log level |
 | `ACTIVITY_LOG` | `False` | Log every incoming update summary |
 | `BAN_STICKER` | empty | Sticker file ID banned in all groups |
