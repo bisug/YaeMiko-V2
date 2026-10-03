@@ -307,7 +307,6 @@ bot = Bot(
     session=ThrottledSession(),
 )
 dp = Dispatcher(storage=MemoryStorage())
-dispatcher = dp
 
 
 def _install_gates():
