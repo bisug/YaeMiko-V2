@@ -24,7 +24,7 @@ SOFTWARE.
 
 import threading
 
-from sqlalchemy import BigInteger, Boolean, Column, String, distinct, func
+from sqlalchemy import Boolean, Column, String, distinct, func, inspect, text
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -41,7 +41,7 @@ class GroupLogs(BASE):
 
 class LogChannelSettings(BASE):
     __tablename__ = "log_channel_setting"
-    chat_id = Column(BigInteger, primary_key=True)
+    chat_id = Column(String(14), primary_key=True)
     log_joins = Column(Boolean, default=True)
     log_leave = Column(Boolean, default=True)
     log_warn = Column(Boolean, default=True)
@@ -58,7 +58,7 @@ class LogChannelSettings(BASE):
         log_action: bool,
         log_report: bool,
     ):
-        self.chat_id = chat_id
+        self.chat_id = str(chat_id)
         self.log_warn = log_warn
         self.log_joins = log_join
         self.log_leave = log_leave
@@ -94,6 +94,37 @@ class LogChannelSettings(BASE):
 GroupLogs.__table__.create(bind=ENGINE, checkfirst=True)
 LogChannelSettings.__table__.create(bind=ENGINE, checkfirst=True)
 
+
+def _ensure_chat_id_type() -> None:
+    """Widen a chat_id column an older build declared as an integer.
+
+    Every other chat key is VARCHAR(14), and a chat id sent as an integer to a
+    text column is a type error rather than a lookup.
+    """
+    inspector = inspect(ENGINE)
+    if "log_channel_setting" not in inspector.get_table_names():
+        return
+    column = next(
+        (
+            column
+            for column in inspector.get_columns("log_channel_setting")
+            if column["name"] == "chat_id"
+        ),
+        None,
+    )
+    if column is None or column["type"].python_type is str:
+        return
+    with ENGINE.begin() as connection:
+        connection.execute(
+            text(
+                'ALTER TABLE log_channel_setting ALTER COLUMN "chat_id" '
+                'TYPE VARCHAR(14) USING "chat_id"::VARCHAR(14)'
+            )
+        )
+
+
+_ensure_chat_id_type()
+
 LOGS_INSERTION_LOCK = threading.RLock()
 LOG_SETTING_LOCK = threading.RLock()
 CHANNELS = {}
@@ -102,7 +133,7 @@ CHANNELS = {}
 @unit_of_work_guard
 def get_chat_setting(chat_id: int) -> LogChannelSettings | None:
     with LOG_SETTING_LOCK:
-        return SESSION.get(LogChannelSettings, chat_id)
+        return SESSION.get(LogChannelSettings, str(chat_id))
 
 
 @unit_of_work_guard

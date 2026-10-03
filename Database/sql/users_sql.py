@@ -34,7 +34,7 @@ from sqlalchemy import (
     func,
 )
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, ENGINE, SESSION, ensure_index, unit_of_work_guard
 from Mikobot import BOT_ID, BOT_USERNAME
 
 
@@ -96,6 +96,12 @@ class ChatMembers(BASE):
 Users.__table__.create(bind=ENGINE, checkfirst=True)
 Chats.__table__.create(bind=ENGINE, checkfirst=True)
 ChatMembers.__table__.create(bind=ENGINE, checkfirst=True)
+
+# get_user_com_chats and get_user_num_chats filter on the user column, which the
+# (chat, user) unique index cannot serve on its own. get_userid_by_name compares
+# lower(username), which no index on username serves.
+ensure_index("chat_members_user_idx", "chat_members", '"user"')
+ensure_index("users_username_lower_idx", "users", "lower(username)")
 
 INSERTION_LOCK = threading.RLock()
 

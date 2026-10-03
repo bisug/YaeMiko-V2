@@ -57,3 +57,12 @@ def disapprove(chat_id):
         _settings_cache.pop(chat_id, None)
     finally:
         SESSION.close()
+
+
+@unit_of_work_guard
+def migrate_chat(old_chat_id, new_chat_id):
+    row = SESSION.get(ForceSub, str(old_chat_id))
+    if row:
+        row.chat_id = str(new_chat_id)
+    SESSION.commit()
+    _settings_cache.pop(old_chat_id, None)

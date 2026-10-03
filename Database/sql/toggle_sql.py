@@ -89,3 +89,16 @@ is_dwelcome_on, dwelcome_on, dwelcome_off = _feature_api(WELCOME)
 is_nsfw_on, nsfw_on, nsfw_off = _feature_api(NSFW)
 is_nekomode_on, nekomode_on, nekomode_off = _feature_api(NEKOMODE)
 is_karma_on, karma_on, karma_off = _feature_api(KARMA)
+
+
+@unit_of_work_guard
+def migrate_chat(old_chat_id, new_chat_id):
+    with INSERTION_LOCK:
+        rows = (
+            SESSION.query(ChatToggle)
+            .filter(ChatToggle.chat_id == str(old_chat_id))
+            .all()
+        )
+        for row in rows:
+            row.chat_id = str(new_chat_id)
+        SESSION.commit()

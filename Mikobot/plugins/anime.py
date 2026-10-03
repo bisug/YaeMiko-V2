@@ -5116,4 +5116,10 @@ __help__ = """
 """
 
 __mod_name__ = "ANIME"
+
+
+def __migrate__(old_chat_id, new_chat_id):
+    db.migrate_chat(old_chat_id, new_chat_id)
+
+
 # <================================================== END =====================================================>

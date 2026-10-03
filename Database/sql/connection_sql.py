@@ -27,7 +27,7 @@ import time
 
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, ENGINE, SESSION, ensure_index, unit_of_work_guard
 
 
 class ChatAccessConnectionSettings(BASE):
@@ -76,6 +76,10 @@ class ConnectionHistory(BASE):
 ChatAccessConnectionSettings.__table__.create(bind=ENGINE, checkfirst=True)
 Connection.__table__.create(bind=ENGINE, checkfirst=True)
 ConnectionHistory.__table__.create(bind=ENGINE, checkfirst=True)
+
+# curr_connection filters on chat_id, and the primary key is the user, so the
+# lookup scanned the table once per call.
+ensure_index("connection_chat_id_idx", "connection", "chat_id")
 
 CHAT_ACCESS_LOCK = threading.RLock()
 CONNECTION_INSERTION_LOCK = threading.RLock()
@@ -195,6 +199,40 @@ def clear_history_conn(user_id):
         SESSION.commit()
         HISTORY_CONNECT[user_id] = {}
     return True
+
+
+@unit_of_work_guard
+def migrate_chat(old_chat_id, new_chat_id):
+    with CONNECTION_INSERTION_LOCK:
+        allowed = SESSION.get(ChatAccessConnectionSettings, str(old_chat_id))
+        if allowed:
+            allowed.chat_id = str(new_chat_id)
+        rows = (
+            SESSION.query(Connection)
+            .filter(Connection.chat_id == str(old_chat_id))
+            .all()
+        )
+        for row in rows:
+            row.chat_id = str(new_chat_id)
+        SESSION.commit()
+
+    with CONNECTION_HISTORY_LOCK:
+        rows = (
+            SESSION.query(ConnectionHistory)
+            .filter(ConnectionHistory.chat_id == str(old_chat_id))
+            .all()
+        )
+        for row in rows:
+            row.chat_id = str(new_chat_id)
+        SESSION.commit()
+        for history in HISTORY_CONNECT.values():
+            entry = history.pop(str(old_chat_id), None)
+            if entry is not None:
+                history[str(new_chat_id)] = {
+                    "chat_name": entry["chat_name"],
+                    "chat_id": str(new_chat_id),
+                    "conn_time": entry["conn_time"],
+                }
 
 
 def __load_user_history():

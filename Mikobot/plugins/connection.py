@@ -493,4 +493,10 @@ dp.message.register(chain(help_connect_chat), Command("helpconnect"))
 dp.callback_query.register(
     chain(connect_button), F.data.regexp(r"^(?:connect\(-?\d+\)|connect_(?:disconnect|clear|close))$")
 )
+
+
+def __migrate__(old_chat_id, new_chat_id):
+    sql.migrate_chat(old_chat_id, new_chat_id)
+
+
 # <================================================ END =======================================================>

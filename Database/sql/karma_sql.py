@@ -102,3 +102,13 @@ def save_couple(chat_id, date: str, couple: dict):
     with INSERTION_LOCK:
         SESSION.merge(Couple(str(chat_id), date, couple["c1_id"], couple["c2_id"]))
         SESSION.commit()
+
+
+@unit_of_work_guard
+def migrate_chat(old_chat_id, new_chat_id):
+    with INSERTION_LOCK:
+        for model in (Karma, Couple):
+            rows = SESSION.query(model).filter(model.chat_id == str(old_chat_id)).all()
+            for row in rows:
+                row.chat_id = str(new_chat_id)
+        SESSION.commit()

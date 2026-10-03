@@ -2558,6 +2558,58 @@ class SqlLayerDatabaseTests(unittest.TestCase):
         finally:
             antiflood_sql.set_flood(self.CID, 0)
 
+    def test_chat_locks_are_served_from_the_cache(self):
+        # get_locks ran once per group message, and a chat with no lock row was
+        # the common case that kept it querying forever.
+        from Database.sql import STATEMENT_TOTAL, locks_sql
+
+        locks_sql.update_lock(self.CID, "sticker", True)
+        try:
+            before = STATEMENT_TOTAL
+            self.assertTrue(locks_sql.get_locks(self.CID).sticker)
+            self.assertTrue(locks_sql.is_locked(self.CID, "sticker"))
+            self.assertEqual(
+                STATEMENT_TOTAL,
+                before,
+                "the chat locks were read from PostgreSQL instead of PERM_CACHE",
+            )
+        finally:
+            locks_sql.update_lock(self.CID, "sticker", False)
+
+    def test_a_chat_without_locks_is_not_looked_up_again(self):
+        from Database.sql import SESSION, STATEMENT_TOTAL, locks_sql
+
+        unused_chat = str(self.CID + 7)
+        existing = SESSION.get(locks_sql.Permissions, unused_chat)
+        if existing is not None:
+            SESSION.delete(existing)
+            SESSION.commit()
+        SESSION.close()
+        locks_sql.PERM_CACHE.pop(unused_chat, None)
+
+        self.assertIsNone(locks_sql.get_locks(unused_chat))
+        before = STATEMENT_TOTAL
+        self.assertIsNone(locks_sql.get_locks(unused_chat))
+        self.assertIsNone(locks_sql.get_locks(unused_chat))
+        self.assertEqual(
+            STATEMENT_TOTAL,
+            before,
+            "an unconfigured chat was queried again instead of cached as None",
+        )
+        locks_sql.PERM_CACHE.pop(unused_chat, None)
+
+    def test_updating_a_lock_updates_the_cache(self):
+        from Database.sql import locks_sql
+
+        locks_sql.update_lock(self.CID, "url", True)
+        try:
+            self.assertTrue(locks_sql.get_locks(self.CID).url)
+            self.assertTrue(locks_sql.is_locked(self.CID, "url"))
+            locks_sql.update_lock(self.CID, "url", False)
+            self.assertFalse(locks_sql.get_locks(self.CID).url)
+        finally:
+            locks_sql.update_lock(self.CID, "url", False)
+
     def test_approval_lookup_is_cached_and_approve_is_idempotent(self):
         from Database.sql import STATEMENT_TOTAL, approve_sql
 
@@ -2608,6 +2660,194 @@ class SqlLayerDatabaseTests(unittest.TestCase):
         self.assertTrue(top, "no statement shape was recorded")
         counts = [count for _, count in top]
         self.assertEqual(counts, sorted(counts, reverse=True))
+
+    def test_every_declared_table_exists_on_the_server(self):
+        # cust_filters_new was declared as a model but never created, so a fresh
+        # install was a table short of its own metadata.
+        from sqlalchemy import inspect
+
+        import Database.sql as dbsql
+
+        present = set(inspect(dbsql.ENGINE).get_table_names())
+        declared = set(dbsql.BASE.metadata.tables)
+        self.assertEqual(declared - present, set())
+        self.assertEqual(present - declared, set())
+
+    def test_the_indexes_the_queries_need_are_created(self):
+        from sqlalchemy import inspect
+
+        import Database.sql as dbsql
+
+        inspector = inspect(dbsql.ENGINE)
+        indexes = {
+            name
+            for table in inspector.get_table_names()
+            for name in (index["name"] for index in inspector.get_indexes(table))
+        }
+        for expected in (
+            "chat_members_user_idx",
+            "users_username_lower_idx",
+            "notes_name_lower_idx",
+            "connection_chat_id_idx",
+        ):
+            self.assertIn(expected, indexes)
+
+
+class ChatMigrationTests(unittest.TestCase):
+    """A group upgrade rewrites the chat id, and the settings must follow it.
+
+    Telegram changes a chat's id when a group becomes a supergroup, so every
+    table keyed on chat_id needs a migrate_chat or its rows are orphaned.
+    """
+
+    # module, table name, and the helper that writes one row, with its argument
+    CASES = (
+        ("approve_sql", "approval", "approve", 900000001),
+        ("anime_sql", "anime_group_settings", None, None),
+        ("feds_sql", "chat_feds", None, None),
+        ("karma_sql", "karma", None, None),
+        ("karma_sql", "couple", None, None),
+        ("toggle_sql", "chat_toggles", None, None),
+        ("locale_sql", "chat_locale", None, None),
+        ("fsub_sql", "fsub_settings", "add_channel", "probe-channel"),
+    )
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib
+        import os
+        import pkgutil
+        import socket
+        import sys
+        from urllib.parse import urlparse
+
+        url = os.environ.get("DATABASE_URL")
+        if not url:
+            raise unittest.SkipTest("DATABASE_URL is not set")
+        host = urlparse(url).hostname
+        if host:
+            try:
+                socket.getaddrinfo(host, None)
+            except socket.gaierror:
+                raise unittest.SkipTest(f"database host {host} does not resolve")
+
+        sys.path.insert(0, str(ROOT))
+        try:
+            import sqlalchemy  # noqa: F401
+        except ImportError:
+            raise unittest.SkipTest("sqlalchemy is not installed")
+
+        import Database.sql as dbsql
+
+        for module in pkgutil.iter_modules(dbsql.__path__):
+            if module.name.endswith("_sql"):
+                importlib.import_module(f"Database.sql.{module.name}")
+        cls.modules = {
+            name: importlib.import_module(f"Database.sql.{name}")
+            for name, _, _, _ in cls.CASES
+        }
+        cls.old_chat = "-100900000042"
+        cls.new_chat = "-100900000043"
+
+    def _models_with_chat_id(self):
+        """Every declared table with a chat_id column, from the metadata."""
+        import Database.sql as dbsql
+
+        return {
+            name: table
+            for name, table in dbsql.BASE.metadata.tables.items()
+            if "chat_id" in table.columns
+        }
+
+    def test_every_chat_keyed_table_has_a_migration_path(self):
+        import importlib
+        import pkgutil
+
+        import Database.sql as dbsql
+
+        # A module that owns migrate_chat can move every chat keyed table it
+        # declares, so the tables it binds are the reachable set.
+        reachable = set()
+        for module in pkgutil.iter_modules(dbsql.__path__):
+            if not module.name.endswith("_sql"):
+                continue
+            imported = importlib.import_module(f"Database.sql.{module.name}")
+            if not hasattr(imported, "migrate_chat"):
+                continue
+            for value in vars(imported).values():
+                table = getattr(value, "__table__", None)
+                if table is not None and "chat_id" in table.columns:
+                    reachable.add(table.name)
+
+        orphans = sorted(set(self._models_with_chat_id()) - reachable)
+        # cleaner_sql and remind_sql are imported by no plugin, so nothing
+        # writes these rows and nothing can migrate them either.
+        self.assertEqual(
+            orphans,
+            [
+                "cleaner_bluetext_chat_ignore_commands",
+                "cleaner_bluetext_chat_setting",
+                "reminds",
+            ],
+        )
+
+    @staticmethod
+    def _probe_row(table, chat_id):
+        """One row that satisfies the not-null columns, whatever their type."""
+        import datetime
+
+        values = {}
+        surrogate = (
+            len(table.primary_key.columns) == 1
+            and table.primary_key.columns[0].type.python_type is int
+        )
+        for column in table.columns:
+            if surrogate and column.primary_key:
+                continue
+            if column.name == "chat_id":
+                values[column.name] = chat_id
+                continue
+            kind = column.type.python_type
+            if kind is bool:
+                values[column.name] = True
+            elif kind is int:
+                values[column.name] = 1
+            elif kind is str:
+                # Some columns are narrow, lang is varchar(8).
+                values[column.name] = f"p{column.name}"[: column.type.length or 32]
+            else:
+                values[column.name] = datetime.datetime.now()
+        return values
+
+    def test_a_migration_moves_the_rows(self):
+        from Database.sql import SESSION
+
+        for name, table_name, writer, argument in self.CASES:
+            module = self.modules[name]
+            table = module.BASE.metadata.tables[table_name]
+            columns = [column.name for column in table.columns]
+            old = self.old_chat
+            new = self.new_chat
+            if writer is not None:
+                getattr(module, writer)(old, argument)
+            else:
+                SESSION.execute(table.insert().values(self._probe_row(table, old)))
+                SESSION.commit()
+            try:
+                module.migrate_chat(old, new)
+                moved = SESSION.execute(
+                    table.select().where(table.c.chat_id == new)
+                ).fetchall()
+                self.assertTrue(moved, f"{table_name} kept no row under the new chat id")
+                self.assertFalse(
+                    SESSION.execute(
+                        table.select().where(table.c.chat_id == old)
+                    ).fetchall(),
+                    f"{table_name} kept a row under the old chat id",
+                )
+            finally:
+                SESSION.execute(table.delete().where(table.c.chat_id == new))
+                SESSION.commit()
 
 
 class MessagePathDatabaseTests(unittest.TestCase):

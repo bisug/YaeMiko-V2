@@ -13,6 +13,7 @@ from pyrogram import Client
 from pyrogram import filters as fil
 
 import Database.sql.users_sql as sql
+import Database.sql.locale_sql as locale_sql
 from Database.sql.users_sql import get_all_users
 from Mikobot import DEV_USERS, LOGGER, OWNER_ID, app, bot, dp
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
@@ -303,6 +304,8 @@ def __stats__():
 
 def __migrate__(old_chat_id, new_chat_id):
     sql.migrate_chat(old_chat_id, new_chat_id)
+    # The per-chat language lives in its own module with no plugin of its own.
+    locale_sql.migrate_chat(old_chat_id, new_chat_id)
 
 
 # <================================================ HANDLER =======================================================>

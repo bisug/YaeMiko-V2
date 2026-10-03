@@ -233,6 +233,19 @@ def owns_channel(cid, user_id) -> bool:
     return get_channel_owner(cid) == user_id
 
 
+@unit_of_work_guard
+def migrate_chat(old_chat_id, new_chat_id):
+    with INSERTION_LOCK:
+        rows = (
+            SESSION.query(AnimeGroupSetting)
+            .filter(AnimeGroupSetting.chat_id == str(old_chat_id))
+            .all()
+        )
+        for row in rows:
+            row.chat_id = str(new_chat_id)
+        SESSION.commit()
+
+
 def command_disabled(chat_id, command: str) -> bool:
     """Read disabled-command state from the PostgreSQL table that owns it."""
     return is_command_disabled(chat_id, command)

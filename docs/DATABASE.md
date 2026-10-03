@@ -14,6 +14,7 @@ Back to [README](../README.md).
 - [Unit of work](#unit-of-work)
 - [Module to table map](#module-to-table-map)
 - [Domain map](#domain-map)
+- [Indexes](#indexes)
 - [Identity and directory](#identity-and-directory)
 - [Moderation and safety](#moderation-and-safety)
 - [Federation and subscriptions](#federation-and-subscriptions)
@@ -29,7 +30,7 @@ Diagrams are Mermaid and render on GitHub and in VS Code preview.
 ## The one store
 
 PostgreSQL is the only persistent store. `Database/sql/` holds 31 model modules; 30 of them declare
-61 tables and 245 columns, all created by SQLAlchemy 2.1.2 over
+60 tables and 240 columns, all created by SQLAlchemy 2.1.2 over
 psycopg 3. MongoDB was retired once the last plugin moved across; see
 [MIGRATION-MONGO-TO-SQL.md](MIGRATION-MONGO-TO-SQL.md). The `Extra/` fonts and the pickle
 `DataStore` are files, not tables.
@@ -100,6 +101,13 @@ every row of `antiflood`, refreshed by the settings commands and reloaded at sta
 `approve_sql.APPROVED` is a 30 second TTL cache of approval hits; a miss stays a query, so
 an approval made by another path is seen rather than remembered as absent.
 
+`locks_sql.PERM_CACHE` holds a `ChatLocks` snapshot per chat, reloaded at startup and
+refreshed by `update_lock`, `init_permissions` and `migrate_chat`. An unconfigured chat is
+cached as `None`, which is what removed the last per-message query: most groups have no
+`permissions` row, so the miss was the common case. The cached value is a dataclass rather
+than the ORM row, because a committed row is expired and would try to lazy-load from a
+session the helper has already closed.
+
 The per-message handlers reach the database through `asyncio.to_thread`, so a query on a
 busy chat occupies a worker thread rather than the event loop.
 
@@ -141,7 +149,7 @@ guard runs on the calling thread because a session belongs to the thread that cr
 | `Database/sql/captcha_sql.py` | `captcha_settings`, `captcha_solved` |
 | `Database/sql/cleaner_sql.py` | `cleaner_bluetext_chat_ignore_commands`, `cleaner_bluetext_chat_setting`, `cleaner_bluetext_global_ignore_commands` |
 | `Database/sql/connection_sql.py` | `access_connection`, `connection`, `connection_history` |
-| `Database/sql/cust_filters_sql.py` | `cust_filter_urls`, `cust_filters`, `cust_filters_new` |
+| `Database/sql/cust_filters_sql.py` | `cust_filter_urls`, `cust_filters` |
 | `Database/sql/disable_sql.py` | `disabled_commands` |
 | `Database/sql/feds_sql.py` | `bans_feds`, `chat_feds`, `feds`, `feds_settings`, `feds_subs` |
 | `Database/sql/fsub_sql.py` | `fsub_settings` |
@@ -174,7 +182,7 @@ the ban handlers mention people by.
 | [Moderation and safety](#moderation-and-safety) | 19 | `warns(user_id, chat_id)`, `blacklist(chat_id, trigger)` |
 | [Federation and subscriptions](#federation-and-subscriptions) | 6 | `feds(fed_id)`, `bans_feds(fed_id, user_id)` |
 | [Chat behaviour](#chat-behaviour) | 13 | `permissions(chat_id)`, `welcome_pref(chat_id)` |
-| [Stored content](#stored-content) | 9 | `notes(chat_id, name)`, `whispers(id)` |
+| [Stored content](#stored-content) | 8 | `notes(chat_id, name)`, `whispers(id)` |
 | [Service message cleaner](#service-message-cleaner) | 3 | `cleaner_bluetext_global_ignore_commands(command)` |
 | [Karma and couples](#karma-and-couples) | 2 | `karma(chat_id, name)`, `couple(chat_id, date)` |
 
@@ -462,7 +470,7 @@ erDiagram
         VARCHAR log_channel "varchar(14)"
     }
     log_channel_setting {
-        BIGINT chat_id PK
+        VARCHAR chat_id PK "varchar(14)"
         BOOLEAN log_action
         BOOLEAN log_joins
         BOOLEAN log_leave
@@ -524,13 +532,6 @@ erDiagram
         BOOLEAN is_voice
         TEXT reply
         TEXT reply_text
-    }
-    cust_filters_new {
-        VARCHAR chat_id PK "varchar(14)"
-        TEXT keyword PK
-        TEXT file_id
-        INTEGER file_type
-        TEXT text
     }
     cust_filter_urls {
         VARCHAR chat_id PK "varchar(14)"
@@ -603,6 +604,23 @@ erDiagram
     }
 ```
 
+## Indexes
+
+Primary keys cover lookups by key. Four queries were not one of those, and each had nothing
+to fall back on, because `create_all` never adds an index to a table it did not create:
+
+| Index | Serves |
+| --- | --- |
+| `chat_members_user_idx` | `get_user_num_chats` and `get_user_com_chats`, which filter on the user column alone |
+| `users_username_lower_idx` | `get_userid_by_name`, which compares `lower(username)` |
+| `notes_name_lower_idx` | `get_note` and `rm_note`, which compare `lower(name)` within a chat |
+| `connection_chat_id_idx` | `curr_connection`, where the primary key is the user |
+
+The two functional indexes exist because a function breaks the ordering a b-tree index relies
+on, so neither `username` nor `name` is reachable through its own primary key.
+`ensure_index()` in `Database/sql/__init__.py` runs `CREATE INDEX IF NOT EXISTS` next to the
+table it covers.
+
 ## Referential integrity
 
 ```mermaid
@@ -621,7 +639,8 @@ propagates to the membership rows; `users_sql.migrate_chat` still sets them one 
 
 Everything else is a naming convention: 49 tables carry a `chat_id` column and 16 carry a
 `user_id` column, and PostgreSQL enforces none of those links. A setting row can outlive the
-chat it belongs to, and `rem_chat` leaves it behind. The key types drift with it:
+chat it belongs to, and `rem_chat` leaves it behind. `log_channel_setting.chat_id` was a `BIGINT` where every other chat key is `VARCHAR(14)`;
+it is text now, and a start-up pass widens an existing column. The key types drift with it:
 
 | Table | Column | Declared as | Everywhere else |
 | --- | --- | --- | --- |
@@ -633,6 +652,14 @@ chat it belongs to, and `rem_chat` leaves it behind. The key types drift with it
 `feds.fed_id`, `couple.date` and `anime_group_settings.collection` are keys of their own kind,
 not chat ids. The four URL tables (`note_urls`, `cust_filter_urls`, `welcome_urls`, `leave_urls`)
 put the surrogate `id` inside the composite primary key, so one `id` cannot repeat inside a chat.
+
+## Chat upgrades
+
+Telegram rewrites a chat id when a group becomes a supergroup, so a row keyed on the old id
+is orphaned. Every chat keyed module has a `migrate_chat(old, new)`, and the plugin that owns
+the data calls it from its `__migrate__` hook. A test asserts that no chat keyed table is left
+without one; the only exceptions are the two `cleaner_bluetext_*` tables and `reminds`, whose
+modules are imported by no plugin, so nothing writes those rows.
 
 ## Schema evolution
 
@@ -646,6 +673,7 @@ list first so the pass is idempotent:
 | `blacklist_sql.py` | `blacklist_settings` | same |
 | `raid_sql.py` | `raid_chats` | same |
 | `welcome_sql.py` | `clean_service` | `service_types` |
+| `log_channel_sql.py` | `log_channel_setting` | widens `chat_id` from `BIGINT` to `VARCHAR(14)` |
 
 The first three also write the column default into the rows that were there before, so an
 upgraded row reads as the new default instead of NULL.

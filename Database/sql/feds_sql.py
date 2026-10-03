@@ -336,6 +336,23 @@ def chat_join_fed(fed_id, chat_name, chat_id):
         return r
 
 
+@unit_of_work_guard
+def migrate_chat(old_chat_id, new_chat_id):
+    with CHAT_FEDS_LOCK:
+        global FEDERATION_CHATS, FEDERATION_CHATS_BYID
+        row = SESSION.get(ChatF, str(old_chat_id))
+        if row:
+            row.chat_id = str(new_chat_id)
+        SESSION.commit()
+
+        entry = FEDERATION_CHATS.pop(str(old_chat_id), None)
+        if entry is not None:
+            FEDERATION_CHATS[str(new_chat_id)] = entry
+            for chats in FEDERATION_CHATS_BYID.values():
+                if str(old_chat_id) in chats:
+                    chats[chats.index(str(old_chat_id))] = str(new_chat_id)
+
+
 def search_fed_by_name(fed_name):
     allfed = FEDERATION_BYNAME.get(fed_name)
     if allfed is None:

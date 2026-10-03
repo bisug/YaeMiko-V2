@@ -122,3 +122,18 @@ def list_approved(chat_id):
         )
     finally:
         SESSION.close()
+
+
+@unit_of_work_guard
+def migrate_chat(old_chat_id, new_chat_id):
+    with APPROVE_INSERTION_LOCK:
+        rows = (
+            SESSION.query(Approvals)
+            .filter(Approvals.chat_id == str(old_chat_id))
+            .all()
+        )
+        for row in rows:
+            row.chat_id = str(new_chat_id)
+        SESSION.commit()
+        for key in [key for key in APPROVED if key[0] == str(old_chat_id)]:
+            APPROVED.pop(key, None)

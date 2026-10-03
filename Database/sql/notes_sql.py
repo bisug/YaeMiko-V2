@@ -27,7 +27,7 @@ import threading
 
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, distinct, func
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, ENGINE, SESSION, ensure_index, unit_of_work_guard
 from Mikobot.plugins.helper_funcs.msg_types import Types
 
 
@@ -71,6 +71,10 @@ class Buttons(BASE):
 
 Notes.__table__.create(bind=ENGINE, checkfirst=True)
 Buttons.__table__.create(bind=ENGINE, checkfirst=True)
+
+# get_note and rm_note compare lower(name), which the (chat_id, name) primary
+# key cannot serve because the function breaks the ordering.
+ensure_index("notes_name_lower_idx", "notes", "chat_id, lower(name)")
 
 NOTES_INSERTION_LOCK = threading.RLock()
 BUTTONS_INSERTION_LOCK = threading.RLock()

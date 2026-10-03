@@ -74,32 +74,6 @@ class CustomFilters(BASE):
         )
 
 
-class NewCustomFilters(BASE):
-    __tablename__ = "cust_filters_new"
-    chat_id = Column(String(14), primary_key=True)
-    keyword = Column(UnicodeText, primary_key=True, nullable=False)
-    text = Column(UnicodeText)
-    file_type = Column(Integer, nullable=False, default=1)
-    file_id = Column(UnicodeText, default=None)
-
-    def __init__(self, chat_id, keyword, text, file_type, file_id):
-        self.chat_id = str(chat_id)  # ensure string
-        self.keyword = keyword
-        self.text = text
-        self.file_type = file_type
-        self.file_id = file_id
-
-    def __repr__(self):
-        return "<Filter for %s>" % self.chat_id
-
-    def __eq__(self, other):
-        return bool(
-            isinstance(other, CustomFilters)
-            and self.chat_id == other.chat_id
-            and self.keyword == other.keyword
-        )
-
-
 class Buttons(BASE):
     __tablename__ = "cust_filter_urls"
     id = Column(Integer, primary_key=True, autoincrement=True)

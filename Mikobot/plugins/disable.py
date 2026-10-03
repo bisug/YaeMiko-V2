@@ -6,6 +6,7 @@ from aiogram.enums import ParseMode
 from aiogram.filters import BaseFilter, Command, CommandObject
 from aiogram.types import Message
 
+import Database.sql.toggle_sql as toggle_sql
 from Mikobot import dp
 from Mikobot.plugins.helper_funcs.chat_status import ADMIN_CACHE, check_admin, connection_status
 from Mikobot.plugins.helper_funcs.misc import is_module_loaded
@@ -260,6 +261,8 @@ if is_module_loaded(FILENAME):
 
     def __migrate__(old_chat_id, new_chat_id):
         sql.migrate_chat(old_chat_id, new_chat_id)
+        # Feature toggles live in their own table next to the disabled commands.
+        toggle_sql.migrate_chat(old_chat_id, new_chat_id)
 
     def __chat_settings__(chat_id, user_id):
         return build_curr_disabled(chat_id)

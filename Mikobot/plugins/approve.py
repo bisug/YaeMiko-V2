@@ -244,3 +244,7 @@ dp.callback_query.register(
 
 __mod_name__ = "APPROVALS"
 __command_list__ = ["approve", "unapprove", "approved", "approval"]
+
+
+def __migrate__(old_chat_id, new_chat_id):
+    sql.migrate_chat(old_chat_id, new_chat_id)

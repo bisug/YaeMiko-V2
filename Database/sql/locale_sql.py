@@ -31,3 +31,11 @@ def get_db_lang(chat_id):
         return row.lang if row else {}
     finally:
         SESSION.close()
+
+
+@unit_of_work_guard
+def migrate_chat(old_chat_id, new_chat_id):
+    row = SESSION.get(ChatLocale, str(old_chat_id))
+    if row:
+        row.chat_id = str(new_chat_id)
+    SESSION.commit()

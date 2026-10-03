@@ -13,7 +13,7 @@ import os
 import threading
 from functools import wraps
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
 
 from Mikobot import DB_URI
@@ -35,6 +35,18 @@ BASE = declarative_base()
 def top_statements(limit: int = 5) -> list[tuple[str, int]]:
     """The statement shapes executed most often, for naming a slow path."""
     return sorted(STATEMENT_COUNTS.items(), key=lambda item: -item[1])[:limit]
+
+
+def ensure_index(name: str, table: str, columns: str) -> None:
+    """Create an index the first time the module that owns the table runs.
+
+    create_all() never adds an index to a table it did not create, so a query
+    that a primary key cannot serve has nothing to fall back on.
+    """
+    with ENGINE.begin() as connection:
+        connection.execute(
+            text(f'CREATE INDEX IF NOT EXISTS "{name}" ON {table} ({columns})')
+        )
 
 
 # Best effort rather than exact: two worker threads can lose an increment, which

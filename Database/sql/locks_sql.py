@@ -24,6 +24,7 @@ SOFTWARE.
 
 # New chat added -> setup permissions
 import threading
+from dataclasses import dataclass
 
 from sqlalchemy import Boolean, Column, String
 
@@ -125,6 +126,56 @@ AllowedItem.__table__.create(bind=ENGINE, checkfirst=True)
 PERM_LOCK = threading.RLock()
 RESTR_LOCK = threading.RLock()
 
+LOCK_COLUMNS = [column.name for column in Permissions.__table__.columns if column.name != "chat_id"]
+
+
+@dataclass
+class ChatLocks:
+    """A detached copy of one chat's lock row.
+
+    The columns are copied out rather than kept as the ORM row because a
+    committed row is expired, and reading it afterwards tries to lazy-load from
+    the session the helper has already closed.
+    """
+
+    chat_id: str
+    audio: bool = False
+    voice: bool = False
+    contact: bool = False
+    video: bool = False
+    document: bool = False
+    photo: bool = False
+    sticker: bool = False
+    gif: bool = False
+    url: bool = False
+    bots: bool = False
+    forward: bool = False
+    game: bool = False
+    location: bool = False
+    rtl: bool = False
+    button: bool = False
+    egame: bool = False
+    inline: bool = False
+
+    @classmethod
+    def from_row(cls, row, chat_id=None):
+        return cls(
+            chat_id=str(chat_id if chat_id is not None else row.chat_id),
+            **{name: bool(getattr(row, name)) for name in LOCK_COLUMNS},
+        )
+
+
+# Chat locks are read on every message by del_lockables, and a chat with no row
+# is the common case, so an absent chat is cached as None rather than left to be
+# looked up again for every message.
+PERM_CACHE: dict[str, ChatLocks | None] = {}
+
+
+def _cache_permissions(chat_id, locks):
+    with PERM_LOCK:
+        PERM_CACHE[str(chat_id)] = locks
+    return locks
+
 
 @unit_of_work_guard
 def init_permissions(chat_id, reset=False):
@@ -134,8 +185,10 @@ def init_permissions(chat_id, reset=False):
         SESSION.flush()
     perm = Permissions(str(chat_id))
     SESSION.add(perm)
+    SESSION.flush()
+    locks = ChatLocks.from_row(perm)
     SESSION.commit()
-    return perm
+    return _cache_permissions(chat_id, locks)
 
 
 @unit_of_work_guard
@@ -155,7 +208,9 @@ def update_lock(chat_id, lock_type, locked):
     with PERM_LOCK:
         curr_perm = SESSION.get(Permissions, str(chat_id))
         if not curr_perm:
-            curr_perm = init_permissions(chat_id)
+            # init_permissions returns a snapshot for the cache, so the row to
+            # write is built here and cached from the end of this function.
+            curr_perm = Permissions(str(chat_id))
 
         if lock_type == "audio":
             curr_perm.audio = locked
@@ -193,7 +248,10 @@ def update_lock(chat_id, lock_type, locked):
             curr_perm.inline = locked
 
         SESSION.add(curr_perm)
+        SESSION.flush()
+        locks = ChatLocks.from_row(curr_perm)
         SESSION.commit()
+        _cache_permissions(chat_id, locks)
 
 
 @unit_of_work_guard
@@ -222,46 +280,10 @@ def update_restriction(chat_id, restr_type, locked):
 
 @unit_of_work_guard
 def is_locked(chat_id, lock_type):
-    curr_perm = SESSION.get(Permissions, str(chat_id))
-    SESSION.close()
-
+    curr_perm = get_locks(chat_id)
     if not curr_perm:
         return False
-
-    if lock_type == "sticker":
-        return curr_perm.sticker
-    if lock_type == "photo":
-        return curr_perm.photo
-    if lock_type == "audio":
-        return curr_perm.audio
-    if lock_type == "voice":
-        return curr_perm.voice
-    if lock_type == "contact":
-        return curr_perm.contact
-    if lock_type == "video":
-        return curr_perm.video
-    if lock_type == "document":
-        return curr_perm.document
-    if lock_type == "gif":
-        return curr_perm.gif
-    if lock_type == "url":
-        return curr_perm.url
-    if lock_type == "bots":
-        return curr_perm.bots
-    if lock_type == "forward":
-        return curr_perm.forward
-    if lock_type == "game":
-        return curr_perm.game
-    if lock_type == "location":
-        return curr_perm.location
-    if lock_type == "rtl":
-        return curr_perm.rtl
-    if lock_type == "button":
-        return curr_perm.button
-    if lock_type == "egame":
-        return curr_perm.egame
-    if lock_type == "inline":
-        return curr_perm.inline
+    return bool(getattr(curr_perm, lock_type, False))
 
 
 @unit_of_work_guard
@@ -291,8 +313,16 @@ def is_restr_locked(chat_id, lock_type):
 
 @unit_of_work_guard
 def get_locks(chat_id):
+    """The chat's lock state, from memory, or None when it has none."""
+    key = str(chat_id)
+    if key in PERM_CACHE:
+        return PERM_CACHE[key]
     try:
-        return SESSION.get(Permissions, str(chat_id))
+        with PERM_LOCK:
+            if key not in PERM_CACHE:
+                row = SESSION.get(Permissions, key)
+                PERM_CACHE[key] = ChatLocks.from_row(row) if row else None
+            return PERM_CACHE[key]
     finally:
         SESSION.close()
 
@@ -309,15 +339,34 @@ def get_restr(chat_id):
 def migrate_chat(old_chat_id, new_chat_id):
     with PERM_LOCK:
         perms = SESSION.get(Permissions, str(old_chat_id))
+        locks = None
         if perms:
             perms.chat_id = str(new_chat_id)
+            locks = ChatLocks.from_row(perms, chat_id=new_chat_id)
         SESSION.commit()
+        PERM_CACHE.pop(str(old_chat_id), None)
+        PERM_CACHE[str(new_chat_id)] = locks
 
     with RESTR_LOCK:
         rest = SESSION.get(Restrictions, str(old_chat_id))
         if rest:
             rest.chat_id = str(new_chat_id)
         SESSION.commit()
+
+
+def __load_locks_cache():
+    """Read every chat's locks once, so the message path never queries."""
+    try:
+        rows = SESSION.query(Permissions).all()
+        with PERM_LOCK:
+            PERM_CACHE.clear()
+            for row in rows:
+                PERM_CACHE[row.chat_id] = ChatLocks.from_row(row)
+    finally:
+        SESSION.close()
+
+
+__load_locks_cache()
 
 
 @unit_of_work_guard

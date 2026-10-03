@@ -2425,4 +2425,10 @@ dp.callback_query.register(chain(del_fed_button), F.data.startswith("rmfed_"))
 dp.message.register(chain(fed_owner_help), Command("fedownerhelp"))
 dp.message.register(chain(fed_admin_help), Command("fedadminhelp"))
 dp.message.register(chain(fed_user_help), Command("feduserhelp"))
+
+
+def __migrate__(old_chat_id, new_chat_id):
+    sql.migrate_chat(old_chat_id, new_chat_id)
+
+
 # <================================================ END =======================================================>
