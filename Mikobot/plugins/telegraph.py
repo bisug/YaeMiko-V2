@@ -52,8 +52,16 @@ async def _upload(path: Path, host: str) -> str:
     """POST the file to Catbox or Litterbox and return the URL as plain text.
 
     Both answer with the bare URL rather than JSON, and both answer errors as
-    bare text as well. Catbox was also seen replying 200 with an empty body
-    while rate limiting, so the response is checked instead of assumed.
+    bare text as well, so the body is the only place the reason can come from
+    and it is read before the status is judged.
+
+    The status is not trusted on its own. Probing the live endpoints in October
+    2026 showed Catbox answering a burst of uploads with HTTP 500 and a normal
+    https://files.catbox.moe/... body, so raising on the code alone would call
+    a stored upload a failure. Whether those links are reachable could not be
+    confirmed from the test host, whose IP the file CDN refuses outright, so a
+    URL is accepted on the strength of its body and a 5xx without one is still
+    an error.
     """
     data = {"reqtype": CATBOX_REQTYPE}
     url = CATBOX_API
@@ -68,11 +76,21 @@ async def _upload(path: Path, host: str) -> str:
             files={"fileToUpload": (path.name, handle, "application/octet-stream")},
             timeout=UPLOAD_TIMEOUT,
         )
-    response.raise_for_status()
     body = response.text.strip()
-    if not body.startswith("http"):
-        raise RuntimeError(f"{host} answered with no URL: {body[:80]!r}")
-    return body
+    if body.startswith("http"):
+        return body
+
+    # The status goes in the message because the body alone does not say which
+    # of a rate limit, a rejected file type or a blocked IP produced it. This
+    # is the text that reaches the log, so it is the only diagnostic a 412 ever
+    # gives: the body is where Catbox explains itself, and reading it after
+    # raise_for_status() discarded exactly that.
+    detail = body[:120] or "<empty body>"
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"{host} answered HTTP {response.status_code}: {detail}"
+        )
+    raise RuntimeError(f"{host} answered with no URL: {detail}")
 
 
 # <================================================ FUNCTION =======================================================>
@@ -180,9 +198,11 @@ async def upload_choice(query: CallbackQuery):
             LOGGER.warning(
                 "Upload to %s failed: %s: %s", host, type(error).__name__, error
             )
+            # _upload already carries the host's own explanation in its message,
+            # so it is shown rather than the exception class alone, which said
+            # nothing about a 412 the operator could otherwise not diagnose.
             await query.message.edit_text(
-                f"Upload to {host} failed ({type(error).__name__}). "
-                "Nothing was saved."
+                f"Upload to {host} failed: {error}\nNothing was saved."
             )
             return
 
