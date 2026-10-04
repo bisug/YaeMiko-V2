@@ -8,6 +8,17 @@ All notable changes to YaeMiko are recorded here. The format follows
 
 ### Fixed
 
+- A Catbox or Litterbox upload that returns a usable `https://files.catbox.moe/...`
+  link is no longer reported as a failure. Catbox was observed answering a burst of
+  uploads with HTTP 500 and an ordinary URL in the body, and `raise_for_status()`
+  discarded that link before it was read, so a stored file was announced as lost.
+  The body is now the source of truth and the status is only consulted when there
+  is no URL in it.
+- An upload failure now says why. Catbox explains itself in the response body —
+  `412` carries `No request type given?` and friends — but the body was read only
+  after `raise_for_status()` had already raised, so the log showed a bare
+  `HTTPStatusError` and the user saw an exception class name. Both now carry the
+  host's own words, which is what makes a `412` diagnosable at all.
 - The `@can_restrict` guard no longer raises `AttributeError` when a chat owner
   runs a guarded command. kurigram builds `ChatMember(status=OWNER)` without a
   `privileges` field, so reading `.can_restrict_members` through it crashed every
@@ -63,8 +74,8 @@ All notable changes to YaeMiko are recorded here. The format follows
 
 - Regression tests covering both `/tr` failures, the `@can_restrict` owner crash,
   the duplicated member lookup, the AFK `text_mention` drop, the channel-post
-  reply crash and the pagination divide. Eight of them fail against the previous
-  code.
+  reply crash, the pagination divide and the two upload-response cases. Each
+  fails against the code it describes and passes with the fix.
 - A suite gate that fails when a class name is defined twice, so a shadowed
   copy cannot come back unnoticed.
 
