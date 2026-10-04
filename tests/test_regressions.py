@@ -6524,10 +6524,8 @@ class CatboxLitterboxTests(unittest.TestCase):
         exec(compile(module, str(path), "exec"), namespace)
         return namespace, namespace["state"]
 
-    def _response(self, text):
-        return SimpleNamespace(
-            text=text, raise_for_status=lambda: None, status_code=200
-        )
+    def _response(self, text, status_code=200):
+        return SimpleNamespace(text=text, status_code=status_code)
 
     def test_reqtype_is_lowercase(self):
         source = (ROOT / "Mikobot/plugins/telegraph.py").read_text(encoding="utf-8")
@@ -6588,6 +6586,66 @@ class CatboxLitterboxTests(unittest.TestCase):
         with tempfile.NamedTemporaryFile(suffix=".png") as handle:
             link = asyncio.run(namespace["_upload"](Path(handle.name), "catbox"))
         self.assertEqual(link, "https://files.catbox.moe/ok.png")
+
+    def test_an_error_carries_the_status_and_the_host_explanation(self):
+        """A 412 is undiagnosable without the body, which is where Catbox
+        explains itself. Reading it after raise_for_status() threw it away, so
+        the log only ever said "HTTPStatusError"."""
+        namespace, state = self._module()
+        state.response = self._response("No request type given?", status_code=412)
+        with tempfile.NamedTemporaryFile(suffix=".png") as handle:
+            with self.assertRaises(RuntimeError) as caught:
+                asyncio.run(namespace["_upload"](Path(handle.name), "catbox"))
+        message = str(caught.exception)
+        self.assertIn("412", message)
+        self.assertIn("No request type given?", message)
+
+    def test_a_500_carrying_a_url_is_still_an_upload(self):
+        """Probed live: a burst of uploads came back HTTP 500 with an ordinary
+        files.catbox.moe body. raise_for_status() reported those as failures."""
+        namespace, state = self._module()
+        state.response = self._response(
+            "https://files.catbox.moe/l5qqw2.png", status_code=500
+        )
+        with tempfile.NamedTemporaryFile(suffix=".png") as handle:
+            link = asyncio.run(namespace["_upload"](Path(handle.name), "catbox"))
+        self.assertEqual(link, "https://files.catbox.moe/l5qqw2.png")
+
+    def test_a_500_without_a_url_is_still_a_failure(self):
+        namespace, state = self._module()
+        state.response = self._response("internal error", status_code=500)
+        with tempfile.NamedTemporaryFile(suffix=".png") as handle:
+            with self.assertRaises(RuntimeError) as caught:
+                asyncio.run(namespace["_upload"](Path(handle.name), "catbox"))
+        self.assertIn("500", str(caught.exception))
+
+    def test_an_empty_error_body_still_names_the_status(self):
+        """Catbox was seen answering 200 with an empty body while rate limiting,
+        and a 412 with nothing in it would otherwise read as a bare code."""
+        namespace, state = self._module()
+        state.response = self._response("", status_code=412)
+        with tempfile.NamedTemporaryFile(suffix=".png") as handle:
+            with self.assertRaises(RuntimeError) as caught:
+                asyncio.run(namespace["_upload"](Path(handle.name), "catbox"))
+        self.assertIn("empty body", str(caught.exception))
+
+    def test_the_upload_no_longer_raises_on_the_status_alone(self):
+        """A URL is accepted on the strength of its body, so the status must not
+        be raised on first the way raise_for_status() did."""
+        tree = ast.parse(
+            (ROOT / "Mikobot/plugins/telegraph.py").read_text(encoding="utf-8")
+        )
+        upload = next(
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.AsyncFunctionDef) and node.name == "_upload"
+        )
+        called = {
+            node.func.attr
+            for node in ast.walk(upload)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+        }
+        self.assertNotIn("raise_for_status", called)
 
 
 class UploadButtonTests(unittest.TestCase):
