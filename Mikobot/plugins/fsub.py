@@ -17,15 +17,6 @@ FORCESUBSCRIBE_OFF = {"off", "no", "n"}
 BOT_PRIVILEGE_CACHE = TTLCache(maxsize=10_000, ttl=600, timer=perf_counter)
 
 
-
-async def is_admin(chat_id, user_id):
-    try:
-        member = await app.get_chat_member(chat_id, user_id)
-    except UserNotParticipant:
-        return False
-    return member.status in {ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR}
-
-
 async def participant_check(channel, user_id):
     try:
         await app.get_chat_member(channel, int(user_id))

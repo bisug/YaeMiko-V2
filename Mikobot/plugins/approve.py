@@ -1,3 +1,4 @@
+import asyncio
 import html
 
 from aiogram import F
@@ -113,9 +114,21 @@ async def approved(message: Message):
         return ""
 
     else:
-        for i in approved_users:
-            member = await bot.get_chat_member(chat.id, int(i.user_id))
-            msg += f"- `{i.user_id}`: {member.user['first_name']}\n"
+        # One round trip per approved user, issued together: a chat with a
+        # hundred of them otherwise pays a hundred sequential latencies, and the
+        # session's own leaky bucket paces the batch. A user who left is dropped
+        # rather than failing the whole list, matching the lookups above.
+        members = await asyncio.gather(
+            *(
+                bot.get_chat_member(chat.id, int(i.user_id))
+                for i in approved_users
+            ),
+            return_exceptions=True,
+        )
+        for i, member in zip(approved_users, members):
+            if isinstance(member, BaseException):
+                continue
+            msg += f"- `{i.user_id}`: {member.user.first_name}\n"
 
         await message.answer(msg, parse_mode=ParseMode.MARKDOWN)
 
