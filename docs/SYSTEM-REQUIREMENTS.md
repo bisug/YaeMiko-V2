@@ -49,7 +49,7 @@ Being precise about this, because the numbers below drive real hosting choices.
 | Repository size, 9.2 MB without `.git` | `du -sh --exclude=.git .` on this checkout |
 | 129 Python files, 38,708 lines | `find ... | wc -l` on this checkout |
 | 66.1 MB of direct dependency wheels | `pip download --no-deps -r requirements.txt`, the CPython 3.14 x86_64 wheels |
-| ONNX Runtime 1.30.0 wheel, 23.6 MB | `pip download`, cp314 manylinux x86_64 |
+| ONNX Runtime 1.31.0 wheel, 23.8 MB | `pip download`, cp314 manylinux x86_64 |
 | opennsfw-onnx 0.1.0 wheel, 22.0 MB | same, the wheel ships the model |
 | Pillow 12.3.0 wheel, 6.9 MB | same |
 | Kurigram 2.2.26 wheel, 6.0 MB | same |
@@ -176,7 +176,7 @@ Measured wheel sizes for the dependencies that actually matter:
 
 | Dependency | Wheel | Why it is heavy |
 | --- | --- | --- |
-| onnxruntime | 22.5 MB | Native inference engine, the largest single wheel |
+| onnxruntime | 22.7 MB | Native inference engine, the largest single wheel |
 | opennsfw-onnx | 20.9 MB | Ships the pre trained model inside the wheel |
 | Pillow | 6.8 MB | Native image codecs |
 | Kurigram | 5.8 MB | MTProto implementation |

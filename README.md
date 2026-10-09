@@ -173,7 +173,7 @@ execution. Persistence, reply construction and error handling surround that spin
 | Component | Version | Link |
 | --- | --- | --- |
 | PostgreSQL | 18 | [postgresql.org](https://www.postgresql.org/) |
-| SQLAlchemy | 2.1.3 | [sqlalchemy.org](https://www.sqlalchemy.org/) |
+| SQLAlchemy | 2.1.4 | [sqlalchemy.org](https://www.sqlalchemy.org/) |
 | psycopg (binary, pool) | 3.3.6 | [psycopg.org](https://www.psycopg.org/) |
 
 ### HTTP, media and processing
@@ -182,10 +182,10 @@ execution. Persistence, reply construction and error handling surround that spin
 | --- | --- | --- | --- |
 | httpx with HTTP/2 | 0.28.1 | Shared async HTTP client | [PyPI](https://pypi.org/project/httpx/) |
 | Pillow | 12.3.0 | Image composition and text rendering | [PyPI](https://pypi.org/project/pillow/) |
-| ONNX Runtime | 1.30.0 | NSFW detection inference | [PyPI](https://pypi.org/project/onnxruntime/) |
+| ONNX Runtime | 1.31.0 | NSFW detection inference | [PyPI](https://pypi.org/project/onnxruntime/) |
 | opennsfw-onnx | 0.1.0 | Pre trained NSFW classifier | [PyPI](https://pypi.org/project/opennsfw-onnx/) |
 | beautifulsoup4 | 4.15.0 | HTML scraping for search modules | [PyPI](https://pypi.org/project/beautifulsoup4/) |
-| cachetools | 7.2.0 | Short lived caching in hot paths | [PyPI](https://pypi.org/project/cachetools/) |
+| cachetools | 7.2.1 | Short lived caching in hot paths | [PyPI](https://pypi.org/project/cachetools/) |
 | pyrate-limiter | 4.5.0 | Extra outbound throttling | [PyPI](https://pypi.org/project/pyrate-limiter/) |
 | psutil | 7.2.2 | Runtime and host stats for `/alive` | [PyPI](https://pypi.org/project/psutil/) |
 | speedtest-cli | 2.1.3 | Bandwidth checks | [PyPI](https://pypi.org/project/speedtest-cli/) |
@@ -245,7 +245,7 @@ Where the memory and disk go, measured from PyPI wheel sizes for the pinned depe
 
 | Dependency | Wheel | Consequence |
 | --- | --- | --- |
-| onnxruntime | 22.5 MB | Largest single allocation, loaded on first anti-NSFW check |
+| onnxruntime | 22.7 MB | Largest single allocation, loaded on first anti-NSFW check |
 | opennsfw-onnx | 20.9 MB | Ships the model inside the wheel |
 | Pillow | 6.8 MB | Image buffers |
 | Kurigram | 5.8 MB | MTProto client |

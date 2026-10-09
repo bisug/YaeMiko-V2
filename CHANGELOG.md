@@ -53,6 +53,11 @@ All notable changes to YaeMiko are recorded here. The format follows
 
 ### Changed
 
+- SQLAlchemy 2.1.3 to 2.1.4, cachetools 7.2.0 to 7.2.1 and onnxruntime 1.30.0
+  to 1.31.0, the latest stable release of each. These three were the only pins
+  still behind: every other direct dependency, Python 3.14.8 and the GitHub
+  Actions used by CI were already current. Nothing needed migrating, all three
+  are within their own major series, and the suite is unchanged against them.
 - `Mikobot/utils/can_restrict.py` keeps the wrapped handler's `__name__` and
   `__doc__` through `functools.wraps`, matching every other decorator here. Its
   refusal message also closes the code span it opened, so the stray backtick no

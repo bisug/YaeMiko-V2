@@ -3,11 +3,11 @@
 
 # Runtime
 beautifulsoup4==4.15.0
-cachetools==7.2.0
+cachetools==7.2.1
 
 # Database
 psycopg[binary,pool]==3.3.6
-SQLAlchemy==2.1.3
+SQLAlchemy==2.1.4
 
 # Telegram clients
 
@@ -29,7 +29,7 @@ psutil==7.2.2
 uvloop==0.23.0; sys_platform != "win32"
 
 opennsfw-onnx==0.1.0
-onnxruntime==1.30.0
+onnxruntime==1.31.0
 # Utilities
 nekos.py==1.1.0
 pyjokes==0.8.3
