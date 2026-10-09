@@ -7289,5 +7289,50 @@ class PaginationTests(unittest.TestCase):
         self.assertLessEqual(len(pages), 7)
 
 
+class FrameworkModelAccessTests(unittest.TestCase):
+    """aiogram and kurigram types are pydantic models, not mappings.
+
+    `member.user['first_name']` is a PTB-era spelling: both frameworks build
+    their types with pydantic, which defines no __getitem__, so the subscript
+    raises TypeError before the message is ever built. Three of them sat in
+    approve.py and made /approved, /approve and /disapprove answer nothing at
+    all. The check is a source scan because a live handler would need a real
+    bot token and chat to reach the line.
+    """
+
+    # Attributes that hold a framework model, so subscripting one is always wrong.
+    MODEL_ATTRS = ("user", "member", "chat", "from_user", "message", "sender")
+
+    def test_no_plugin_subscripts_a_framework_model(self):
+        offenders = []
+        for path in (ROOT / "Mikobot").rglob("*.py"):
+            if "__pycache__" in path.parts:
+                continue
+            for number, line in enumerate(
+                path.read_text(encoding="utf-8").split("\n"), 1
+            ):
+                stripped = line.strip()
+                if stripped.startswith("#"):
+                    continue
+                for attribute in self.MODEL_ATTRS:
+                    if f".{attribute}[" in stripped:
+                        offenders.append(
+                            f"{path.relative_to(ROOT)}:{number}: {stripped[:90]}"
+                        )
+        self.assertEqual(offenders, [], "\n".join(offenders[:20]))
+
+    def test_the_models_really_are_not_subscriptable(self):
+        """Guards the scan above: if a framework ever adds __getitem__, the
+        pattern stops being a bug and the scan should be dropped with it."""
+        from aiogram.types import ChatMemberMember, User
+
+        member = ChatMemberMember(
+            status="member", user=User(id=1, is_bot=False, first_name="Ada")
+        )
+        with self.assertRaises(TypeError):
+            member.user["first_name"]
+        self.assertEqual(member.user.first_name, "Ada")
+
+
 if __name__ == "__main__":
     unittest.main()

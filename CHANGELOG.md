@@ -8,6 +8,20 @@ All notable changes to YaeMiko are recorded here. The format follows
 
 ### Fixed
 
+- `/approved`, `/approve` and `/disapprove` read `member.user['first_name']`.
+  `User` is a pydantic model, not a mapping, so the subscript raised `TypeError`
+  and all three answered nothing: the approved list was always empty on screen
+  and the approve/disapprove confirmation never appeared. They now read the
+  attribute and escape it for the parse mode they actually send with, `/approved`
+  in Markdown and the other two in the default HTML. The escaping was previously
+  unreachable, because the `TypeError` fired before any name was rendered, so a
+  name carrying `<b>` would have rendered as markup the moment the subscript was
+  corrected.
+- `/approved` issued one `get_chat_member` per approved user and awaited each
+  before starting the next, so a chat with a hundred of them paid a hundred
+  sequential round trips. They are now requested together and the session's own
+  rate limiter paces the batch; a lookup that fails is skipped rather than losing
+  the whole list, which is what the neighbouring lookups already do.
 - A Catbox or Litterbox upload that returns a usable `https://files.catbox.moe/...`
   link is no longer reported as a failure. Catbox was observed answering a burst of
   uploads with HTTP 500 and an ordinary URL in the body, and `raise_for_status()`

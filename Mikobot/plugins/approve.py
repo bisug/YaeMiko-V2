@@ -128,7 +128,7 @@ async def approved(message: Message):
         for i, member in zip(approved_users, members):
             if isinstance(member, BaseException):
                 continue
-            msg += f"- `{i.user_id}`: {member.user.first_name}\n"
+            msg += f"- `{i.user_id}`: {escape_markdown(member.user.first_name)}\n"
 
         await message.answer(msg, parse_mode=ParseMode.MARKDOWN)
 
@@ -147,11 +147,11 @@ async def approval(message: Message, command: CommandObject):
     member = await bot.get_chat_member(chat.id, int(user_id))
     if sql.is_approved(message.chat_id, user_id):
         await message.answer(
-            f"{member.user['first_name']} is an approved user. Locks, antiflood, and blocklists won't apply to them.",
+            f"{html.escape(member.user.first_name)} is an approved user. Locks, antiflood, and blocklists won't apply to them.",
         )
     else:
         await message.answer(
-            f"{member.user['first_name']} is not an approved user. They are affected by normal commands.",
+            f"{html.escape(member.user.first_name)} is not an approved user. They are affected by normal commands.",
         )
 
 
