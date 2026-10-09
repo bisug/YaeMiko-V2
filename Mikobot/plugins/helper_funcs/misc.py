@@ -175,27 +175,10 @@ def revert_buttons(buttons):
 
 
 def build_keyboard_parser(chat_id, buttons):
-    keyb = []
     for btn in buttons:
         if btn.url == "{rules}":
             btn.url = f"http://t.me/{BOT_USERNAME}?start={chat_id}"
-        if btn.same_line and keyb:
-            keyb[-1].append(InlineKeyboardButton(text=btn.name, url=btn.url, style=ButtonStyle.PRIMARY))
-        else:
-            keyb.append([InlineKeyboardButton(text=btn.name, url=btn.url, style=ButtonStyle.PRIMARY)])
-
-    return keyb
-
-
-def build_keyboard_alternate(buttons):
-    keyb = []
-    for btn in buttons:
-        if btn[2] and keyb:
-            keyb[-1].append(InlineKeyboardButton(text=btn[0], url=btn[1], style=ButtonStyle.PRIMARY))
-        else:
-            keyb.append([InlineKeyboardButton(text=btn[0], url=btn[1], style=ButtonStyle.PRIMARY)])
-
-    return keyb
+    return build_keyboard(buttons)
 
 
 def is_module_loaded(name):

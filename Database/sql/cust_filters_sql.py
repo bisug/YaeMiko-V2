@@ -3,8 +3,6 @@ import threading
 from sqlalchemy import Boolean, Column, Integer, String, UnicodeText, distinct, func, select
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
-from Mikobot import LOGGER
-from Mikobot.plugins.helper_funcs.msg_types import Types
 
 
 class CustomFilters(BASE):
@@ -312,43 +310,6 @@ def __load_chat_filters():
             x: sorted(set(y), key=lambda i: (-len(i), i))
             for x, y in CHAT_FILTERS.items()
         }
-
-    finally:
-        SESSION.close()
-
-
-# ONLY USE FOR MIGRATE OLD FILTERS TO NEW FILTERS
-def __migrate_filters():
-    try:
-        all_filters = SESSION.scalars(select(CustomFilters).distinct()).all()
-        for x in all_filters:
-            if x.is_document:
-                file_type = Types.DOCUMENT
-            elif x.is_image:
-                file_type = Types.PHOTO
-            elif x.is_video:
-                file_type = Types.VIDEO
-            elif x.is_sticker:
-                file_type = Types.STICKER
-            elif x.is_audio:
-                file_type = Types.AUDIO
-            elif x.is_voice:
-                file_type = Types.VOICE
-            else:
-                file_type = Types.TEXT
-
-            LOGGER.info("Migrating filter for chat %s", x.chat_id)
-            if file_type == Types.TEXT:
-                filt = CustomFilters(
-                    str(x.chat_id), x.keyword, x.reply, file_type.value, None
-                )
-            else:
-                filt = CustomFilters(
-                    str(x.chat_id), x.keyword, None, file_type.value, x.reply
-                )
-
-            SESSION.add(filt)
-            SESSION.commit()
 
     finally:
         SESSION.close()
