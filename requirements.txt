@@ -3,7 +3,7 @@
 
 # Runtime
 beautifulsoup4==4.15.0
-cachetools==7.2.1
+cachetools==7.2.2
 
 # Database
 psycopg[binary,pool]==3.3.6
