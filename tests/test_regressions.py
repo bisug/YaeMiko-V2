@@ -8041,7 +8041,8 @@ class CodebaseAuditHardeningTests(unittest.TestCase):
 
     def test_captcha_and_admin_cache_sizing(self):
         captcha_src = (ROOT / "Mikobot/plugins/captcha.py").read_text(encoding="utf-8")
-        self.assertIn("CHALLENGES: TTLCache = TTLCache(maxsize=10_000, ttl=CHALLENGE_TTL)", captcha_src)
+        self.assertIn("if len(CHALLENGES) > 5000:", captcha_src)
+        self.assertIn("CHALLENGES.pop(k, None)", captcha_src)
 
         status_src = (ROOT / "Mikobot/plugins/helper_funcs/chat_status.py").read_text(encoding="utf-8")
         self.assertIn("ADMIN_CACHE = TTLCache(maxsize=10_000, ttl=60 * 10, timer=perf_counter)", status_src)
