@@ -314,6 +314,10 @@ class EnvironmentTests(unittest.TestCase):
         # call even in chats that opted out.
         self.assertLess(
             gban_body.index("if not sql.does_chat_gban(chat.id):"),
+            gban_body.index("has_gbanned = ("),
+        )
+        self.assertLess(
+            gban_body.index("has_gbanned = ("),
             gban_body.index("await bot.get_chat_member(chat.id, bot.id)"),
         )
 
@@ -7817,6 +7821,38 @@ class CodebaseAuditHardeningTests(unittest.TestCase):
         feds_src = (ROOT / "Mikobot/plugins/feds.py").read_text(encoding="utf-8")
         self.assertNotIn("await bot.get_chat_member(chat.id, user.id).status", feds_src)
         self.assertIn("member = await bot.get_chat_member(chat.id, user.id)\n        getuser = member.status", feds_src)
+
+    def test_gban_enforce_fast_path(self):
+        gban_src = (ROOT / "Mikobot/plugins/gban.py").read_text(encoding="utf-8")
+        self.assertIn("has_gbanned = (", gban_src)
+        self.assertIn("if not has_gbanned:\n        return", gban_src)
+
+        enforce_gban = load_function(
+            ROOT / "Mikobot/plugins/gban.py",
+            "enforce_gban",
+            {
+                "sql": mock.Mock(
+                    does_chat_gban=mock.Mock(return_value=True),
+                    is_user_gbanned=mock.Mock(return_value=False),
+                ),
+                "bot": mock.Mock(get_chat_member=mock.AsyncMock()),
+                "is_user_admin": mock.AsyncMock(),
+                "check_and_ban": mock.AsyncMock(),
+                "ChatMemberStatus": mock.Mock(),
+                "TelegramForbiddenError": Exception,
+            },
+        )
+        msg = mock.Mock()
+        msg.chat = mock.Mock(id=-100123456789)
+        msg.from_user = mock.Mock(id=12345)
+        msg.new_chat_members = []
+        msg.reply_to_message = None
+
+        # When sender is not gbanned, it should return immediately without any bot calls
+        asyncio.run(enforce_gban(msg))
+        enforce_gban.__globals__["bot"].get_chat_member.assert_not_called()
+        enforce_gban.__globals__["is_user_admin"].assert_not_called()
+        enforce_gban.__globals__["check_and_ban"].assert_not_called()
 
     def test_all_except_clauses_parenthesized(self):
         for path in sorted(ROOT.glob("**/*.py")):

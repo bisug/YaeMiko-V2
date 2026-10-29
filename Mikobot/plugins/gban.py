@@ -407,6 +407,20 @@ async def enforce_gban(msg: Message):
     chat = msg.chat
     if not sql.does_chat_gban(chat.id):
         return
+
+    user = msg.from_user
+    new_members = msg.new_chat_members or []
+    reply_user = msg.reply_to_message.from_user if msg.reply_to_message else None
+
+    # Fast path: check in-memory GBANNED_LIST before making any Telegram API calls.
+    has_gbanned = (
+        (user and sql.is_user_gbanned(user.id))
+        or any(sql.is_user_gbanned(mem.id) for mem in new_members)
+        or (reply_user and sql.is_user_gbanned(reply_user.id))
+    )
+    if not has_gbanned:
+        return
+
     try:
         get_member = await bot.get_chat_member(chat.id, bot.id)
     except TelegramForbiddenError:
@@ -417,20 +431,18 @@ async def enforce_gban(msg: Message):
     ):
         return
 
-    user = msg.from_user
-    if user and not await is_user_admin(chat, user.id):
-        await check_and_ban(msg, user.id)
-        return
+    if user and sql.is_user_gbanned(user.id):
+        if not await is_user_admin(chat, user.id):
+            await check_and_ban(msg, user.id)
+            return
 
-    if msg.new_chat_members:
-        new_members = msg.new_chat_members
-        for mem in new_members:
+    for mem in new_members:
+        if sql.is_user_gbanned(mem.id):
             await check_and_ban(msg, mem.id)
 
-    if msg.reply_to_message:
-        user = msg.reply_to_message.from_user
-        if user and not await is_user_admin(chat, user.id):
-            await check_and_ban(msg, user.id, should_message=False)
+    if reply_user and sql.is_user_gbanned(reply_user.id):
+        if not await is_user_admin(chat, reply_user.id):
+            await check_and_ban(msg, reply_user.id, should_message=False)
 
 
 @check_admin(is_user=True)
