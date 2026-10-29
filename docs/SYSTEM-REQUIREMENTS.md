@@ -30,7 +30,7 @@ Back to [README](../README.md).
 | **Disk** | 5 GB | 10 GB | 20 GB |
 | **Swap** | 1 GB | none needed | none needed |
 | **OS** | Debian 12, Ubuntu 24.04, or any Docker host | same | same |
-| **Python** | 3.14.8 | 3.14.8 | 3.14.8 |
+| **Python** | 3.14.10 | 3.14.10 | 3.14.10 |
 | **Network** | 1 Mbps up, 5 GB per month | 10 Mbps up, 100 GB | 25 Mbps up, unmetered |
 | **Groups served** | 1 to 3 | 10 to 30 | 100 or more |
 | **Platform fit** | Render `0.5c-512mb` | Render `1c-2g`, Railway, 1 GB VPS | 2 GB VPS or better |
@@ -71,7 +71,7 @@ CPU    1 shared vCPU
 RAM    512 MB
 Disk   5 GB free
 Swap   1 GB configured
-Python 3.14.8
+Python 3.14.10
 ```
 
 What you give up:

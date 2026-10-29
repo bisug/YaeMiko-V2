@@ -1,4 +1,4 @@
-FROM python:3.14.8-slim AS builder
+FROM python:3.14.10-slim AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
@@ -19,7 +19,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --python /opt/venv/bin/python
 
 
-FROM python:3.14.8-slim
+FROM python:3.14.10-slim
 
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
