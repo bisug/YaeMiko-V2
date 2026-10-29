@@ -87,9 +87,10 @@ async def _vidstick(_, message):
         if not replied.sticker.is_video:
             return await message.reply("Use /getsticker if sticker is not video.")
         file_id = replied.sticker.file_id
-        new_file = await _.download_media(file_id, file_name="sticker.mp4")
-        await _.send_animation(chat_id, new_file)
-        os.remove(new_file)
+        with tempfile.TemporaryDirectory(prefix="yae-vidstick-") as tempdir:
+            dest = os.path.join(tempdir, "sticker.mp4")
+            new_file = await _.download_media(file_id, file_name=dest)
+            await _.send_animation(chat_id, new_file)
     else:
         await message.reply("Please reply to a video sticker to upload it's MP4.")
 
@@ -100,11 +101,10 @@ async def _getvideo(_, message):
     replied = message.reply_to_message
     if replied and replied.animation:
         file_id = replied.animation.file_id
-        new_file = await _.download_media(file_id, file_name="video.mp4")
-        try:
-            await _.send_video(chat_id, video=open(new_file, "rb"))
-        finally:
-            os.remove(new_file)
+        with tempfile.TemporaryDirectory(prefix="yae-getvideo-") as tempdir:
+            dest = os.path.join(tempdir, "video.mp4")
+            new_file = await _.download_media(file_id, file_name=dest)
+            await _.send_video(chat_id, video=new_file)
     else:
         await message.reply("Please reply to a gif for me to get it's video.")
 

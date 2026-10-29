@@ -5865,7 +5865,7 @@ class FrameworkMethodAuditTests(unittest.TestCase):
                         raw = getattr(method, "__func__", method)
                         try:
                             params = set(inspect.signature(raw).parameters)
-                        except TypeError, ValueError:
+                        except (TypeError, ValueError):
                             continue
                         for keyword in node.keywords:
                             if keyword.arg and keyword.arg not in params:
@@ -7728,6 +7728,108 @@ class KurigramFromUserNullSafetyTests(unittest.TestCase):
         # Must return early without raising AttributeError
         asyncio.run(broadcast_cmd(client, message))
         message.reply.assert_not_called()
+
+
+class CodebaseAuditHardeningTests(unittest.TestCase):
+    """Regression tests for audit findings across plugins and utilities.
+
+    Covers channel sender safety, FSInputFile media handling, coroutine
+    attribute access, model_dump vs to_dict, and PEP 8 parenthesized excepts.
+    """
+
+    def test_id_from_reply_channel_post_safety(self):
+        extraction_src = (ROOT / "Mikobot/plugins/helper_funcs/extraction.py").read_text(encoding="utf-8")
+        self.assertIn("if prev_message.from_user:\n        user_id = prev_message.from_user.id", extraction_src)
+        self.assertIn("elif prev_message.sender_chat:", extraction_src)
+
+        id_from_reply = load_function(
+            ROOT / "Mikobot/plugins/helper_funcs/extraction.py",
+            "id_from_reply",
+            {
+                "ChatID": mock.Mock(FAKE_CHANNEL=136817688),
+                "Message": mock.Mock(),
+            },
+        )
+
+        # 1. Replying to a channel message (from_user is None, sender_chat is present)
+        channel_reply = mock.Mock()
+        channel_reply.forum_topic_created = False
+        channel_reply.from_user = None
+        channel_reply.sender_chat = mock.Mock(id=-1001987654321)
+
+        msg = mock.Mock()
+        msg.reply_to_message = channel_reply
+        msg.text = "/ban spam"
+
+        target_id, reason = asyncio.run(id_from_reply(msg))
+        self.assertEqual(target_id, -1001987654321)
+        self.assertEqual(reason, "spam")
+
+        # 2. Replying to a fake channel bot message
+        fake_chan_reply = mock.Mock()
+        fake_chan_reply.forum_topic_created = False
+        fake_chan_reply.from_user = mock.Mock(id=136817688)
+        fake_chan_reply.sender_chat = mock.Mock(id=-100999888777)
+
+        msg.reply_to_message = fake_chan_reply
+        target_id, reason = asyncio.run(id_from_reply(msg))
+        self.assertEqual(target_id, -100999888777)
+
+    def test_info_fsinputfile_and_channel_sender_handling(self):
+        info_src = (ROOT / "Mikobot/plugins/info.py").read_text(encoding="utf-8")
+        self.assertIn("FSInputFile", info_src)
+        self.assertNotIn('photo=open(f"{chat_obj.id}.png"', info_src)
+        self.assertIn("TemporaryDirectory", info_src)
+        self.assertIn("except (TelegramAPIError, OSError, Exception):", info_src)
+
+    def test_warns_and_notes_channel_reply_safety(self):
+        warns_src = (ROOT / "Mikobot/plugins/warns.py").read_text(encoding="utf-8")
+        self.assertIn("message.reply_to_message.from_user.id == user_id", warns_src)
+        self.assertIn("and message.reply_to_message.from_user", warns_src)
+        self.assertNotIn("await chat.get_member(user_id).user", warns_src)
+
+        notes_src = (ROOT / "Mikobot/plugins/notes.py").read_text(encoding="utf-8")
+        self.assertIn("and msg.reply_to_message.from_user", notes_src)
+        self.assertIn("and msg.reply_to_message.from_user.is_bot", notes_src)
+
+    def test_stickers_video_cleanup_safety(self):
+        stickers_src = (ROOT / "Mikobot/plugins/stickers.py").read_text(encoding="utf-8")
+        self.assertNotIn('video=open(new_file, "rb")', stickers_src)
+        self.assertIn("video=new_file", stickers_src)
+        self.assertIn('TemporaryDirectory(prefix="yae-getvideo-")', stickers_src)
+        self.assertIn('TemporaryDirectory(prefix="yae-vidstick-")', stickers_src)
+
+    def test_admin_and_gate_anonymous_handling(self):
+        admin_src = (ROOT / "Mikobot/plugins/admin.py").read_text(encoding="utf-8")
+        self.assertNotIn("await chat.get_member(user.id)\n\n    if message.from_user.id == ChatID.ANONYMOUS_ADMIN:", admin_src)
+
+        gate_src = (ROOT / "Mikobot/utils/gate.py").read_text(encoding="utf-8")
+        self.assertIn("is_anon_admin = user_id in (777000, 1087968824)", gate_src)
+
+    def test_locks_model_dump_and_restr_members(self):
+        locks_src = (ROOT / "Mikobot/plugins/locks.py").read_text(encoding="utf-8")
+        self.assertNotIn("current_permission.to_dict()", locks_src)
+        self.assertIn("current_permission.model_dump()", locks_src)
+        self.assertIn("if mem.user in DRAGONS:\n            continue", locks_src)
+        self.assertIn("ERROR in lockables - forwardbot", locks_src)
+
+    def test_feds_coroutine_status_fix(self):
+        feds_src = (ROOT / "Mikobot/plugins/feds.py").read_text(encoding="utf-8")
+        self.assertNotIn("await bot.get_chat_member(chat.id, user.id).status", feds_src)
+        self.assertIn("member = await bot.get_chat_member(chat.id, user.id)\n        getuser = member.status", feds_src)
+
+    def test_all_except_clauses_parenthesized(self):
+        for path in sorted(ROOT.glob("**/*.py")):
+            if ".venv" in path.parts:
+                continue
+            with open(path, encoding="utf-8") as f:
+                tree = ast.parse(f.read(), filename=str(path))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ExceptHandler) and isinstance(node.type, ast.Tuple):
+                    with open(path, encoding="utf-8") as f:
+                        line = f.readlines()[node.lineno - 1]
+                    if "except " in line and "(" not in line.split(":")[0]:
+                        self.fail(f"Unparenthesized except tuple in {path}:{node.lineno}: {line.strip()}")
 
 
 if __name__ == "__main__":

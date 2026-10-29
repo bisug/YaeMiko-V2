@@ -59,7 +59,7 @@ async def get(
     note = sql.get_note(note_chat_id, notename)
 
     if note:
-        if MessageHandlerChecker.check_user(message.from_user.id):
+        if message.from_user and MessageHandlerChecker.check_user(message.from_user.id):
             return
         # If we're replying to a message, reply to that message (unless it's an error)
         if (
@@ -136,43 +136,52 @@ async def get(
                         text = valid_format
                 else:
                     text = valid_format
+                from_user = message.from_user
+                first_name = (
+                    from_user.first_name
+                    if from_user
+                    else (message.sender_chat.title if message.sender_chat else "User")
+                )
+                last_name = (
+                    (from_user.last_name or first_name) if from_user else first_name
+                )
+                fullname = (
+                    " ".join([first_name, from_user.last_name])
+                    if from_user and from_user.last_name
+                    else first_name
+                )
+                username = (
+                    ("@" + from_user.username)
+                    if from_user and from_user.username
+                    else (
+                        mention_markdown(from_user.id, first_name)
+                        if from_user
+                        else first_name
+                    )
+                )
+                mention = (
+                    mention_markdown(from_user.id, first_name)
+                    if from_user
+                    else first_name
+                )
+                chatname = (
+                    message.chat.title
+                    if message.chat.type != "private"
+                    else first_name
+                )
+                user_id = (
+                    from_user.id
+                    if from_user
+                    else (message.sender_chat.id if message.sender_chat else 0)
+                )
                 text = text.format(
-                    first=escape_markdown(message.from_user.first_name),
-                    last=escape_markdown(
-                        message.from_user.last_name or message.from_user.first_name,
-                    ),
-                    fullname=escape_markdown(
-                        " ".join(
-                            (
-                                [
-                                    message.from_user.first_name,
-                                    message.from_user.last_name,
-                                ]
-                                if message.from_user.last_name
-                                else [message.from_user.first_name]
-                            ),
-                        ),
-                    ),
-                    username=(
-                        "@" + message.from_user.username
-                        if message.from_user.username
-                        else mention_markdown(
-                            message.from_user.id,
-                            message.from_user.first_name,
-                        )
-                    ),
-                    mention=mention_markdown(
-                        message.from_user.id,
-                        message.from_user.first_name,
-                    ),
-                    chatname=escape_markdown(
-                        (
-                            message.chat.title
-                            if message.chat.type != "private"
-                            else message.from_user.first_name
-                        ),
-                    ),
-                    id=message.from_user.id,
+                    first=escape_markdown(first_name),
+                    last=escape_markdown(last_name),
+                    fullname=escape_markdown(fullname),
+                    username=username,
+                    mention=mention,
+                    chatname=escape_markdown(chatname),
+                    id=user_id,
                 )
             else:
                 text = ""
@@ -315,6 +324,7 @@ async def save(msg: Message, command: CommandObject):
 
     if (
         msg.reply_to_message
+        and msg.reply_to_message.from_user
         and msg.reply_to_message.from_user.is_bot
         and not msg.reply_to_message.forum_topic_created
     ):

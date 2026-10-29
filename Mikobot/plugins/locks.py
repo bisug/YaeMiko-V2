@@ -294,9 +294,9 @@ async def restr_members(
 ):
     for mem in members:
         if mem.user in DRAGONS:
-            pass
+            continue
         elif mem.user == ChatID.SERVICE_CHAT or mem.user == ChatID.ANONYMOUS_ADMIN:
-            pass
+            continue
         try:
             await bot.restrict_chat_member(
                 chat_id,
@@ -422,45 +422,56 @@ async def lock(message: Message, command: CommandObject) -> str:
 
             chat_obj = await bot.get_chat(chat_id)
             current_permission = chat_obj.permissions
+            current_dict = (
+                current_permission.model_dump()
+                if current_permission
+                else {}
+            )
             await bot.set_chat_permissions(
                 chat_id=chat_id,
                 permissions=get_permission_list(
-                    current_permission.to_dict(),
+                    current_dict,
                     LOCK_CHAT_RESTRICTION[ltype.lower()],
                 ),
             )
 
-            await bot.restrict_chat_member(
-                chat.id,
-                int(ChatID.SERVICE_CHAT),
-                permissions=ChatPermissions(
-                    can_send_messages=True,
-                    can_send_audios=True,
-                    can_send_documents=True,
-                    can_send_photos=True,
-                    can_send_videos=True,
-                    can_send_video_notes=True,
-                    can_send_voice_notes=True,
-                    can_send_other_messages=True,
-                    can_add_web_page_previews=True,
-                ),
-            )
+            try:
+                await bot.restrict_chat_member(
+                    chat.id,
+                    int(ChatID.SERVICE_CHAT),
+                    permissions=ChatPermissions(
+                        can_send_messages=True,
+                        can_send_audios=True,
+                        can_send_documents=True,
+                        can_send_photos=True,
+                        can_send_videos=True,
+                        can_send_video_notes=True,
+                        can_send_voice_notes=True,
+                        can_send_other_messages=True,
+                        can_add_web_page_previews=True,
+                    ),
+                )
+            except TelegramAPIError:
+                pass
 
-            await bot.restrict_chat_member(
-                chat.id,
-                int(ChatID.ANONYMOUS_ADMIN),
-                permissions=ChatPermissions(
-                    can_send_messages=True,
-                    can_send_audios=True,
-                    can_send_documents=True,
-                    can_send_photos=True,
-                    can_send_videos=True,
-                    can_send_video_notes=True,
-                    can_send_voice_notes=True,
-                    can_send_other_messages=True,
-                    can_add_web_page_previews=True,
-                ),
-            )
+            try:
+                await bot.restrict_chat_member(
+                    chat.id,
+                    int(ChatID.ANONYMOUS_ADMIN),
+                    permissions=ChatPermissions(
+                        can_send_messages=True,
+                        can_send_audios=True,
+                        can_send_documents=True,
+                        can_send_photos=True,
+                        can_send_videos=True,
+                        can_send_video_notes=True,
+                        can_send_voice_notes=True,
+                        can_send_other_messages=True,
+                        can_add_web_page_previews=True,
+                    ),
+                )
+            except TelegramAPIError:
+                pass
 
             await send_message(message, text, parse_mode=ParseMode.MARKDOWN)
             return (
@@ -565,10 +576,15 @@ async def unlock(message: Message, command: CommandObject) -> str:
 
             chat_obj = await bot.get_chat(chat_id)
             current_permission = chat_obj.permissions
+            current_dict = (
+                current_permission.model_dump()
+                if current_permission
+                else {}
+            )
             await bot.set_chat_permissions(
                 chat_id=chat_id,
                 permissions=get_permission_list(
-                    current_permission.to_dict(),
+                    current_dict,
                     UNLOCK_CHAT_RESTRICTION[ltype.lower()],
                 ),
             )
@@ -603,7 +619,7 @@ async def del_lockables(message: Message):
     locks = await asyncio.to_thread(sql.get_locks, chat.id)
     if not locks or not any(getattr(locks, lockable, False) for lockable in LOCK_TYPES):
         return
-    if not user:
+    if not user and not message.sender_chat:
         return
     try:
         bot_member = await bot.get_chat_member(chat.id, bot.id)
@@ -614,10 +630,11 @@ async def del_lockables(message: Message):
         or not bot_member.can_delete_messages
     ):
         return
-    if await is_user_admin(chat, user.id):
-        return
-    if await asyncio.to_thread(is_approved, chat.id, user.id):
-        return
+    if user:
+        if await is_user_admin(chat, user.id):
+            return
+        if await asyncio.to_thread(is_approved, chat.id, user.id):
+            return
     for lockable, filter in LOCK_TYPES.items():
         if lockable == "rtl":
             if getattr(locks, lockable, False):
@@ -711,25 +728,32 @@ async def del_lockables(message: Message):
                             ):
                                 pass
                             else:
-                                LOGGER.exception("ERROR in lockables - forwardchannel")
+                                LOGGER.exception("ERROR in lockables - forwardbot")
                         break
                 continue
             continue
         if lockable == "anonchannel":
             if getattr(locks, lockable, False):
-                if message.from_user:
-                    if message.from_user.id == ChatID.FAKE_CHANNEL:
-                        try:
-                            await message.delete()
-                        except TelegramAPIError as excp:
-                            if (
-                                "message to delete not found"
-                                in str(excp.message or excp).lower()
-                            ):
-                                pass
-                            else:
-                                LOGGER.exception("ERROR in lockables - anonchannel")
-                        break
+                is_anon_channel = (
+                    (message.from_user and message.from_user.id == ChatID.FAKE_CHANNEL)
+                    or (
+                        not message.from_user
+                        and message.sender_chat
+                        and message.sender_chat.id != message.chat.id
+                    )
+                )
+                if is_anon_channel:
+                    try:
+                        await message.delete()
+                    except TelegramAPIError as excp:
+                        if (
+                            "message to delete not found"
+                            in str(excp.message or excp).lower()
+                        ):
+                            pass
+                        else:
+                            LOGGER.exception("ERROR in lockables - anonchannel")
+                    break
                 continue
             continue
         if callable(filter) and filter(message) and getattr(locks, lockable, False):

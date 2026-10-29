@@ -34,7 +34,7 @@ def _is_bot_staff(user_id: int) -> bool:
 
 
 async def _send_echo(message: Message, command: CommandObject) -> None:
-    if not _is_bot_staff(message.from_user.id):
+    if not message.from_user or not _is_bot_staff(message.from_user.id):
         await message.reply("Only the bot owners can do that.")
         return
 
@@ -63,7 +63,7 @@ async def _send_echo(message: Message, command: CommandObject) -> None:
 
 
 async def _broadcast(message: Message, command: CommandObject) -> None:
-    if not _is_bot_staff(message.from_user.id):
+    if not message.from_user or not _is_bot_staff(message.from_user.id):
         await message.reply("Only the bot owners can do that.")
         return
 

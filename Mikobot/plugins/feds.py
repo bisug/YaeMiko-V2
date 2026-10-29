@@ -314,7 +314,11 @@ async def leave_fed(message: Message, command: CommandObject):
     fed_info = sql.get_fed_info(fed_id)
 
     # administrators = await chat.get_administrators().status
-    getuser = await bot.get_chat_member(chat.id, user.id).status
+    try:
+        member = await bot.get_chat_member(chat.id, user.id)
+        getuser = member.status
+    except TelegramAPIError:
+        getuser = None
     if getuser == "creator" or user.id in DRAGONS:
         if sql.chat_leave_fed(chat.id) is True:
             get_fedlog = await sql.get_fed_log(fed_id)
@@ -485,7 +489,7 @@ async def fed_info(message: Message, command: CommandObject):
     owner = await bot.get_chat(info["owner"])
     try:
         owner_name = owner.first_name + " " + owner.last_name
-    except AttributeError, TypeError:
+    except (AttributeError, TypeError):
         owner_name = owner.first_name
     FEDADMIN = sql.all_fed_users(fed_id)
     TotalAdminFed = len(FEDADMIN)
@@ -540,7 +544,7 @@ async def fed_admin(message: Message, command: CommandObject):
     owner = await bot.get_chat(info["owner"])
     try:
         owner_name = owner.first_name + " " + owner.last_name
-    except AttributeError, TypeError:
+    except (AttributeError, TypeError):
         owner_name = owner.first_name
     text += " • {}\n".format(mention_html(owner.id, owner_name))
 
@@ -1872,8 +1876,14 @@ async def fed_stat_user(message: Message, command: CommandObject):
         user_id = int(args[0])
         fed_id = args[1]
     else:
-        user_id = await extract_user(msg, args) or msg.from_user.id
+        user_id = await extract_user(msg, args) or (
+            msg.from_user.id if msg.from_user else None
+        )
         fed_id = None
+
+    if not user_id:
+        await send_message(msg, "I doubt that's a user.")
+        return
 
     if fed_id is not None:
         user_name, reason, banned_at = sql.get_user_fban(fed_id, str(user_id))

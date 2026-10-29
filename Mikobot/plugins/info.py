@@ -1,13 +1,14 @@
 # <============================================== IMPORTS =========================================================>
 import os
 import re
+import tempfile
 from html import escape
 from random import choice
 
 from aiogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from Database.sql.approve_sql import is_approved
 from Infamous.karma import START_IMG
@@ -59,21 +60,32 @@ async def info(message: Message, command: CommandObject):
         if message.reply_to_message.sender_chat:
             userid = message.reply_to_message.sender_chat.id
         elif message.reply_to_message.from_user:
-            if message.reply_to_message.from_user.id == ChatID.FAKE_CHANNEL:
+            if message.reply_to_message.from_user.id == ChatID.FAKE_CHANNEL and message.reply_to_message.sender_chat:
+                userid = message.reply_to_message.sender_chat.id
+            elif message.reply_to_message.from_user.id == ChatID.FAKE_CHANNEL:
                 userid = message.reply_to_message.chat.id
             else:
                 userid = message.reply_to_message.from_user.id
                 premium = message.reply_to_message.from_user.is_premium
     elif not message.reply_to_message and not args:
-        if message.from_user.id == ChatID.FAKE_CHANNEL:
+        if message.from_user:
+            if message.from_user.id == ChatID.FAKE_CHANNEL and message.sender_chat:
+                userid = message.sender_chat.id
+            elif message.from_user.id == ChatID.FAKE_CHANNEL:
+                userid = message.chat.id
+            else:
+                userid = message.from_user.id
+                premium = message.from_user.is_premium
+        elif message.sender_chat:
             userid = message.sender_chat.id
-        else:
-            userid = message.from_user.id
-            premium = message.from_user.is_premium
+
+    if not userid:
+        await reply_with_text("I can't get information about this user/channel/group.")
+        return
 
     try:
         chat_obj = await bot.get_chat(userid)
-    except TelegramAPIError, UnboundLocalError:
+    except (TelegramAPIError, Exception):
         await reply_with_text("I can't get information about this user/channel/group.")
         return
 
@@ -173,22 +185,26 @@ async def info(message: Message, command: CommandObject):
     if INFOPIC:
         try:
             if chat_obj.photo:
-                await bot.download(
-                    chat_obj.photo[-1].file_id, destination=f"{chat_obj.id}.png"
-                )
-                await message.answer_photo(
-                    photo=open(f"{chat_obj.id}.png", "rb"),
-                    caption=(head),
-                    parse_mode=ParseMode.HTML,
-                )
-                await reply.delete()
-                os.remove(f"{chat_obj.id}.png")
+                with tempfile.TemporaryDirectory(prefix="yae-info-") as tempdir:
+                    photo_path = os.path.join(tempdir, f"{chat_obj.id}.png")
+                    await bot.download(
+                        chat_obj.photo[-1].file_id, destination=photo_path
+                    )
+                    await message.answer_photo(
+                        photo=FSInputFile(photo_path),
+                        caption=head,
+                        parse_mode=ParseMode.HTML,
+                    )
+                    await reply.delete()
             else:
-                await reply_with_text(escape(head))
-        except TelegramAPIError, OSError:
+                await reply_with_text(head)
+        except (TelegramAPIError, OSError, Exception):
             # The photo path can fail on download, on the caption's HTML, or on
             # the temp file. Falling back to the text form still answers.
-            await reply_with_text(escape(head))
+            try:
+                await reply_with_text(head)
+            except TelegramAPIError:
+                await reply_with_text(escape(head))
 
 
 @support_plus

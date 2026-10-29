@@ -16,10 +16,15 @@ async def id_from_reply(message: Message):
     prev_message = message.reply_to_message
     if not prev_message or prev_message.forum_topic_created:
         return None, None
-    user_id = prev_message.from_user.id
-    # if user id is from channel bot, then fetch channel id from sender_chat
-    if user_id == ChatID.FAKE_CHANNEL:
+    if prev_message.from_user:
+        user_id = prev_message.from_user.id
+        # if user id is from channel bot, then fetch channel id from sender_chat
+        if user_id == ChatID.FAKE_CHANNEL and prev_message.sender_chat:
+            user_id = prev_message.sender_chat.id
+    elif prev_message.sender_chat:
         user_id = prev_message.sender_chat.id
+    else:
+        return None, None
     res = message.text.split(None, 1)
     if len(res) < 2:
         return user_id, ""

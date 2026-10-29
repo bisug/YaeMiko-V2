@@ -153,7 +153,7 @@ def _lines(text, limit: int = 220) -> str:
 def _rarity(value) -> str:
     try:
         return RARITY_EMOJI.get(int(value), "")
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return ""
 
 
@@ -1008,7 +1008,7 @@ async def _lookup(message: Message, command: CommandObject, kind: str):
                 detail = await _fetch(f"{kind}/{record['id']}", lang)
                 if isinstance(detail, dict):
                     record = detail
-            except httpx.HTTPError, ValueError, KeyError, TypeError:
+            except (httpx.HTTPError, ValueError, KeyError, TypeError):
                 pass
         if isinstance(record.get("characters"), list):
             try:
@@ -1017,7 +1017,7 @@ async def _lookup(message: Message, command: CommandObject, kind: str):
                 record["characters"] = [
                     names.get(str(c), str(c)) for c in record["characters"]
                 ]
-            except httpx.HTTPError, ValueError, KeyError, TypeError:
+            except (httpx.HTTPError, ValueError, KeyError, TypeError):
                 LOGGER.debug("Could not resolve character names", exc_info=True)
         blocks = RENDERERS[kind](record)
         markup = None

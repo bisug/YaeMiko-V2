@@ -63,7 +63,7 @@ async def totranslate(message: Message, command: CommandObject):
 
             try:
                 source_lang = args[1].split(None, 1)[0]
-            except IndexError, AttributeError:
+            except (IndexError, AttributeError):
                 source_lang = "en"
 
         else:

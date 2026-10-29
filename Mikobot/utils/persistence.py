@@ -82,7 +82,7 @@ class DataStore:
         try:
             with open(self.filepath, "rb") as handle:
                 loaded = pickle.load(handle)
-        except OSError, EOFError, pickle.UnpicklingError:
+        except (OSError, EOFError, pickle.UnpicklingError):
             loaded = {}
         self.data = loaded if isinstance(loaded, dict) else {}
         for section in ("chat_data", "user_data"):

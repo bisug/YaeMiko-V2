@@ -83,7 +83,7 @@ def _load_elevated_users():
     try:
         with open(path, encoding="utf-8") as file:
             return json.load(file)
-    except OSError, ValueError:
+    except (OSError, ValueError):
         LOGGER.exception("Unable to load elevated users from %s", path)
         return {}
 

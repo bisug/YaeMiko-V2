@@ -42,9 +42,8 @@ async def promote(message: Message, command: CommandObject):
     user = message.from_user
 
     user_id = await extract_user(message, args)
-    await chat.get_member(user.id)
 
-    if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+    if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
         await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
@@ -141,9 +140,8 @@ async def fullpromote(message: Message, command: CommandObject):
     user = message.from_user
 
     user_id = await extract_user(message, args)
-    await chat.get_member(user.id)
 
-    if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+    if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
         await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
@@ -241,9 +239,8 @@ async def demote(message: Message, command: CommandObject):
     user = message.from_user
 
     user_id = await extract_user(message, args)
-    await chat.get_member(user.id)
 
-    if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+    if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
         await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
@@ -347,7 +344,7 @@ async def set_title(message: Message, command: CommandObject):
 
     user_id, title = await extract_user_and_text(message, args)
 
-    if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+    if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
         action_token = uuid4().hex[:8]
         chat_data[f"anon_admin_{action_token}"] = {
             "user_id": user_id,
@@ -453,7 +450,7 @@ async def pin(message: Message, command: CommandObject) -> None:
         await message.answer("Please reply to message which you want to pin.")
         return
 
-    if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+    if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
         await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
@@ -496,7 +493,7 @@ async def unpin(message: Message, command: CommandObject):
     chat = message.chat
     user = message.from_user
 
-    if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+    if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
         await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
@@ -537,9 +534,8 @@ async def unpin(message: Message, command: CommandObject):
 async def unpinall(message: Message, command: CommandObject):
     chat = message.chat
     user = message.from_user
-    admin_member = await chat.get_member(user.id)
 
-    if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+    if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
         await message.answer(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
@@ -554,9 +550,12 @@ async def unpinall(message: Message, command: CommandObject):
                 ],
             ),
         )
-
         return
-    elif not admin_member.status == ChatMemberStatus.OWNER and user.id not in DRAGONS:
+
+    admin_member = await chat.get_member(user.id) if user else None
+    if not (admin_member and admin_member.status == ChatMemberStatus.OWNER) and not (
+        user and user.id in DRAGONS
+    ):
         await message.answer("Only chat OWNER can unpin all messages.")
         return
 

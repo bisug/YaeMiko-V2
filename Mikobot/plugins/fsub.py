@@ -21,7 +21,7 @@ async def participant_check(channel, user_id):
     try:
         await app.get_chat_member(channel, int(user_id))
         return True
-    except UserNotParticipant, ChatAdminRequired:
+    except (UserNotParticipant, ChatAdminRequired):
         return False
     except Exception:
         LOGGER.exception(

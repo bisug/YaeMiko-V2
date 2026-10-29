@@ -383,10 +383,13 @@ class GateMiddleware(BaseMiddleware):
                 return None
             return ("Who dis non-admin telling me what to do? You want a punch?", False)
 
+        is_anon_admin = user_id in (777000, 1087968824)
         permission = spec["permission"]
         if permission and (spec["is_user"] or spec["is_both"]):
             if not (
-                status.granted(user_member, permission) or user_id in status.DRAGONS
+                is_anon_admin
+                or status.granted(user_member, permission)
+                or user_id in status.DRAGONS
             ):
                 if spec["no_reply"]:
                     return ("", True)
@@ -400,7 +403,9 @@ class GateMiddleware(BaseMiddleware):
         if spec["is_bot"] and not status.is_admin(bot_member):
             return ("I'm not admin here.", False)
         if spec["is_user"] and not (
-            status.is_admin(user_member) or user_id in status.DRAGONS
+            is_anon_admin
+            or status.is_admin(user_member)
+            or user_id in status.DRAGONS
         ):
             return ("You are not admin here.", False)
         return None

@@ -243,7 +243,7 @@ async def pokedex(message: Message, command: CommandObject) -> None:
             )
         else:
             await message.answer("PokéAPI is unavailable. Please try again later.")
-    except ValueError, KeyError, TypeError:
+    except (ValueError, KeyError, TypeError):
         await message.answer(
             "PokéAPI returned incomplete data. Please try again later."
         )
@@ -270,7 +270,7 @@ async def callback_query_handler(query: CallbackQuery) -> None:
         await query.answer(
             "PokéAPI is unavailable. Please try again later.", show_alert=True
         )
-    except ValueError, KeyError, TypeError:
+    except (ValueError, KeyError, TypeError):
         await query.answer("PokéAPI returned incomplete data.", show_alert=True)
 
 

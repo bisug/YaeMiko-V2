@@ -60,7 +60,7 @@ async def bulk_moderation(message):
 async def get_users(message):
     if message.chat.type not in {ChatType.GROUP, ChatType.SUPERGROUP}:
         return
-    if not await is_admin(message.chat.id, message.from_user.id):
+    if not message.from_user or not await is_admin(message.chat.id, message.from_user.id):
         return
     chat = await app.get_chat(message.chat.id)
     lines = [f"Users in {chat.title or 'this chat'}:"]

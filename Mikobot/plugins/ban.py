@@ -64,7 +64,7 @@ async def ban(message: Message, command: CommandObject) -> str:
         return ""
 
     # if update is coming from anonymous admin then send button and return.
-    if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+    if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
         if SILENT:
             await message.answer("Currently /sban won't work for anoymous admins.")
             return log_message
@@ -427,7 +427,7 @@ async def unban(message: Message, command: CommandObject) -> str:
     if user_id is None:
         return await message.answer("That looks like an invalid User ID to me.")
 
-    if message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+    if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
         try:
             chat_title = message.reply_to_message.sender_chat.title
         except AttributeError:
@@ -465,7 +465,11 @@ async def unban(message: Message, command: CommandObject) -> str:
 
     if user_id is not None and user_id < 0:
         CHAT_SENDER = True
-        chat_sender = message.reply_to_message.sender_chat
+        chat_sender = (
+            message.reply_to_message.sender_chat
+            if message.reply_to_message
+            else None
+        )
     else:
         CHAT_SENDER = False
         try:
@@ -485,15 +489,22 @@ async def unban(message: Message, command: CommandObject) -> str:
             await message.answer("Isn't this person already here??")
             return log_message
 
+    admin_text = mention_html(user.id, user.first_name) if user else "Admin"
     log = (
         f"<b>{html.escape(chat.title)}:</b>\n"
         f"#UNBANNED\n"
-        f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
+        f"<b>Admin:</b> {admin_text}\n"
     )
 
     if CHAT_SENDER:
-        log += f"<b>User:</b> {mention_username(chat_sender.id, html.escape(chat_sender.title))}"
-        await bot.unban_chat_sender_chat(chat.id, chat_sender.id)
+        target_name = (
+            html.escape(chat_sender.title)
+            if chat_sender and chat_sender.title
+            else str(user_id)
+        )
+        target_id = chat_sender.id if chat_sender else user_id
+        log += f"<b>User:</b> {mention_username(target_id, target_name)}"
+        await bot.unban_chat_sender_chat(chat.id, target_id)
         await message.answer("Yeah, this channel can speak again.")
     else:
         log += f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
@@ -513,12 +524,12 @@ async def selfunban(message: Message, command: CommandObject) -> str:
     message = message
     user = message.from_user
     args = command.args.split() if command.args else []
-    if user.id not in DRAGONS:
+    if not user or user.id not in DRAGONS:
         return
 
     try:
         chat_id = int(args[0])
-    except TelegramAPIError, IndexError, ValueError, TypeError:
+    except (TelegramAPIError, IndexError, ValueError, TypeError):
         await message.answer("Give a valid chat ID.")
         return
 

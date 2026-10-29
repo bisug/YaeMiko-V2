@@ -44,7 +44,7 @@ async def cosplay(message: Message):
     try:
         photo_url = await get_cosplay_data()
         await message.answer_photo(photo=photo_url)
-    except httpx.HTTPError, ValueError, KeyError, TypeError:
+    except (httpx.HTTPError, ValueError, KeyError, TypeError):
         await status.edit_text(
             "Unable to fetch a cosplay photo right now. Please try again later."
         )

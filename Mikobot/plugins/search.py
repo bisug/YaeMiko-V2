@@ -65,7 +65,7 @@ async def _send_images(message: Message, query: str) -> None:
         await message.reply_media_group(media=images)
         await status.delete()
         await message.reply("Images: Openverse\n" + "\n".join(credits))
-    except HTTPError, ValueError, TypeError, KeyError, AttributeError:
+    except (HTTPError, ValueError, TypeError, KeyError, AttributeError):
         await status.edit_text("Image search failed. Please try again later.")
 
 
@@ -104,7 +104,7 @@ async def news(_, message: Message):
             f"URL: {url or 'https://news.ycombinator.com/item?id=' + str(item.get('objectID', ''))}\n\n"
             "News source: Hacker News Algolia API"
         )
-    except HTTPError, ValueError, TypeError, KeyError, AttributeError:
+    except (HTTPError, ValueError, TypeError, KeyError, AttributeError):
         await message.reply("News search failed. Please try again later.")
 
 
@@ -138,7 +138,7 @@ async def web_search(client: Client, message: Message):
         await message.reply(
             "\n\n".join(sections) + "\n\nSearch source: DuckDuckGo Instant Answer API"
         )
-    except HTTPError, ValueError, TypeError, KeyError, AttributeError:
+    except (HTTPError, ValueError, TypeError, KeyError, AttributeError):
         await message.reply("Search failed. Please try again later.")
 
 

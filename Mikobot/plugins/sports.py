@@ -108,7 +108,7 @@ async def _show_leagues(message: Message, sport: str) -> None:
         )
     except HTTPError:
         await message.answer("TheSportsDB is unavailable. Please try again later.")
-    except ValueError, TypeError, KeyError:
+    except (ValueError, TypeError, KeyError):
         await message.answer("TheSportsDB returned incomplete league data.")
 
 
@@ -126,7 +126,7 @@ async def _send_league_message(message: Message, sport: str, league_id: str) -> 
         )
     except HTTPError:
         await message.answer("TheSportsDB is unavailable. Please try again later.")
-    except ValueError, TypeError, KeyError:
+    except (ValueError, TypeError, KeyError):
         await message.answer("TheSportsDB returned incomplete match data.")
 
 
@@ -147,7 +147,7 @@ async def _send_league(query: CallbackQuery, sport: str, league_id: str) -> None
         await query.message.edit_text(
             "TheSportsDB is unavailable. Please try again later."
         )
-    except ValueError, TypeError, KeyError:
+    except (ValueError, TypeError, KeyError):
         await query.message.edit_text("TheSportsDB returned incomplete match data.")
 
 
@@ -168,7 +168,7 @@ async def _show_menu(query: CallbackQuery, sport: str) -> None:
         await query.message.edit_text(
             "TheSportsDB is unavailable. Please try again later."
         )
-    except ValueError, TypeError, KeyError:
+    except (ValueError, TypeError, KeyError):
         await query.message.edit_text("TheSportsDB returned incomplete league data.")
 
 
@@ -191,7 +191,7 @@ async def sport_callback(query: CallbackQuery) -> None:
             await _show_menu(query, parts[2])
         else:
             await _send_league(query, parts[1], parts[2])
-    except IndexError, ValueError:
+    except (IndexError, ValueError):
         await query.answer("Invalid selection.", show_alert=True)
 
 

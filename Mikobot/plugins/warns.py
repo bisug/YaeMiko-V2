@@ -194,6 +194,7 @@ async def warn_user(message: Message, command: CommandObject) -> str:
     if user_id:
         if (
             message.reply_to_message
+            and message.reply_to_message.from_user
             and message.reply_to_message.from_user.id == user_id
         ):
             return await warn(
@@ -223,12 +224,17 @@ async def reset_warns(message: Message, command: CommandObject) -> str:
     if user_id:
         sql.reset_warns(user_id, chat.id)
         await message.answer("Warns have been reset!")
-        warned = await chat.get_member(user_id).user
+        try:
+            warned_member = await bot.get_chat_member(chat.id, user_id)
+            user_target_text = mention_html(warned_member.user.id, warned_member.user.first_name)
+        except TelegramAPIError:
+            user_target_text = f"<code>{user_id}</code>"
+        admin_text = mention_html(user.id, user.first_name) if user else "Admin"
         return (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#RESETWARNS\n"
-            f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
-            f"<b>User:</b> {mention_html(warned.id, warned.first_name)}"
+            f"<b>Admin:</b> {admin_text}\n"
+            f"<b>User:</b> {user_target_text}"
         )
     else:
         await message.answer("No user has been designated!")
@@ -238,7 +244,11 @@ async def reset_warns(message: Message, command: CommandObject) -> str:
 async def warns(message: Message, command: CommandObject):
     args = command.args.split() if command.args else []
     chat: Chat | None = message.chat
-    user_id = await extract_user(message, args) or message.from_user.id
+    user_id = await extract_user(message, args) or (
+        message.from_user.id if message.from_user else None
+    )
+    if not user_id:
+        return
     result = sql.get_warns(user_id, chat.id)
 
     if result and result[0] != 0:
@@ -385,7 +395,6 @@ async def reply_filter(message: Message) -> str:
 async def set_warn_limit(message: Message, command: CommandObject) -> str:
     args = command.args.split() if command.args else []
     chat: Chat | None = message.chat
-    user: User | None = message.from_user
     user: User | None = message.from_user
     msg: Message | None = message
 
