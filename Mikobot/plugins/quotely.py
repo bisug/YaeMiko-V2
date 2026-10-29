@@ -267,6 +267,9 @@ class Quotly:
                 file_name = file.name
                 with Image.open(io.BytesIO(image_data)) as image:
                     image.convert("RGB").save(file, format="PNG")
+            webp_file = f"{file_name}.webp"
+            with open(webp_file, "wb") as wf:
+                wf.write(image_data)
             return file_name
         error_msg = request.get("error", {}).get("message", str(request)) if isinstance(request, dict) else str(request)
         raise RuntimeError(f"Quote API error: {error_msg}")
@@ -303,7 +306,7 @@ async def async_searcher(
     return response.text
 
 
-@register(pattern=r"^/q(?:@\S+)?(?: |$)(.*)")
+@register(pattern=r"^[!/?]q(?:@\S+)?(?: |$)(.*)")
 async def quott_(event):
     raw_match = ""
     if event.command and len(event.command) > 1:
@@ -316,11 +319,21 @@ async def quott_(event):
             raw_match = parts[1]
     match = raw_match.strip()
 
-    if not event.reply_to_message:
+    reply = event.reply_to_message
+    if not reply and getattr(event, "reply_to_message_id", None):
+        try:
+            reply = await app.get_messages(
+                event.chat.id,
+                message_ids=event.reply_to_message_id,
+            )
+        except Exception as e:
+            LOGGER.warning("Failed to fetch reply_to_message: %s", e)
+            reply = None
+
+    if not reply:
         return await event.reply("Please reply to a message.")
 
     msg = await event.reply("Creating quote, please wait.")
-    reply = event.reply_to_message
     replied_to, reply_ = None, None
 
     if match:
@@ -337,13 +350,25 @@ async def quott_(event):
                 )
                 if not isinstance(msgs, list):
                     msgs = [msgs]
-                reply_ = [m for m in msgs if m and not getattr(m, "empty", False)]
+                reply_ = [
+                    m
+                    for m in msgs
+                    if m and not getattr(m, "empty", False) and m.id != event.id
+                ]
                 if not reply_:
                     reply_ = [reply]
                 else:
                     reply_.sort(key=lambda m: m.id)
             else:
                 replied_to = reply.reply_to_message
+                if not replied_to and getattr(reply, "reply_to_message_id", None):
+                    try:
+                        replied_to = await app.get_messages(
+                            event.chat.id,
+                            message_ids=reply.reply_to_message_id,
+                        )
+                    except Exception:
+                        replied_to = None
             try:
                 match = spli_[1]
             except IndexError:
@@ -375,7 +400,16 @@ async def quott_(event):
         file = await quotly.create_quotly(
             reply_, bg=match, reply=replied_to, sender=user
         )
-        message = await event.reply_photo(file)
+        webp_file = f"{file}.webp"
+        sent = False
+        if os.path.exists(webp_file):
+            try:
+                message = await event.reply_sticker(webp_file)
+                sent = True
+            except Exception as e:
+                LOGGER.warning("Could not send quote as sticker: %s", e)
+        if not sent:
+            message = await event.reply_photo(file)
     except (
         httpx.HTTPError,
         OSError,
@@ -388,12 +422,16 @@ async def quott_(event):
         await msg.edit(f"Quote generation failed: {error}")
         return
     finally:
-        if file and os.path.exists(file):
-            try:
-                os.remove(file)
-            except OSError:
-                pass
-    await msg.delete()
+        for f_path in (file, f"{file}.webp" if file else None):
+            if f_path and os.path.exists(f_path):
+                try:
+                    os.remove(f_path)
+                except OSError:
+                    pass
+    try:
+        await msg.delete()
+    except Exception:
+        pass
     return message
 
 
@@ -403,13 +441,13 @@ async def quott_(event):
 __mod_name__ = "QUOTELY"
 
 __help__ = """   
-»  /q : Create quote.
+»  /q : Create quote sticker.
 
-» /q r : Get replied quote.
+» /q r : Get replied quote sticker.
 
 » /q 2 ᴛᴏ 8 : Get multiple quotes.
 
-» /q < any colour name > : Create any coloured quotes.
+» /q < any colour name > : Create colored quote sticker.
 
 ➠ Example:
 

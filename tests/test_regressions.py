@@ -8056,17 +8056,19 @@ class CodebaseAuditHardeningTests(unittest.TestCase):
 
     def test_quotely_command_pattern_and_entity_handling(self):
         source = (ROOT / "Mikobot/plugins/quotely.py").read_text(encoding="utf-8")
-        self.assertIn(r'@register(pattern=r"^/q(?:@\S+)?(?: |$)(.*)")', source)
+        self.assertIn(r'@register(pattern=r"^[!/?]q(?:@\S+)?(?: |$)(.*)")', source)
         self.assertIn('MessageEntityType.SPOILER: "spoiler"', source)
         self.assertIn('MessageEntityType.CUSTOM_EMOJI: "custom_emoji"', source)
         self.assertIn('MessageEntityType.BLOCKQUOTE: "blockquote"', source)
         self.assertIn('text_content = event.text or event.caption or ""', source)
 
         import re
-        pattern = re.compile(r"^/q(?:@\S+)?(?: |$)(.*)")
+        pattern = re.compile(r"^[!/?]q(?:@\S+)?(?: |$)(.*)")
         for cmd, expected in [
             ("/q", ""),
+            ("!q", ""),
             ("/q red", "red"),
+            ("!q red", "red"),
             ("/q@YaeMikoRobot", ""),
             ("/q@YaeMikoRobot red", "red"),
             ("/q r", "r"),
