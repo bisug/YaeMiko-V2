@@ -8033,6 +8033,12 @@ class CodebaseAuditHardeningTests(unittest.TestCase):
         self.assertIn("USER_JSON = TTLCache(maxsize=5000, ttl=60)", anime_src)
         self.assertIn("USER_WC = TTLCache(maxsize=5000, ttl=60)", anime_src)
 
+    def test_welcome_memory_ttlcache(self):
+        welcome_src = (ROOT / "Mikobot/plugins/welcome.py").read_text(encoding="utf-8")
+        self.assertIn("VERIFIED_USER_WAITLIST = TTLCache(maxsize=5000, ttl=600)", welcome_src)
+        self.assertIn("WELCOME_MESSAGES = TTLCache(maxsize=5000, ttl=86400)", welcome_src)
+        self.assertIn("client.delete_messages(chat_id, prev_msg)", welcome_src)
+
     def test_all_except_clauses_parenthesized(self):
         for path in sorted(ROOT.glob("**/*.py")):
             if ".venv" in path.parts:

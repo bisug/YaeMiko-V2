@@ -11,6 +11,7 @@ from contextlib import suppress
 from datetime import datetime
 from functools import partial
 
+from cachetools import TTLCache
 import unidecode
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 from pyrogram import filters as ft
@@ -86,10 +87,10 @@ ENUM_FUNC_MAP = {
     sql.Types.VIDEO.value: "send_video",
 }
 
-VERIFIED_USER_WAITLIST = {}
+VERIFIED_USER_WAITLIST = TTLCache(maxsize=5000, ttl=600)
 
 
-WELCOME_MESSAGES = {}
+WELCOME_MESSAGES = TTLCache(maxsize=5000, ttl=86400)
 
 
 # <================================================ TEMPLATE WELCOME FUNCTION =======================================================>
@@ -159,10 +160,14 @@ async def member_has_joined(client, member: ChatMemberUpdated):
         welcome_enabled = is_dwelcome_on(chat_id)
         if not welcome_enabled:
             return
-        if f"welcome-{chat_id}" in WELCOME_MESSAGES:
+        prev_msg = WELCOME_MESSAGES.pop(f"welcome-{chat_id}", None)
+        if prev_msg is not None:
             try:
-                await WELCOME_MESSAGES[f"welcome-{chat_id}"].delete()
-            except TelegramAPIError:
+                if hasattr(prev_msg, "delete"):
+                    await prev_msg.delete()
+                else:
+                    await client.delete_messages(chat_id, prev_msg)
+            except Exception:
                 # The stored message may be older than the bot's own reach or
                 # already gone; the new welcome still replaces it.
                 LOGGER.debug(
@@ -199,12 +204,14 @@ async def member_has_joined(client, member: ChatMemberUpdated):
                         ]
                     ]
                 )
-                WELCOME_MESSAGES[f"welcome-{chat_id}"] = await client.send_photo(
+                sent = await client.send_photo(
                     member.chat.id,
                     photo=welcomeimg,
                     caption=f"**𝗛𝗲𝘆❗️{mention}, 𝗪𝗲𝗹𝗰𝗼𝗺𝗲 𝗧𝗼 {member.chat.title} 𝗚𝗿𝗼𝘂𝗽.**\n\n**𝗜𝗗 : {user_id}**\n**𝗗𝗔𝗧𝗘 𝗝𝗢𝗜𝗡𝗘𝗗 : {joined_date}**",
                     reply_markup=inline_keyboard,
                 )
+                if sent:
+                    WELCOME_MESSAGES[f"welcome-{chat_id}"] = getattr(sent, "id", sent)
             except Exception:
                 LOGGER.exception(
                     "Unable to create the welcome image for user %s", user_id
