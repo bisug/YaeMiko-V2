@@ -4,7 +4,8 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    UV_PROJECT_ENVIRONMENT=/opt/venv
 
 WORKDIR /build
 
@@ -14,13 +15,13 @@ RUN apt-get update \
 
 COPY pyproject.toml uv.lock requirements.txt ./
 
-RUN uv venv /opt/venv && \
-    uv sync --frozen --no-dev --python /opt/venv/bin/python
+RUN uv sync --frozen --no-dev
 
 
 FROM python:3.14.10-slim
 
 ENV PATH="/opt/venv/bin:$PATH" \
+    VIRTUAL_ENV="/opt/venv" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 

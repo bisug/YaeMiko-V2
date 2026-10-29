@@ -162,3 +162,7 @@ jobs:
             echo "FAIL the image CMD must be python -m Mikobot, found $cmd"
             exit 1
           fi
+
+      - name: Verify dependencies in built image
+        run: |
+          docker run --rm yaemiko:ci python -c "from aiogram import Bot; from pyrogram import Client; import sqlalchemy, psycopg; print('All core dependencies present in container')"
