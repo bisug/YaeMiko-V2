@@ -8047,6 +8047,13 @@ class CodebaseAuditHardeningTests(unittest.TestCase):
         status_src = (ROOT / "Mikobot/plugins/helper_funcs/chat_status.py").read_text(encoding="utf-8")
         self.assertIn("ADMIN_CACHE = TTLCache(maxsize=10_000, ttl=60 * 10, timer=perf_counter)", status_src)
 
+    def test_cust_filters_types_export(self):
+        sql_src = (ROOT / "Database/sql/cust_filters_sql.py").read_text(encoding="utf-8")
+        self.assertIn("from Mikobot.plugins.helper_funcs.msg_types import Types", sql_src)
+
+        plugin_src = (ROOT / "Mikobot/plugins/cust_filters.py").read_text(encoding="utf-8")
+        self.assertIn("ENUM_FUNC_MAP = {", plugin_src)
+
     def test_all_except_clauses_parenthesized(self):
         for path in sorted(ROOT.glob("**/*.py")):
             if ".venv" in path.parts:

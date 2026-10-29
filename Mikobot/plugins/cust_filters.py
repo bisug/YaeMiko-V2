@@ -25,7 +25,7 @@ from Mikobot.plugins.helper_funcs.alternate import send_message, typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.plugins.helper_funcs.extraction import extract_text
 from Mikobot.plugins.helper_funcs.misc import build_keyboard_parser
-from Mikobot.plugins.helper_funcs.msg_types import get_filter_type
+from Mikobot.plugins.helper_funcs.msg_types import Types, get_filter_type
 from Mikobot.plugins.helper_funcs.string_handling import (
     button_markdown_parser,
     entities_map,

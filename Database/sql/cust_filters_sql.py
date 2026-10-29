@@ -12,6 +12,7 @@ from sqlalchemy import (
 )
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Mikobot.plugins.helper_funcs.msg_types import Types
 
 
 class CustomFilters(BASE):
