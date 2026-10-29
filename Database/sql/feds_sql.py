@@ -16,7 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from aiogram.exceptions import TelegramAPIError
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, ENGINE, SESSION, ensure_index, unit_of_work_guard
 from Mikobot import LOGGER, OWNER_ID, bot
 
 
@@ -42,7 +42,7 @@ class ChatF(BASE):
     __tablename__ = "chat_feds"
     chat_id = Column(String(14), primary_key=True)
     chat_name = Column(UnicodeText)
-    fed_id = Column(UnicodeText)
+    fed_id = Column(UnicodeText, index=True)
 
     def __init__(self, chat_id, chat_name, fed_id):
         self.chat_id = chat_id
@@ -106,6 +106,10 @@ ChatF.__table__.create(bind=ENGINE, checkfirst=True)
 BansF.__table__.create(bind=ENGINE, checkfirst=True)
 FedsUserSettings.__table__.create(bind=ENGINE, checkfirst=True)
 FedSubs.__table__.create(bind=ENGINE, checkfirst=True)
+
+# chat_feds filters and deletes by fed_id, which the chat_id primary key
+# cannot serve without a full table scan.
+ensure_index("chat_feds_fed_id_idx", "chat_feds", "fed_id")
 
 FEDS_LOCK = threading.RLock()
 CHAT_FEDS_LOCK = threading.RLock()

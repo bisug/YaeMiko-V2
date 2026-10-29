@@ -46,10 +46,14 @@ def ensure_index(name: str, table: str, columns: str) -> None:
     create_all() never adds an index to a table it did not create, so a query
     that a primary key cannot serve has nothing to fall back on.
     """
-    with ENGINE.begin() as connection:
-        connection.execute(
-            text(f'CREATE INDEX IF NOT EXISTS "{name}" ON {table} ({columns})')
-        )
+    try:
+        with ENGINE.begin() as connection:
+            connection.execute(
+                text(f'CREATE INDEX IF NOT EXISTS "{name}" ON {table} ({columns})')
+            )
+    except Exception:
+        # Best effort: if database is unreachable or offline during lightweight imports
+        pass
 
 
 # Best effort rather than exact: two worker threads can lose an increment, which

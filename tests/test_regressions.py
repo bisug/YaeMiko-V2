@@ -7967,6 +7967,11 @@ class CodebaseAuditHardeningTests(unittest.TestCase):
             flood_src.index("if await asyncio.to_thread(is_approved, chat.id, user.id):"),
         )
 
+    def test_feds_sql_fed_id_index(self):
+        feds_sql_src = (ROOT / "Database/sql/feds_sql.py").read_text(encoding="utf-8")
+        self.assertIn('ensure_index("chat_feds_fed_id_idx", "chat_feds", "fed_id")', feds_sql_src)
+        self.assertIn("fed_id = Column(UnicodeText, index=True)", feds_sql_src)
+
     def test_all_except_clauses_parenthesized(self):
         for path in sorted(ROOT.glob("**/*.py")):
             if ".venv" in path.parts:
