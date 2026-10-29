@@ -7972,6 +7972,33 @@ class CodebaseAuditHardeningTests(unittest.TestCase):
         self.assertIn('ensure_index("chat_feds_fed_id_idx", "chat_feds", "fed_id")', feds_sql_src)
         self.assertIn("fed_id = Column(UnicodeText, index=True)", feds_sql_src)
 
+    def test_feds_sql_memory_optimization(self):
+        feds_sql_src = (ROOT / "Database/sql/feds_sql.py").read_text(encoding="utf-8")
+        self.assertIn("user_ids = FEDERATION_BANNED_USERID.setdefault(str(x.fed_id), set())", feds_sql_src)
+        self.assertNotIn('FEDERATION_BANNED_FULL[x.fed_id][x.user_id] = {', feds_sql_src)
+
+        fake_session = mock.Mock()
+        fake_session.get.return_value = mock.Mock(
+            first_name="Spam",
+            last_name="Bot",
+            user_name="spambot",
+            reason="Spamming",
+            time=1234567,
+        )
+        get_target = load_function(
+            ROOT / "Database/sql/feds_sql.py",
+            "get_all_fban_users_target",
+            {
+                "unit_of_work_guard": lambda f: f,
+                "FEDERATION_BANNED_FULL": {},
+                "SESSION": fake_session,
+                "BansF": mock.Mock(),
+            },
+        )
+        info = get_target("fed1", 12345)
+        self.assertEqual(info["first_name"], "Spam")
+        self.assertEqual(info["reason"], "Spamming")
+
     def test_all_except_clauses_parenthesized(self):
         for path in sorted(ROOT.glob("**/*.py")):
             if ".venv" in path.parts:

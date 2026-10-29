@@ -589,17 +589,11 @@ def fban_user(fed_id, user_id, first_name, last_name, user_name, reason, time):
                 "Unable to persist federation ban for fed %s user %s", fed_id, user_id
             )
             return False
-        user_ids = FEDERATION_BANNED_USERID.setdefault(str(fed_id), [])
-        numeric_user_id = int(user_id)
-        if numeric_user_id not in user_ids:
-            user_ids.append(numeric_user_id)
-        FEDERATION_BANNED_FULL.setdefault(str(fed_id), {})[str(user_id)] = {
-            "first_name": first_name,
-            "last_name": last_name,
-            "user_name": user_name,
-            "reason": reason,
-            "time": time,
-        }
+        user_ids = FEDERATION_BANNED_USERID.setdefault(str(fed_id), set())
+        if isinstance(user_ids, set):
+            user_ids.add(int(user_id))
+        elif int(user_id) not in user_ids:
+            user_ids.append(int(user_id))
         return ban
 
 
@@ -641,17 +635,11 @@ def multi_fban_user(
             for index in range(len(multi_fed_id)):
                 fed_id = str(multi_fed_id[index])
                 user_id = str(multi_user_id[index])
-                user_ids = FEDERATION_BANNED_USERID.setdefault(fed_id, [])
-                numeric_user_id = int(user_id)
-                if numeric_user_id not in user_ids:
-                    user_ids.append(numeric_user_id)
-                FEDERATION_BANNED_FULL.setdefault(fed_id, {})[user_id] = {
-                    "first_name": multi_first_name[index],
-                    "last_name": multi_last_name[index],
-                    "user_name": multi_user_name[index],
-                    "reason": multi_reason[index],
-                    "time": 0,
-                }
+                user_ids = FEDERATION_BANNED_USERID.setdefault(fed_id, set())
+                if isinstance(user_ids, set):
+                    user_ids.add(int(user_id))
+                elif int(user_id) not in user_ids:
+                    user_ids.append(int(user_id))
         except SQLAlchemyError:
             SESSION.rollback()
             LOGGER.exception("Unable to persist %d federation bans", len(multi_fed_id))
@@ -674,8 +662,10 @@ def un_fban_user(fed_id, user_id):
                 "Unable to remove federation ban for fed %s user %s", fed_id, user_id
             )
             return False
-        user_ids = FEDERATION_BANNED_USERID.get(str(fed_id), [])
-        if int(user_id) in user_ids:
+        user_ids = FEDERATION_BANNED_USERID.get(str(fed_id))
+        if isinstance(user_ids, set):
+            user_ids.discard(int(user_id))
+        elif isinstance(user_ids, list) and int(user_id) in user_ids:
             user_ids.remove(int(user_id))
         if not user_ids:
             FEDERATION_BANNED_USERID.pop(str(fed_id), None)
@@ -690,7 +680,8 @@ def un_fban_user(fed_id, user_id):
 def get_fban_user(fed_id, user_id):
     fed_id = str(fed_id)
     user_id = str(user_id)
-    if int(user_id) not in FEDERATION_BANNED_USERID.get(fed_id, []):
+    user_ids = FEDERATION_BANNED_USERID.get(fed_id)
+    if not user_ids or int(user_id) not in user_ids:
         return False, None, None
 
     try:
@@ -703,19 +694,34 @@ def get_fban_user(fed_id, user_id):
 
 
 def get_all_fban_users(fed_id):
-    list_fbanned = FEDERATION_BANNED_USERID.get(fed_id)
+    list_fbanned = FEDERATION_BANNED_USERID.get(str(fed_id))
     if list_fbanned is None:
-        FEDERATION_BANNED_USERID[fed_id] = []
-    return FEDERATION_BANNED_USERID[fed_id]
+        FEDERATION_BANNED_USERID[str(fed_id)] = set()
+        return []
+    return list(list_fbanned)
 
 
+@unit_of_work_guard
 def get_all_fban_users_target(fed_id, user_id):
-    list_fbanned = FEDERATION_BANNED_FULL.get(fed_id)
-    if list_fbanned is None:
-        FEDERATION_BANNED_FULL[fed_id] = []
-        return False
-    getuser = list_fbanned[str(user_id)]
-    return getuser
+    fed_id = str(fed_id)
+    user_id = str(user_id)
+    cached = FEDERATION_BANNED_FULL.get(fed_id, {}).get(user_id)
+    if cached is not None:
+        return cached
+    try:
+        ban = SESSION.get(BansF, (fed_id, user_id))
+        if ban is None:
+            return False
+        return {
+            "first_name": ban.first_name,
+            "last_name": ban.last_name,
+            "user_name": ban.user_name,
+            "reason": ban.reason,
+            "date": ban.time,
+            "time": ban.time,
+        }
+    finally:
+        SESSION.close()
 
 
 def get_all_fban_users_global():
@@ -926,21 +932,8 @@ def __load_all_feds_banned():
         FEDERATION_BANNED_FULL = {}
         qall = SESSION.scalars(select(BansF)).all()
         for x in qall:
-            check = FEDERATION_BANNED_USERID.get(x.fed_id)
-            if check is None:
-                FEDERATION_BANNED_USERID[x.fed_id] = []
-            if int(x.user_id) not in FEDERATION_BANNED_USERID[x.fed_id]:
-                FEDERATION_BANNED_USERID[x.fed_id].append(int(x.user_id))
-            check = FEDERATION_BANNED_FULL.get(x.fed_id)
-            if check is None:
-                FEDERATION_BANNED_FULL[x.fed_id] = {}
-            FEDERATION_BANNED_FULL[x.fed_id][x.user_id] = {
-                "first_name": x.first_name,
-                "last_name": x.last_name,
-                "user_name": x.user_name,
-                "reason": x.reason,
-                "time": x.time,
-            }
+            user_ids = FEDERATION_BANNED_USERID.setdefault(str(x.fed_id), set())
+            user_ids.add(int(x.user_id))
     finally:
         SESSION.close()
 
