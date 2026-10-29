@@ -55,9 +55,7 @@ jobs:
       # against an install nobody had asked for.
       - name: Install the dependencies under test
         run: |
-          pins=$(grep -E '^(aiogram|SQLAlchemy|psycopg)(\[|==)' requirements.txt | tr '\n' ' ')
-          echo "installing: $pins"
-          python -m pip install --disable-pip-version-check $pins
+          python -m pip install --disable-pip-version-check -r requirements.txt
 
       # Guards the install above rather than the pin itself: a requirements.txt
       # edit that fails to install must not pass as a green build.
