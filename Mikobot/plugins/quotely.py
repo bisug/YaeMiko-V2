@@ -56,85 +56,133 @@ class Quotly:
         MessageEntityType.BOT_COMMAND: "bot_command",
         MessageEntityType.CODE: "code",
         MessageEntityType.PRE: "pre",
+        MessageEntityType.SPOILER: "spoiler",
+        MessageEntityType.CUSTOM_EMOJI: "custom_emoji",
+        MessageEntityType.BLOCKQUOTE: "blockquote",
+        MessageEntityType.EXPANDABLE_BLOCKQUOTE: "expandable_blockquote",
     }
 
     async def _format_quote(self, event, reply=None, sender=None, type_="private"):
         async def upload_media(file_):
-            with Image.open(file_) as image:
-                converted = image.convert("RGB")
-                converted.save(file_, "PNG")
+            png_file = f"{file_}.png"
             try:
-                return await _upload(Path(file_), "catbox")
+                with Image.open(file_) as image:
+                    converted = image.convert("RGB")
+                    converted.save(png_file, "PNG")
+                return await _upload(Path(png_file), "catbox")
             finally:
+                if os.path.exists(png_file):
+                    try:
+                        os.remove(png_file)
+                    except OSError:
+                        pass
                 if os.path.exists(file_):
-                    os.remove(file_)
+                    try:
+                        os.remove(file_)
+                    except OSError:
+                        pass
 
-        reply = (
-            {
-                "name": get_display_name(reply.from_user) or "Deleted Account",
-                "text": reply.text,
-                "chatId": reply.chat.id,
+        reply_dict = {}
+        if reply:
+            reply_user = getattr(reply, "from_user", None)
+            reply_chat = getattr(reply, "sender_chat", None)
+            reply_name = (
+                get_display_name(reply_user)
+                or (reply_chat.title if reply_chat else None)
+                or "Deleted Account"
+            )
+            reply_id = (
+                reply_user.id
+                if reply_user
+                else (reply_chat.id if reply_chat else reply.chat.id)
+            )
+            reply_dict = {
+                "name": reply_name,
+                "text": reply.text or reply.caption or "",
+                "chatId": reply_id,
             }
-            if reply
-            else {}
-        )
 
         forward_origin = event.forward_origin
-        name, last_name = None, None
+        sender_chat = getattr(event, "sender_chat", None)
+        from_user = getattr(event, "from_user", None)
+        name, last_name, username = None, None, None
 
         if sender and sender.id not in DEV_USERS:
             id_ = sender.id
             name = get_display_name(sender)
+            last_name = getattr(sender, "last_name", None)
+            username = getattr(sender, "username", None)
         elif not forward_origin:
-            id_ = event.from_user.id if event.from_user else None
-            sender = event.from_user
-            name = get_display_name(sender)
+            if from_user:
+                id_ = from_user.id
+                name = get_display_name(from_user)
+                last_name = getattr(from_user, "last_name", None)
+                username = getattr(from_user, "username", None)
+            elif sender_chat:
+                id_ = sender_chat.id
+                name = sender_chat.title or "Channel"
+                last_name = None
+                username = getattr(sender_chat, "username", None)
+            else:
+                id_ = event.chat.id if hasattr(event, "chat") else 0
+                name = "Unknown"
+                last_name = None
+                username = None
         else:
-            sender = getattr(forward_origin, "sender_user", None)
+            sender_user = getattr(forward_origin, "sender_user", None)
             forward_chat = getattr(forward_origin, "sender_chat", None) or getattr(
                 forward_origin, "chat", None
             )
-            id_ = sender.id if sender else forward_chat.id if forward_chat else None
+            id_ = (
+                sender_user.id
+                if sender_user
+                else (forward_chat.id if forward_chat else None)
+            )
             name = (
-                get_display_name(sender)
+                get_display_name(sender_user)
                 or getattr(forward_origin, "sender_user_name", None)
                 or getattr(forward_chat, "title", None)
                 or getattr(forward_origin, "author_signature", None)
+                or "Unknown"
             )
-        if sender and hasattr(sender, "last_name"):
-            last_name = sender.last_name
+            last_name = (
+                getattr(sender_user, "last_name", None) if sender_user else None
+            )
+            username = (
+                getattr(sender_user, "username", None)
+                if sender_user
+                else getattr(forward_chat, "username", None)
+            )
 
-        entities = (
-            [
-                {
-                    "type": self._entities[entity.type],
-                    "offset": entity.offset,
-                    "length": entity.length,
-                    **({"url": entity.url} if entity.url else {}),
-                    **(
-                        {
-                            "user": {
-                                "id": entity.user.id,
-                                "first_name": entity.user.first_name,
-                                "last_name": entity.user.last_name,
-                                "username": entity.user.username,
-                            }
-                        }
-                        if entity.user
-                        else {}
-                    ),
-                    **({"language": entity.language} if entity.language else {}),
-                    **(
-                        {"custom_emoji_id": entity.custom_emoji_id}
-                        if entity.custom_emoji_id
-                        else {}
-                    ),
+        raw_entities = getattr(event, "entities", None) or getattr(event, "caption_entities", None) or []
+        entities = []
+        for entity in raw_entities:
+            entity_type = self._entities.get(
+                entity.type,
+                str(getattr(entity.type, "value", entity.type)).lower(),
+            )
+            ent = {
+                "type": entity_type,
+                "offset": entity.offset,
+                "length": entity.length,
+            }
+            if getattr(entity, "url", None):
+                ent["url"] = entity.url
+            if getattr(entity, "user", None):
+                u = entity.user
+                ent["user"] = {
+                    "id": u.id,
+                    "first_name": u.first_name,
+                    "last_name": u.last_name,
+                    "username": u.username,
                 }
-                for entity in event.entities
-            ]
-            if event.entities
-            else []
-        )
+            if getattr(entity, "language", None):
+                ent["language"] = entity.language
+            if getattr(entity, "custom_emoji_id", None):
+                ent["custom_emoji_id"] = entity.custom_emoji_id
+            entities.append(ent)
+
+        text_content = event.text or event.caption or ""
 
         message = {
             "entities": entities,
@@ -142,26 +190,41 @@ class Quotly:
             "avatar": True,
             "from": {
                 "id": id_,
-                "first_name": (name or (sender.first_name if sender else None))
-                or "Deleted Account",
+                "first_name": name or "Deleted Account",
                 "last_name": last_name,
-                "username": sender.username if sender else None,
+                "username": username,
                 "language_code": "en",
                 "title": name,
                 "name": name or "Unknown",
                 "type": type_,
             },
-            "text": event.text,
-            "replyMessage": reply,
+            "text": text_content,
+            "replyMessage": reply_dict,
         }
 
-        if event.document and event.document.thumbs:
-            file_ = await event.download_media(thumb=-1)
+        media_file = None
+        try:
+            if getattr(event, "photo", None):
+                media_file = await event.download_media()
+            elif getattr(event, "sticker", None):
+                media_file = await event.download_media()
+            elif getattr(event, "document", None) and getattr(event.document, "thumbs", None):
+                media_file = await event.download_media(thumb=-1)
+            elif getattr(event, "video", None) and getattr(event.video, "thumbs", None):
+                media_file = await event.download_media(thumb=-1)
+            elif getattr(event, "animation", None) and getattr(event.animation, "thumbs", None):
+                media_file = await event.download_media(thumb=-1)
+        except Exception as err:
+            LOGGER.warning("Failed to download quote media: %s", err)
+            media_file = None
+
+        if media_file:
             try:
-                uri = await upload_media(file_)
-                message["media"] = {"url": uri}
+                uri = await upload_media(media_file)
+                if uri:
+                    message["media"] = {"url": uri}
             except Exception as err:
-                LOGGER.warning("Failed to upload quote media thumbnail: %s", err)
+                LOGGER.warning("Failed to upload quote media: %s", err)
 
         return message
 
@@ -193,19 +256,20 @@ class Quotly:
         }
         try:
             request = await async_searcher(url, post=True, json=content, re_json=True)
-        except ValueError as er:
+        except (ValueError, httpx.HTTPError) as er:
             if url != self._API:
                 return await self.create_quotly(self._API)
             raise er
 
-        if request.get("ok"):
+        if isinstance(request, dict) and request.get("ok"):
             image_data = base64.b64decode(request["result"]["image"])
             with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as file:
                 file_name = file.name
                 with Image.open(io.BytesIO(image_data)) as image:
                     image.convert("RGB").save(file, format="PNG")
             return file_name
-        raise Exception(str(request))
+        error_msg = request.get("error", {}).get("message", str(request)) if isinstance(request, dict) else str(request)
+        raise RuntimeError(f"Quote API error: {error_msg}")
 
 
 quotly = Quotly()
@@ -239,11 +303,19 @@ async def async_searcher(
     return response.text
 
 
-@register(pattern="^/q(?: |$)(.*)")
+@register(pattern=r"^/q(?:@\S+)?(?: |$)(.*)")
 async def quott_(event):
-    match = (
-        event.command[1] if event.command and len(event.command) > 1 else ""
-    ).strip()
+    raw_match = ""
+    if event.command and len(event.command) > 1:
+        raw_match = event.command[1]
+    elif getattr(event, "matches", None) and event.matches[0].groups():
+        raw_match = event.matches[0].group(1) or ""
+    elif event.text:
+        parts = event.text.split(None, 1)
+        if len(parts) > 1:
+            raw_match = parts[1]
+    match = raw_match.strip()
+
     if not event.reply_to_message:
         return await event.reply("Please reply to a message.")
 
@@ -257,12 +329,19 @@ async def quott_(event):
             spli_[0].isdigit() and int(spli_[0]) in range(1, 21)
         ):
             if spli_[0].isdigit():
-                reply_ = await app.get_messages(
+                count = int(spli_[0])
+                msg_ids = [mid for mid in range(reply.id - count + 1, reply.id + 1) if mid > 0]
+                msgs = await app.get_messages(
                     event.chat.id,
-                    message_ids=range(reply.id - int(spli_[0]) + 1, reply.id + 1),
+                    message_ids=msg_ids,
                 )
-                if not isinstance(reply_, list):
-                    reply_ = [reply_]
+                if not isinstance(msgs, list):
+                    msgs = [msgs]
+                reply_ = [m for m in msgs if m and not getattr(m, "empty", False)]
+                if not reply_:
+                    reply_ = [reply]
+                else:
+                    reply_.sort(key=lambda m: m.id)
             else:
                 replied_to = reply.reply_to_message
             try:
@@ -282,7 +361,7 @@ async def quott_(event):
         if match[0].startswith("@") or match[0].isdigit():
             try:
                 user = await app.get_users(match[0].lstrip("@"))
-            except ValueError:
+            except Exception:
                 pass
             match = match[1] if len(match) == 2 else None
         else:
@@ -291,6 +370,7 @@ async def quott_(event):
     if match == "random":
         match = choice(Quotly._COLORS)
 
+    file = None
     try:
         file = await quotly.create_quotly(
             reply_, bg=match, reply=replied_to, sender=user
@@ -303,12 +383,16 @@ async def quott_(event):
         TypeError,
         ValueError,
         RuntimeError,
+        Exception,
     ) as error:
         await msg.edit(f"Quote generation failed: {error}")
         return
     finally:
-        if "file" in locals() and os.path.exists(file):
-            os.remove(file)
+        if file and os.path.exists(file):
+            try:
+                os.remove(file)
+            except OSError:
+                pass
     await msg.delete()
     return message
 

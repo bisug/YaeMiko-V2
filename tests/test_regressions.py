@@ -8054,6 +8054,28 @@ class CodebaseAuditHardeningTests(unittest.TestCase):
         plugin_src = (ROOT / "Mikobot/plugins/cust_filters.py").read_text(encoding="utf-8")
         self.assertIn("ENUM_FUNC_MAP = {", plugin_src)
 
+    def test_quotely_command_pattern_and_entity_handling(self):
+        source = (ROOT / "Mikobot/plugins/quotely.py").read_text(encoding="utf-8")
+        self.assertIn(r'@register(pattern=r"^/q(?:@\S+)?(?: |$)(.*)")', source)
+        self.assertIn('MessageEntityType.SPOILER: "spoiler"', source)
+        self.assertIn('MessageEntityType.CUSTOM_EMOJI: "custom_emoji"', source)
+        self.assertIn('MessageEntityType.BLOCKQUOTE: "blockquote"', source)
+        self.assertIn('text_content = event.text or event.caption or ""', source)
+
+        import re
+        pattern = re.compile(r"^/q(?:@\S+)?(?: |$)(.*)")
+        for cmd, expected in [
+            ("/q", ""),
+            ("/q red", "red"),
+            ("/q@YaeMikoRobot", ""),
+            ("/q@YaeMikoRobot red", "red"),
+            ("/q r", "r"),
+            ("/q 3 blue", "3 blue"),
+        ]:
+            m = pattern.match(cmd)
+            self.assertIsNotNone(m, f"Pattern failed to match {cmd}")
+            self.assertEqual(m.group(1), expected)
+
     def test_all_except_clauses_parenthesized(self):
         for path in sorted(ROOT.glob("**/*.py")):
             if ".venv" in path.parts:
