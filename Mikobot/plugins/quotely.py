@@ -3,6 +3,7 @@ import base64
 import io
 import os
 import tempfile
+from pathlib import Path
 from random import choice
 
 import httpx
@@ -15,8 +16,9 @@ def get_display_name(user):
         return None
     return " ".join(part for part in (user.first_name, user.last_name) if part) or None
 
-from Mikobot import DEV_USERS, app
+from Mikobot import DEV_USERS, LOGGER, app
 from Mikobot.events import register
+from Mikobot.plugins.telegraph import _upload
 from Mikobot.state import state
 
 # <=======================================================================================================>
@@ -49,18 +51,12 @@ class Quotly:
     }
 
     async def _format_quote(self, event, reply=None, sender=None, type_="private"):
-        async def telegraph(file_):
+        async def upload_media(file_):
             with Image.open(file_) as image:
                 converted = image.convert("RGB")
                 converted.save(file_, "PNG")
-            with open(file_, "rb") as source:
-                files = {"file": source.read()}
             try:
-                return "https://telegra.ph" + (
-                    await async_searcher(
-                        "https://telegra.ph/upload", post=True, data=files, re_json=True
-                    )
-                )[0]["src"]
+                return await _upload(Path(file_), "catbox")
             finally:
                 if os.path.exists(file_):
                     os.remove(file_)
@@ -153,8 +149,11 @@ class Quotly:
 
         if event.document and event.document.thumbs:
             file_ = await event.download_media(thumb=-1)
-            uri = await telegraph(file_)
-            message["media"] = {"url": uri}
+            try:
+                uri = await upload_media(file_)
+                message["media"] = {"url": uri}
+            except Exception as err:
+                LOGGER.warning("Failed to upload quote media thumbnail: %s", err)
 
         return message
 
@@ -288,7 +287,7 @@ async def quott_(event):
     try:
         file = await quotly.create_quotly(reply_, bg=match, reply=replied_to, sender=user)
         message = await event.reply_photo(file)
-    except (httpx.HTTPError, OSError, KeyError, TypeError, ValueError) as error:
+    except (httpx.HTTPError, OSError, KeyError, TypeError, ValueError, RuntimeError) as error:
         await msg.edit(f"Quote generation failed: {error}")
         return
     finally:

@@ -10,7 +10,7 @@ def env_ids(name):
     return [int(value) for value in os.environ.get(name, "").split() if value]
 
 
-class Config(object):
+class Config:
     # Configuration class for the bot
 
     # Enable or disable logging

@@ -5975,15 +5975,14 @@ class DeprecatedCallTests(unittest.TestCase):
     """
 
     def test_the_module_level_telegraph_helper_is_not_used(self):
-        # This command no longer uploads to Telegraph at all. Telegram disabled
-        # media uploads there, so telegra.ph/upload answers 400 with a bare
-        # JSON string and the library raises AttributeError on it. Catbox and
-        # Litterbox replaced it.
-        # quotely.py still posts to telegra.ph/upload and is deliberately not
-        # covered here; switching /q to another host is a separate change.
+        # Media uploads to Telegraph are disabled by Telegram. telegra.ph/upload
+        # answers 400 with a bare string. Catbox and Litterbox replaced it across
+        # both telegraph.py and quotely.py.
         source = (ROOT / "Mikobot/plugins/telegraph.py").read_text(encoding="utf-8")
         self.assertNotIn("Telegraph().upload_file", source)
         self.assertNotIn("telegra.ph/upload", source)
+        quotely_source = (ROOT / "Mikobot/plugins/quotely.py").read_text(encoding="utf-8")
+        self.assertNotIn("telegra.ph/upload", quotely_source)
 
     def test_the_deprecated_helper_really_does_warn(self):
         # Without this, the guard above could be satisfied by a spelling that

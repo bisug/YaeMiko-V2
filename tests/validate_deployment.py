@@ -143,7 +143,7 @@ def check_start_command_is_uniform(errors):
         errors.append(f"heroku.yml: run block must use worker: {START_COMMAND}")
 
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
-    if f'"-m", "Mikobot"' not in dockerfile.replace("'", '"'):
+    if '"-m", "Mikobot"' not in dockerfile.replace("'", '"'):
         errors.append("Dockerfile: CMD must run python -m Mikobot")
 
 

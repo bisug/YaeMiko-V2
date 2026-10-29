@@ -7,7 +7,7 @@ directly and keeps the call shape the plugins already use.
 """
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.date import DateTrigger
@@ -15,7 +15,7 @@ from apscheduler.triggers.date import DateTrigger
 
 class JobQueue:
     def __init__(self):
-        self._scheduler = AsyncIOScheduler(timezone=timezone.utc)
+        self._scheduler = AsyncIOScheduler(timezone=UTC)
 
     def start(self) -> None:
         if not self._scheduler.running:
@@ -24,7 +24,7 @@ class JobQueue:
     def run_once(self, callback, delay: float, *args, **kwargs) -> str:
         """Run ``callback(*args, **kwargs)`` once, ``delay`` seconds from now."""
         self.start()
-        run_date = datetime.now(timezone.utc) + timedelta(seconds=delay)
+        run_date = datetime.now(UTC) + timedelta(seconds=delay)
         job = self._scheduler.add_job(
             self._call,
             trigger=DateTrigger(run_date=run_date),
