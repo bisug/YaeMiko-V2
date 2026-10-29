@@ -7854,6 +7854,41 @@ class CodebaseAuditHardeningTests(unittest.TestCase):
         enforce_gban.__globals__["is_user_admin"].assert_not_called()
         enforce_gban.__globals__["check_and_ban"].assert_not_called()
 
+    def test_warns_reply_filter_fast_path(self):
+        warns_src = (ROOT / "Mikobot/plugins/warns.py").read_text(encoding="utf-8")
+        self.assertIn("chat_warn_filters = sql.get_chat_warn_triggers(chat.id)", warns_src)
+        self.assertIn("if not chat_warn_filters:\n        return \"\"", warns_src)
+        self.assertIn("await asyncio.to_thread(is_approved, chat.id, user.id)", warns_src)
+
+        is_approved_mock = mock.Mock(return_value=False)
+        reply_filter = load_function(
+            ROOT / "Mikobot/plugins/warns.py",
+            "reply_filter",
+            {
+                "asyncio": asyncio,
+                "re": re,
+                "sql": mock.Mock(
+                    get_chat_warn_triggers=mock.Mock(return_value=set()),
+                    get_warn_filter=mock.Mock(),
+                ),
+                "is_approved": is_approved_mock,
+                "extract_text": mock.AsyncMock(return_value="hello"),
+                "warn": mock.AsyncMock(),
+                "loggable": lambda f: f,
+                "Chat": mock.Mock(),
+                "Message": mock.Mock(),
+                "User": mock.Mock(),
+            },
+        )
+        msg = mock.Mock()
+        msg.chat = mock.Mock(id=-100123456789)
+        msg.from_user = mock.Mock(id=12345)
+
+        # When chat has no warn triggers, is_approved must never be called
+        res = asyncio.run(reply_filter(msg))
+        self.assertEqual(res, "")
+        is_approved_mock.assert_not_called()
+
     def test_all_except_clauses_parenthesized(self):
         for path in sorted(ROOT.glob("**/*.py")):
             if ".venv" in path.parts:

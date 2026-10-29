@@ -1,3 +1,4 @@
+import asyncio
 import html
 import re
 
@@ -374,20 +375,30 @@ async def reply_filter(message: Message) -> str:
 
     if user.id == 777000:
         return
-    if is_approved(chat.id, user.id):
-        return
+
     chat_warn_filters = sql.get_chat_warn_triggers(chat.id)
+    if not chat_warn_filters:
+        return ""
+
     to_match = await extract_text(message)
     if not to_match:
         return ""
 
+    matching_keyword = None
     for keyword in chat_warn_filters:
         pattern = r"( |^|[^\w])" + re.escape(keyword) + r"( |$|[^\w])"
         if re.search(pattern, to_match, flags=re.IGNORECASE):
-            user: User | None = message.from_user
-            warn_filter = sql.get_warn_filter(chat.id, keyword)
-            return await warn(user, chat, warn_filter.reply, message)
-    return ""
+            matching_keyword = keyword
+            break
+
+    if not matching_keyword:
+        return ""
+
+    if await asyncio.to_thread(is_approved, chat.id, user.id):
+        return ""
+
+    warn_filter = sql.get_warn_filter(chat.id, matching_keyword)
+    return await warn(user, chat, warn_filter.reply, message)
 
 
 @check_admin(is_user=True)
