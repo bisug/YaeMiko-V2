@@ -19,6 +19,8 @@ import random
 import string
 import time
 
+from cachetools import TTLCache
+
 from aiogram import F
 from aiogram.enums import ChatType, ParseMode
 from aiogram.exceptions import TelegramAPIError
@@ -87,7 +89,7 @@ FAIL_BAN_SECONDS = 60
 CHALLENGE_TTL = 15 * 60
 
 # (chat_id, user_id) -> {"answer": str, "kind": str, "expires": float}
-CHALLENGES: dict = {}
+CHALLENGES: TTLCache = TTLCache(maxsize=10_000, ttl=CHALLENGE_TTL)
 
 
 def _full_permissions() -> ChatPermissions:

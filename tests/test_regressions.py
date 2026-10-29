@@ -8039,6 +8039,13 @@ class CodebaseAuditHardeningTests(unittest.TestCase):
         self.assertIn("WELCOME_MESSAGES = TTLCache(maxsize=5000, ttl=86400)", welcome_src)
         self.assertIn("client.delete_messages(chat_id, prev_msg)", welcome_src)
 
+    def test_captcha_and_admin_cache_sizing(self):
+        captcha_src = (ROOT / "Mikobot/plugins/captcha.py").read_text(encoding="utf-8")
+        self.assertIn("CHALLENGES: TTLCache = TTLCache(maxsize=10_000, ttl=CHALLENGE_TTL)", captcha_src)
+
+        status_src = (ROOT / "Mikobot/plugins/helper_funcs/chat_status.py").read_text(encoding="utf-8")
+        self.assertIn("ADMIN_CACHE = TTLCache(maxsize=10_000, ttl=60 * 10, timer=perf_counter)", status_src)
+
     def test_all_except_clauses_parenthesized(self):
         for path in sorted(ROOT.glob("**/*.py")):
             if ".venv" in path.parts:
