@@ -30,7 +30,14 @@ async def bug_command_handler(client, message):
         )
 
         # Prepare the report message with message link and media content info
-        report_message = f"**Bug reported by @{message.from_user.username}:**\n\n{content}\n\n{media_type}\n\n**Message Link:** {replied_message.link}"
+        sender_repr = (
+            f"@{message.from_user.username}"
+            if message.from_user and message.from_user.username
+            else message.from_user.first_name
+            if message.from_user
+            else getattr(message.sender_chat, "title", "Anonymous")
+        )
+        report_message = f"**Bug reported by {sender_repr}:**\n\n{content}\n\n{media_type}\n\n**Message Link:** {replied_message.link}"
 
         # Send the report message
         await client.send_message(

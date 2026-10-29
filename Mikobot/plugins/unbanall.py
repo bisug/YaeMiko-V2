@@ -26,7 +26,7 @@ async def bulk_moderation(message):
             "This command can be used in groups and supergroups only."
         )
     command = message.command[0].lower() if message.command else ""
-    if not await is_admin(message.chat.id, message.from_user.id):
+    if not message.from_user or not await is_admin(message.chat.id, message.from_user.id):
         return await message.reply("Only admins can use this command.")
     bot_member = await app.get_chat_member(message.chat.id, (await app.get_me()).id)
     if not getattr(bot_member.privileges, "can_restrict_members", False):

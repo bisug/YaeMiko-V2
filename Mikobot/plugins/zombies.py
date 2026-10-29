@@ -73,7 +73,8 @@ async def zombies(_, message):
         if not deleted:
             return await message.reply("Group is clean; no deleted accounts found.")
         allowed = (
-            await is_administrator(message.from_user.id, message)
+            bool(message.from_user)
+            and await is_administrator(message.from_user.id, message)
             and await has_ban_rights(message)
             and await has_ban_rights(message, message.from_user.id)
         )
@@ -99,7 +100,7 @@ async def zombies(_, message):
                 ]
             ),
         )
-    if not await is_administrator(message.from_user.id, message):
+    if not message.from_user or not await is_administrator(message.from_user.id, message):
         return await message.reply(
             "You need to be an admin to remove deleted accounts."
         )

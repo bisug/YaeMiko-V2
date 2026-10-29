@@ -137,17 +137,26 @@ async def detect_nsfw(_, message):
             return
     if result.nsfw < NSFW_THRESHOLD:
         return
-    if message.from_user.id in DRAGONS:
+    if message.from_user and message.from_user.id in DRAGONS:
         return
     try:
         await message.delete()
     except Exception:
         return
+    user_info = (
+        f"{message.from_user.mention} [`{message.from_user.id}`]"
+        if message.from_user
+        else (
+            f"<b>{getattr(message.sender_chat, 'title', 'Channel')}</b> [`{getattr(message.sender_chat, 'id', '')}`]"
+            if message.sender_chat
+            else "Anonymous"
+        )
+    )
     await message.reply(
         f"""
 **🔞 NSFW Image Detected & Deleted Successfully!**
 
-**✪ User:** {message.from_user.mention} [`{message.from_user.id}`]
+**✪ User:** {user_info}
 **✪ Safe:** `{result.sfw:.2%}`
 **✪ NSFW score:** `{result.nsfw:.2%}`
 """

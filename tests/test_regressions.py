@@ -7636,5 +7636,99 @@ class FrameworkModelAccessTests(unittest.TestCase):
         self.assertEqual(member.user.first_name, "Ada")
 
 
+class KurigramFromUserNullSafetyTests(unittest.TestCase):
+    """Anonymous admins and broadcast channels send messages with from_user=None.
+
+    Kurigram handlers that directly read message.from_user.id or username crash
+    with AttributeError when invoked by channels or anonymous group admins.
+    These regression assertions ensure each handler guards from_user.
+    """
+
+    def test_kurigram_handlers_guard_from_user_presence(self):
+        bug_src = (ROOT / "Mikobot/plugins/bug.py").read_text(encoding="utf-8")
+        self.assertNotIn('f"**Bug reported by @{message.from_user.username}:**"', bug_src)
+        self.assertIn("message.from_user and message.from_user.username", bug_src)
+
+        users_src = (ROOT / "Mikobot/plugins/users.py").read_text(encoding="utf-8")
+        self.assertIn("if not message.from_user:\n        return", users_src)
+
+        unbanall_src = (ROOT / "Mikobot/plugins/unbanall.py").read_text(encoding="utf-8")
+        self.assertIn("not message.from_user or not await is_admin", unbanall_src)
+
+        zombies_src = (ROOT / "Mikobot/plugins/zombies.py").read_text(encoding="utf-8")
+        self.assertIn("bool(message.from_user)", zombies_src)
+        self.assertIn("not message.from_user or not await is_administrator", zombies_src)
+
+        antinsfw_src = (ROOT / "Mikobot/plugins/antinsfw.py").read_text(encoding="utf-8")
+        self.assertIn("if message.from_user and message.from_user.id in DRAGONS:", antinsfw_src)
+
+        karma_src = (ROOT / "Mikobot/plugins/karma.py").read_text(encoding="utf-8")
+        self.assertIn("if not message.reply_to_message.from_user:", karma_src)
+
+        pkang_src = (ROOT / "Mikobot/plugins/pkang.py").read_text(encoding="utf-8")
+        self.assertIn("if not message.from_user:", pkang_src)
+        self.assertNotIn("@app_Robot", pkang_src)
+
+    def test_bug_handler_with_anonymous_sender(self):
+        dummy_app = mock.Mock()
+        dummy_app.on_message = lambda *a, **kw: (lambda f: f)
+        bug_command_handler = load_function(
+            ROOT / "Mikobot/plugins/bug.py",
+            "bug_command_handler",
+            {
+                "app": dummy_app,
+                "filters": mock.Mock(),
+                "BUG_REPORT_CHAT_IDS": [-100],
+                "ParseMode": mock.Mock(MARKDOWN="markdown"),
+            },
+        )
+
+        replied = mock.Mock()
+        replied.text = "Sample crash log"
+        replied.caption = None
+        replied.photo = None
+        replied.document = None
+        replied.video = None
+        replied.audio = None
+        replied.animation = None
+        replied.link = "https://t.me/c/123/456"
+
+        message = mock.Mock()
+        message.reply_to_message = replied
+        message.from_user = None
+        message.sender_chat = mock.Mock(title="AdminChannel")
+
+        client = mock.AsyncMock()
+        asyncio.run(bug_command_handler(client, message))
+
+        client.send_message.assert_awaited_once()
+        sent_text = client.send_message.await_args[0][1]
+        self.assertIn("Bug reported by AdminChannel", sent_text)
+
+    def test_broadcast_handler_with_anonymous_sender_exits_cleanly(self):
+        dummy_app = mock.Mock()
+        dummy_app.on_message = lambda *a, **kw: (lambda f: f)
+        broadcast_cmd = load_function(
+            ROOT / "Mikobot/plugins/users.py",
+            "broadcast_cmd",
+            {
+                "app": dummy_app,
+                "fil": mock.Mock(),
+                "Client": mock.Mock(),
+                "OWNER_ID": 123,
+                "DEV_USERS": [],
+                "parse_broadcast_request": mock.Mock(),
+            },
+        )
+
+        message = mock.Mock()
+        message.from_user = None
+        client = mock.Mock()
+
+        # Must return early without raising AttributeError
+        asyncio.run(broadcast_cmd(client, message))
+        message.reply.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -18,6 +18,9 @@ async def _packkang(app, message):
     @MaybeSuraj on telegram. who helped me in making this module.
     """
     txt = await message.reply("Processing....")
+    if not message.from_user:
+        await txt.edit("This command can only be used by users.")
+        return
     if not message.reply_to_message:
         await txt.edit("Reply to message")
         return
@@ -29,8 +32,9 @@ async def _packkang(app, message):
         or message.reply_to_message.sticker.is_video
     ):
         return await txt.edit("Reply to a non-animated sticker")
+    bot_username = getattr(app.me, "username", "bot") if getattr(app, "me", None) else "bot"
     if len(message.command) < 2:
-        pack_name = f"{message.from_user.first_name}_sticker_pack_by_@app_Robot"
+        pack_name = f"{message.from_user.first_name}_sticker_pack_by_@{bot_username}"
     else:
         pack_name = message.text.split(maxsplit=1)[1]
     short_name = message.reply_to_message.sticker.set_name
@@ -58,7 +62,7 @@ async def _packkang(app, message):
 
     try:
         short_name = (
-            f"stikcer_pack_{str(uuid4()).replace('-', '')}_by_{app.me.username}"
+            f"stikcer_pack_{str(uuid4()).replace('-', '')}_by_{bot_username}"
         )
         user_id = await app.resolve_peer(message.from_user.id)
         await app.invoke(

@@ -137,6 +137,8 @@ async def karma(_, message):
             limit += 1
         await m.edit_text(msg)
     else:
+        if not message.reply_to_message.from_user:
+            return await message.reply("Cannot check karma for anonymous senders or channels.")
         user_id = message.reply_to_message.from_user.id
         karma = get_karma(message.chat.id, int_to_alpha(user_id))
         karma = karma["karma"] if karma else 0

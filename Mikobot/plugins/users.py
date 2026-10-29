@@ -54,6 +54,9 @@ def parse_broadcast_request(text: str, has_reply: bool = False):
 # Broadcast Function
 @app.on_message(fil.command("gcast"))
 async def broadcast_cmd(client: Client, message):  # kurigram handler
+    if not message.from_user:
+        return
+
     user_id = message.from_user.id
 
     if user_id not in [OWNER_ID] + DEV_USERS:
