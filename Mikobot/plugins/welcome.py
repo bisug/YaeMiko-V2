@@ -170,11 +170,7 @@ async def member_has_joined(client, member: ChatMemberUpdated):
                 )
         mention = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
         joined_date = datetime.fromtimestamp(time.time()).strftime("%Y.%m. %d %H:%M:%S")
-        first_name = (
-            f"{user.first_name} {user.last_name}" if user.last_name else user.first_name
-        )
         user_id = user.id
-        dc = user.dc_id
         with tempfile.TemporaryDirectory(prefix="yae-welcome-") as temp_dir:
             try:
                 pic = await client.download_media(

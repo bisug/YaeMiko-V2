@@ -95,7 +95,7 @@ async def _vidstick(_, message):
 
 
 @app.on_message(filters.command("getvideo"), group=333)
-async def _vidstick(_, message):
+async def _getvideo(_, message):
     chat_id = message.chat.id
     replied = message.reply_to_message
     if replied and replied.animation:

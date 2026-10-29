@@ -54,6 +54,7 @@ from Mikobot.plugins import ALL_MODULES
 from Mikobot.plugins.helper_funcs.chat_status import is_user_admin, sudo_plus
 from Mikobot.plugins.helper_funcs.misc import paginate_modules
 from Mikobot.utils.gate import chain
+from Mikobot.utils.human_read import get_readable_time
 from Mikobot.utils.parser import escape_markdown
 
 # <=======================================================================================================>
@@ -83,32 +84,6 @@ async def log_activity(event):
 
 async def log_kurigram_activity(_, update, users, chats):
     LOGGER.info("Kurigram activity: update=%s", type(update).__name__)
-
-
-# <============================================== FUNCTIONS =========================================================>
-def get_readable_time(seconds: int) -> str:
-    count = 0
-    ping_time = ""
-    time_list = []
-    time_suffix_list = ["s", "m", "h", "days"]
-
-    while count < 4:
-        count += 1
-        remainder, result = divmod(seconds, 60) if count < 3 else divmod(seconds, 24)
-        if seconds == 0 and remainder == 0:
-            break
-        time_list.append(int(result))
-        seconds = int(remainder)
-
-    for x in range(len(time_list)):
-        time_list[x] = str(time_list[x]) + time_suffix_list[x]
-    if len(time_list) == 4:
-        ping_time += time_list.pop() + ", "
-
-    time_list.reverse()
-    ping_time += ":".join(time_list)
-
-    return ping_time
 
 
 IMPORTED = {}
@@ -213,7 +188,7 @@ async def start(message: Message, command: CommandObject):
 
         else:
             first_name = message.from_user.first_name
-            lol = await message.reply_photo(
+            await message.reply_photo(
                 photo=str(choice(START_IMG)),
                 caption=FIRST_PART_TEXT.format(escape_markdown(first_name)),
                 parse_mode=ParseMode.MARKDOWN,
@@ -575,7 +550,6 @@ async def repo(message: Message, command: CommandObject):
 async def Miko_about_callback(query: CallbackQuery):
     await query.answer()
     if query.data == "Miko_":
-        uptime = get_readable_time((time.time() - StartTime))
         message_text = (
             f"➲ <b>Ai integration.</b>"
             f"\n➲ <b>Advance management capability.</b>"

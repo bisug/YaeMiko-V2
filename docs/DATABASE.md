@@ -170,8 +170,7 @@ guard runs on the calling thread because a session belongs to the thread that cr
 | `Database/sql/welcome_sql.py` | `clean_service`, `human_checks`, `leave_urls`, `raid_mode`, `welcome_mutes`, `welcome_pref`, `welcome_urls` |
 | `Database/sql/whispers_sql.py` | `whispers` |
 
-`fontsql.py` holds the font table used by text-to-image plugins and declares no table.
-`userinfo_sql.py` declares none either: it reads `users` and returns the `(name, username)` pair
+`userinfo_sql.py` declares no table: it reads `users` and returns the `(name, username)` pair
 the ban handlers mention people by.
 
 ## Domain map
