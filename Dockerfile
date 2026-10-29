@@ -14,8 +14,7 @@ RUN apt-get update \
 
 COPY pyproject.toml uv.lock requirements.txt ./
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv venv /opt/venv && \
+RUN uv venv /opt/venv && \
     uv sync --frozen --no-dev --python /opt/venv/bin/python
 
 
