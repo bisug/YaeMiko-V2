@@ -334,6 +334,10 @@ class EnvironmentTests(unittest.TestCase):
         # to a worker thread, so match the call rather than the whole line.
         self.assertLess(
             locks_body.index("sql.get_locks"),
+            locks_body.index("_message_matches_lock("),
+        )
+        self.assertLess(
+            locks_body.index("_message_matches_lock("),
             locks_body.index("await bot.get_chat_member(chat.id, bot.id)"),
         )
         self.assertNotIn("sql.is_locked(chat.id, lockable)", locks_body)
@@ -7888,6 +7892,42 @@ class CodebaseAuditHardeningTests(unittest.TestCase):
         res = asyncio.run(reply_filter(msg))
         self.assertEqual(res, "")
         is_approved_mock.assert_not_called()
+
+    def test_locks_del_lockables_fast_path(self):
+        locks_src = (ROOT / "Mikobot/plugins/locks.py").read_text(encoding="utf-8")
+        self.assertIn("def _message_matches_lock(", locks_src)
+        self.assertIn("_message_matches_lock(lockable, filter, locks, message)", locks_src)
+
+        fake_locks = mock.Mock(sticker=True, url=False)
+        for lockable in ("audio", "voice", "document", "video", "contact", "photo", "url", "bots", "forward", "game", "location", "egame", "rtl", "button", "inline", "phone", "command", "email", "anonchannel", "forwardchannel", "forwardbot", "videonote", "emojicustom", "stickerpremium", "stickeranimated", "invitelink"):
+            if not hasattr(fake_locks, lockable):
+                setattr(fake_locks, lockable, False)
+
+        bot_mock = mock.Mock(get_chat_member=mock.AsyncMock())
+        del_lockables = load_function(
+            ROOT / "Mikobot/plugins/locks.py",
+            "del_lockables",
+            {
+                "asyncio": asyncio,
+                "sql": mock.Mock(get_locks=mock.Mock(return_value=fake_locks)),
+                "bot": bot_mock,
+                "is_user_admin": mock.AsyncMock(),
+                "is_approved": mock.Mock(),
+                "LOCK_TYPES": {"sticker": lambda m: bool(getattr(m, "sticker", None))},
+                "_message_matches_lock": lambda l, f, lks, m: False,
+                "ChatMemberStatus": mock.Mock(),
+                "TelegramAPIError": Exception,
+            },
+        )
+        msg = mock.Mock()
+        msg.chat = mock.Mock(id=-100123456789)
+        msg.from_user = mock.Mock(id=12345)
+        msg.sender_chat = None
+        msg.sticker = None
+
+        # Message does not match active locks: must not query bot membership
+        asyncio.run(del_lockables(msg))
+        bot_mock.get_chat_member.assert_not_called()
 
     def test_all_except_clauses_parenthesized(self):
         for path in sorted(ROOT.glob("**/*.py")):

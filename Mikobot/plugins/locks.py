@@ -611,6 +611,45 @@ async def unlock(message: Message, command: CommandObject) -> str:
         await send_message(message, "What are you trying to unlock...?")
 
 
+def _message_matches_lock(lockable, filter, locks, message) -> bool:
+    if not getattr(locks, lockable, False):
+        return False
+    if lockable == "rtl":
+        if message.caption and _has_arabic_script(message.caption):
+            return True
+        if message.text and _has_arabic_script(message.text):
+            return True
+        return False
+    if lockable == "button":
+        return bool(message.reply_markup and message.reply_markup.inline_keyboard)
+    if lockable == "inline":
+        if message and message.via_bot:
+            return not _is_allowlisted(message, "inline")
+        return False
+    if lockable == "forwardchannel":
+        if message.forward_from_chat and getattr(message.forward_from_chat, "type", None) == "channel":
+            return True
+        return False
+    if lockable == "forwardbot":
+        if message.forward_from and getattr(message.forward_from, "is_bot", False):
+            return True
+        return False
+    if lockable == "anonchannel":
+        return bool(
+            (message.from_user and message.from_user.id == ChatID.FAKE_CHANNEL)
+            or (
+                not message.from_user
+                and message.sender_chat
+                and message.sender_chat.id != message.chat.id
+            )
+        )
+    if callable(filter) and filter(message):
+        if lockable != "bots" and _is_allowlisted(message, lockable):
+            return False
+        return True
+    return False
+
+
 async def del_lockables(message: Message):
     chat = message.chat
     user = message.from_user
@@ -620,6 +659,13 @@ async def del_lockables(message: Message):
     if not locks or not any(getattr(locks, lockable, False) for lockable in LOCK_TYPES):
         return
     if not user and not message.sender_chat:
+        return
+    # Fast path: check whether the message triggers any active lock before
+    # asking Telegram whether this bot may delete, or checking admin/approved status.
+    if not any(
+        _message_matches_lock(lockable, filter, locks, message)
+        for lockable, filter in LOCK_TYPES.items()
+    ):
         return
     try:
         bot_member = await bot.get_chat_member(chat.id, bot.id)
