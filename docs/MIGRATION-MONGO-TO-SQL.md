@@ -200,11 +200,14 @@ mongodump --uri "$MONGO_DB_URI" --out ./mongo-backup-$(date +%F)
 ### 2. Run the backfill with the bot stopped
 
 The backfill reads Mongo, so it needs `pymongo`, which is deliberately not in
-`requirements.txt`: nothing in the running bot imports it, and a test asserts
-it stays out. Install it only for this step.
+`pyproject.toml` or `requirements.txt`: nothing in the running bot imports it,
+and a test asserts it stays out. Run the migration with an ephemeral dependency
+using `uv`:
 
-```
-python -m pip install "pymongo>=4"
+```bash
+uv run --with "pymongo>=4" python <your-backfill-script>.py
+# or install temporarily in the venv:
+uv pip install "pymongo>=4"
 ```
 
 The SQL modules create their tables with `checkfirst=True`, which creates a

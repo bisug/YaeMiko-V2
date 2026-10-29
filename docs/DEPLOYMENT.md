@@ -199,10 +199,11 @@ Any provider works. Use Ubuntu 24.04 or Debian 12, at least 1 GB RAM, and a publ
 
 ```bash
 sudo apt-get update && sudo apt-get upgrade -y
-sudo apt-get install -y python3 python3-venv python3-pip git ffmpeg libgomp1 tmux
+sudo apt-get install -y git ffmpeg libgomp1 tmux
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-`ffmpeg` is needed for media features. `libgomp1` is needed by ONNX Runtime for the NSFW check.
+`ffmpeg` is needed for media features. `libgomp1` is needed by ONNX Runtime for the NSFW check. `uv` installs and manages Python 3.14 and virtual environments automatically.
 
 ### Step 3: create a dedicated user
 
@@ -219,9 +220,7 @@ sudo chown -R yaemiko:yaemiko /home/yaemiko
 ```bash
 sudo -u yaemiko -H git clone https://github.com/bisug/YaeMiko-V2.git /home/yaemiko/YaeMiko
 cd /home/yaemiko/YaeMiko
-sudo -u yaemiko -H python3 -m venv .venv
-sudo -u yaemiko -H .venv/bin/pip install --upgrade pip
-sudo -u yaemiko -H .venv/bin/pip install -r requirements.txt
+sudo -u yaemiko -H uv sync --frozen --no-dev
 ```
 
 ### Step 5: write the configuration
@@ -331,7 +330,7 @@ sudo systemctl status yaemiko
 cd /home/yaemiko/YaeMiko
 sudo systemctl stop yaemiko
 sudo -u yaemiko -H git pull
-sudo -u yaemiko -H .venv/bin/pip install -r requirements.txt
+sudo -u yaemiko -H uv sync --frozen --no-dev
 sudo systemctl start yaemiko
 ```
 

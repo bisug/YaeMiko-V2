@@ -483,16 +483,16 @@ docker run --env-file .env -e ENV=True yaemiko
 
 ```bash
 sudo apt-get update && sudo apt-get upgrade -y          # 1. Update the system
-sudo apt-get install -y python3-pip ffmpeg libgomp1     # 2. Install Python, ffmpeg, OpenMP
+sudo apt-get install -y ffmpeg libgomp1                 # 2. Install ffmpeg, OpenMP
+curl -LsSf https://astral.sh/uv/install.sh | sh         # 3. Install uv
 
-git clone https://github.com/bisug/YaeMiko-V2.git  # 3. Clone the repository
+git clone https://github.com/bisug/YaeMiko-V2.git  # 4. Clone the repository
 cd YaeMiko
 
-uv sync                                                 # 4. Create venv & install dependencies (or: python3 -m venv .venv && pip install -r requirements.txt)
+uv sync                                                 # 5. Create venv & install dependencies
+vi .env                                                 # 6. Add the required keys, see below
 
-vi .env                                                 # 5. Add the required keys, see below
-
-uv run python -m Mikobot                                # 6. Start the bot
+uv run python -m Mikobot                                # 7. Start the bot
 ```
 
 Keep it running with a process supervisor or tmux:
@@ -500,7 +500,7 @@ Keep it running with a process supervisor or tmux:
 ```bash
 sudo apt install -y tmux
 tmux new -s yaemiko
-python -m Mikobot
+uv run python -m Mikobot
 # detach with Ctrl+b then d, reattach with tmux attach -t yaemiko
 ```
 
@@ -512,14 +512,14 @@ python -m Mikobot
 `validate` job, which the `docker` job depends on, executes:
 
 ```bash
-pip install "aiogram==3.31.0"                          # the one import the suite needs
-python -m json.tool app.json >/dev/null      # manifest is valid JSON
-python -m json.tool railway.json >/dev/null   # Railway config is valid JSON
-python tests/validate_deployment.py           # blueprints agree with the entry point
-python tests/validate_docs.py                 # links, anchors, SVG, dead assets, no secrets
-python -m compileall -q .                    # every module compiles
-python -m unittest discover -s tests -v      # regression suite
-git diff --check                             # no whitespace damage
+uv sync --frozen --no-dev                      # sync pinned dependencies
+python -m json.tool app.json >/dev/null        # manifest is valid JSON
+python -m json.tool railway.json >/dev/null    # Railway config is valid JSON
+python tests/validate_deployment.py            # blueprints agree with the entry point
+python tests/validate_docs.py                  # links, anchors, SVG, dead assets, no secrets
+python -m compileall -q .                     # every module compiles
+python -m unittest discover -s tests -v       # regression suite
+git diff --check                              # no whitespace damage
 ```
 
 The `docker` job then builds the worker image with Buildx, loads it into the local image
@@ -528,24 +528,20 @@ store, and asserts its `CMD` is `python -m Mikobot`.
 The suite in [`tests/test_regressions.py`](tests/test_regressions.py) mostly uses AST extraction
 rather than importing the bot, so it stays fast. One test genuinely needs `aiogram` installed,
 because it asserts the field names of the pinned 3.31 release against the real package. CI installs
-that one dependency and fails if the version is not 3.31.0, so the assertion cannot pass by
-accident on a machine with a different version.
+the dependencies via `uv sync` and fails if any pin differs.
 
 Reproduce the full gate locally:
 
 ```bash
-pip install "aiogram==3.31.0"
-python tests/validate_deployment.py
-python tests/validate_docs.py
-python -m json.tool app.json >/dev/null
-python -m json.tool railway.json >/dev/null
-python -m compileall -q .
-python -m unittest discover -s tests -v
+uv sync --frozen --no-dev
+uv run python tests/validate_deployment.py
+uv run python tests/validate_docs.py
+uv run python -m json.tool app.json >/dev/null
+uv run python -m json.tool railway.json >/dev/null
+uv run python -m compileall -q .
+uv run python -m unittest discover -s tests -v
 git diff --check
 ```
-
-If you do not have `aiogram` installed, that single test will report
-`ModuleNotFoundError` while the rest still pass. Install the pin above to run the whole suite.
 
 ---
 

@@ -48,10 +48,10 @@ Being precise about this, because the numbers below drive real hosting choices.
 | --- | --- |
 | Repository size, 9.2 MB without `.git` | `du -sh --exclude=.git .` on this checkout |
 | 129 Python files, 38,708 lines | `find ... | wc -l` on this checkout |
-| 66.1 MB of direct dependency wheels | `pip download --no-deps -r requirements.txt`, the CPython 3.14 x86_64 wheels |
-| ONNX Runtime 1.31.0 wheel, 23.8 MB | `pip download`, cp314 manylinux x86_64 |
+| 66.1 MB of direct dependency wheels | `uv pip download --no-deps -r requirements.txt`, the CPython 3.14 x86_64 wheels |
+| ONNX Runtime 1.31.1 wheel, 23.8 MB | `uv pip download`, cp314 manylinux x86_64 |
 | opennsfw-onnx 0.1.0 wheel, 22.0 MB | same, the wheel ships the model |
-| Pillow 12.3.0 wheel, 6.9 MB | same |
+| Pillow 13.0.0 wheel, 7.0 MB | same |
 | Kurigram 2.2.26 wheel, 6.0 MB | same |
 | `concurrent_updates(64)` | `Mikobot/__init__.py:296` |
 | 20 second HTTP timeout | `Mikobot/state.py` |
