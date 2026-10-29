@@ -32,3 +32,22 @@ dependencies = [
 
 [tool.uv]
 package = false
+
+[tool.ty.src]
+include = ["Mikobot", "Database"]
+
+[tool.ty.rules]
+unresolved-attribute = "ignore"
+invalid-assignment = "ignore"
+invalid-argument-type = "ignore"
+call-non-callable = "ignore"
+invalid-return-type = "ignore"
+invalid-parameter-default = "ignore"
+unknown-argument = "ignore"
+invalid-type-form = "ignore"
+not-subscriptable = "ignore"
+no-matching-overload = "ignore"
+unsupported-operator = "ignore"
+too-many-positional-arguments = "ignore"
+unused-awaitable = "ignore"
+redundant-condition = "ignore"

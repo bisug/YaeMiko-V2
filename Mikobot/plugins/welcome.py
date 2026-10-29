@@ -391,7 +391,7 @@ async def send(source_message, message, keyboard, backup_message):
                     parse_mode=ParseMode.MARKDOWN,
                     reply_to_message_id=reply,
                 )
-            LOGGER.exception()
+            LOGGER.exception("Failed to send custom welcome message: %s", excp)
     return msg
 
 
@@ -407,7 +407,7 @@ async def new_member(message: Message, command: CommandObject):
     welc_mutes = await asyncio.to_thread(sql.welcome_mutes, chat.id)
     human_checks = await asyncio.to_thread(sql.get_human_checks, user.id, chat.id)
 
-    new_members = message.new_chat_members
+    new_members = message.new_chat_members or []
 
     for new_mem in new_members:
         if new_mem.id == bot.id and not ALLOW_CHATS:

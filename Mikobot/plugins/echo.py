@@ -47,7 +47,7 @@ async def _send_echo(message: Message, command: CommandObject) -> None:
     try:
         if replied is not None:
             # Copying keeps the original entities, so markup and links survive.
-            await replied.copy(message.chat.id)
+            await replied.copy_to(message.chat.id)
         else:
             await message.reply(text, parse_mode=ParseMode.HTML)
     except TelegramAPIError as exc:
@@ -87,7 +87,7 @@ async def _broadcast(message: Message, command: CommandObject) -> None:
         for attempt in (1, 2):
             try:
                 if replied is not None:
-                    await replied.copy(chat.chat_id)
+                    await replied.copy_to(chat.chat_id)
                 else:
                     await bot.send_message(
                         chat.chat_id, text, parse_mode=ParseMode.HTML

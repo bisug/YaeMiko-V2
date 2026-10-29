@@ -738,7 +738,7 @@ async def del_lockables(message: Message):
             if lockable != "bots" and _is_allowlisted(message, lockable):
                 continue
             if lockable == "bots":
-                new_members = message.new_chat_members
+                new_members = message.new_chat_members or []
                 for new_mem in new_members:
                     if new_mem.is_bot:
                         if not await is_bot_admin(chat, bot.id):
