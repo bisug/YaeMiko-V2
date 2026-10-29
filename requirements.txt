@@ -20,7 +20,7 @@ TgCryptoRust==1.3.1
 emoji==2.16.0
 httpx[http2]==0.28.1
 humanize==4.16.0
-Pillow==12.3.0
+Pillow==13.0.0
 psutil==7.2.2
 
 # Faster asyncio loop. uvloop publishes no Windows wheel, and the bot falls
