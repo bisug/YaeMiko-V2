@@ -45,6 +45,7 @@ class Quotly:
         MessageEntityType.PHONE_NUMBER: "phone_number",
         MessageEntityType.MENTION: "mention",
         MessageEntityType.BOLD: "bold",
+        MessageEntityType.ITALIC: "italic",
         MessageEntityType.CASHTAG: "cashtag",
         MessageEntityType.STRIKETHROUGH: "strikethrough",
         MessageEntityType.HASHTAG: "hashtag",
@@ -59,7 +60,6 @@ class Quotly:
         MessageEntityType.SPOILER: "spoiler",
         MessageEntityType.CUSTOM_EMOJI: "custom_emoji",
         MessageEntityType.BLOCKQUOTE: "blockquote",
-        MessageEntityType.EXPANDABLE_BLOCKQUOTE: "expandable_blockquote",
     }
 
     async def _format_quote(self, event, reply=None, sender=None, type_="private"):
