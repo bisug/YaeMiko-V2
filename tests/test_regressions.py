@@ -7929,6 +7929,44 @@ class CodebaseAuditHardeningTests(unittest.TestCase):
         asyncio.run(del_lockables(msg))
         bot_mock.get_chat_member.assert_not_called()
 
+    def test_blacklist_and_flood_fast_path(self):
+        bl_src = (ROOT / "Mikobot/plugins/blacklist.py").read_text(encoding="utf-8")
+        self.assertIn("chat_filters = sql.get_chat_blacklist(chat.id)", bl_src)
+        self.assertIn("if not chat_filters:\n        return", bl_src)
+
+        is_approved_mock = mock.Mock()
+        del_blacklist = load_function(
+            ROOT / "Mikobot/plugins/blacklist.py",
+            "del_blacklist",
+            {
+                "asyncio": asyncio,
+                "sql": mock.Mock(
+                    get_chat_blacklist=mock.Mock(return_value=set()),
+                    get_blacklist_setting=mock.Mock(),
+                ),
+                "is_approved": is_approved_mock,
+                "extract_text": mock.AsyncMock(return_value="sample text"),
+                "user_not_admin": lambda f: f,
+                "parse_trigger": mock.Mock(),
+                "matches_metadata": mock.Mock(),
+                "matches_text": mock.Mock(),
+                "Message": mock.Mock(),
+            },
+        )
+        msg = mock.Mock()
+        msg.chat = mock.Mock(id=-100123456789)
+        msg.from_user = mock.Mock(id=12345)
+
+        # When chat has no blacklist items, is_approved must never be queried
+        asyncio.run(del_blacklist(msg))
+        is_approved_mock.assert_not_called()
+
+        flood_src = (ROOT / "Mikobot/plugins/flood.py").read_text(encoding="utf-8")
+        self.assertLess(
+            flood_src.index("if not should_ban:\n        return \"\""),
+            flood_src.index("if await asyncio.to_thread(is_approved, chat.id, user.id):"),
+        )
+
     def test_all_except_clauses_parenthesized(self):
         for path in sorted(ROOT.glob("**/*.py")):
             if ".venv" in path.parts:

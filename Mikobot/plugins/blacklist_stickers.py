@@ -409,11 +409,14 @@ async def del_blackliststicker(message: Message):
     to_match = message.sticker
     if not to_match or not to_match.set_name:
         return
-    getmode, value = sql.get_blacklist_setting(chat.id)
 
     chat_filters = sql.get_chat_stickers(chat.id)
+    if not chat_filters:
+        return
+
     for trigger in chat_filters:
         if to_match.set_name.lower() == trigger.lower():
+            getmode, value = sql.get_blacklist_setting(chat.id)
             try:
                 if getmode == 0:
                     return

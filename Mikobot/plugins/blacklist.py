@@ -753,14 +753,14 @@ def findall(p, s):
 async def del_blacklist(message: Message):
     chat = message.chat
     user = message.from_user
+    chat_filters = sql.get_chat_blacklist(chat.id)
+    if not chat_filters:
+        return
+
     to_match = await extract_text(message)
     if not to_match:
         return
-    if await asyncio.to_thread(is_approved, chat.id, user.id):
-        return
-    getmode, value = sql.get_blacklist_setting(chat.id)
 
-    chat_filters = sql.get_chat_blacklist(chat.id)
     for trigger in chat_filters:
         kind, _payload = parse_trigger(trigger)
         if kind in (
@@ -776,6 +776,9 @@ async def del_blacklist(message: Message):
         else:
             hit = matches_text(trigger, to_match)
         if hit:
+            if await asyncio.to_thread(is_approved, chat.id, user.id):
+                return
+            getmode, value = sql.get_blacklist_setting(chat.id)
             try:
                 # /blocklistdelete controls the message separately from the
                 # action, so an admin can ban without the text being removed.

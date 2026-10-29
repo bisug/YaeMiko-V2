@@ -42,11 +42,6 @@ async def check_flood(message: Message):
         sql.clear_flood_state(chat.id, user.id)
         return ""
 
-    if await asyncio.to_thread(is_approved, chat.id, user.id):
-        sql.update_flood(chat.id, None)
-        sql.clear_flood_state(chat.id, user.id)
-        return
-
     timed = sql.get_flood_timer(chat.id) > 0
     if timed:
         should_ban = sql.update_flood_timer(chat.id, user.id, message.message_id)
@@ -55,6 +50,11 @@ async def check_flood(message: Message):
         if should_ban and sql.get_clearflood(chat.id):
             sql.track_message(chat.id, user.id, message.message_id)
     if not should_ban:
+        return ""
+
+    if await asyncio.to_thread(is_approved, chat.id, user.id):
+        sql.update_flood(chat.id, None)
+        sql.clear_flood_state(chat.id, user.id)
         return ""
 
     try:
