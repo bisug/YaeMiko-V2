@@ -1260,7 +1260,7 @@ class DatabaseRegressionTests(unittest.TestCase):
         removed = {"do_quote", "quote"}
         offenders = []
         for path in ROOT.rglob("*.py"):
-            if "__pycache__" in path.parts:
+            if {"__pycache__", ".venv"}.intersection(path.parts):
                 continue
             tree = ast.parse(path.read_text(encoding="utf-8"))
             for node in ast.walk(tree):

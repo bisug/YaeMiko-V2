@@ -1,0 +1,34 @@
+[project]
+name = "yaemiko"
+version = "2.0.0"
+description = "A powerful Telegram group management bot"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "aiogram==3.31.0",
+    "apscheduler==3.11.3",
+    "beautifulsoup4==4.15.0",
+    "cachetools==7.2.5",
+    "emoji==2.16.0",
+    "httpx[http2]==0.28.1",
+    "humanize==4.16.0",
+    "kurigram==2.2.26",
+    "nekos.py==1.1.0",
+    "onnxruntime==1.31.0",
+    "opennsfw-onnx==0.1.0",
+    "pillow==13.0.0",
+    "psutil==7.2.2",
+    "psycopg[binary,pool]==3.3.6",
+    "pyjokes==0.8.3",
+    "pyrate-limiter==4.5.1",
+    "requests==2.34.2",
+    "speedtest-cli==2.1.3",
+    "sqlalchemy==2.1.6",
+    "telegraph==2.2.0",
+    "tgcryptorust==1.3.1",
+    "unidecode==1.4.0",
+    'uvloop==0.23.0; sys_platform != "win32"',
+]
+
+[tool.uv]
+package = false

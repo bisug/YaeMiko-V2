@@ -302,7 +302,9 @@ YaeMiko/
 ├── Dockerfile                   Multi stage image
 ├── heroku.yml                   Heroku Docker build and run
 ├── Procfile                     Heroku worker entry
+├── pyproject.toml               Project metadata and dependencies
 ├── requirements.txt             Pinned dependencies
+├── uv.lock                      Deterministic dependency lockfile
 └── variables.py                 Fallback configuration for non ENV setups
 ```
 
@@ -486,12 +488,11 @@ sudo apt-get install -y python3-pip ffmpeg libgomp1     # 2. Install Python, ffm
 git clone https://github.com/bisug/YaeMiko-V2.git  # 3. Clone the repository
 cd YaeMiko
 
-python3 -m venv .venv && source .venv/bin/activate       # 4. Create a virtual environment
-pip install -U pip && pip install -r requirements.txt    # 5. Install dependencies
+uv sync                                                 # 4. Create venv & install dependencies (or: python3 -m venv .venv && pip install -r requirements.txt)
 
-vi .env                                                 # 6. Add the required keys, see below
+vi .env                                                 # 5. Add the required keys, see below
 
-python -m Mikobot                                       # 7. Start the bot
+uv run python -m Mikobot                                # 6. Start the bot
 ```
 
 Keep it running with a process supervisor or tmux:

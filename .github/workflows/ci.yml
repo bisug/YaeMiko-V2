@@ -42,6 +42,12 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+          enable-cache: true
+
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
@@ -55,7 +61,8 @@ jobs:
       # against an install nobody had asked for.
       - name: Install the dependencies under test
         run: |
-          python -m pip install --disable-pip-version-check -r requirements.txt
+          uv sync --frozen --no-dev
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
 
       # Guards the install above rather than the pin itself: a requirements.txt
       # edit that fails to install must not pass as a green build.
