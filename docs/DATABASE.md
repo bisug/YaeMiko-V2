@@ -30,7 +30,7 @@ Diagrams are Mermaid and render on GitHub and in VS Code preview.
 ## The one store
 
 PostgreSQL is the only persistent store. `Database/sql/` holds 31 model modules; 30 of them declare
-60 tables and 240 columns, all created by SQLAlchemy 2.1.4 over
+60 tables and 240 columns, all created by SQLAlchemy 2.1.6 over
 psycopg 3. MongoDB was retired once the last plugin moved across; see
 [MIGRATION-MONGO-TO-SQL.md](MIGRATION-MONGO-TO-SQL.md). The `Extra/` fonts and the pickle
 `DataStore` are files, not tables.
@@ -605,7 +605,7 @@ erDiagram
 
 ## Indexes
 
-Primary keys cover lookups by key. Four queries were not one of those, and each had nothing
+Primary keys cover lookups by key. Five queries were not one of those, and each had nothing
 to fall back on, because `create_all` never adds an index to a table it did not create:
 
 | Index | Serves |
@@ -614,6 +614,7 @@ to fall back on, because `create_all` never adds an index to a table it did not 
 | `users_username_lower_idx` | `get_userid_by_name`, which compares `lower(username)` |
 | `notes_name_lower_idx` | `get_note` and `rm_note`, which compare `lower(name)` within a chat |
 | `connection_chat_id_idx` | `curr_connection`, where the primary key is the user |
+| `chat_feds_fed_id_idx` | `chat_feds` `fed_id` filter and deletion queries, which the `chat_id` primary key cannot serve |
 
 The two functional indexes exist because a function breaks the ordering a b-tree index relies
 on, so neither `username` nor `name` is reachable through its own primary key.

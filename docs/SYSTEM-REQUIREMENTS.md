@@ -85,7 +85,7 @@ What you give up:
 
 ## Recommended
 
-The default choice. Handles a normal group with media, the AI commands, and the anti-NSFW check.
+The default choice. Handles a normal group with media, interactive commands, and the anti-NSFW check.
 
 ```text
 CPU    1 dedicated vCPU
@@ -115,7 +115,7 @@ What the second core buys:
 - ONNX Runtime defaults to one thread per core. With the anti-NSFW check active on every image in a
   busy group, image classification is the hottest path in the process.
 - ffmpeg runs as a subprocess, so it competes for CPU while the bot keeps serving commands.
-- Media modules, the AI commands, and speedtest already offload to threads through
+- Media modules, stickers, and speedtest already offload to threads through
   `asyncio.to_thread`. More cores means those threads finish sooner.
 
 What the extra disk buys: rotating logs, temp media from `TEMP_DOWNLOAD_DIRECTORY`, and the
@@ -151,7 +151,7 @@ YaeMiko makes only outbound connections. No inbound port has to be open.
 | MTProto session | Outbound, persistent | A few hundred KB per day |
 | Media upload and download | Both | Dominated by images and video in chat |
 | Speedtest | Outbound | Bursts of tens of MB while `/speedtest` runs |
-| AI calls | Outbound | Small, prompt sized, rate limited by Google |
+| Bot operations | Outbound | Search queries and media uploads |
 
 The long polling connection is a constant low volume stream, not a burst workload. A 1 Mbps uplink is
 enough for the polling itself. The bandwidth that matters is media: a group that passes 100 MB of
@@ -159,13 +159,13 @@ video a day will use it, and `/speedtest` will saturate the link while it runs.
 
 ## Database sizing
 
-Both stores are small unless the group is large. This is the least demanding part of the deployment.
+PostgreSQL storage requirements are small unless the group is very large. This is the least demanding part of the deployment.
 
 | Store | Minimum | Comfortable | What grows it |
 | --- | --- | --- | --- |
 | PostgreSQL | 1 GB | 5 GB | One row per warning, lock, note, rule, and filter |
 
-Atlas M0 gives 512 MB, Render Free Postgres gives 1 GB, and both are enough for a small group. The
+Render Free Postgres gives 1 GB, and free-tier PostgreSQL instances are enough for a small group. The
 connection pool is the thing to watch rather than the data volume: `pool_pre_ping=True` and
 `pool_recycle=1800` in `Database/sql/__init__.py` keep the pool healthy on managed platforms that drop
 idle connections.

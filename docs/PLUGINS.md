@@ -25,7 +25,7 @@ Back to [README](../README.md).
 `LOAD` and `NO_LOAD`, and exports the result as `ALL_MODULES`. `Mikobot/__main__.py` imports every
 name in that list, so dropping a new file into the directory is enough to register it.
 
-61 modules are shipped. Names below are file names without the `.py` suffix, which is what `LOAD` and
+62 modules are shipped. Names below are file names without the `.py` suffix, which is what `LOAD` and
 `NO_LOAD` expect. The display name in `/help` comes from each module's `__mod_name__`.
 
 ## Moderation
@@ -33,6 +33,7 @@ name in that list, so dropping a new file into the directory is enough to regist
 | Module | Display name | Commands |
 | --- | --- | --- |
 | `admin` | ADMIN | `admincache`, `adminlist`, `promote`, `demote`, `fullpromote`, `title`, `invitelink`, `pin`, `unpin`, `unpinall` |
+| `antinsfw` | ANTI-NSFW | `antinsfw` |
 | `ban` | BAN | `kick`, `dban`, `dkick`, `kickme`, `roar`, `unban` |
 | `gban` | ANTI-SPAM | `antispam`, `gban`, `gbanlist`, `ungban` |
 | `flood` | ANTI-FLOOD | `flood`, `setflood`, `setfloodmode`, `setfloodtimer`, `clearflood` |
@@ -91,6 +92,7 @@ name in that list, so dropping a new file into the directory is enough to regist
 | `telegraph` | TELEGRAPH | Uploads media to Telegraph and returns the link |
 | `hyperlink` | none | `hyperlink`, `pickwinner` |
 | `imagegen` | IMAGE GENERATION DISABLED | Image generation, currently flagged off in the module display name |
+| `pkang` | none | `pkang` (sticker pack conversion and stealing) |
 
 ## Information and diagnostics
 
@@ -118,6 +120,7 @@ name in that list, so dropping a new file into the directory is enough to regist
 | Module | Display name | Commands |
 | --- | --- | --- |
 | `anime` | ANIME | Anime search, the module lineage from `lostb053` |
+| `genshin` | Genshin | Genshin Impact characters, weapons, and artifact lookups |
 | `pokedex` | POKEDEX | `pokedex`, backed by [PokeAPI](https://pokeapi.co/) |
 | `sports` | SPORTS | `cricket`, `football`, backed by [TheSportsDB](https://www.thesportsdb.com/) |
 | `disasters` | Devs | `addsudo`, `addtiger`, runtime elevation helpers |
@@ -138,31 +141,31 @@ equivalent and Telegram's own client already shows that list.
 ## Writing a plugin
 
 ```python
-from telegram import Update
-from telegram.constants import KeyboardButtonStyle
-from telegram.ext import ContextTypes, CommandHandler
+from aiogram.filters import Command
+from aiogram.types import Message
+from pyrogram.enums import ButtonStyle
 
-from Mikobot import function
+from Mikobot import dp
 
 __mod_name__ = "EXAMPLE"
 __help__ = "Short description shown in /help."
 
 
-async def example(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
+async def example(message: Message):
+    await message.answer(
         "Hello",
         reply_markup=None,
     )
 
 
-function(CommandHandler("example", example))
+dp.message.register(example, Command("example"))
 ```
 
 Rules to follow:
 
 1. File goes in `Mikobot/plugins/<name>.py`. It is registered automatically.
 2. Set `__mod_name__` and `__help__` so the module renders correctly in `/help`.
-3. Register handlers through `function(...)`, which is `dispatcher.add_handler`.
+3. Register handlers through `dp.message.register(...)` or Kurigram event decorators.
 4. Give every inline button an explicit `style`: `PRIMARY` for navigation, `SUCCESS` for
    confirming actions, `DANGER` for destructive actions.
 5. Store state in `Database/sql`. It is the only database; there is no MongoDB layer.

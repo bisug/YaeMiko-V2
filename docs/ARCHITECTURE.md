@@ -119,9 +119,9 @@ Every inline button call must pass a `style` keyword:
 
 | Style | Meaning | Example |
 | --- | --- | --- |
-| `KeyboardButtonStyle.PRIMARY` | Navigation and neutral actions | pagination, back, close |
-| `KeyboardButtonStyle.SUCCESS` | Confirming and positive actions | confirm, apply, refresh |
-| `KeyboardButtonStyle.DANGER` | Destructive actions | delete, ban, purge all |
+| `ButtonStyle.PRIMARY` | Navigation and neutral actions | pagination, back, close |
+| `ButtonStyle.SUCCESS` | Confirming and positive actions | confirm, apply, refresh |
+| `ButtonStyle.DANGER` | Destructive actions | delete, ban, purge all |
 
 `tests/test_regressions.py` walks the AST of every Python file and fails when an `InlineKeyboardButton`
 or `EqInlineKeyboardButton` call has no `style` keyword, so the contract cannot regress silently.
@@ -175,8 +175,8 @@ update. Missing hooks are ignored via `contextlib.suppress`.
 `finally` in `__main__.py` runs a fixed order, each step guarded and logged:
 
 1. `app.stop()` stops the Kurigram client.
-3. `state.aclose()` closes the shared httpx client.
-4. The event loop is stopped if still running, then closed.
+2. `state.aclose()` closes the shared httpx client.
+3. The event loop is stopped if still running, then closed.
 
 ## Error handling
 

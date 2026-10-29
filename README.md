@@ -46,14 +46,14 @@
 **YaeMiko** is a modular Telegram group management bot that runs two Telegram clients in a single
 process: [aiogram](https://docs.aiogram.dev/) for the Bot API and
 [Kurigram](https://docs.kurigram.live/) for MTProto features. It targets Python 3.14, stores chat
-state in PostgreSQL, and ships 61 plugin modules.
+state in PostgreSQL, and ships 62 plugin modules.
 
 | | |
 | --- | --- |
 | **Runtime** | Python 3.14.10, single `asyncio` event loop, long polling |
 | **Telegram** | aiogram 3.31 on the Bot API, Kurigram 2.2.26 on MTProto, side by side |
 | **Storage** | PostgreSQL 18 through SQLAlchemy 2.1 |
-| **Modules** | 61 auto discovered plugins under `Mikobot/plugins` |
+| **Modules** | 62 auto discovered plugins under `Mikobot/plugins` |
 | **Requirements** | 512 MB RAM minimum, 1 GB recommended, Python 3.14.10 |
 | **Deployment** | Render, Railway, Heroku, Docker, or a bare VPS |
 | **Guarantees** | CI compile, unit, JSON and whitespace gates, weekly CodeQL, Dependabot updates |
@@ -102,7 +102,7 @@ state in PostgreSQL, and ships 61 plugin modules.
 
 ![YaeMiko runtime architecture](docs/assets/architecture.svg)
 
-Full walkthrough: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Schema of the 61 tables:
+Full walkthrough: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Schema of the 60 tables:
 [docs/DATABASE.md](docs/DATABASE.md).
 
 PostgreSQL is the only store. MongoDB was retired after every feature moved across:
@@ -114,8 +114,8 @@ PostgreSQL is the only store. MongoDB was retired after every feature moved acro
 | Core runtime | [`Mikobot/__init__.py`](Mikobot/__init__.py) | Configuration, logging, event loop, aiogram dispatcher, Kurigram client |
 | Plugin bus | [`Mikobot/events.py`](Mikobot/events.py) | Registers Kurigram handlers behind one signature |
 | HTTP client | [`Mikobot/state.py`](Mikobot/state.py) | One shared `httpx.AsyncClient` with HTTP/2 and a 20 second timeout |
-| Plugins | [`Mikobot/plugins`](Mikobot/plugins) | 57 feature modules, auto discovered |
-| SQL layer | [`Database/sql`](Database/sql) | 31 SQLAlchemy model modules, 61 tables, backed by PostgreSQL; see [docs/DATABASE.md](docs/DATABASE.md) |
+| Plugins | [`Mikobot/plugins`](Mikobot/plugins) | 62 feature modules, auto discovered |
+| SQL layer | [`Database/sql`](Database/sql) | 31 SQLAlchemy model modules, 60 tables, backed by PostgreSQL; see [docs/DATABASE.md](docs/DATABASE.md) |
 | Shared helpers | [`Mikobot/utils`](Mikobot/utils), [`Mikobot/plugins/helper_funcs`](Mikobot/plugins/helper_funcs) | Caching, custom filters, error capture, localization, message parsing, readable sizes |
 | Static assets | [`Extra`](Extra), [`locales`](locales) | Fonts, default avatars, catalogs for `en-US`, `id-ID`, `id-JW` |
 
@@ -173,7 +173,7 @@ execution. Persistence, reply construction and error handling surround that spin
 | Component | Version | Link |
 | --- | --- | --- |
 | PostgreSQL | 18 | [postgresql.org](https://www.postgresql.org/) |
-| SQLAlchemy | 2.1.4 | [sqlalchemy.org](https://www.sqlalchemy.org/) |
+| SQLAlchemy | 2.1.6 | [sqlalchemy.org](https://www.sqlalchemy.org/) |
 | psycopg (binary, pool) | 3.3.6 | [psycopg.org](https://www.psycopg.org/) |
 
 ### HTTP, media and processing
@@ -181,12 +181,12 @@ execution. Persistence, reply construction and error handling surround that spin
 | Component | Version | Purpose | Link |
 | --- | --- | --- | --- |
 | httpx with HTTP/2 | 0.28.1 | Shared async HTTP client | [PyPI](https://pypi.org/project/httpx/) |
-| Pillow | 12.3.0 | Image composition and text rendering | [PyPI](https://pypi.org/project/pillow/) |
-| ONNX Runtime | 1.31.0 | NSFW detection inference | [PyPI](https://pypi.org/project/onnxruntime/) |
+| Pillow | 13.0.0 | Image composition and text rendering | [PyPI](https://pypi.org/project/pillow/) |
+| ONNX Runtime | 1.31.1 | NSFW detection inference | [PyPI](https://pypi.org/project/onnxruntime/) |
 | opennsfw-onnx | 0.1.0 | Pre trained NSFW classifier | [PyPI](https://pypi.org/project/opennsfw-onnx/) |
 | beautifulsoup4 | 4.15.0 | HTML scraping for search modules | [PyPI](https://pypi.org/project/beautifulsoup4/) |
-| cachetools | 7.2.1 | Short lived caching in hot paths | [PyPI](https://pypi.org/project/cachetools/) |
-| pyrate-limiter | 4.5.0 | Extra outbound throttling | [PyPI](https://pypi.org/project/pyrate-limiter/) |
+| cachetools | 7.2.7 | Short lived caching in hot paths | [PyPI](https://pypi.org/project/cachetools/) |
+| pyrate-limiter | 4.5.1 | Extra outbound throttling | [PyPI](https://pypi.org/project/pyrate-limiter/) |
 | psutil | 7.2.2 | Runtime and host stats for `/alive` | [PyPI](https://pypi.org/project/psutil/) |
 | speedtest-cli | 2.1.3 | Bandwidth checks | [PyPI](https://pypi.org/project/speedtest-cli/) |
 | Telegraph | 2.2.0 | Image hosting for `/telegraph` | [PyPI](https://pypi.org/project/telegraph/) |
@@ -272,7 +272,7 @@ YaeMiko/
 │   ├── events.py                Kurigram handler registration helpers
 │   ├── state.py                 Shared httpx client
 │   ├── elevated_users.json      Runtime elevated user additions
-│   ├── plugins/                 57 feature modules + helper_funcs
+│   ├── plugins/                 62 feature modules + helper_funcs
 │   └── utils/                   Caching, filters, error capture, localization, parsing
 ├── Database/
 │   └── sql/                     31 SQLAlchemy model modules
@@ -312,7 +312,7 @@ YaeMiko/
 
 ## Plugin catalogue
 
-61 modules are discovered automatically. Per module summaries live in
+62 modules are discovered automatically. Per module summaries live in
 [docs/PLUGINS.md](docs/PLUGINS.md).
 
 | Group | Modules |
@@ -323,7 +323,7 @@ YaeMiko/
 | Fun and media | `cosplay`, `couple`, `echo`, `extra`, `fun`, `hyperlink`, `imagegen`, `sangmata`, `stickers`, `telegraph` |
 | Information | `alive`, `info`, `karma`, `log_channel`, `ping`, `speedtest` |
 | Search and translation | `bug`, `instadl`, `pkang`, `quotely`, `reverse`, `search`, `tr` |
-| Reference data | `anime`, `antinsfw`, `disasters`, `pokedex`, `sports` |
+| Reference data | `anime`, `antinsfw`, `disasters`, `genshin`, `pokedex`, `sports` |
 
 `LOAD` forces a start order and `NO_LOAD` skips modules entirely. Both accept a space separated list
 of module file names without the `.py` suffix.
@@ -466,8 +466,8 @@ Steps:
 1. Create a Telegram application at [my.telegram.org/apps](https://my.telegram.org/apps) for
    `API_ID` and `API_HASH`.
 2. Create the bot with [@BotFather](https://t.me/BotFather) for `TOKEN`.
-4. Press the deploy button, fill the prompted variables, and confirm the dyno.
-5. Verify the startup banner lands in the support chat and that `/start` replies.
+3. Press the deploy button, fill the prompted variables, and confirm the dyno.
+4. Verify the startup banner lands in the support chat and that `/start` replies.
 
 ### Docker
 

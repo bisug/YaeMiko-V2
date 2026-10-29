@@ -183,8 +183,8 @@ addon, and every required variable.
 
 1. Create the Telegram application and the bot as described in
    [Before you start](#before-you-start).
-3. Press the deploy button and fill the prompted variables.
-4. Confirm the dyno, then check the startup banner in the support chat.
+2. Press the deploy button and fill the prompted variables.
+3. Confirm the dyno, then check the startup banner in the support chat.
 
 ## VPS
 

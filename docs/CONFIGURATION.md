@@ -14,7 +14,6 @@ Back to [README](../README.md).
 - [User lists](#user-lists)
 - [Module selection](#module-selection)
 - [Logging](#logging)
-- [AI features](#ai-features)
 - [Where each value is read](#where-each-value-is-read)
 
 ## Sources and precedence
@@ -65,6 +64,8 @@ environment variables.
 | `LOGGER` | `True` | Unused, kept so existing deployments do not break. Log files are always written |
 | `LOG_LEVEL` | `INFO` | Root log level, one of `CRITICAL ERROR WARNING INFO DEBUG NOTSET` |
 | `ACTIVITY_LOG` | `False` | Log a summary line for every incoming update |
+| `LITTERBOX_HOURS` | `72h` | Expiry duration for temporary Litterbox uploads (`1h`, `12h`, `24h`, `72h`) |
+| `PREFERRED_LANGUAGE` | empty | Language code for anime synopsis and description translation |
 
 An unrecognised `LOG_LEVEL` falls back to `INFO` instead of raising.
 
@@ -108,11 +109,6 @@ root level, and the `pyrogram` and `pyrate_limiter` loggers are pinned to `ERROR
 `RedactingFormatter` rewrites any token shaped like `bot<digits>:<30 or more characters>` to
 `bot<redacted>`. The `httpx` and `httpcore` loggers are set to `WARNING` because their INFO output
 contains the complete Telegram API URL with the token in the path.
-
-## AI features
-
-| Variable | Default | Description |
-| --- | --- | --- |
 
 ## Where each value is read
 
