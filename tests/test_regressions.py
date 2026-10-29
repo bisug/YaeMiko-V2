@@ -7999,6 +7999,34 @@ class CodebaseAuditHardeningTests(unittest.TestCase):
         self.assertEqual(info["first_name"], "Spam")
         self.assertEqual(info["reason"], "Spamming")
 
+    def test_antiflood_memory_pruning(self):
+        import time
+        from collections import deque
+        antiflood_src = (ROOT / "Database/sql/antiflood_sql.py").read_text(encoding="utf-8")
+        self.assertIn("def _prune_expired_flood_windows(now: float) -> None:", antiflood_src)
+        self.assertIn("_prune_expired_flood_windows(now)", antiflood_src)
+
+        flood_windows = {}
+        flood_messages = {}
+        # Populate with 6000 expired entries
+        now = time.time()
+        for i in range(6000):
+            flood_windows[(str(-100 - i), 1000 + i)] = deque([now - 7200])
+            flood_messages[(str(-100 - i), 1000 + i)] = deque([999])
+
+        prune = load_function(
+            ROOT / "Database/sql/antiflood_sql.py",
+            "_prune_expired_flood_windows",
+            {
+                "FLOOD_WINDOWS": flood_windows,
+                "FLOOD_MESSAGES": flood_messages,
+            },
+        )
+        prune(now)
+        # Should be pruned to empty since all were older than 3600 seconds
+        self.assertEqual(len(flood_windows), 0)
+        self.assertEqual(len(flood_messages), 0)
+
     def test_all_except_clauses_parenthesized(self):
         for path in sorted(ROOT.glob("**/*.py")):
             if ".venv" in path.parts:

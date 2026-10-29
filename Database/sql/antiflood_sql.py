@@ -296,6 +296,19 @@ def take_flooded_messages(chat_id, user_id) -> list:
     return list(messages)
 
 
+def _prune_expired_flood_windows(now: float) -> None:
+    """Evict expired windows and stale tracked messages to bound memory."""
+    if len(FLOOD_WINDOWS) > 5000:
+        cutoff = now - 3600
+        expired = [
+            k for k, dq in FLOOD_WINDOWS.items()
+            if not dq or dq[-1] < cutoff
+        ]
+        for k in expired:
+            FLOOD_WINDOWS.pop(k, None)
+            FLOOD_MESSAGES.pop(k, None)
+
+
 def update_flood_timer(chat_id, user_id, message_id=None) -> bool:
     """Count a message in the timed window; True when the limit is exceeded."""
     window = get_flood_timer(chat_id)
@@ -304,6 +317,7 @@ def update_flood_timer(chat_id, user_id, message_id=None) -> bool:
         return False
 
     now = time.time()
+    _prune_expired_flood_windows(now)
     key = (str(chat_id), user_id)
     bucket = FLOOD_WINDOWS.setdefault(key, deque())
     bucket.append(now)
