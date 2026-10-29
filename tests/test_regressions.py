@@ -8027,6 +8027,12 @@ class CodebaseAuditHardeningTests(unittest.TestCase):
         self.assertEqual(len(flood_windows), 0)
         self.assertEqual(len(flood_messages), 0)
 
+    def test_anime_memory_ttlcache(self):
+        anime_src = (ROOT / "Mikobot/plugins/anime.py").read_text(encoding="utf-8")
+        self.assertIn("FILLERS = TTLCache(maxsize=1000, ttl=900)", anime_src)
+        self.assertIn("USER_JSON = TTLCache(maxsize=5000, ttl=60)", anime_src)
+        self.assertIn("USER_WC = TTLCache(maxsize=5000, ttl=60)", anime_src)
+
     def test_all_except_clauses_parenthesized(self):
         for path in sorted(ROOT.glob("**/*.py")):
             if ".venv" in path.parts:

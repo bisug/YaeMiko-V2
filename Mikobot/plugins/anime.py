@@ -14,6 +14,7 @@ from traceback import format_exc as err
 from urllib.parse import quote
 from uuid import uuid4
 
+from cachetools import TTLCache
 import requests
 from bs4 import BeautifulSoup
 from pyrogram import Client, filters
@@ -41,7 +42,7 @@ from pyrogram.enums import ButtonStyle
 
 # <=======================================================================================================>
 
-FILLERS = {}
+FILLERS = TTLCache(maxsize=1000, ttl=900)
 
 BOT_OWNER = {OWNER_ID}
 
@@ -61,8 +62,8 @@ no_pic = [
 
 DOWN_PATH = "Mikobot/downloads/"
 
-USER_JSON = {}
-USER_WC = {}
+USER_JSON = TTLCache(maxsize=5000, ttl=60)
+USER_WC = TTLCache(maxsize=5000, ttl=60)
 
 LANGUAGES = {
     "af": "afrikaans",
@@ -423,7 +424,7 @@ def control_user(func):
             try:
                 out = USER_JSON[user]
                 if nut - out < 1.2:
-                    USER_WC[user] += 1
+                    USER_WC[user] = USER_WC.get(user, 0) + 1
                     if USER_WC[user] == 3:
                         await message.reply(
                             ("Stop spamming bot!!!" + "\nElse you will be blacklisted"),
