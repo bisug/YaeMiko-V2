@@ -32,7 +32,6 @@ async def echo(message: Message, command: CommandObject):
     else:
         await message.answer(
             args[1],
-
             parse_mode=ParseMode.MARKDOWN,
             link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
@@ -64,7 +63,7 @@ async def totranslate(message: Message, command: CommandObject):
 
             try:
                 source_lang = args[1].split(None, 1)[0]
-            except (IndexError, AttributeError):
+            except IndexError, AttributeError:
                 source_lang = "en"
 
         else:

@@ -122,9 +122,10 @@ def num_stickers_filters():
 @unit_of_work_guard
 def num_stickers_chat_filters(chat_id):
     try:
-        return (
-            SESSION.scalar(select(func.count()).select_from(StickersFilters)
-            .where(StickersFilters.chat_id == str(chat_id)))
+        return SESSION.scalar(
+            select(func.count())
+            .select_from(StickersFilters)
+            .where(StickersFilters.chat_id == str(chat_id))
         )
     finally:
         SESSION.close()
@@ -185,7 +186,9 @@ def get_blacklist_setting(chat_id):
 def __load_CHAT_STICKERS():
     global CHAT_STICKERS
     try:
-        chats = SESSION.execute(select(StickersFilters.chat_id).distinct()).scalars().all()
+        chats = (
+            SESSION.execute(select(StickersFilters.chat_id).distinct()).scalars().all()
+        )
         for (chat_id,) in chats:  # remove tuple by ( ,)
             CHAT_STICKERS[chat_id] = []
 
@@ -216,10 +219,9 @@ def __load_chat_stickerset_blacklists():
 @unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with STICKERS_FILTER_INSERTION_LOCK:
-        chat_filters = (
-            SESSION.scalars(select(StickersFilters)
-            .where(StickersFilters.chat_id == str(old_chat_id))).all()
-        )
+        chat_filters = SESSION.scalars(
+            select(StickersFilters).where(StickersFilters.chat_id == str(old_chat_id))
+        ).all()
         for filt in chat_filters:
             filt.chat_id = str(new_chat_id)
         SESSION.commit()

@@ -347,7 +347,8 @@ async def kang_sticker(self: Client, ctx: Message, strings):
                                 InlineKeyboardButton(
                                     text=strings("click_me"),
                                     url=f"https://t.me/{self.me.username}?start",
-                                 style=ButtonStyle.PRIMARY)
+                                    style=ButtonStyle.PRIMARY,
+                                )
                             ]
                         ]
                     ),
@@ -364,7 +365,8 @@ async def kang_sticker(self: Client, ctx: Message, strings):
                     InlineKeyboardButton(
                         text=strings("viewpack"),
                         url=f"https://t.me/addstickers/{packname}",
-                     style=ButtonStyle.PRIMARY)
+                        style=ButtonStyle.PRIMARY,
+                    )
                 ]
             ]
         )
@@ -461,14 +463,29 @@ async def handler(client, message):
     if not text:
         return await message.reply("You might want to try `/mmf text`")
 
-    if reply_message.document and reply_message.document.file_size and reply_message.document.file_size > MAX_MEDIA_SIZE:
+    if (
+        reply_message.document
+        and reply_message.document.file_size
+        and reply_message.document.file_size > MAX_MEDIA_SIZE
+    ):
         return await message.reply("That document is too large.")
-    if reply_message.photo and reply_message.photo.file_size and reply_message.photo.file_size > MAX_MEDIA_SIZE:
+    if (
+        reply_message.photo
+        and reply_message.photo.file_size
+        and reply_message.photo.file_size > MAX_MEDIA_SIZE
+    ):
         return await message.reply("That photo is too large.")
-    if reply_message.video and reply_message.video.file_size and reply_message.video.file_size > MAX_MEDIA_SIZE:
+    if (
+        reply_message.video
+        and reply_message.video.file_size
+        and reply_message.video.file_size > MAX_MEDIA_SIZE
+    ):
         return await message.reply("That video is too large.")
     with tempfile.TemporaryDirectory(prefix="yae-memify-") as temp_dir:
-        source = os.path.join(temp_dir, f"{uuid.uuid4().hex}{Path(reply_message.file_name or '').suffix or '.png'}")
+        source = os.path.join(
+            temp_dir,
+            f"{uuid.uuid4().hex}{Path(reply_message.file_name or '').suffix or '.png'}",
+        )
         output = os.path.join(temp_dir, f"{uuid.uuid4().hex}.webp")
         downloaded = await client.download_media(reply_message, file_name=source)
         if not downloaded:
@@ -631,7 +648,8 @@ async def give_st_info(c: app, m: Message):
                 IKB(
                     "➕ 𝗔𝗱𝗱 𝘀𝘁𝗶𝗰𝗸𝗲𝗿 𝗽𝗮𝗰𝗸",
                     url=f"https://t.me/addstickers/{st_in.set_name}",
-                 style=ButtonStyle.PRIMARY)
+                    style=ButtonStyle.PRIMARY,
+                )
             ]
         ]
     )

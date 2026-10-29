@@ -119,7 +119,9 @@ async def new_fed(message: Message, command: CommandObject):
             try:
                 await bot.send_message(
                     EVENT_LOGS,
-                    "New Federation: <b>{}</b>\nID: <pre>{}</pre>".format(fed_name, fed_id),
+                    "New Federation: <b>{}</b>\nID: <pre>{}</pre>".format(
+                        fed_name, fed_id
+                    ),
                     parse_mode=ParseMode.HTML,
                 )
             except Exception:
@@ -148,9 +150,7 @@ async def del_fed(message: Message, command: CommandObject):
         if int(getinfo["owner"]) == int(user.id) or int(user.id) == OWNER_ID:
             fed_id = is_fed_id
         else:
-            await message.answer(
-                "Only federation owners can do this!"
-            )
+            await message.answer("Only federation owners can do this!")
             return
     else:
         await message.answer("What should I delete?")
@@ -170,9 +170,16 @@ async def del_fed(message: Message, command: CommandObject):
                     InlineKeyboardButton(
                         text="⚠️ Delete Federation ⚠️",
                         callback_data="rmfed_{}:{}".format(fed_id, user.id),
-                     style=ButtonStyle.DANGER),
+                        style=ButtonStyle.DANGER,
+                    ),
                 ],
-                [InlineKeyboardButton(text="Cancel", callback_data="rmfed_cancel", style=ButtonStyle.DANGER)],
+                [
+                    InlineKeyboardButton(
+                        text="Cancel",
+                        callback_data="rmfed_cancel",
+                        style=ButtonStyle.DANGER,
+                    )
+                ],
             ],
         ),
     )
@@ -213,9 +220,7 @@ async def fed_chat(message: Message, command: CommandObject):
         return
 
     if not fed_id:
-        await message.answer(
-            "This group is not in any federation!"
-        )
+        await message.answer("This group is not in any federation!")
         return
 
     user = message.from_user
@@ -323,9 +328,7 @@ async def leave_fed(message: Message, command: CommandObject):
                         ),
                         parse_mode=ParseMode.MARKDOWN,
                         message_thread_id=(
-                            message.message_thread_id
-                            if chat.is_forum
-                            else None
+                            message.message_thread_id if chat.is_forum else None
                         ),
                     )
             await send_message(
@@ -337,9 +340,7 @@ async def leave_fed(message: Message, command: CommandObject):
                 "How can you leave a federation that you never joined?!",
             )
     else:
-        await message.answer(
-            "Only group creators can use this command!"
-        )
+        await message.answer("Only group creators can use this command!")
 
 
 async def user_join_fed(message: Message, command: CommandObject):
@@ -478,15 +479,13 @@ async def fed_info(message: Message, command: CommandObject):
         info = sql.get_fed_info(fed_id)
 
     if is_user_fed_admin(fed_id, user.id) is False:
-        await message.answer(
-            "Only a federation admin can do this!"
-        )
+        await message.answer("Only a federation admin can do this!")
         return
 
     owner = await bot.get_chat(info["owner"])
     try:
         owner_name = owner.first_name + " " + owner.last_name
-    except (AttributeError, TypeError):
+    except AttributeError, TypeError:
         owner_name = owner.first_name
     FEDADMIN = sql.all_fed_users(fed_id)
     TotalAdminFed = len(FEDADMIN)
@@ -525,9 +524,7 @@ async def fed_admin(message: Message, command: CommandObject):
     fed_id = sql.get_fed_id(chat.id)
 
     if not fed_id:
-        await message.answer(
-            "This group is not in any federation!"
-        )
+        await message.answer("This group is not in any federation!")
         return
 
     if is_user_fed_admin(fed_id, user.id) is False:
@@ -543,7 +540,7 @@ async def fed_admin(message: Message, command: CommandObject):
     owner = await bot.get_chat(info["owner"])
     try:
         owner_name = owner.first_name + " " + owner.last_name
-    except (AttributeError, TypeError):
+    except AttributeError, TypeError:
         owner_name = owner.first_name
     text += " • {}\n".format(mention_html(owner.id, owner_name))
 
@@ -585,7 +582,6 @@ async def fed_ban(message: Message, command: CommandObject):
     if is_user_fed_admin(fed_id, user.id) is False:
         await message.answer("Only federation admins can do this!")
         return
-
 
     user_id, reason = await extract_unt_fedban(message, args)
 
@@ -1159,9 +1155,7 @@ async def set_frules(message: Message, command: CommandObject):
     fed_id = sql.get_fed_id(chat.id)
 
     if not fed_id:
-        await message.answer(
-            "This group is not in any federation!"
-        )
+        await message.answer("This group is not in any federation!")
         return
 
     if is_user_fed_admin(fed_id, user.id) is False:
@@ -1196,14 +1190,10 @@ async def set_frules(message: Message, command: CommandObject):
                     ),
                     parse_mode=ParseMode.MARKDOWN,
                     message_thread_id=(
-                        message.message_thread_id
-                        if chat.is_forum
-                        else None
+                        message.message_thread_id if chat.is_forum else None
                     ),
                 )
-        await message.answer(
-            f"Rules have been changed to :\n{rules}!"
-        )
+        await message.answer(f"Rules have been changed to :\n{rules}!")
     else:
         await message.answer("Please write rules to set this up!")
 
@@ -1221,9 +1211,7 @@ async def get_frules(message: Message, command: CommandObject):
 
     fed_id = sql.get_fed_id(chat.id)
     if not fed_id:
-        await message.answer(
-            "This group is not in any federation!"
-        )
+        await message.answer("This group is not in any federation!")
         return
 
     rules = sql.get_frules(fed_id)
@@ -1250,9 +1238,7 @@ async def fed_broadcast(message: Message, command: CommandObject):
         fed_id = sql.get_fed_id(chat.id)
         fedinfo = sql.get_fed_info(fed_id)
         if is_user_fed_owner(fed_id, user.id) is False:
-            await message.answer(
-                "Only federation owners can do this!"
-            )
+            await message.answer("Only federation owners can do this!")
             return
         # Parsing md
         raw_text = msg.text
@@ -1736,9 +1722,7 @@ async def fed_import_bans(message: Message, command: CommandObject):
                         teks,
                         parse_mode=ParseMode.MARKDOWN,
                         message_thread_id=(
-                            message.message_thread_id
-                            if chat.is_forum
-                            else None
+                            message.message_thread_id if chat.is_forum else None
                         ),
                     )
         elif fileformat == "csv":
@@ -1828,9 +1812,7 @@ async def fed_import_bans(message: Message, command: CommandObject):
                         teks,
                         parse_mode=ParseMode.MARKDOWN,
                         message_thread_id=(
-                            message.message_thread_id
-                            if chat.is_forum
-                            else None
+                            message.message_thread_id if chat.is_forum else None
                         ),
                     )
         else:
@@ -1853,7 +1835,9 @@ async def del_fed_button(query: CallbackQuery):
         return
 
     if query.message.chat.type != "private" or query.from_user.id != requested_by:
-        await query.answer("This deletion request belongs to another user.", show_alert=True)
+        await query.answer(
+            "This deletion request belongs to another user.", show_alert=True
+        )
         return
 
     getfed = sql.get_fed_info(fed_id)
@@ -1894,7 +1878,9 @@ async def fed_stat_user(message: Message, command: CommandObject):
     if fed_id is not None:
         user_name, reason, banned_at = sql.get_user_fban(fed_id, str(user_id))
         if user_name is False:
-            await send_message(msg, f"Fed {fed_id} not found!", parse_mode=ParseMode.MARKDOWN)
+            await send_message(
+                msg, f"Fed {fed_id} not found!", parse_mode=ParseMode.MARKDOWN
+            )
             return
         user_name = user_name or "He/she"
         banned_at = (
@@ -1941,9 +1927,7 @@ async def set_fed_log(message: Message, command: CommandObject):
     if args:
         fedinfo = sql.get_fed_info(args[0])
         if not fedinfo:
-            await send_message(
-                message, "This Federation does not exist!"
-            )
+            await send_message(message, "This Federation does not exist!")
             return
         isowner = is_user_fed_owner(args[0], user.id)
         if not isowner:
@@ -1985,9 +1969,7 @@ async def unset_fed_log(message: Message, command: CommandObject):
     if args:
         fedinfo = sql.get_fed_info(args[0])
         if not fedinfo:
-            await send_message(
-                message, "This Federation does not exist!"
-            )
+            await send_message(message, "This Federation does not exist!")
             return
         isowner = is_user_fed_owner(args[0], user.id)
         if not isowner:
@@ -2030,9 +2012,7 @@ async def subs_feds(message: Message, command: CommandObject):
     fedinfo = sql.get_fed_info(fed_id)
 
     if not fed_id:
-        await send_message(
-            message, "This group is not in any federation!"
-        )
+        await send_message(message, "This group is not in any federation!")
         return
 
     if is_user_fed_owner(fed_id, user.id) is False:
@@ -2068,9 +2048,7 @@ async def subs_feds(message: Message, command: CommandObject):
                         ),
                         parse_mode=ParseMode.MARKDOWN,
                         message_thread_id=(
-                            message.message_thread_id
-                            if chat.is_forum
-                            else None
+                            message.message_thread_id if chat.is_forum else None
                         ),
                     )
         else:
@@ -2106,9 +2084,7 @@ async def unsubs_feds(message: Message, command: CommandObject):
     fedinfo = sql.get_fed_info(fed_id)
 
     if not fed_id:
-        await send_message(
-            message, "This group is not in any federation!"
-        )
+        await send_message(message, "This group is not in any federation!")
         return
 
     if is_user_fed_owner(fed_id, user.id) is False:
@@ -2144,9 +2120,7 @@ async def unsubs_feds(message: Message, command: CommandObject):
                         ),
                         parse_mode=ParseMode.MARKDOWN,
                         message_thread_id=(
-                            message.message_thread_id
-                            if chat.is_forum
-                            else None
+                            message.message_thread_id if chat.is_forum else None
                         ),
                     )
         else:
@@ -2182,9 +2156,7 @@ async def get_myfedsubs(message: Message, command: CommandObject):
     fedinfo = sql.get_fed_info(fed_id)
 
     if not fed_id:
-        await send_message(
-            message, "This group is not in any federation!"
-        )
+        await send_message(message, "This group is not in any federation!")
         return
 
     if is_user_fed_owner(fed_id, user.id) is False:

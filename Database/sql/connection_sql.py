@@ -135,7 +135,9 @@ def get_connected_chat(user_id):
 @unit_of_work_guard
 def curr_connection(chat_id):
     try:
-        return SESSION.scalars(select(Connection).where(Connection.chat_id == str(chat_id))).first()
+        return SESSION.scalars(
+            select(Connection).where(Connection.chat_id == str(chat_id))
+        ).first()
     finally:
         SESSION.close()
 
@@ -193,9 +195,9 @@ def clear_history_conn(user_id):
     global HISTORY_CONNECT
     user_id = int(user_id)
     with CONNECTION_HISTORY_LOCK:
-        SESSION.scalars(select(ConnectionHistory).where(
-            ConnectionHistory.user_id == user_id
-        )).delete(synchronize_session=False)
+        SESSION.scalars(
+            select(ConnectionHistory).where(ConnectionHistory.user_id == user_id)
+        ).delete(synchronize_session=False)
         SESSION.commit()
         HISTORY_CONNECT[user_id] = {}
     return True
@@ -207,19 +209,19 @@ def migrate_chat(old_chat_id, new_chat_id):
         allowed = SESSION.get(ChatAccessConnectionSettings, str(old_chat_id))
         if allowed:
             allowed.chat_id = str(new_chat_id)
-        rows = (
-            SESSION.scalars(select(Connection)
-            .where(Connection.chat_id == str(old_chat_id))).all()
-        )
+        rows = SESSION.scalars(
+            select(Connection).where(Connection.chat_id == str(old_chat_id))
+        ).all()
         for row in rows:
             row.chat_id = str(new_chat_id)
         SESSION.commit()
 
     with CONNECTION_HISTORY_LOCK:
-        rows = (
-            SESSION.scalars(select(ConnectionHistory)
-            .where(ConnectionHistory.chat_id == str(old_chat_id))).all()
-        )
+        rows = SESSION.scalars(
+            select(ConnectionHistory).where(
+                ConnectionHistory.chat_id == str(old_chat_id)
+            )
+        ).all()
         for row in rows:
             row.chat_id = str(new_chat_id)
         SESSION.commit()

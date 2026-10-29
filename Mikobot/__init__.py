@@ -1,5 +1,3 @@
-
-
 # https://github.com/bisug/YaeMiko-V2
 # https://github.com/Team-ProjectCodeX
 
@@ -80,22 +78,18 @@ def env_int(name, default=None, message=None):
 _load_local_env()
 
 
-
 def _load_elevated_users():
     path = os.path.join(os.path.dirname(__file__), "elevated_users.json")
     try:
         with open(path, encoding="utf-8") as file:
             return json.load(file)
-    except (OSError, ValueError):
+    except OSError, ValueError:
         LOGGER.exception("Unable to load elevated users from %s", path)
         return {}
 
 
-
-
 # <================================================= NECESSARY ======================================================>
 StartTime = time.time()
-
 
 
 def _create_event_loop():
@@ -126,6 +120,7 @@ loop = _create_event_loop()
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 if LOG_LEVEL not in {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"}:
     LOG_LEVEL = "INFO"
+
 
 class RedactingFormatter(logging.Formatter):
     _token_pattern = re.compile(r"\bbot\d+:[A-Za-z0-9_-]{20,}\b")
@@ -173,7 +168,9 @@ ENV = env_bool("ENV")
 
 if ENV:
     # Read configuration from environment variables
-    API_ID = env_int("API_ID", message="Your API_ID env variable is not a valid integer.")
+    API_ID = env_int(
+        "API_ID", message="Your API_ID env variable is not a valid integer."
+    )
     API_HASH = os.environ.get("API_HASH", None)
     ALLOW_CHATS = env_bool("ALLOW_CHATS")
     ALLOW_EXCL = env_bool("ALLOW_EXCL")
@@ -327,7 +324,9 @@ def _install_gates():
 
 _install_gates()
 
-store = open_store(os.path.join(os.path.dirname(__file__), "..", "ptb_persistence.pickle"))
+store = open_store(
+    os.path.join(os.path.dirname(__file__), "..", "ptb_persistence.pickle")
+)
 chat_data = store.chat_data
 user_data = store.user_data
 # <=======================================================================================================>
@@ -414,6 +413,8 @@ def alive_msg() -> str:
 
 ⏳ <i>Please wait for startup to complete. If commands do not work, check the logs.</i>
 """
+
+
 # <=======================================================================================================>
 
 # <=============================================== CLIENT SETUP ========================================================>

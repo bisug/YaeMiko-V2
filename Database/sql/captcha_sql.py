@@ -163,9 +163,7 @@ def set_show_rules(chat_id, enabled: bool) -> None:
 @unit_of_work_guard
 def has_solved(chat_id, user_id) -> bool:
     try:
-        return (
-            SESSION.get(CaptchaSolved, (str(chat_id), user_id)) is not None
-        )
+        return SESSION.get(CaptchaSolved, (str(chat_id), user_id)) is not None
     finally:
         SESSION.close()
 
@@ -198,10 +196,9 @@ def migrate_chat(old_chat_id, new_chat_id) -> None:
             else:
                 settings.chat_id = str(new_chat_id)
                 SESSION.add(settings)
-        for row in (
-            SESSION.scalars(select(CaptchaSolved)
-            .where(CaptchaSolved.chat_id == str(old_chat_id))).all()
-        ):
+        for row in SESSION.scalars(
+            select(CaptchaSolved).where(CaptchaSolved.chat_id == str(old_chat_id))
+        ).all():
             SESSION.delete(row)
         SESSION.commit()
         _cache.pop(str(old_chat_id), None)

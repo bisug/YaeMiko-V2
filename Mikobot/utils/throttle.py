@@ -50,8 +50,12 @@ class ThrottledSession(AiohttpSession):
 
     async def acquire(self, method: str) -> None:
         await self._consume(self._overall_bucket, self._overall_lock)
-        state = self._method_state.setdefault(method, [float(self.burst), time.monotonic()])
-        await self._consume(state, self._method_locks.setdefault(method, asyncio.Lock()))
+        state = self._method_state.setdefault(
+            method, [float(self.burst), time.monotonic()]
+        )
+        await self._consume(
+            state, self._method_locks.setdefault(method, asyncio.Lock())
+        )
         wait = self.min_delay - (time.monotonic() - self._last_call.get(method, 0.0))
         if wait > 0:
             await asyncio.sleep(wait)

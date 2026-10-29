@@ -29,9 +29,7 @@ def can_restrict(func: Callable) -> Callable:
         try:
             check = await app.get_chat_member(message.chat.id, sender.id)
         except RPCError:
-            return await message.reply(
-                "» I can't check your permissions in this chat."
-            )
+            return await message.reply("» I can't check your permissions in this chat.")
 
         if check.status not in [ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR]:
             return await message.reply(

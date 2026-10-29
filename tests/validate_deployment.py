@@ -66,7 +66,9 @@ def check_railway(errors):
         errors.append("railway.json: build.builder must be DOCKERFILE")
     dockerfile = build.get("dockerfilePath")
     if not dockerfile or not (ROOT / dockerfile).exists():
-        errors.append(f"railway.json: build.dockerfilePath {dockerfile!r} does not exist")
+        errors.append(
+            f"railway.json: build.dockerfilePath {dockerfile!r} does not exist"
+        )
     deploy = config.get("deploy", {})
     if deploy.get("startCommand") != START_COMMAND:
         errors.append(
@@ -93,7 +95,9 @@ def check_render(errors):
 
     dockerfile = re.search(r"^\s*dockerfilePath:\s*(\S+)\s*$", text, re.MULTILINE)
     if not dockerfile or not (ROOT / dockerfile.group(1).lstrip("./")).exists():
-        errors.append("render.yaml: dockerfilePath must point at an existing Dockerfile")
+        errors.append(
+            "render.yaml: dockerfilePath must point at an existing Dockerfile"
+        )
 
     command = re.search(r"^\s*dockerCommand:\s*(.+?)\s*$", text, re.MULTILINE)
     if not command or command.group(1) != START_COMMAND:
@@ -109,16 +113,24 @@ def check_render(errors):
 
     missing = sorted(SECRETS - set(_secret_sync_false(text)))
     if missing:
-        errors.append(f"render.yaml: these must use sync: false, found literal values: {missing}")
+        errors.append(
+            f"render.yaml: these must use sync: false, found literal values: {missing}"
+        )
 
     if "ENV" not in keys:
-        errors.append("render.yaml: ENV must be set so the environment is read instead of variables.py")
+        errors.append(
+            "render.yaml: ENV must be set so the environment is read instead of variables.py"
+        )
 
     if re.search(r"-\s*key:\s*DATABASE_URL\s*\n\s*value:", text):
-        errors.append("render.yaml: DATABASE_URL must come from fromDatabase, not a literal value")
+        errors.append(
+            "render.yaml: DATABASE_URL must come from fromDatabase, not a literal value"
+        )
 
     reference = re.search(r"fromDatabase:\s*\n\s*name:\s*(\S+)", text)
-    databases = re.findall(r"^\s{2}-\s*name:\s*(\S+)\s*$", text.split("databases:", 1)[-1], re.MULTILINE)
+    databases = re.findall(
+        r"^\s{2}-\s*name:\s*(\S+)\s*$", text.split("databases:", 1)[-1], re.MULTILINE
+    )
     if not reference:
         errors.append("render.yaml: DATABASE_URL must be wired with fromDatabase")
     elif reference.group(1) not in databases:
@@ -136,7 +148,9 @@ def check_start_command_is_uniform(errors):
     """Every deployment entry point must run the same command."""
     procfile = (ROOT / "Procfile").read_text(encoding="utf-8").strip()
     if procfile != f"worker: {START_COMMAND}":
-        errors.append(f"Procfile: must be 'worker: {START_COMMAND}', found {procfile!r}")
+        errors.append(
+            f"Procfile: must be 'worker: {START_COMMAND}', found {procfile!r}"
+        )
 
     heroku_yml = (ROOT / "heroku.yml").read_text(encoding="utf-8")
     if f"worker: {START_COMMAND}" not in heroku_yml:
@@ -172,7 +186,7 @@ def check_app_json(errors):
         return
 
     for path in ("README.md", "docs/DEPLOYMENT.md"):
-        if f'PostgreSQL {version}' not in (ROOT / path).read_text(encoding="utf-8"):
+        if f"PostgreSQL {version}" not in (ROOT / path).read_text(encoding="utf-8"):
             errors.append(f"{path}: does not mention PostgreSQL {version}")
 
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")

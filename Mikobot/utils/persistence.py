@@ -65,9 +65,7 @@ class TokenDict(dict):
         now = time.monotonic()
         stamps = self._table()
         stale = [
-            key
-            for key in list(self)
-            if key not in stamps or now - stamps[key] > ttl
+            key for key in list(self) if key not in stamps or now - stamps[key] > ttl
         ]
         for key in stale:
             del self[key]
@@ -84,7 +82,7 @@ class DataStore:
         try:
             with open(self.filepath, "rb") as handle:
                 loaded = pickle.load(handle)
-        except (OSError, EOFError, pickle.UnpicklingError):
+        except OSError, EOFError, pickle.UnpicklingError:
             loaded = {}
         self.data = loaded if isinstance(loaded, dict) else {}
         for section in ("chat_data", "user_data"):

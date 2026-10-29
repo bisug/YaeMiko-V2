@@ -53,7 +53,8 @@ async def promote(message: Message, command: CommandObject):
                         InlineKeyboardButton(
                             text="Click to promote admin.",
                             callback_data=f"admin_=promote={user_id}",
-                         style=ButtonStyle.PRIMARY),
+                            style=ButtonStyle.PRIMARY,
+                        ),
                     ],
                 ],
             ),
@@ -84,9 +85,7 @@ async def promote(message: Message, command: CommandObject):
         return
 
     if user_id == bot.id:
-        await message.answer(
-            "I can't promote myself! Get an admin to do it for me."
-        )
+        await message.answer("I can't promote myself! Get an admin to do it for me.")
         return
 
     # Set the same permissions as the bot - the bot can't assign higher permissions than itself!
@@ -110,9 +109,7 @@ async def promote(message: Message, command: CommandObject):
             )
         except TelegramAPIError as err:
             if err.message == "User_not_mutual_contact":
-                await message.answer(
-                    "I can't promote someone who isn't in the group."
-                )
+                await message.answer("I can't promote someone who isn't in the group.")
             else:
                 await message.answer("An error occurred while promoting.")
             return
@@ -155,7 +152,8 @@ async def fullpromote(message: Message, command: CommandObject):
                         InlineKeyboardButton(
                             text="Click to promote admin.",
                             callback_data=f"admin_=promote={user_id}",
-                         style=ButtonStyle.PRIMARY),
+                            style=ButtonStyle.PRIMARY,
+                        ),
                     ],
                 ],
             ),
@@ -186,9 +184,7 @@ async def fullpromote(message: Message, command: CommandObject):
         return
 
     if user_id == bot.id:
-        await message.answer(
-            "I can't promote myself! Get an admin to do it for me."
-        )
+        await message.answer("I can't promote myself! Get an admin to do it for me.")
         return
 
     # Set the same permissions as the bot - the bot can't assign higher perms than itself!
@@ -213,9 +209,7 @@ async def fullpromote(message: Message, command: CommandObject):
             )
         except TelegramAPIError as err:
             if err.message == "User_not_mutual_contact":
-                await message.answer(
-                    "I can't promote someone who isn't in the group."
-                )
+                await message.answer("I can't promote someone who isn't in the group.")
             else:
                 await message.answer("An error occurred while promoting.")
             return
@@ -258,7 +252,8 @@ async def demote(message: Message, command: CommandObject):
                         InlineKeyboardButton(
                             text="Click to prove admin.",
                             callback_data=f"admin_=demote={user_id}",
-                         style=ButtonStyle.DANGER),
+                            style=ButtonStyle.DANGER,
+                        ),
                     ],
                 ],
             ),
@@ -282,9 +277,7 @@ async def demote(message: Message, command: CommandObject):
         return
 
     if user_member.status == ChatMemberStatus.OWNER:
-        await message.answer(
-            "This person created the chat, How could i demote him?"
-        )
+        await message.answer("This person created the chat, How could i demote him?")
         return
 
     if not user_member.status == ChatMemberStatus.ADMINISTRATOR:
@@ -369,7 +362,8 @@ async def set_title(message: Message, command: CommandObject):
                         InlineKeyboardButton(
                             text="Click to prove admin.",
                             callback_data=f"admin_=title={action_token}",
-                         style=ButtonStyle.SUCCESS),
+                            style=ButtonStyle.SUCCESS,
+                        ),
                     ],
                 ],
             ),
@@ -468,7 +462,8 @@ async def pin(message: Message, command: CommandObject) -> None:
                         InlineKeyboardButton(
                             text="Click to prove admin.",
                             callback_data=f"admin_=pin={prev_message.message_id}={int(is_silent)}",
-                         style=ButtonStyle.PRIMARY),
+                            style=ButtonStyle.PRIMARY,
+                        ),
                     ],
                 ],
             ),
@@ -489,9 +484,7 @@ async def pin(message: Message, command: CommandObject) -> None:
             else:
                 raise
         log_message = (
-            f"{chat.title}:\n"
-            "#PINNED\n"
-            f"Admin: {mention_html(user.id, user.first_name)}"
+            f"{chat.title}:\n#PINNED\nAdmin: {mention_html(user.id, user.first_name)}"
         )
 
         return log_message
@@ -512,7 +505,8 @@ async def unpin(message: Message, command: CommandObject):
                         InlineKeyboardButton(
                             text="Click to prove Admin.",
                             callback_data=f"admin_=unpin",
-                         style=ButtonStyle.DANGER),
+                            style=ButtonStyle.DANGER,
+                        ),
                     ],
                 ],
             ),
@@ -532,9 +526,7 @@ async def unpin(message: Message, command: CommandObject):
             raise
 
     log_message = (
-        f"{chat.title}:\n"
-        "#UNPINNED\n"
-        f"Admin: {mention_html(user.id, user.first_name)}"
+        f"{chat.title}:\n#UNPINNED\nAdmin: {mention_html(user.id, user.first_name)}"
     )
 
     return log_message
@@ -556,7 +548,8 @@ async def unpinall(message: Message, command: CommandObject):
                         InlineKeyboardButton(
                             text="Click to prove admin.",
                             callback_data=f"admin_=unpinall",
-                         style=ButtonStyle.DANGER),
+                            style=ButtonStyle.DANGER,
+                        ),
                     ],
                 ],
             ),
@@ -579,9 +572,7 @@ async def unpinall(message: Message, command: CommandObject):
             raise
 
     log_message = (
-        f"{chat.title}:\n"
-        "#UNPINNED_ALL\n"
-        f"Admin: {mention_html(user.id, user.first_name)}"
+        f"{chat.title}:\n#UNPINNED_ALL\nAdmin: {mention_html(user.id, user.first_name)}"
     )
 
     return log_message
@@ -619,9 +610,7 @@ async def adminlist(message: Message, command: CommandObject):
     user = message.from_user  # type: Optional[User]
     args = command.args.split() if command.args else []
     if message.chat.type == "private":
-        await send_message(
-            message, "This command only works in Groups."
-        )
+        await send_message(message, "This command only works in Groups.")
         return
     chat = message.chat
     chat_id = message.chat.id
@@ -646,9 +635,7 @@ async def adminlist(message: Message, command: CommandObject):
             name = "☠ Deleted Account"
         else:
             name = "{}".format(
-                mention_html(
-                    user.id, user.first_name + " " + (user.last_name or "")
-                )
+                mention_html(user.id, user.first_name + " " + (user.last_name or ""))
             )
         if user.is_bot:
             bot_admin_list.append(name)
@@ -670,9 +657,7 @@ async def adminlist(message: Message, command: CommandObject):
             name = "☠ Deleted Account"
         else:
             name = "{}".format(
-                mention_html(
-                    user.id, user.first_name + " " + (user.last_name or "")
-                )
+                mention_html(user.id, user.first_name + " " + (user.last_name or ""))
             )
         if status == "administrator":
             if custom_title:
@@ -715,7 +700,14 @@ async def admin_callback(query: CallbackQuery):
 
     parts = query.data.split("=")
     action = parts[1] if len(parts) > 1 else ""
-    expected_parts = {"promote": 3, "demote": 3, "title": 3, "pin": 4, "unpin": 2, "unpinall": 2}
+    expected_parts = {
+        "promote": 3,
+        "demote": 3,
+        "title": 3,
+        "pin": 4,
+        "unpin": 2,
+        "unpinall": 2,
+    }
     if (
         len(parts) < 2
         or parts[0] != "admin_"
@@ -770,7 +762,10 @@ async def admin_callback(query: CallbackQuery):
             user_member = await chat.get_member(user_id)
         except TelegramAPIError as exc:
             LOGGER.warning(
-                "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
+                "Unable to look up user %s in chat %s: %s",
+                user_id,
+                chat.id,
+                exc.message,
             )
             await query.answer("Unable to find this user.", show_alert=True)
             return
@@ -844,7 +839,10 @@ async def admin_callback(query: CallbackQuery):
             user_member = await chat.get_member(user_id)
         except TelegramAPIError as exc:
             LOGGER.warning(
-                "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
+                "Unable to look up user %s in chat %s: %s",
+                user_id,
+                chat.id,
+                exc.message,
             )
             await query.answer("Unable to find this user.", show_alert=True)
             return
@@ -928,7 +926,10 @@ async def admin_callback(query: CallbackQuery):
             user_member = await chat.get_member(user_id)
         except TelegramAPIError as exc:
             LOGGER.warning(
-                "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
+                "Unable to look up user %s in chat %s: %s",
+                user_id,
+                chat.id,
+                exc.message,
             )
             await query.answer("Unable to find this user.", show_alert=True)
             return
@@ -1154,9 +1155,7 @@ dp.message.register(chain(demote), *disableable("demote"))
 dp.message.register(chain(set_title), Command("title"))
 dp.callback_query.register(
     chain(admin_callback),
-    F.data.regexp(
-        r"^admin_=(?:promote|demote|title|pin|unpin|unpinall)(?:=.*)?$"
-    ),
+    F.data.regexp(r"^admin_=(?:promote|demote|title|pin|unpin|unpinall)(?:=.*)?$"),
 )
 
 __mod_name__ = "ADMIN"

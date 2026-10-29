@@ -32,7 +32,11 @@ def _expiry(value: str | None) -> int | None:
     if not value or value.lower() in {"none", "never"}:
         return None
     try:
-        return int(datetime.strptime(value, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc).timestamp())
+        return int(
+            datetime.strptime(value, "%Y-%m-%d %H:%M")
+            .replace(tzinfo=timezone.utc)
+            .timestamp()
+        )
     except ValueError as exc:
         raise ValueError("Expiry must use YYYY-MM-DD HH:MM UTC.") from exc
 
@@ -65,7 +69,9 @@ async def chatinfo(message: Message, command: CommandObject) -> None:
 @connection_status
 async def members(message: Message, command: CommandObject) -> None:
     count = await bot.get_chat_member_count(message.chat.id)
-    await message.answer(f"This chat has <code>{count}</code> members.", parse_mode=ParseMode.HTML)
+    await message.answer(
+        f"This chat has <code>{count}</code> members.", parse_mode=ParseMode.HTML
+    )
 
 
 @connection_status
@@ -80,9 +86,20 @@ async def invite_manage(message: Message, command: CommandObject) -> None:
     action = args[0].lower()
     try:
         if action == "create":
-            link = await bot.create_chat_invite_link(chat_id, name=args[1] if len(args) > 1 else None, member_limit=int(args[2]) if len(args) > 2 else None, expire_date=_expiry(args[3] if len(args) > 3 else None))
+            link = await bot.create_chat_invite_link(
+                chat_id,
+                name=args[1] if len(args) > 1 else None,
+                member_limit=int(args[2]) if len(args) > 2 else None,
+                expire_date=_expiry(args[3] if len(args) > 3 else None),
+            )
         elif action == "edit" and len(args) >= 2:
-            link = await bot.edit_chat_invite_link(chat_id, args[1], name=args[2] if len(args) > 2 else None, member_limit=int(args[3]) if len(args) > 3 else None, expire_date=_expiry(args[4] if len(args) > 4 else None))
+            link = await bot.edit_chat_invite_link(
+                chat_id,
+                args[1],
+                name=args[2] if len(args) > 2 else None,
+                member_limit=int(args[3]) if len(args) > 3 else None,
+                expire_date=_expiry(args[4] if len(args) > 4 else None),
+            )
         elif action == "revoke" and len(args) >= 2:
             link = await bot.revoke_chat_invite_link(chat_id, args[1])
         else:
@@ -101,12 +118,15 @@ async def join_requests(message: Message, command: CommandObject) -> None:
         return await message.answer("Usage: /joins approve|decline <user_id>")
     try:
         user_id, action = _user_id(args[1]), args[0].lower()
-        method = bot.approve_chat_join_request if action == "approve" else bot.decline_chat_join_request
+        method = (
+            bot.approve_chat_join_request
+            if action == "approve"
+            else bot.decline_chat_join_request
+        )
         await method(message.chat.id, user_id)
         await message.answer(f"Join request {action}d.")
     except (ValueError, TelegramAPIError) as error:
         await _reply_error(message, error)
-
 
 
 @connection_status
@@ -114,7 +134,9 @@ async def join_requests(message: Message, command: CommandObject) -> None:
 async def set_chat_metadata(message: Message, command: CommandObject) -> None:
     args = command.args.split() if command.args else []
     if not args:
-        return await message.answer("Usage: /setchat <title|description|description-> [text]")
+        return await message.answer(
+            "Usage: /setchat <title|description|description-> [text]"
+        )
     try:
         action = args[0].lower()
         if action == "title" and len(args) > 1:
@@ -124,7 +146,9 @@ async def set_chat_metadata(message: Message, command: CommandObject) -> None:
         elif action == "description-":
             await bot.set_chat_description(message.chat.id)
         else:
-            await message.answer("Usage: /setchat <title|description|description-> [text]")
+            await message.answer(
+                "Usage: /setchat <title|description|description-> [text]"
+            )
             return
         await message.answer("Chat metadata updated.")
     except TelegramAPIError as error:
@@ -136,7 +160,9 @@ async def set_chat_metadata(message: Message, command: CommandObject) -> None:
 async def set_chat_photo(message: Message, command: CommandObject) -> None:
     if not message.reply_to_message or not message.reply_to_message.photo:
         return await message.answer("Reply to a photo to set it as the chat photo.")
-    await bot.set_chat_photo(message.chat.id, message.reply_to_message.photo[-1].file_id)
+    await bot.set_chat_photo(
+        message.chat.id, message.reply_to_message.photo[-1].file_id
+    )
     await message.answer("Chat photo updated.")
 
 
@@ -154,7 +180,9 @@ async def topics(message: Message, command: CommandObject) -> None:
     if not chat.is_forum:
         return await message.answer("This chat is not a forum.")
     if not args:
-        return await message.answer("Usage: /topic create|edit|close|reopen|delete <name|thread_id>")
+        return await message.answer(
+            "Usage: /topic create|edit|close|reopen|delete <name|thread_id>"
+        )
     try:
         action = args[0].lower()
         if action == "create" and len(args) > 1:
@@ -166,7 +194,11 @@ async def topics(message: Message, command: CommandObject) -> None:
         elif action in {"close", "reopen", "delete"} and len(args) > 1:
             await getattr(bot, f"{action}_forum_topic")(chat.id, int(args[1]))
             result = f"Topic {action}d."
-        elif action == "general" and len(args) > 1 and args[1].lower() in {"close", "reopen", "unpinall"}:
+        elif (
+            action == "general"
+            and len(args) > 1
+            and args[1].lower() in {"close", "reopen", "unpinall"}
+        ):
             action_name = args[1].lower()
             if action_name == "unpinall":
                 await bot.unpin_all_general_forum_topic_messages(chat.id)
@@ -174,7 +206,9 @@ async def topics(message: Message, command: CommandObject) -> None:
                 await getattr(bot, f"{action_name}_general_forum_topic")(chat.id)
             result = f"General topic {action_name} completed."
         else:
-            await message.answer("Usage: /topic create|edit|close|reopen|delete <name|thread_id>")
+            await message.answer(
+                "Usage: /topic create|edit|close|reopen|delete <name|thread_id>"
+            )
             return
         await message.answer(result, parse_mode=ParseMode.HTML)
     except (ValueError, TelegramAPIError) as error:
@@ -187,7 +221,9 @@ async def menu_button(message: Message, command: CommandObject) -> None:
     args = command.args.split() if command.args else []
     if not args:
         button = await bot.get_chat_menu_button(chat_id)
-        await message.answer(f"Menu button: {button.model_dump() if button else 'None'}")
+        await message.answer(
+            f"Menu button: {button.model_dump() if button else 'None'}"
+        )
         return
     action = args[0].lower()
     if action == "commands":

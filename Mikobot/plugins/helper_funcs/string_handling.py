@@ -1,6 +1,3 @@
-
-
-
 import html
 
 # <============================================== IMPORTS =========================================================>
@@ -57,7 +54,6 @@ def caption_entities_map(message: AiogramMessage, types: list[str] = None) -> di
         for entity in (message.caption_entities or [])
         if types is None or entity.type in types
     }
-
 
 
 # <=======================================================================================================>
@@ -361,6 +357,7 @@ async def extract_time(message, time_val):
 
 def markdown_to_html(text: str) -> str:
     tokens = {}
+
     def protect(value: str) -> str:
         key = f"\x00{len(tokens)}\x00"
         tokens[key] = value
@@ -373,7 +370,9 @@ def markdown_to_html(text: str) -> str:
     )
     text = re.sub(
         r"\|\|(?=\S)(.+?)(?<=\S)\|\|",
-        lambda match: protect(f"<tg-spoiler>{html.escape(match.group(1))}</tg-spoiler>"),
+        lambda match: protect(
+            f"<tg-spoiler>{html.escape(match.group(1))}</tg-spoiler>"
+        ),
         text,
         flags=re.S,
     )

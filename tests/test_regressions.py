@@ -163,7 +163,8 @@ def load_nested_function(path, name, namespace):
     function = next(
         node
         for node in ast.walk(tree)
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name == name
     )
     # Helpers carry @unit_of_work_guard. These tests lift a function out of its
     # module, so the decorator travels with it and has to resolve. It is a
@@ -192,7 +193,6 @@ class FakeQuery:
 
     def scalars(self):
         return []
-
 
     def all(self):
         return []
@@ -256,7 +256,9 @@ class EnvironmentTests(unittest.TestCase):
         self.assertIn("open_store(", source)
         self.assertIn("chat_data = store.chat_data", source)
         self.assertIn("user_data = store.user_data", source)
-        persistence = (ROOT / "Mikobot/utils/persistence.py").read_text(encoding="utf-8")
+        persistence = (ROOT / "Mikobot/utils/persistence.py").read_text(
+            encoding="utf-8"
+        )
         self.assertIn("def chat_data", persistence)
         self.assertIn("def user_data", persistence)
         self.assertIn("os.replace(tmp, self.filepath)", persistence)
@@ -289,7 +291,7 @@ class EnvironmentTests(unittest.TestCase):
 
     def test_disabled_antiflood_skips_admin_lookup(self):
         source = (ROOT / "Mikobot/plugins/flood.py").read_text(encoding="utf-8")
-        early_return = "if sql.get_flood_limit(chat.id) == 0:\n        return \"\""
+        early_return = 'if sql.get_flood_limit(chat.id) == 0:\n        return ""'
         self.assertLess(
             source.index(early_return),
             source.index("if await is_user_admin(chat, user.id):"),
@@ -338,7 +340,14 @@ class EnvironmentTests(unittest.TestCase):
             "_has_arabic_script",
             {"unicodedata": __import__("unicodedata")},
         )
-        for text in ("مرحبا بالعالم", "سلام دنیا", "کھیل کا کھیل", "hello مرحبا world", "مُحَمَّد", "ﺁ"):
+        for text in (
+            "مرحبا بالعالم",
+            "سلام دنیا",
+            "کھیل کا کھیل",
+            "hello مرحبا world",
+            "مُحَمَّد",
+            "ﺁ",
+        ):
             with self.subTest(text=text):
                 self.assertTrue(has_arabic(text))
         for text in (
@@ -368,14 +377,21 @@ class EnvironmentTests(unittest.TestCase):
             for node in ast.walk(tree)
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
         }
-        for handler_name in ("MessageHandler", "InlineQueryHandler", "CallbackQueryHandler"):
+        for handler_name in (
+            "MessageHandler",
+            "InlineQueryHandler",
+            "CallbackQueryHandler",
+        ):
             args = calls[handler_name].args
             self.assertIsInstance(args[0].func, ast.Name, handler_name)
             self.assertEqual(args[0].func.id, "_with_client", handler_name)
             self.assertEqual(args[1].id, "handler_filter", handler_name)
 
     def test_plugin_imports_do_not_import_main(self):
-        for path in (ROOT / "Mikobot/plugins/ping.py", ROOT / "Mikobot/plugins/info.py"):
+        for path in (
+            ROOT / "Mikobot/plugins/ping.py",
+            ROOT / "Mikobot/plugins/info.py",
+        ):
             tree = ast.parse(path.read_text(encoding="utf-8"))
             self.assertFalse(
                 any(
@@ -385,7 +401,6 @@ class EnvironmentTests(unittest.TestCase):
                 ),
                 path.name,
             )
-
 
     def test_quotely_uses_supported_entity_types(self):
         source = (ROOT / "Mikobot/plugins/quotely.py").read_text(encoding="utf-8")
@@ -406,9 +421,7 @@ class EnvironmentTests(unittest.TestCase):
         self.assertNotIn("run_until_complete(app.start())", source)
         self.assertNotIn("run_until_complete(app.stop())", source)
 
-
         self.assertNotIn("MessageEntityPhone", source)
-
 
     def test_boolean_values_are_explicit(self):
         env_bool = load_function(
@@ -427,7 +440,9 @@ class EnvironmentTests(unittest.TestCase):
                 env_bool("TEST_FLAG")
 
     def test_waitlist_is_scoped_to_chat_and_user(self):
-        tree = ast.parse((ROOT / "Mikobot/plugins/welcome.py").read_text(encoding="utf-8"))
+        tree = ast.parse(
+            (ROOT / "Mikobot/plugins/welcome.py").read_text(encoding="utf-8")
+        )
         source = ast.unparse(tree)
         self.assertIn("(chat.id, new_mem.id)", source)
         self.assertIn("VERIFIED_USER_WAITLIST.pop((chat_id, member.id), None)", source)
@@ -463,7 +478,9 @@ class BroadcastParsingTests(unittest.TestCase):
         self.assertIsNone(content)
 
     def test_group_inventory_requires_developer_access(self):
-        tree = ast.parse((ROOT / "Mikobot/plugins/users.py").read_text(encoding="utf-8"))
+        tree = ast.parse(
+            (ROOT / "Mikobot/plugins/users.py").read_text(encoding="utf-8")
+        )
         chats = next(
             node
             for node in tree.body
@@ -510,13 +527,15 @@ class StartupTests(unittest.TestCase):
             source.index('LOGGER.info("Getting bot information")'),
             source.index("info = loop.run_until_complete(bot.me())"),
         )
-        for name in ('if name == "BOT_ID":', 'if name == "BOT_NAME":', 'if name == "BOT_USERNAME":'):
+        for name in (
+            'if name == "BOT_ID":',
+            'if name == "BOT_NAME":',
+            'if name == "BOT_USERNAME":',
+        ):
             self.assertIn(name, source)
         self.assertIn("escape(bot_name)", source)
         self.assertIn("escape(bot_username)", source)
         self.assertIn("{bot_id}", source)
-
-
 
 
 class FederationDeletionTests(unittest.TestCase):
@@ -526,9 +545,7 @@ class FederationDeletionTests(unittest.TestCase):
             "Federations": object,
             "ChatF": SimpleNamespace(fed_id=object(), chat_id=object()),
             "BansF": SimpleNamespace(fed_id=object()),
-            "FedSubs": SimpleNamespace(
-                fed_id=object(), fed_subs=object()
-            ),
+            "FedSubs": SimpleNamespace(fed_id=object(), fed_subs=object()),
             "select": lambda *args, **kw: FakeQuery(),
             "delete": lambda *args, **kw: FakeQuery(),
             "OWNER_ID": 999,
@@ -551,9 +568,7 @@ class FederationDeletionTests(unittest.TestCase):
         federation = SimpleNamespace(owner_id="123", fed_name="Federation")
         session = FakeSession(federation)
         namespace = self.namespace(session)
-        delete = load_function(
-            ROOT / "Database/sql/feds_sql.py", "del_fed", namespace
-        )
+        delete = load_function(ROOT / "Database/sql/feds_sql.py", "del_fed", namespace)
 
         self.assertFalse(delete("fed", "456"))
         self.assertEqual(session.rollbacks, 0)
@@ -574,9 +589,7 @@ class FederationDeletionTests(unittest.TestCase):
             return original_pop(key, *args)
 
         namespace["FEDERATION_BYOWNER"] = SimpleNamespace(pop=checked_pop)
-        delete = load_function(
-            ROOT / "Database/sql/feds_sql.py", "del_fed", namespace
-        )
+        delete = load_function(ROOT / "Database/sql/feds_sql.py", "del_fed", namespace)
 
         self.assertTrue(delete("fed", "123"))
         self.assertTrue(session.closed)
@@ -587,15 +600,12 @@ class FederationDeletionTests(unittest.TestCase):
         session = FakeSession(federation)
         session.fail_commit = True
         namespace = self.namespace(session)
-        delete = load_function(
-            ROOT / "Database/sql/feds_sql.py", "del_fed", namespace
-        )
+        delete = load_function(ROOT / "Database/sql/feds_sql.py", "del_fed", namespace)
 
         self.assertFalse(delete("fed", "123"))
         self.assertEqual(session.rollbacks, 1)
         self.assertTrue(session.closed)
         self.assertIn("fed", namespace["FEDERATION_BYFEDID"])
-
 
 
 class ElevatedUserTests(unittest.TestCase):
@@ -750,7 +760,9 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
                 "TelegramServerError": TelegramAPIError,
                 "TelegramNetworkError": TelegramAPIError,
                 "TelegramRetryAfter": TelegramAPIError,
-                "TelegramMigrateToChat": type("TelegramMigrateToChat", (TelegramAPIError,), {}),
+                "TelegramMigrateToChat": type(
+                    "TelegramMigrateToChat", (TelegramAPIError,), {}
+                ),
                 "_activity_summary": lambda event: "callback user=1 chat=42",
                 "LOGGER": SimpleNamespace(
                     warning=lambda *args, **kwargs: warnings.append((args, kwargs)),
@@ -862,7 +874,12 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
                 1,
                 name,
             )
-            self.assertFalse(any(isinstance(node, ast.Try) and node.finalbody for node in ast.walk(function)))
+            self.assertFalse(
+                any(
+                    isinstance(node, ast.Try) and node.finalbody
+                    for node in ast.walk(function)
+                )
+            )
 
     def test_federation_extractors_are_awaited(self):
         tree = ast.parse((ROOT / "Mikobot/plugins/feds.py").read_text(encoding="utf-8"))
@@ -878,21 +895,29 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
             if isinstance(node, ast.AsyncFunctionDef) and node.name == "selfunban"
         )
         # aiogram injects by name, so the parameters are part of the contract.
-        self.assertEqual([arg.arg for arg in function.args.args], ["message", "command"])
+        self.assertEqual(
+            [arg.arg for arg in function.args.args], ["message", "command"]
+        )
 
     def test_rules_error_path_does_not_use_failed_chat(self):
-        tree = ast.parse((ROOT / "Mikobot/plugins/rules.py").read_text(encoding="utf-8"))
+        tree = ast.parse(
+            (ROOT / "Mikobot/plugins/rules.py").read_text(encoding="utf-8")
+        )
         function = next(
             node
             for node in tree.body
             if isinstance(node, ast.AsyncFunctionDef) and node.name == "send_rules"
         )
-        handler = next(node for node in ast.walk(function) if isinstance(node, ast.ExceptHandler))
+        handler = next(
+            node for node in ast.walk(function) if isinstance(node, ast.ExceptHandler)
+        )
         names = {node.id for node in ast.walk(handler) if isinstance(node, ast.Name)}
         self.assertNotIn("chat", names)
 
     def test_missing_event_logs_are_not_stringified_or_sent(self):
-        log_source = (ROOT / "Mikobot/plugins/log_channel.py").read_text(encoding="utf-8")
+        log_source = (ROOT / "Mikobot/plugins/log_channel.py").read_text(
+            encoding="utf-8"
+        )
         self.assertNotIn("str(EVENT_LOGS)", log_source)
         self.assertIn("if EVENT_LOGS:", log_source)
         self.assertIn("if not is_chat_log:", log_source)
@@ -905,7 +930,10 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
                 if isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Attribute)
                 and node.func.attr == "send_message"
-                and any(isinstance(arg, ast.Name) and arg.id == "EVENT_LOGS" for arg in node.args)
+                and any(
+                    isinstance(arg, ast.Name) and arg.id == "EVENT_LOGS"
+                    for arg in node.args
+                )
             ]
             parents = {
                 child: parent
@@ -945,9 +973,9 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("state.get", source)
         self.assertIn("httpx.HTTPError", source)
         self.assertNotIn("aiohttp", source)
-        self.assertIn("suffix=\".png\"", source)
-        self.assertIn("image.convert(\"RGB\").save(file, format=\"PNG\")", source)
-        self.assertNotIn("suffix=\".webp\"", source)
+        self.assertIn('suffix=".png"', source)
+        self.assertIn('image.convert("RGB").save(file, format="PNG")', source)
+        self.assertNotIn('suffix=".webp"', source)
         self.assertIn("return await self.create_quotly(self._API)", source)
         self.assertIn("shnwazdev-quoteapi.vercel.app/quote/generate", source)
         self.assertNotIn("bot.lyo.su/quote/generate", source)
@@ -968,9 +996,13 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
             (ROOT / "Mikobot/plugins/cust_filters.py").read_text(encoding="utf-8")
         )
         class_node = next(
-            node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == "AntiSpam"
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "AntiSpam"
         )
-        module = ast.fix_missing_locations(ast.Module(body=[class_node], type_ignores=[]))
+        module = ast.fix_missing_locations(
+            ast.Module(body=[class_node], type_ignores=[])
+        )
 
         calls = []
 
@@ -1008,8 +1040,12 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
         # kept as a test so it cannot silently regress.
         for path in (ROOT / "Mikobot").rglob("*.py"):
             source = path.read_text(encoding="utf-8")
-            self.assertNotIn("Database.mongodb", source, f"{path.name} still imports MongoDB")
-            self.assertNotIn("MONGO_DB_URI", source, f"{path.name} still reads MONGO_DB_URI")
+            self.assertNotIn(
+                "Database.mongodb", source, f"{path.name} still imports MongoDB"
+            )
+            self.assertNotIn(
+                "MONGO_DB_URI", source, f"{path.name} still reads MONGO_DB_URI"
+            )
         requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
         self.assertNotIn("pymongo", requirements)
         self.assertFalse((ROOT / "Database/mongodb").exists())
@@ -1086,7 +1122,10 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn("LOGGER.warning(result)", source)
         anime_source = (ROOT / "Mikobot/plugins/anime.py").read_text(encoding="utf-8")
         self.assertIn("gcc = get_user_from_channel", anime_source)
-        self.assertNotIn("SESSION.query(UserF)", (ROOT / "Database/sql/feds_sql.py").read_text(encoding="utf-8"))
+        self.assertNotIn(
+            "SESSION.query(UserF)",
+            (ROOT / "Database/sql/feds_sql.py").read_text(encoding="utf-8"),
+        )
         for relative in (
             "Mikobot/plugins/helper_funcs/extraction.py",
             "Mikobot/plugins/users.py",
@@ -1094,7 +1133,9 @@ class RuntimeDefectTests(unittest.IsolatedAsyncioTestCase):
             "Mikobot/plugins/feds.py",
             "Mikobot/plugins/afk.py",
         ):
-            self.assertNotIn("get_chat(user_id)", (ROOT / relative).read_text(encoding="utf-8"))
+            self.assertNotIn(
+                "get_chat(user_id)", (ROOT / relative).read_text(encoding="utf-8")
+            )
 
 
 class DatabaseRegressionTests(unittest.TestCase):
@@ -1106,7 +1147,9 @@ class DatabaseRegressionTests(unittest.TestCase):
         self.assertIn("pool_recycle=1800", source)
 
     def test_primary_key_lookups_replace_full_table_federation_scans(self):
-        tree = ast.parse((ROOT / "Database/sql/feds_sql.py").read_text(encoding="utf-8"))
+        tree = ast.parse(
+            (ROOT / "Database/sql/feds_sql.py").read_text(encoding="utf-8")
+        )
         for name in ("fban_user", "multi_fban_user", "un_fban_user", "get_fban_user"):
             function = next(
                 node
@@ -1170,8 +1213,7 @@ class DatabaseRegressionTests(unittest.TestCase):
                         if alias.name == "InlineKeyboardButton":
                             aliases.add(alias.asname or alias.name)
             if any(
-                isinstance(node, ast.FunctionDef)
-                and node.name == "paginate_modules"
+                isinstance(node, ast.FunctionDef) and node.name == "paginate_modules"
                 for node in tree.body
             ):
                 aliases.add("EqInlineKeyboardButton")
@@ -1196,7 +1238,9 @@ class DatabaseRegressionTests(unittest.TestCase):
         valid = {member.name for member in ButtonStyle}
 
         bad = []
-        for path in list((ROOT / "Mikobot").rglob("*.py")) + [ROOT / "Infamous/karma.py"]:
+        for path in list((ROOT / "Mikobot").rglob("*.py")) + [
+            ROOT / "Infamous/karma.py"
+        ]:
             tree = ast.parse(path.read_text(encoding="utf-8"))
             for node in ast.walk(tree):
                 if (
@@ -1246,8 +1290,13 @@ class DatabaseRegressionTests(unittest.TestCase):
         )
 
         chatadmin = (ROOT / "Mikobot/plugins/chatadmin.py").read_text(encoding="utf-8")
-        misc = (ROOT / "Mikobot/plugins/helper_funcs/misc.py").read_text(encoding="utf-8")
-        self.assertIn("MenuButtonWebApp(\n                text=args[1],\n                web_app=WebAppInfo(url=args[1]),", chatadmin)
+        misc = (ROOT / "Mikobot/plugins/helper_funcs/misc.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            "MenuButtonWebApp(\n                text=args[1],\n                web_app=WebAppInfo(url=args[1]),",
+            chatadmin,
+        )
         self.assertIn("thumbnail_url=thumb_url", misc)
         self.assertIn("id=str(uuid4())", misc)
         self.assertNotIn("thumb_url=thumb_url", misc)
@@ -1301,8 +1350,10 @@ class DatabaseRegressionTests(unittest.TestCase):
             self.skipTest("aiogram is not installed")
 
         bad = []
-        if not inspect.signature(Command).parameters["commands"].kind.name.endswith(
-            "KEYWORD_ONLY"
+        if (
+            not inspect.signature(Command)
+            .parameters["commands"]
+            .kind.name.endswith("KEYWORD_ONLY")
         ):
             bad.append("Command() no longer takes commands keyword-only")
         for path in sorted((ROOT / "Mikobot").rglob("*.py")):
@@ -1361,13 +1412,9 @@ class DatabaseRegressionTests(unittest.TestCase):
         self.assertIn("return SESSION.get(Users, int(user_id))", users)
         self.assertNotIn("ChatMembers.query", users)
 
-
-
     def test_user_database_freshness_uses_value_equality(self):
         source = (ROOT / "Mikobot/plugins/users.py").read_text(encoding="utf-8")
-        self.assertIn(
-            "return USER_DB_CACHE.get(key) == (username, chat_name)", source
-        )
+        self.assertIn("return USER_DB_CACHE.get(key) == (username, chat_name)", source)
         self.assertNotIn(
             "return (username, chat_name) in USER_DB_CACHE.get(key, ())", source
         )
@@ -1386,9 +1433,7 @@ class DatabaseRegressionTests(unittest.TestCase):
 
             def scalars(self, statement):
                 return SimpleNamespace(
-                    all=lambda: [
-                        SimpleNamespace(fed_id="source", fed_subs="target")
-                    ]
+                    all=lambda: [SimpleNamespace(fed_id="source", fed_subs="target")]
                 )
 
             def close(self):
@@ -1416,7 +1461,9 @@ class DatabaseRegressionTests(unittest.TestCase):
         )
 
     def test_federation_ban_mutations_update_caches_incrementally(self):
-        tree = ast.parse((ROOT / "Database/sql/feds_sql.py").read_text(encoding="utf-8"))
+        tree = ast.parse(
+            (ROOT / "Database/sql/feds_sql.py").read_text(encoding="utf-8")
+        )
         for name in ("fban_user", "multi_fban_user", "un_fban_user"):
             function = next(
                 node
@@ -1484,9 +1531,7 @@ class DatabaseRegressionTests(unittest.TestCase):
             "connection = await asyncio.to_thread(sql.get_connected_chat, user_id)",
             source,
         )
-        self.assertIn(
-            "await asyncio.to_thread(sql.disconnect, user_id)", source
-        )
+        self.assertIn("await asyncio.to_thread(sql.disconnect, user_id)", source)
         self.assertNotIn("disconnect_chat(update, bot)", source)
 
     def test_reminder_startup_preserves_same_timestamp_entries(self):
@@ -1577,7 +1622,9 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
             id = 77
 
             async def get_chat_member(self, chat_id, user_id):
-                return SimpleNamespace(status="member", user=SimpleNamespace(id=user_id))
+                return SimpleNamespace(
+                    status="member", user=SimpleNamespace(id=user_id)
+                )
 
             async def unban_chat_member(self, chat_id, user_id):
                 unban_calls.append(user_id)
@@ -1651,7 +1698,6 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
             ),
         )
 
-
     async def test_numeric_whispers_compare_the_stored_id(self):
         # The recipient is matched by id, not by username: an @alice with a
         # different numeric id must still see the whisper.
@@ -1712,9 +1758,18 @@ class PTBHandlerRegressionTests(unittest.IsolatedAsyncioTestCase):
             source = (ROOT / relative).read_text(encoding="utf-8")
             self.assertNotIn("can_send_media_messages", source, relative)
             self.assertNotIn("can_send_invite_users", source, relative)
-        self.assertIn('is_silent = parts[3] == "1"', (ROOT / "Mikobot/plugins/admin.py").read_text(encoding="utf-8"))
-        self.assertIn('chat_data.pop(f"anon_ban_{parts[3]}", None)', (ROOT / "Mikobot/plugins/ban.py").read_text(encoding="utf-8"))
-        self.assertIn("Contact me in PM to get your current settings.", (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8"))
+        self.assertIn(
+            'is_silent = parts[3] == "1"',
+            (ROOT / "Mikobot/plugins/admin.py").read_text(encoding="utf-8"),
+        )
+        self.assertIn(
+            'chat_data.pop(f"anon_ban_{parts[3]}", None)',
+            (ROOT / "Mikobot/plugins/ban.py").read_text(encoding="utf-8"),
+        )
+        self.assertIn(
+            "Contact me in PM to get your current settings.",
+            (ROOT / "Mikobot/__main__.py").read_text(encoding="utf-8"),
+        )
 
 
 class SingleSourcePinTests(unittest.TestCase):
@@ -1735,13 +1790,17 @@ class SingleSourcePinTests(unittest.TestCase):
                 self.assertRegex(pin, self.VERSION_LITERAL)
                 requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
                 self.assertIn(
-                    f"=={pin}", requirements, f"{name} pin is not the one in requirements.txt"
+                    f"=={pin}",
+                    requirements,
+                    f"{name} pin is not the one in requirements.txt",
                 )
 
     def test_the_helper_ignores_extras_and_comments(self):
         # psycopg[binary,pool]==... must resolve to psycopg, not to the extras
         # spelling, or every lookup for it raises.
-        self.assertEqual(requirements_pin("psycopg"), requirements_pin("psycopg[binary,pool]"))
+        self.assertEqual(
+            requirements_pin("psycopg"), requirements_pin("psycopg[binary,pool]")
+        )
         self.assertEqual(requirements_pin("SQLAlchemy"), requirements_pin("sqlalchemy"))
         self.assertRegex(requirements_pin("psycopg"), r"^\d+\.\d+\.\d+$")
 
@@ -1771,7 +1830,9 @@ class SingleSourcePinTests(unittest.TestCase):
         # literals an assertion actually compares. A regex over source text
         # cannot tell a version from the 127.0.0.1 the database guard compares,
         # and flags it on every run.
-        tree = ast.parse((ROOT / "tests/test_regressions.py").read_text(encoding="utf-8"))
+        tree = ast.parse(
+            (ROOT / "tests/test_regressions.py").read_text(encoding="utf-8")
+        )
         allowed = self._helper_lines(tree)
         offenders = []
         for node in ast.walk(tree):
@@ -1779,7 +1840,9 @@ class SingleSourcePinTests(unittest.TestCase):
                 continue
             if node.lineno in allowed:
                 continue
-            offenders.extend(f"{node.lineno}: {v}" for v in self._version_literals(node))
+            offenders.extend(
+                f"{node.lineno}: {v}" for v in self._version_literals(node)
+            )
         self.assertEqual(offenders, [], "\n".join(offenders[:15]))
 
     @staticmethod
@@ -1871,7 +1934,9 @@ class ElevatedUserBaselineTests(unittest.TestCase):
         """Execute the SETS block of Mikobot/__init__.py with a fake _load_elevated_users."""
         source = (ROOT / "Mikobot/__init__.py").read_text(encoding="utf-8")
         start = source.index("ELEVATED_USERS = _load_elevated_users()")
-        end = source.index("# <============================================== INITIALIZE APPLICATION")
+        end = source.index(
+            "# <============================================== INITIALIZE APPLICATION"
+        )
         block = source[start:end]
         namespace = {
             "OWNER_ID": 5,
@@ -1943,6 +2008,7 @@ class ChatStatusPrecedenceTests(unittest.TestCase):
         self.assertNotIn("else False or user.id in DRAGONS", gate)
         self.assertIn("or user_id in status.DRAGONS", gate)
 
+
 class MarkdownEscapingTests(unittest.TestCase):
     """telegram.helpers.escape_markdown has no aiogram counterpart for the legacy
     Markdown mode, so Mikobot/utils/parser.py keeps the escaping. This pins it
@@ -1984,7 +2050,11 @@ class LockPredicateTests(unittest.TestCase):
         ]
         namespace = {}
         exec(
-            compile(ast.fix_missing_locations(ast.Module(body=body, type_ignores=[])), "locks", "exec"),
+            compile(
+                ast.fix_missing_locations(ast.Module(body=body, type_ignores=[])),
+                "locks",
+                "exec",
+            ),
             namespace,
         )
         return namespace["LOCK_TYPES"]
@@ -2025,7 +2095,11 @@ class LockPredicateTests(unittest.TestCase):
             ("url", self._message(text="no link"), False),
             ("phone", self._message(text="x", entities=[entity("phone_number")]), True),
             ("phone", self._message(text="555"), False),
-            ("email", self._message(caption="a@b.co", caption_entities=[entity("email")]), True),
+            (
+                "email",
+                self._message(caption="a@b.co", caption_entities=[entity("email")]),
+                True,
+            ),
             ("command", self._message(text="/lock url"), True),
             ("command", self._message(text="lock url"), False),
             ("forward", self._message(forward_date=1), True),
@@ -2033,7 +2107,11 @@ class LockPredicateTests(unittest.TestCase):
             ("videonote", self._message(video_note=1), True),
             ("videonote", self._message(video=1), False),
             ("egame", self._message(dice=1), True),
-            ("emojicustom", self._message(text="x", entities=[entity("custom_emoji")]), True),
+            (
+                "emojicustom",
+                self._message(text="x", entities=[entity("custom_emoji")]),
+                True,
+            ),
             (
                 "stickerpremium",
                 self._message(sticker=SimpleNamespace(premium=True)),
@@ -2061,8 +2139,15 @@ class LockPredicateTests(unittest.TestCase):
 
     def test_manually_handled_locks_are_not_predicates(self):
         # These have dedicated branches in del_lockables and must not be called.
-        for name in ("bots", "rtl", "button", "inline", "anonchannel",
-                     "forwardchannel", "forwardbot"):
+        for name in (
+            "bots",
+            "rtl",
+            "button",
+            "inline",
+            "anonchannel",
+            "forwardchannel",
+            "forwardbot",
+        ):
             with self.subTest(lock=name):
                 self.assertIsInstance(self._locks()[name], str)
 
@@ -2254,7 +2339,9 @@ class GateMiddlewareTests(unittest.TestCase):
             return None
 
         event = self._event()
-        bot = self._bot({5: SimpleNamespace(status="administrator", user=SimpleNamespace(id=5))})
+        bot = self._bot(
+            {5: SimpleNamespace(status="administrator", user=SimpleNamespace(id=5))}
+        )
         with self._patched_is_admin(True):
             self.assertIsNone(self._run(cmd, event, bot))
         self.assertEqual(event.replies, [])
@@ -2268,7 +2355,9 @@ class GateMiddlewareTests(unittest.TestCase):
             return None
 
         event = self._event()
-        bot = self._bot({5: SimpleNamespace(status="member", user=SimpleNamespace(id=5))})
+        bot = self._bot(
+            {5: SimpleNamespace(status="member", user=SimpleNamespace(id=5))}
+        )
         with self._patched_is_admin(False):
             self.assertEqual(self._run(cmd, event, bot), "HANDLED")
         self.assertEqual(event.replies, [])
@@ -2295,7 +2384,9 @@ class GateMiddlewareTests(unittest.TestCase):
             return None
 
         event = self._event()
-        bot = self._bot({5: SimpleNamespace(status="member", user=SimpleNamespace(id=5))})
+        bot = self._bot(
+            {5: SimpleNamespace(status="member", user=SimpleNamespace(id=5))}
+        )
         self.assertIsNone(self._run(cmd, event, bot))
         self.assertEqual(event.replies, ["You are not admin here."])
 
@@ -2308,7 +2399,9 @@ class GateMiddlewareTests(unittest.TestCase):
             return None
 
         event = self._event()
-        bot = self._bot({5: SimpleNamespace(status="administrator", user=SimpleNamespace(id=5))})
+        bot = self._bot(
+            {5: SimpleNamespace(status="administrator", user=SimpleNamespace(id=5))}
+        )
         result, actions = self._run_capturing_actions(cmd, event, bot)
         self.assertEqual(result, "HANDLED")
         self.assertEqual(event.replies, [])
@@ -2445,8 +2538,9 @@ class GateMiddlewareTests(unittest.TestCase):
     def test_dev_plus_denies_an_ordinary_user(self):
         from Mikobot.plugins.helper_funcs import chat_status
 
-        with mock.patch.object(chat_status, "DEV_USERS", [7]), mock.patch.object(
-            chat_status, "DEL_CMDS", False
+        with (
+            mock.patch.object(chat_status, "DEV_USERS", [7]),
+            mock.patch.object(chat_status, "DEL_CMDS", False),
         ):
 
             @chat_status.dev_plus
@@ -2467,8 +2561,9 @@ class GateMiddlewareTests(unittest.TestCase):
     def test_dev_plus_allows_a_dev(self):
         from Mikobot.plugins.helper_funcs import chat_status
 
-        with mock.patch.object(chat_status, "DEV_USERS", [7]), mock.patch.object(
-            chat_status, "DRAGONS", [7]
+        with (
+            mock.patch.object(chat_status, "DEV_USERS", [7]),
+            mock.patch.object(chat_status, "DRAGONS", [7]),
         ):
 
             @chat_status.dev_plus
@@ -2571,11 +2666,14 @@ class ExtractTimeTests(unittest.TestCase):
                 continue
             tree = ast.parse(path.read_text(encoding="utf-8"))
             for node in ast.walk(tree):
-                if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Await)):
+                if not (
+                    isinstance(node, ast.Assign) and isinstance(node.value, ast.Await)
+                ):
                     continue
                 call = node.value.value
                 if not (
-                    isinstance(call, ast.Call) and getattr(call.func, "id", "") == "extract_time"
+                    isinstance(call, ast.Call)
+                    and getattr(call.func, "id", "") == "extract_time"
                 ):
                     continue
                 name = node.targets[0].id
@@ -2611,9 +2709,11 @@ class BotIdentityFallbackTests(unittest.TestCase):
             saved_env = os.environ.get("TOKEN")
             os.environ["TOKEN"] = "0000000000:TESTTOKENPLACEHOLDERnotarealtoken"
             self.addCleanup(
-                lambda: os.environ.__setitem__("TOKEN", saved_env)
-                if saved_env is not None
-                else os.environ.pop("TOKEN", None)
+                lambda: (
+                    os.environ.__setitem__("TOKEN", saved_env)
+                    if saved_env is not None
+                    else os.environ.pop("TOKEN", None)
+                )
             )
             try:
                 module = importlib.import_module("Mikobot")
@@ -2684,7 +2784,9 @@ class BotIdentityFallbackTests(unittest.TestCase):
         module.bot = stub_bot(fail=False)
         self.assertEqual(module.fetch_bot_info(), (42, "Name", "name_bot"))
         self.assertEqual(module.fetch_bot_info(), (42, "Name", "name_bot"))
-        self.assertEqual(calls["count"], 1, "a resolved identity should not be re-fetched")
+        self.assertEqual(
+            calls["count"], 1, "a resolved identity should not be re-fetched"
+        )
 
 
 class GateMiddlewareHandlerKeyTests(unittest.TestCase):
@@ -2850,7 +2952,9 @@ class SqlLayerDatabaseTests(unittest.TestCase):
         from Database.sql import users_sql
 
         users_sql.update_user(self.UID, "sql_layer_probe")
-        self.assertEqual(users_sql.get_name_by_userid(self.UID).username, "sql_layer_probe")
+        self.assertEqual(
+            users_sql.get_name_by_userid(self.UID).username, "sql_layer_probe"
+        )
 
     def test_blacklist_round_trip(self):
         from Database.sql import blacklist_sql
@@ -2885,7 +2989,9 @@ class SqlLayerDatabaseTests(unittest.TestCase):
         approve_sql.approve(self.CID, self.UID)
         self.assertIsNotNone(approve_sql.is_approved(self.CID, self.UID))
         # list_approved returns ORM rows, not bare ids.
-        self.assertIn(self.UID, [row.user_id for row in approve_sql.list_approved(self.CID)])
+        self.assertIn(
+            self.UID, [row.user_id for row in approve_sql.list_approved(self.CID)]
+        )
         self.assertTrue(approve_sql.disapprove(self.CID, self.UID))
         self.assertIsNone(approve_sql.is_approved(self.CID, self.UID))
 
@@ -2919,7 +3025,9 @@ class SqlLayerDatabaseTests(unittest.TestCase):
             row = SESSION.get(antiflood_sql.FloodControl, str(self.CID))
             SESSION.close()
             _, _, limit, timer, clearflood = antiflood_sql.CHAT_FLOOD[str(self.CID)]
-            self.assertEqual((limit, timer, clearflood), (row.limit, row.timer, row.clearflood))
+            self.assertEqual(
+                (limit, timer, clearflood), (row.limit, row.timer, row.clearflood)
+            )
         finally:
             antiflood_sql.set_flood(self.CID, 0)
             antiflood_sql.set_clearflood(self.CID, False)
@@ -3213,7 +3321,9 @@ class ChatMigrationTests(unittest.TestCase):
                 moved = SESSION.execute(
                     table.select().where(table.c.chat_id == new)
                 ).fetchall()
-                self.assertTrue(moved, f"{table_name} kept no row under the new chat id")
+                self.assertTrue(
+                    moved, f"{table_name} kept no row under the new chat id"
+                )
                 self.assertFalse(
                     SESSION.execute(
                         table.select().where(table.c.chat_id == old)
@@ -3296,13 +3406,17 @@ class MessagePathDatabaseTests(unittest.TestCase):
                             continue
                     elif getattr(target, "id", None) not in aliases:
                         continue
-                    called = target.attr if isinstance(target, ast.Attribute) else target.id
+                    called = (
+                        target.attr if isinstance(target, ast.Attribute) else target.id
+                    )
                     if called in backed:
                         # Passed to to_thread it is spelled
                         # asyncio.to_thread(sql.helper, ...), so it is not a bare
                         # attribute call and never lands here.
                         offenders.append(f"{filename}:{call.lineno} {called}")
-        self.assertEqual(offenders, [], "database calls on the event loop in a per-message handler")
+        self.assertEqual(
+            offenders, [], "database calls on the event loop in a per-message handler"
+        )
 
 
 class AiogramModelKeywordTests(unittest.TestCase):
@@ -3410,7 +3524,9 @@ class UnresolvedTargetTests(unittest.TestCase):
                 continue
             if "if user_id is None:" in body:
                 guarded += 1
-        self.assertEqual(guarded, 4, "every ban-family handler must guard a None target")
+        self.assertEqual(
+            guarded, 4, "every ban-family handler must guard a None target"
+        )
 
     def test_aiogram_rejects_a_none_user_id(self):
         try:
@@ -3443,16 +3559,14 @@ class PluginModNameTests(unittest.TestCase):
                 for target in node.targets:
                     if isinstance(target, ast.Name) and target.id == "__mod_name__":
                         if isinstance(node.value, ast.Constant):
-                            names.setdefault(
-                                node.value.value.lower(), []
-                            ).append(path.name)
+                            names.setdefault(node.value.value.lower(), []).append(
+                                path.name
+                            )
         return names
 
     def test_no_duplicate_mod_names(self):
         names = self._mod_names()
-        duplicates = {
-            name: owners for name, owners in names.items() if len(owners) > 1
-        }
+        duplicates = {name: owners for name, owners in names.items() if len(owners) > 1}
         self.assertEqual(
             duplicates,
             {},
@@ -3474,13 +3588,17 @@ class MentionHelperTests(unittest.TestCase):
         tree = ast.parse(parser.read_text(encoding="utf-8"))
         found = {}
         for node in tree.body:
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in (
+            if isinstance(
+                node, (ast.FunctionDef, ast.AsyncFunctionDef)
+            ) and node.name in (
                 "mention_html",
                 "mention_markdown",
             ):
                 found[node.name] = node
         self.assertEqual(
-            sorted(found), ["mention_html", "mention_markdown"], "both helpers must exist"
+            sorted(found),
+            ["mention_html", "mention_markdown"],
+            "both helpers must exist",
         )
         for name, node in found.items():
             self.assertNotIsInstance(
@@ -3518,7 +3636,9 @@ class MentionHelperTests(unittest.TestCase):
                 if isinstance(node, ast.Await) and isinstance(node.value, ast.Call)
             }
             for node in ast.walk(tree):
-                if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
+                if not isinstance(node, ast.Call) or not isinstance(
+                    node.func, ast.Name
+                ):
                     continue
                 if node.func.id not in ("mention_html", "mention_markdown"):
                     continue
@@ -3546,10 +3666,11 @@ class MentionHelperTests(unittest.TestCase):
         """An async helper can never be interpolated, so catch the regression shape."""
         parser = (ROOT / "Mikobot/utils/parser.py").read_text(encoding="utf-8")
         self.assertNotIn(
-            "async def mention_html", parser, "the mention helpers must not become async"
+            "async def mention_html",
+            parser,
+            "the mention helpers must not become async",
         )
         self.assertNotIn("async def mention_markdown", parser)
-
 
     def test_warn_action_in_blacklists_is_awaited(self):
         """warn() is a coroutine, so an un-awaited call drops the moderation action.
@@ -3652,9 +3773,6 @@ class UnescapedOutputTests(unittest.TestCase):
         self.assertEqual(active, [], f"markdown metachars left active: {active}")
 
 
-
-
-
 def _module_constants(path: Path, names) -> dict:
     """Module-level constants, folding arithmetic that literal_eval rejects.
 
@@ -3680,7 +3798,8 @@ class AntiRaidTests(unittest.TestCase):
         source = (ROOT / "Database" / "sql" / "raid_sql.py").read_text(encoding="utf-8")
         tree = ast.parse(source)
         func = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.FunctionDef) and n.name == "is_raid"
         )
         self.assertTrue(
@@ -3716,7 +3835,9 @@ class AntiRaidTests(unittest.TestCase):
             self.assertIn(f'disableable("{command}")', source, command)
 
     def test_on_off_words_match_the_documented_forms(self):
-        tree = ast.parse((ROOT / "Mikobot" / "plugins" / "antiraid.py").read_text(encoding="utf-8"))
+        tree = ast.parse(
+            (ROOT / "Mikobot" / "plugins" / "antiraid.py").read_text(encoding="utf-8")
+        )
         words = {}
         for node in tree.body:
             if isinstance(node, ast.Assign) and isinstance(node.value, ast.Tuple):
@@ -3727,7 +3848,9 @@ class AntiRaidTests(unittest.TestCase):
         self.assertEqual(words["OFF_WORDS"], {"off", "no", "false", "disable", "0"})
 
     def test_join_handler_cannot_ban_an_admin_or_a_bot(self):
-        source = (ROOT / "Mikobot" / "plugins" / "antiraid.py").read_text(encoding="utf-8")
+        source = (ROOT / "Mikobot" / "plugins" / "antiraid.py").read_text(
+            encoding="utf-8"
+        )
         self.assertIn("new_user.is_bot", source)
         self.assertIn("ChatMemberStatus.ADMINISTRATOR", source)
         self.assertIn("ChatID.ANONYMOUS_ADMIN", source)
@@ -3747,7 +3870,9 @@ class AntiRaidTests(unittest.TestCase):
             shown = format_duration(seconds)
             expiry = _asyncio.run(extract_time(_Msg(), shown))
             self.assertIsNotNone(expiry, shown)
-            self.assertAlmostEqual(expiry - int(__import__("time").time()), seconds, delta=5)
+            self.assertAlmostEqual(
+                expiry - int(__import__("time").time()), seconds, delta=5
+            )
 
     def test_extract_time_accepts_weeks(self):
         # The documented duration table includes weeks; the shared parser is
@@ -3765,13 +3890,16 @@ class AntiRaidTests(unittest.TestCase):
         self.assertAlmostEqual(expiry - int(_time.time()), 2 * 7 * 86400, delta=5)
 
     def test_log_messages_escape_the_chat_title(self):
-        tree = ast.parse((ROOT / "Mikobot" / "plugins" / "antiraid.py").read_text(encoding="utf-8"))
+        tree = ast.parse(
+            (ROOT / "Mikobot" / "plugins" / "antiraid.py").read_text(encoding="utf-8")
+        )
         for node in ast.walk(tree):
             if isinstance(node, ast.JoinedStr):
                 blob = ast.unparse(node)
                 if "chat.title" in blob:
                     self.assertIn(
-                        "html.escape(chat.title)", blob,
+                        "html.escape(chat.title)",
+                        blob,
                         "log_channel output is HTML; an unescaped title is spoofable",
                     )
 
@@ -3844,18 +3972,24 @@ class BlacklistMatchingTests(unittest.TestCase):
         path = ROOT / "Mikobot" / "plugins" / "blacklist.py"
         tree = ast.parse(path.read_text(encoding="utf-8"))
         wanted = {
-            "normalize_text", "parse_trigger", "matches_text",
-            "_wildcard_pattern", "_base_pattern", "_match_pattern",
-            "_file_match", "TYPED_PREFIXES",
+            "normalize_text",
+            "parse_trigger",
+            "matches_text",
+            "_wildcard_pattern",
+            "_base_pattern",
+            "_match_pattern",
+            "_file_match",
+            "TYPED_PREFIXES",
         }
         keep = []
         for node in tree.body:
             name = getattr(node, "name", None)
             if name in wanted:
                 keep.append(node)
-            elif isinstance(node, ast.Assign) and getattr(
-                node.targets[0], "id", ""
-            ) in wanted:
+            elif (
+                isinstance(node, ast.Assign)
+                and getattr(node.targets[0], "id", "") in wanted
+            ):
                 keep.append(node)
         namespace = {"re": re, "unicodedata": unicodedata, "Message": object}
         exec(  # noqa: S102 - exercising the real source, not a copy
@@ -3877,12 +4011,18 @@ class BlacklistMatchingTests(unittest.TestCase):
 
     def test_typed_prefixes_are_recognised(self):
         for kind in (
-            "prefix", "exact", "lookalike", "name", "username", "file",
-            "forward", "inline", "stickerpack", "emojipack",
+            "prefix",
+            "exact",
+            "lookalike",
+            "name",
+            "username",
+            "file",
+            "forward",
+            "inline",
+            "stickerpack",
+            "emojipack",
         ):
-            self.assertEqual(
-                self.parse_trigger(f"{kind}:payload"), (kind, "payload")
-            )
+            self.assertEqual(self.parse_trigger(f"{kind}:payload"), (kind, "payload"))
         self.assertEqual(self.parse_trigger("earn"), (None, "earn"))
 
     def test_modifiers(self):
@@ -3925,9 +4065,7 @@ class BlocklistModeTests(unittest.TestCase):
     """Delete and punishment are separate settings, plus owner-gated silence."""
 
     def test_documented_blocklist_commands_are_registered(self):
-        registered = _registered_commands(
-            ROOT / "Mikobot" / "plugins" / "blacklist.py"
-        )
+        registered = _registered_commands(ROOT / "Mikobot" / "plugins" / "blacklist.py")
         # blacklistmode keeps this repo's existing name for the action setting;
         # the new commands follow the documented spellings.
         for command in ("blacklistmode", "blocklistdelete", "silentactions"):
@@ -3935,12 +4073,11 @@ class BlocklistModeTests(unittest.TestCase):
 
     def test_silent_actions_require_the_owner(self):
         tree = ast.parse(
-            (ROOT / "Mikobot" / "plugins" / "blacklist.py").read_text(
-                encoding="utf-8"
-            )
+            (ROOT / "Mikobot" / "plugins" / "blacklist.py").read_text(encoding="utf-8")
         )
         func = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.AsyncFunctionDef) and n.name == "silent_actions"
         )
         decorators = " ".join(ast.unparse(d) for d in func.decorator_list)
@@ -3980,9 +4117,7 @@ class DeleteThenActTests(unittest.TestCase):
         # PTB's unban_member returned a truthy value; aiogram returns a
         # coroutine. Un-awaited, every kick reported success even when
         # Telegram had refused it and the failure branch was unreachable.
-        source = (ROOT / "Mikobot" / "plugins" / "ban.py").read_text(
-            encoding="utf-8"
-        )
+        source = (ROOT / "Mikobot" / "plugins" / "ban.py").read_text(encoding="utf-8")
         self.assertNotIn("res = chat.unban_member(user_id)", source)
         self.assertIn("await bot.unban_chat_member(chat.id, user_id)", source)
 
@@ -4023,7 +4158,8 @@ class LockAllowlistTests(unittest.TestCase):
         keep = []
         for node in tree.body:
             if isinstance(node, ast.FunctionDef) and node.name in (
-                "_domain_of", "_normalise_item",
+                "_domain_of",
+                "_normalise_item",
             ):
                 keep.append(node)
             elif isinstance(node, ast.Assign) and getattr(
@@ -4072,15 +4208,15 @@ class LockAllowlistTests(unittest.TestCase):
     def test_invite_exemptions_are_ids_not_domains(self):
         # An invite-link exemption is the target chat, so classifying it as a
         # domain lock would make the allowlist comparison useless.
-        source = (ROOT / "Mikobot" / "plugins" / "locks.py").read_text(
-            encoding="utf-8"
-        )
+        source = (ROOT / "Mikobot" / "plugins" / "locks.py").read_text(encoding="utf-8")
         self.assertNotIn('DOMAIN_LOCKABLES = {"url", "button", "invitelink"}', source)
         self.assertIn('"invitelink",', source)
 
     def test_handles_are_normalised_for_comparison(self):
         self.assertEqual(self.normalise("inline", "@PicBot"), "picbot")
-        self.assertEqual(self.normalise("url", "HTTPS://WWW.Example.COM/x"), "example.com")
+        self.assertEqual(
+            self.normalise("url", "HTTPS://WWW.Example.COM/x"), "example.com"
+        )
 
     def test_commands_are_registered(self):
         found = _registered_commands(ROOT / "Mikobot" / "plugins" / "locks.py")
@@ -4092,16 +4228,15 @@ class LockAllowlistTests(unittest.TestCase):
             (ROOT / "Mikobot" / "plugins" / "locks.py").read_text(encoding="utf-8")
         )
         func = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.AsyncFunctionDef) and n.name == "rmallowlistall"
         )
         decorators = " ".join(ast.unparse(d) for d in func.decorator_list)
         self.assertIn("only_owner=True", decorators)
 
     def test_allowlist_is_checked_before_deleting(self):
-        source = (ROOT / "Mikobot" / "plugins" / "locks.py").read_text(
-            encoding="utf-8"
-        )
+        source = (ROOT / "Mikobot" / "plugins" / "locks.py").read_text(encoding="utf-8")
         self.assertIn("_is_allowlisted", source)
 
 
@@ -4131,7 +4266,8 @@ class SettingsExportTests(unittest.TestCase):
             )
         )
         func = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.FunctionDef) and n.name == "__export_data__"
         )
         keys = {
@@ -4153,7 +4289,8 @@ class SettingsExportTests(unittest.TestCase):
         )
         for name in ("import_settings", "reset"):
             func = next(
-                n for n in tree.body
+                n
+                for n in tree.body
                 if isinstance(n, ast.AsyncFunctionDef) and n.name == name
             )
             source = ast.unparse(func)
@@ -4186,12 +4323,14 @@ class LiveCacheTests(unittest.TestCase):
         ):
             tree = ast.parse((ROOT / path).read_text(encoding="utf-8"))
             node = next(
-                n for n in tree.body
+                n
+                for n in tree.body
                 if isinstance(n, ast.FunctionDef) and n.name == func
             )
             body = ast.unparse(node)
             self.assertIn(
-                f"return set({cache}.get(", body,
+                f"return set({cache}.get(",
+                body,
                 f"{func} must copy: iterating the live set while removing raises "
                 f"'Set changed size during iteration'",
             )
@@ -4237,7 +4376,11 @@ class EchoImpersonationTests(unittest.TestCase):
             self.assertLess(
                 source.index("_is_bot_staff"),
                 min(
-                    (source.index(call) for call in ("copy(", "send_message(") if call in source),
+                    (
+                        source.index(call)
+                        for call in ("copy(", "send_message(")
+                        if call in source
+                    ),
                     default=len(source),
                 ),
                 f"{node.name} must authorise before sending",
@@ -4248,7 +4391,8 @@ class EchoImpersonationTests(unittest.TestCase):
     def test_owner_test_covers_owner_and_developers(self):
         tree = ast.parse(self.PATH.read_text(encoding="utf-8"))
         func = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.FunctionDef) and n.name == "_is_bot_staff"
         )
         source = ast.unparse(func)
@@ -4264,15 +4408,14 @@ class EchoImpersonationTests(unittest.TestCase):
     def test_one_failing_chat_does_not_abort_the_broadcast(self):
         tree = ast.parse(self.PATH.read_text(encoding="utf-8"))
         func = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.AsyncFunctionDef) and n.name == "_broadcast"
         )
-        loop = next(
-            n for n in ast.walk(func)
-            if isinstance(n, ast.For)
-        )
+        loop = next(n for n in ast.walk(func) if isinstance(n, ast.For))
         handlers = [
-            ast.unparse(h.type) for h in ast.walk(loop)
+            ast.unparse(h.type)
+            for h in ast.walk(loop)
             if isinstance(h, ast.ExceptHandler)
         ]
         self.assertTrue(
@@ -4290,8 +4433,13 @@ class TopicManagementTests(unittest.TestCase):
     def test_documented_commands_are_registered(self):
         found = _registered_commands(self.PATH)
         for command in (
-            "newtopic", "renametopic", "closetopic", "reopentopic",
-            "deletetopic", "actiontopic", "setactiontopic",
+            "newtopic",
+            "renametopic",
+            "closetopic",
+            "reopentopic",
+            "deletetopic",
+            "actiontopic",
+            "setactiontopic",
         ):
             self.assertIn(command, found, command)
 
@@ -4300,11 +4448,18 @@ class TopicManagementTests(unittest.TestCase):
         # would fail against the API instead of explaining itself.
         tree = ast.parse(self.PATH.read_text(encoding="utf-8"))
         handlers = [
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.AsyncFunctionDef)
-            and n.name in (
-                "new_topic", "rename_topic", "close_topic", "reopen_topic",
-                "delete_topic", "action_topic", "set_action_topic",
+            and n.name
+            in (
+                "new_topic",
+                "rename_topic",
+                "close_topic",
+                "reopen_topic",
+                "delete_topic",
+                "action_topic",
+                "set_action_topic",
             )
         ]
         self.assertEqual(len(handlers), 7)
@@ -4322,7 +4477,8 @@ class TopicManagementTests(unittest.TestCase):
         # the API itself.
         tree = ast.parse(self.PATH.read_text(encoding="utf-8"))
         command = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.AsyncFunctionDef) and n.name == "delete_topic"
         )
         body = ast.unparse(command)
@@ -4335,7 +4491,8 @@ class TopicManagementTests(unittest.TestCase):
         # The button can be pressed by whoever the message reached.
         tree = ast.parse(self.PATH.read_text(encoding="utf-8"))
         callback = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.AsyncFunctionDef) and n.name == "delete_topic_button"
         )
         body = ast.unparse(callback)
@@ -4345,11 +4502,12 @@ class TopicManagementTests(unittest.TestCase):
         self.assertIn("deltopic_cancel", body)
 
     def test_action_topic_defaults_to_general(self):
-        tree = ast.parse((ROOT / "Database" / "sql" / "topics_sql.py").read_text(
-            encoding="utf-8"
-        ))
+        tree = ast.parse(
+            (ROOT / "Database" / "sql" / "topics_sql.py").read_text(encoding="utf-8")
+        )
         func = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.FunctionDef) and n.name == "get_action_topic"
         )
         body = ast.unparse(func)
@@ -4378,9 +4536,7 @@ class BotToBotTests(unittest.TestCase):
     SQL = ROOT / "Database" / "sql" / "bot2bot_sql.py"
 
     def test_modes_match_the_documented_set(self):
-        consts = _module_constants(
-            self.SQL, {"MODE_OFF", "MODE_ADMIN", "MODE_ALL"}
-        )
+        consts = _module_constants(self.SQL, {"MODE_OFF", "MODE_ADMIN", "MODE_ALL"})
         self.assertEqual(
             (consts["MODE_OFF"], consts["MODE_ADMIN"], consts["MODE_ALL"]),
             ("off", "admin", "all"),
@@ -4396,9 +4552,9 @@ class BotToBotTests(unittest.TestCase):
     def test_human_senders_are_untouched(self):
         tree = ast.parse(self.GATE.read_text(encoding="utf-8"))
         func = next(
-            n for n in ast.walk(tree)
-            if isinstance(n, ast.AsyncFunctionDef)
-            and n.name == "_bot_sender_allowed"
+            n
+            for n in ast.walk(tree)
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "_bot_sender_allowed"
         )
         body = ast.unparse(func)
         # The first check must be "is this even a bot".
@@ -4411,9 +4567,9 @@ class BotToBotTests(unittest.TestCase):
     def test_gate_fails_closed_on_a_settings_error(self):
         tree = ast.parse(self.GATE.read_text(encoding="utf-8"))
         func = next(
-            n for n in ast.walk(tree)
-            if isinstance(n, ast.AsyncFunctionDef)
-            and n.name == "_bot_sender_allowed"
+            n
+            for n in ast.walk(tree)
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "_bot_sender_allowed"
         )
         body = ast.unparse(func)
         # If the setting cannot be read, a bot gets nothing.
@@ -4425,7 +4581,8 @@ class BotToBotTests(unittest.TestCase):
         # ban a member, so configuration changes are shown to an admin first.
         tree = ast.parse(self.SQL.read_text(encoding="utf-8"))
         node = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.Assign)
             and getattr(n.targets[0], "id", "") == "SETTING_COMMANDS"
         )
@@ -4435,16 +4592,29 @@ class BotToBotTests(unittest.TestCase):
             value = value.args[0]
         commands = set(ast.literal_eval(value))
         for expected in (
-            "lock", "setflood", "addblacklist", "ban", "unban", "mute",
-            "setwelcome", "cleanservice", "antiraid", "setrules", "reset",
-            "import", "export", "promote", "demote",
+            "lock",
+            "setflood",
+            "addblacklist",
+            "ban",
+            "unban",
+            "mute",
+            "setwelcome",
+            "cleanservice",
+            "antiraid",
+            "setrules",
+            "reset",
+            "import",
+            "export",
+            "promote",
+            "demote",
         ):
             self.assertIn(expected, commands, expected)
 
     def test_only_setting_commands_are_held(self):
         tree = ast.parse(self.PLUGIN.read_text(encoding="utf-8"))
         func = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.AsyncFunctionDef) and n.name == "request_review"
         )
         body = ast.unparse(func)
@@ -4455,7 +4625,8 @@ class BotToBotTests(unittest.TestCase):
     def test_review_can_be_skipped_explicitly(self):
         tree = ast.parse(self.PLUGIN.read_text(encoding="utf-8"))
         func = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.AsyncFunctionDef) and n.name == "request_review"
         )
         body = ast.unparse(func)
@@ -4476,7 +4647,8 @@ class BotToBotTests(unittest.TestCase):
     def test_review_callback_rechecks_the_presser(self):
         tree = ast.parse(self.PLUGIN.read_text(encoding="utf-8"))
         func = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.AsyncFunctionDef) and n.name == "review_callback"
         )
         body = ast.unparse(func)
@@ -4509,8 +4681,13 @@ class CaptchaTests(unittest.TestCase):
 
         tree = ast.parse(cls.PLUGIN.read_text(encoding="utf-8"))
         wanted = (
-            "gen_math", "gen_text", "gen_text2",
-            "_neighbour", "_options", "_store_challenge", "_take_challenge",
+            "gen_math",
+            "gen_text",
+            "gen_text2",
+            "_neighbour",
+            "_options",
+            "_store_challenge",
+            "_take_challenge",
             "_drop_challenge",
         )
         keep = []
@@ -4522,7 +4699,10 @@ class CaptchaTests(unittest.TestCase):
                     node.targets[0] if isinstance(node, ast.Assign) else node.target
                 )
                 if getattr(target, "id", "") in (
-                    "CHALLENGES", "CHALLENGE_TTL", "WORDS", "OPTIONS_PER_CHALLENGE",
+                    "CHALLENGES",
+                    "CHALLENGE_TTL",
+                    "WORDS",
+                    "OPTIONS_PER_CHALLENGE",
                 ):
                     keep.append(node)
         namespace = {"random": random, "time": __import__("time"), "string": string}
@@ -4587,8 +4767,11 @@ class CaptchaTests(unittest.TestCase):
         consts = _module_constants(
             self.SQL,
             {
-                "MODE_BUTTON", "DEF_KICK_TIME", "DEF_MUTE_TIME",
-                "MIN_KICK_TIME", "MAX_KICK_TIME",
+                "MODE_BUTTON",
+                "DEF_KICK_TIME",
+                "DEF_MUTE_TIME",
+                "MIN_KICK_TIME",
+                "MAX_KICK_TIME",
             },
         )
         self.assertEqual(consts["MODE_BUTTON"], "button")
@@ -4601,8 +4784,14 @@ class CaptchaTests(unittest.TestCase):
     def test_documented_commands_are_registered(self):
         found = _registered_commands(self.PLUGIN)
         for command in (
-            "captcha", "captchamode", "captchabuttons", "resetcaptchatext",
-            "captchakick", "captchakicktime", "captchamutetime", "captcharules",
+            "captcha",
+            "captchamode",
+            "captchabuttons",
+            "resetcaptchatext",
+            "captchakick",
+            "captchakicktime",
+            "captchamutetime",
+            "captcharules",
         ):
             self.assertIn(command, found, command)
 
@@ -4610,7 +4799,8 @@ class CaptchaTests(unittest.TestCase):
         # Otherwise the user is muted with nowhere to see the prompt.
         tree = ast.parse(self.PLUGIN.read_text(encoding="utf-8"))
         func = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.AsyncFunctionDef) and n.name == "captcha"
         )
         body = ast.unparse(func)
@@ -4621,7 +4811,8 @@ class CaptchaTests(unittest.TestCase):
         # member list.
         tree = ast.parse(self.PLUGIN.read_text(encoding="utf-8"))
         func = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.AsyncFunctionDef) and n.name == "on_join"
         )
         body = ast.unparse(func)
@@ -4630,7 +4821,8 @@ class CaptchaTests(unittest.TestCase):
     def test_solved_users_are_not_challenged_again(self):
         tree = ast.parse(self.PLUGIN.read_text(encoding="utf-8"))
         func = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.FunctionDef) and n.name == "_should_challenge"
         )
         self.assertIn("has_solved", ast.unparse(func))
@@ -4652,7 +4844,8 @@ class CaptchaTests(unittest.TestCase):
         # A challenge answered in the chat is visible to every bot watching.
         tree = ast.parse(self.PLUGIN.read_text(encoding="utf-8"))
         func = next(
-            n for n in tree.body
+            n
+            for n in tree.body
             if isinstance(n, ast.AsyncFunctionDef) and n.name == "math_answer"
         )
         self.assertIn("PRIVATE", ast.unparse(func))
@@ -4684,9 +4877,9 @@ class UnitOfWorkTests(unittest.TestCase):
         # ordering bug was the fix that finally made the leak stop.
         source = self.INIT.read_text(encoding="utf-8")
         method = next(
-            node for node in ast.walk(ast.parse(source))
-            if isinstance(node, ast.FunctionDef)
-            and node.name == "end_unit_of_work"
+            node
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.FunctionDef) and node.name == "end_unit_of_work"
         )
         body = ast.unparse(method)
         self.assertLess(
@@ -4727,7 +4920,8 @@ class UnitOfWorkTests(unittest.TestCase):
         # and see nothing.
         source = self.INIT.read_text(encoding="utf-8")
         guard = next(
-            node for node in ast.walk(ast.parse(source))
+            node
+            for node in ast.walk(ast.parse(source))
             if isinstance(node, ast.FunctionDef) and node.name == "unit_of_work_guard"
         )
         body = ast.unparse(guard)
@@ -4735,9 +4929,9 @@ class UnitOfWorkTests(unittest.TestCase):
         self.assertIn("force=True", body)
         # And end_unit_of_work has to defer while a guard is active.
         ender = next(
-            node for node in ast.walk(ast.parse(source))
-            if isinstance(node, ast.FunctionDef)
-            and node.name == "end_unit_of_work"
+            node
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.FunctionDef) and node.name == "end_unit_of_work"
         )
         self.assertIn("force", ast.unparse(ender.args))
 
@@ -4769,7 +4963,8 @@ class ConnectionPoolTests(unittest.TestCase):
     def test_pool_is_explicitly_sized(self):
         source = self.INIT.read_text(encoding="utf-8")
         engine = next(
-            node for node in ast.walk(ast.parse(source))
+            node
+            for node in ast.walk(ast.parse(source))
             if isinstance(node, ast.Call)
             and getattr(node.func, "id", "") == "create_engine"
         )
@@ -4803,7 +4998,8 @@ class ConnectionPoolTests(unittest.TestCase):
         # asyncio.to_thread spawns at most min(32, cpu + 4) workers.
         workers = min(32, cpus + 4)
         self.assertGreaterEqual(
-            ceiling, workers,
+            ceiling,
+            workers,
             f"pool ceiling {ceiling} must hold all {workers} to_thread workers",
         )
         self.assertLessEqual(ceiling, 40, "but not so many the server refuses")
@@ -4854,7 +5050,8 @@ class ReasonEscapingTests(unittest.TestCase):
                 if f"{{{variable}}}" not in blob:
                     continue
                 self.assertIn(
-                    f"html.escape({variable})", blob,
+                    f"html.escape({variable})",
+                    blob,
                     f"{name}:{node.lineno} interpolates a raw {variable} into "
                     "HTML-parsed output; a user controls that text",
                 )
@@ -4864,9 +5061,7 @@ class ReasonEscapingTests(unittest.TestCase):
         from html import escape
 
         hostile = '"><a href="tg://user?id=1">click'
-        rendered = (
-            f'<a href="https://telegram.me/chat/1">{escape(hostile)}</a>'
-        )
+        rendered = f'<a href="https://telegram.me/chat/1">{escape(hostile)}</a>'
         # Exactly one anchor, and the injected href never became an attribute.
         self.assertEqual(rendered.count("<a "), 1)
         self.assertNotIn('href="tg://user?id=1"', rendered)
@@ -4898,7 +5093,8 @@ class FilterListingTests(unittest.TestCase):
         for node in ast.walk(tree):
             if isinstance(node, ast.Attribute) and node.attr == "format":
                 self.assertNotIn(
-                    "filter_list", ast.unparse(node),
+                    "filter_list",
+                    ast.unparse(node),
                     f"line {node.lineno} formats a string that already holds "
                     "user-supplied triggers; a brace in a trigger raises KeyError",
                 )
@@ -4942,7 +5138,9 @@ class GenshinModuleTests(unittest.TestCase):
         source = "import logging\n" + (
             ROOT / "Mikobot" / "plugins" / "genshin.py"
         ).read_text(encoding="utf-8")
-        source = source.replace("from Mikobot import bot, dp", "bot = object()\ndp = object()")
+        source = source.replace(
+            "from Mikobot import bot, dp", "bot = object()\ndp = object()"
+        )
         source = source.replace("from Mikobot.state import state", "state = object()")
         source = "\n".join(
             line
@@ -5018,7 +5216,9 @@ class GenshinModuleTests(unittest.TestCase):
         from aiogram.types import RichText, RichTextBold
 
         self.assertEqual(self.g._flatten(RichText(text="Geo")), "Geo")
-        self.assertEqual(self.g._flatten(RichTextBold(text=RichText(text="Geo"))), "Geo")
+        self.assertEqual(
+            self.g._flatten(RichTextBold(text=RichText(text="Geo"))), "Geo"
+        )
 
     def test_flatten_joins_a_run_list_without_duplicating_content(self):
         from aiogram.types import RichText, RichTextBold
@@ -5062,7 +5262,9 @@ class GenshinModuleTests(unittest.TestCase):
         """Upstream omits fields freely; a blank record must not raise."""
         for name, renderer in self.g.RENDERERS.items():
             with self.subTest(renderer=name):
-                entry = {} if name not in ("consumables", "materials") else {"name": "x"}
+                entry = (
+                    {} if name not in ("consumables", "materials") else {"name": "x"}
+                )
                 self.assertIsInstance(renderer(entry), list)
 
     def test_every_served_collection_has_a_command(self):
@@ -5110,11 +5312,14 @@ class GenshinModuleTests(unittest.TestCase):
         self.assertIsNotNone(self.g._image_url("characters", "albedo"))
         # Enemies do serve art at /icon, which a comment here once denied.
         self.assertTrue(
-            self.g._image_url("enemies", "abyss-herald").endswith("/enemies/abyss-herald/icon")
+            self.g._image_url("enemies", "abyss-herald").endswith(
+                "/enemies/abyss-herald/icon"
+            )
         )
         self.assertTrue(
             self.g._image_url("artifacts", "adventurer").endswith("flower-of-life")
         )
+
 
 class ExceptionHandlingTests(unittest.TestCase):
     """Bare ``except:`` swallows KeyboardInterrupt and SystemExit.
@@ -5191,7 +5396,9 @@ class ExceptionHandlingTests(unittest.TestCase):
                 if not isinstance(handler, ast.ExceptHandler):
                     continue
                 for inner in ast.walk(handler):
-                    if isinstance(inner, ast.Assign) and isinstance(inner.targets[0], ast.Name):
+                    if isinstance(inner, ast.Assign) and isinstance(
+                        inner.targets[0], ast.Name
+                    ):
                         reassigned.append(inner.targets[0].id)
             # One handler per language, and each must reset the language it looked up.
             self.assertEqual(sorted(reassigned), ["lang_src", "lang_tgt"], plugin)
@@ -5243,7 +5450,9 @@ class CallbackEditMethodTests(unittest.TestCase):
         for path in (ROOT / "Mikobot").rglob("*.py"):
             if "__pycache__" in path.parts:
                 continue
-            for number, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
+            for number, line in enumerate(
+                path.read_text(encoding="utf-8").split("\n"), 1
+            ):
                 stripped = line.strip()
                 # bot.edit_message_text(chat_id=..., message_id=...) is valid.
                 if "edit_message_text" not in stripped:
@@ -5338,8 +5547,14 @@ class AiogramMethodNameTests(unittest.TestCase):
     dead and only the log shows it.
     """
 
-    PTB_ONLY = ("reply_html", "reply_markdown", "edit_html", "edit_markdown",
-                "edit_message_text", "reply_text")
+    PTB_ONLY = (
+        "reply_html",
+        "reply_markdown",
+        "edit_html",
+        "edit_markdown",
+        "edit_message_text",
+        "reply_text",
+    )
 
     def test_the_premise_holds(self):
         """If a future aiogram adds these, these shims can be revisited."""
@@ -5364,12 +5579,16 @@ class AiogramMethodNameTests(unittest.TestCase):
         for path in (ROOT / "Mikobot").rglob("*.py"):
             if "__pycache__" in path.parts:
                 continue
-            for number, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
+            for number, line in enumerate(
+                path.read_text(encoding="utf-8").split("\n"), 1
+            ):
                 stripped = line.strip()
                 if stripped.startswith("#"):
                     continue
                 if ".reply_html(" in stripped or ".reply_markdown(" in stripped:
-                    offenders.append(f"{path.relative_to(ROOT)}:{number}: {stripped[:90]}")
+                    offenders.append(
+                        f"{path.relative_to(ROOT)}:{number}: {stripped[:90]}"
+                    )
         self.assertEqual(offenders, [], "\n".join(offenders[:20]))
 
     def test_no_reply_text_remains_anywhere(self):
@@ -5382,12 +5601,16 @@ class AiogramMethodNameTests(unittest.TestCase):
         for path in (ROOT / "Mikobot").rglob("*.py"):
             if "__pycache__" in path.parts:
                 continue
-            for number, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
+            for number, line in enumerate(
+                path.read_text(encoding="utf-8").split("\n"), 1
+            ):
                 stripped = line.strip()
                 if stripped.startswith("#"):
                     continue
                 if ".reply_text(" in stripped:
-                    offenders.append(f"{path.relative_to(ROOT)}:{number}: {stripped[:90]}")
+                    offenders.append(
+                        f"{path.relative_to(ROOT)}:{number}: {stripped[:90]}"
+                    )
         self.assertEqual(offenders, [], "\n".join(offenders[:20]))
 
     def test_both_frameworks_accept_reply(self):
@@ -5430,7 +5653,9 @@ class AiogramMethodNameTests(unittest.TestCase):
         source = "import logging\n" + (
             ROOT / "Mikobot" / "plugins" / "genshin.py"
         ).read_text(encoding="utf-8")
-        source = source.replace("from Mikobot import bot, dp", "bot = object()\ndp = object()")
+        source = source.replace(
+            "from Mikobot import bot, dp", "bot = object()\ndp = object()"
+        )
         source = source.replace("from Mikobot.state import state", "state = object()")
         source = "\n".join(
             line
@@ -5492,7 +5717,9 @@ class AiogramKwargsTests(unittest.TestCase):
         self.assertNotIn("reply_to_message_id", params)
         self.assertNotIn("reply_parameters", params)
         # answer() is the one that can target another message.
-        self.assertIn("reply_to_message_id", inspect.signature(Message.answer).parameters)
+        self.assertIn(
+            "reply_to_message_id", inspect.signature(Message.answer).parameters
+        )
 
     def test_document_uploads_use_an_input_file(self):
         """A raw BytesIO fails validation; document must be an InputFile."""
@@ -5555,7 +5782,11 @@ class FrameworkMethodAuditTests(unittest.TestCase):
         )
 
         aio = {"Message": AioMessage, "CallbackQuery": AioCallback, "Bot": AioBot}
-        pyro = {"Message": PyroMessage, "CallbackQuery": PyroCallback, "Client": PyroClient}
+        pyro = {
+            "Message": PyroMessage,
+            "CallbackQuery": PyroCallback,
+            "Client": PyroClient,
+        }
         nested_types = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
 
         problems = collections.defaultdict(list)
@@ -5634,7 +5865,7 @@ class FrameworkMethodAuditTests(unittest.TestCase):
                         raw = getattr(method, "__func__", method)
                         try:
                             params = set(inspect.signature(raw).parameters)
-                        except (TypeError, ValueError):
+                        except TypeError, ValueError:
                             continue
                         for keyword in node.keywords:
                             if keyword.arg and keyword.arg not in params:
@@ -5670,7 +5901,9 @@ class GenshinImageTests(unittest.TestCase):
         # domains, consumables and materials ship no art; the URL 404s.
         for kind in ("domains", "consumables", "materials"):
             with self.subTest(kind=kind):
-                self.assertIsNone(_photo_block({"id": "cecilia-garden", "name": "X"}, kind))
+                self.assertIsNone(
+                    _photo_block({"id": "cecilia-garden", "name": "X"}, kind)
+                )
 
     def test_photo_block_is_skipped_without_an_id(self):
         from Mikobot.plugins.genshin import _photo_block
@@ -5681,7 +5914,14 @@ class GenshinImageTests(unittest.TestCase):
         """The image strategy must match what the API actually serves."""
         from Mikobot.plugins.genshin import ENTITY_TYPES
 
-        with_art = {"characters", "weapons", "artifacts", "enemies", "nations", "elements"}
+        with_art = {
+            "characters",
+            "weapons",
+            "artifacts",
+            "enemies",
+            "nations",
+            "elements",
+        }
         for name, entity in ENTITY_TYPES.items():
             with self.subTest(collection=name):
                 self.assertEqual(bool(entity.image), name in with_art)
@@ -5704,13 +5944,17 @@ class GenshinImageTests(unittest.TestCase):
                 if kind in ("domains", "consumables", "materials"):
                     self.assertNotIn("photo", types)
                 else:
-                    self.assertEqual(types[0], "photo", f"{kind} does not lead with art")
+                    self.assertEqual(
+                        types[0], "photo", f"{kind} does not lead with art"
+                    )
 
     def test_text_fallback_keeps_the_image(self):
         """A photo block has no text, so the fallback used to drop it."""
         from Mikobot.plugins.genshin import _blocks_to_text, _photo_block
 
-        text = _blocks_to_text([_photo_block({"id": "albedo", "name": "A"}, "characters")])
+        text = _blocks_to_text(
+            [_photo_block({"id": "albedo", "name": "A"}, "characters")]
+        )
         self.assertIn("albedo/portrait", text)
 
 
@@ -5724,7 +5968,9 @@ class GenshinDataShapeTests(unittest.TestCase):
         "elements": ["Hydro"],
         "drops": [{"name": "Masquerade Mask", "rarity": 3}],
         "artifacts": [{"name": "Blood-Soaked", "set": "Berserker", "rarity": "3/4"}],
-        "elemental-description": [{"element": "Hydro", "description": "Abyss creatures."}],
+        "elemental-description": [
+            {"element": "Hydro", "description": "Abyss creatures."}
+        ],
     }
 
     def _labels(self, blocks):
@@ -5776,7 +6022,9 @@ class GenshinDataShapeTests(unittest.TestCase):
                 ],
             }
         )
-        labels = [item.label for b in blocks for item in (getattr(b, "items", None) or [])]
+        labels = [
+            item.label for b in blocks for item in (getattr(b, "items", None) or [])
+        ]
         self.assertIn("AR 16", labels)
 
     def test_domain_drops_empty_ley_line_disorder(self):
@@ -5788,7 +6036,11 @@ class GenshinDataShapeTests(unittest.TestCase):
                 "id": "x",
                 "name": "X",
                 "requirements": [
-                    {"adventureRank": 1, "recommendedLevel": 2, "leyLineDisorder": ["None"]}
+                    {
+                        "adventureRank": 1,
+                        "recommendedLevel": 2,
+                        "leyLineDisorder": ["None"],
+                    }
                 ],
             }
         )
@@ -5850,10 +6102,28 @@ class RemovedStdlibApiTests(unittest.TestCase):
     # root package so "import asyncore" and "from asyncore import x" both hit.
     REMOVED_MODULES = frozenset(
         {
-            "aifc", "asynchat", "asyncore", "audioop", "cgi", "cgitb",
-            "chunk", "crypt", "distutils", "imghdr", "imp", "lib2to3",
-            "mailcap", "nntplib", "ossaudiodev", "pipes", "sndhdr", "spwd",
-            "sunau", "telnetlib", "uu", "xdrlib",
+            "aifc",
+            "asynchat",
+            "asyncore",
+            "audioop",
+            "cgi",
+            "cgitb",
+            "chunk",
+            "crypt",
+            "distutils",
+            "imghdr",
+            "imp",
+            "lib2to3",
+            "mailcap",
+            "nntplib",
+            "ossaudiodev",
+            "pipes",
+            "sndhdr",
+            "spwd",
+            "sunau",
+            "telnetlib",
+            "uu",
+            "xdrlib",
         }
     )
 
@@ -5861,22 +6131,42 @@ class RemovedStdlibApiTests(unittest.TestCase):
     # path so an unrelated local called "version" cannot trip the guard.
     REMOVED_ATTRIBUTES = frozenset(
         {
-            "asyncio.AbstractChildWatcher", "asyncio.FastChildWatcher",
-            "asyncio.MultiLoopChildWatcher", "asyncio.PidfdChildWatcher",
-            "asyncio.SafeChildWatcher", "asyncio.ThreadedChildWatcher",
-            "asyncio.get_child_watcher", "asyncio.set_child_watcher",
-            "ast.Bytes", "ast.Ellipsis", "ast.NameConstant", "ast.Num",
-            "ast.Str", "collections.Callable", "collections.Iterable",
-            "collections.Mapping", "collections.Sequence",
-            "importlib.abc.ResourceReader", "importlib.abc.Traversable",
-            "importlib.abc.TraversableResources", "locale.resetlocale",
-            "pkgutil.find_loader", "pkgutil.get_loader",
-            "pty.master_open", "pty.slave_open",
-            "sqlite3.enable_shared_cache", "sqlite3.version",
-            "sqlite3.version_info", "typing.io", "typing.re",
-            "unittest.findTestCases", "unittest.getTestCaseNames",
-            "unittest.makeSuite", "unittest.usageExit",
-            "urllib.request.FancyURLopener", "urllib.request.URLopener",
+            "asyncio.AbstractChildWatcher",
+            "asyncio.FastChildWatcher",
+            "asyncio.MultiLoopChildWatcher",
+            "asyncio.PidfdChildWatcher",
+            "asyncio.SafeChildWatcher",
+            "asyncio.ThreadedChildWatcher",
+            "asyncio.get_child_watcher",
+            "asyncio.set_child_watcher",
+            "ast.Bytes",
+            "ast.Ellipsis",
+            "ast.NameConstant",
+            "ast.Num",
+            "ast.Str",
+            "collections.Callable",
+            "collections.Iterable",
+            "collections.Mapping",
+            "collections.Sequence",
+            "importlib.abc.ResourceReader",
+            "importlib.abc.Traversable",
+            "importlib.abc.TraversableResources",
+            "locale.resetlocale",
+            "pkgutil.find_loader",
+            "pkgutil.get_loader",
+            "pty.master_open",
+            "pty.slave_open",
+            "sqlite3.enable_shared_cache",
+            "sqlite3.version",
+            "sqlite3.version_info",
+            "typing.io",
+            "typing.re",
+            "unittest.findTestCases",
+            "unittest.getTestCaseNames",
+            "unittest.makeSuite",
+            "unittest.usageExit",
+            "urllib.request.FancyURLopener",
+            "urllib.request.URLopener",
         }
     )
 
@@ -5948,7 +6238,9 @@ class RemovedStdlibApiTests(unittest.TestCase):
                     dotted = self._dotted(node)
                     if dotted in self.REMOVED_ATTRIBUTES:
                         offenders.append(f"{path.name}:{node.lineno} uses {dotted}")
-                elif isinstance(node, ast.ImportFrom) and not node.level and node.module:
+                elif (
+                    isinstance(node, ast.ImportFrom) and not node.level and node.module
+                ):
                     # "from unittest import makeSuite" names the same dead API
                     # without ever building an attribute chain.
                     for alias in node.names:
@@ -5981,7 +6273,9 @@ class DeprecatedCallTests(unittest.TestCase):
         source = (ROOT / "Mikobot/plugins/telegraph.py").read_text(encoding="utf-8")
         self.assertNotIn("Telegraph().upload_file", source)
         self.assertNotIn("telegra.ph/upload", source)
-        quotely_source = (ROOT / "Mikobot/plugins/quotely.py").read_text(encoding="utf-8")
+        quotely_source = (ROOT / "Mikobot/plugins/quotely.py").read_text(
+            encoding="utf-8"
+        )
         self.assertNotIn("telegra.ph/upload", quotely_source)
 
     def test_the_deprecated_helper_really_does_warn(self):
@@ -6099,13 +6393,9 @@ class EventLoopSelectionTests(unittest.TestCase):
             if isinstance(node, ast.FunctionDef) and node.name == "_create_event_loop"
         )
         guarded = [
-            node
-            for node in func.body
-            if isinstance(node, ast.Try) and node.handlers
+            node for node in func.body if isinstance(node, ast.Try) and node.handlers
         ]
-        self.assertTrue(
-            guarded, "_create_event_loop imports uvloop without a fallback"
-        )
+        self.assertTrue(guarded, "_create_event_loop imports uvloop without a fallback")
         names = {
             alias.name
             for node in ast.walk(guarded[0])
@@ -6435,6 +6725,7 @@ class CaptureErrArityTests(unittest.TestCase):
     @staticmethod
     def _with_client(callback):
         """Verbatim from Mikobot/events.py."""
+
         async def handler(client, event):
             return await callback(event)
 
@@ -6785,16 +7076,18 @@ class UndefinedNameTests(unittest.TestCase):
             if not candidate.exists():
                 continue
             for node in ast.parse(candidate.read_text(encoding="utf-8")).body:
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                if isinstance(
+                    node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+                ):
                     names.add(node.name)
                 elif isinstance(node, ast.Assign):
                     names.update(t.id for t in node.targets if isinstance(t, ast.Name))
-                elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                elif isinstance(node, ast.AnnAssign) and isinstance(
+                    node.target, ast.Name
+                ):
                     names.add(node.target.id)
                 elif isinstance(node, (ast.Import, ast.ImportFrom)):
-                    names.update(
-                        (a.asname or a.name).split(".")[0] for a in node.names
-                    )
+                    names.update((a.asname or a.name).split(".")[0] for a in node.names)
         return names
 
     def _bound(self, tree) -> set:
@@ -6803,9 +7096,13 @@ class UndefinedNameTests(unittest.TestCase):
         for node in ast.walk(tree):
             if isinstance(node, (ast.Import, ast.ImportFrom)):
                 names.update((a.asname or a.name).split(".")[0] for a in node.names)
-            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            elif isinstance(
+                node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+            ):
                 names.add(node.name)
-            elif isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
+            elif isinstance(node, ast.Name) and isinstance(
+                node.ctx, (ast.Store, ast.Del)
+            ):
                 names.add(node.id)
             elif isinstance(node, ast.arg):
                 names.add(node.arg)
@@ -6818,14 +7115,22 @@ class UndefinedNameTests(unittest.TestCase):
     def test_no_module_reads_a_name_it_never_binds(self):
         offenders = []
         for root in self.ROOTS:
-            paths = [ROOT / root] if (ROOT / root).is_file() else sorted((ROOT / root).rglob("*.py"))
+            paths = (
+                [ROOT / root]
+                if (ROOT / root).is_file()
+                else sorted((ROOT / root).rglob("*.py"))
+            )
             for path in paths:
                 tree = ast.parse(path.read_text(encoding="utf-8"))
-                bound = self._bound(tree) | set(dir(builtins)) | {
-                    "__name__",
-                    "__file__",
-                    "__doc__",
-                }
+                bound = (
+                    self._bound(tree)
+                    | set(dir(builtins))
+                    | {
+                        "__name__",
+                        "__file__",
+                        "__doc__",
+                    }
+                )
                 for node in ast.walk(tree):
                     if isinstance(node, ast.ImportFrom) and any(
                         alias.name == "*" for alias in node.names
@@ -6899,9 +7204,7 @@ class BroadcastRetryTests(unittest.IsolatedAsyncioTestCase):
             mock.patch.object(echo.users_sql, "get_all_chats", return_value=chats),
             mock.patch.object(asyncio_module, "sleep", _sleep),
         ):
-            await echo._broadcast(
-                _Message(), SimpleNamespace(args="hello")
-            )
+            await echo._broadcast(_Message(), SimpleNamespace(args="hello"))
 
         self.assertIn(3, slept, "the API's own delay must be the wait")
         self.assertEqual(attempts["n"], 3, "one retried send plus the other chat")

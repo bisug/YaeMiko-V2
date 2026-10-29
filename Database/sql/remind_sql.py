@@ -70,9 +70,7 @@ def set_remind(chat_id, time_sec, remind_message, user_id):
         SESSION.commit()
         REMINDERS.setdefault(time_sec, [])
         REMINDERS[time_sec] = [
-            item
-            for item in REMINDERS[time_sec]
-            if item["chat_id"] != str(chat_id)
+            item for item in REMINDERS[time_sec] if item["chat_id"] != str(chat_id)
         ]
         REMINDERS[time_sec].append(
             {"chat_id": str(chat_id), "message": remind_message, "user_id": user_id}
@@ -109,9 +107,11 @@ def get_remind_in_chat(chat_id, timestamp):
 @unit_of_work_guard
 def num_reminds_in_chat(chat_id):
     try:
-        return SESSION.scalar(select(func.count()).select_from(Reminds).where(
-            Reminds.chat_id == str(chat_id)
-        ))
+        return SESSION.scalar(
+            select(func.count())
+            .select_from(Reminds)
+            .where(Reminds.chat_id == str(chat_id))
+        )
     finally:
         SESSION.close()
 
@@ -119,11 +119,11 @@ def num_reminds_in_chat(chat_id):
 @unit_of_work_guard
 def get_reminds_in_chat(chat_id):
     try:
-        return (
-            SESSION.scalars(select(Reminds)
+        return SESSION.scalars(
+            select(Reminds)
             .where(Reminds.chat_id == str(chat_id))
-            .order_by(Reminds.time_seconds.asc())).all()
-        )
+            .order_by(Reminds.time_seconds.asc())
+        ).all()
     finally:
         SESSION.close()
 

@@ -129,7 +129,9 @@ async def welcomepic(pic, user, chat, user_id, output_path=None):
     pfp_y = (background.size[1] - pfp.size[1]) // 2 + 38
     draw = ImageDraw.Draw(background)
     font = ImageFont.truetype("Extra/Calistoga-Regular.ttf", 42)
-    draw.text((20, background.height - 45), f"{user} [{user_id}]", font=font, fill="white")
+    draw.text(
+        (20, background.height - 45), f"{user} [{user_id}]", font=font, fill="white"
+    )
     background.paste(pfp, (pfp_x, pfp_y), pfp)
     pfp.close()
     welcome_image_path = output_path or f"downloads/welcome_{user_id}.png"
@@ -190,7 +192,17 @@ async def member_has_joined(client, member: ChatMemberUpdated):
                     os.path.join(temp_dir, "welcome.png"),
                 )
                 user_username = user.username if user.username else f"user?id={user.id}"
-                inline_keyboard = IM([[IB("🔗 USER", url=f"https://t.me/{user_username}", style=KButtonStyle.PRIMARY)]])
+                inline_keyboard = IM(
+                    [
+                        [
+                            IB(
+                                "🔗 USER",
+                                url=f"https://t.me/{user_username}",
+                                style=KButtonStyle.PRIMARY,
+                            )
+                        ]
+                    ]
+                )
                 WELCOME_MESSAGES[f"welcome-{chat_id}"] = await client.send_photo(
                     member.chat.id,
                     photo=welcomeimg,
@@ -198,7 +210,9 @@ async def member_has_joined(client, member: ChatMemberUpdated):
                     reply_markup=inline_keyboard,
                 )
             except Exception:
-                LOGGER.exception("Unable to create the welcome image for user %s", user_id)
+                LOGGER.exception(
+                    "Unable to create the welcome image for user %s", user_id
+                )
 
 
 @app.on_message(ft.command("dwelcome on"))
@@ -230,13 +244,13 @@ async def disable_welcome(_, message: Message):
 
 # The service message types Telegram sends into a group, as named by the docs.
 SERVICE_TYPES = (
-    "join",     # a user joined or was added
-    "leave",    # a user left or was removed
-    "pin",      # a message was pinned
-    "photo",    # the chat photo changed
-    "title",    # the chat title changed
+    "join",  # a user joined or was added
+    "leave",  # a user left or was removed
+    "pin",  # a message was pinned
+    "photo",  # the chat photo changed
+    "title",  # the chat title changed
     "videochat",  # a video chat started, ended or gained members
-    "other",    # payments, proximity alerts, webapps, auto-delete changes
+    "other",  # payments, proximity alerts, webapps, auto-delete changes
 )
 
 
@@ -313,7 +327,6 @@ async def send(source_message, message, keyboard, backup_message):
                 message,
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=keyboard,
-
             )
         elif excp.message == "Button_url_invalid":
             try:
@@ -392,9 +405,7 @@ async def new_member(message: Message, command: CommandObject):
         sql.get_welc_pref, chat.id
     )
     welc_mutes = await asyncio.to_thread(sql.welcome_mutes, chat.id)
-    human_checks = await asyncio.to_thread(
-        sql.get_human_checks, user.id, chat.id
-    )
+    human_checks = await asyncio.to_thread(sql.get_human_checks, user.id, chat.id)
 
     new_members = message.new_chat_members
 
@@ -422,9 +433,7 @@ async def new_member(message: Message, command: CommandObject):
             cleanserv = await _should_clean(chat.id, message)
             if cleanserv:
                 try:
-                    await bot.delete_message(
-                        chat.id, message.message_id
-                    )
+                    await bot.delete_message(chat.id, message.message_id)
                 except TelegramAPIError:
                     pass
                 reply = False
@@ -435,9 +444,9 @@ async def new_member(message: Message, command: CommandObject):
                     reply_to_message_id=reply,
                 )
                 welcome_log = (
-                    "{}\n"
-                    "#USER_JOINED\n"
-                    "Bot owner just joined the group".format(html.escape(chat.title))
+                    "{}\n#USER_JOINED\nBot owner just joined the group".format(
+                        html.escape(chat.title)
+                    )
                 )
                 continue
 
@@ -446,10 +455,8 @@ async def new_member(message: Message, command: CommandObject):
                     "Be cool! A member of the team just joined.",
                     reply_to_message_id=reply,
                 )
-                welcome_log = (
-                    "{}\n"
-                    "#USER_JOINED\n"
-                    "Bot dev just joined the group".format(html.escape(chat.title))
+                welcome_log = "{}\n#USER_JOINED\nBot dev just joined the group".format(
+                    html.escape(chat.title)
                 )
                 continue
 
@@ -458,10 +465,8 @@ async def new_member(message: Message, command: CommandObject):
                     "Whoa! A dragon disaster just joined! Stay alert!",
                     reply_to_message_id=reply,
                 )
-                welcome_log = (
-                    "{}\n"
-                    "#USER_JOINED\n"
-                    "Bot sudo just joined the group".format(html.escape(chat.title))
+                welcome_log = "{}\n#USER_JOINED\nBot sudo just joined the group".format(
+                    html.escape(chat.title)
                 )
                 continue
 
@@ -474,9 +479,7 @@ async def new_member(message: Message, command: CommandObject):
                 if creator:
                     reply = """#NEWGROUP \
                         \nID:   `{}` \
-                    """.format(
-                        chat.id
-                    )
+                    """.format(chat.id)
 
                     if chat.title:
                         reply += "\nGroup name:   **{}**".format(
@@ -656,7 +659,8 @@ async def new_member(message: Message, command: CommandObject):
                                         callback_data="user_join_({})".format(
                                             new_mem.id
                                         ),
-                                     style=ButtonStyle.SUCCESS),
+                                        style=ButtonStyle.SUCCESS,
+                                    ),
                                 ],
                             ],
                         ),
@@ -720,10 +724,7 @@ async def new_member(message: Message, command: CommandObject):
 
         if user.id == new_mem.id:
             welcome_log = (
-                "{}\n"
-                "#USER_JOINED\n"
-                "<b>User</b>: {}\n"
-                "<b>ID</b>: <code>{}</code>".format(
+                "{}\n#USER_JOINED\n<b>User</b>: {}\n<b>ID</b>: <code>{}</code>".format(
                     html.escape(chat.title),
                     mention_html(user.id, user.first_name),
                     user.id,
@@ -731,10 +732,7 @@ async def new_member(message: Message, command: CommandObject):
             )
         elif new_mem.is_bot and user.id != new_mem.id:
             welcome_log = (
-                "{}\n"
-                "#BOT_ADDED\n"
-                "<b>Bot</b>: {}\n"
-                "<b>ID</b>: <code>{}</code>".format(
+                "{}\n#BOT_ADDED\n<b>Bot</b>: {}\n<b>ID</b>: <code>{}</code>".format(
                     html.escape(chat.title),
                     mention_html(new_mem.id, new_mem.first_name),
                     new_mem.id,
@@ -742,10 +740,7 @@ async def new_member(message: Message, command: CommandObject):
             )
         else:
             welcome_log = (
-                "{}\n"
-                "#USER_ADDED\n"
-                "<b>User</b>: {}\n"
-                "<b>ID</b>: <code>{}</code>".format(
+                "{}\n#USER_ADDED\n<b>User</b>: {}\n<b>ID</b>: <code>{}</code>".format(
                     html.escape(chat.title),
                     mention_html(new_mem.id, new_mem.first_name),
                     new_mem.id,
@@ -860,9 +855,7 @@ async def left_member(message: Message):
                     chatname=chat.title,
                     id=left_mem.id,
                 )
-                buttons = await asyncio.to_thread(
-                    sql.get_gdbye_buttons, chat.id
-                )
+                buttons = await asyncio.to_thread(sql.get_gdbye_buttons, chat.id)
                 keyb = build_keyboard(buttons)
 
             else:
@@ -926,17 +919,13 @@ async def welcome(message: Message, command: CommandObject):
 
     elif len(args) >= 1:
         if args[0].lower() in ("on", "yes"):
-            await asyncio.to_thread(
-                sql.set_welc_preference, str(chat.id), True
-            )
+            await asyncio.to_thread(sql.set_welc_preference, str(chat.id), True)
             await message.answer(
                 "Okay! I'll greet members when they join.",
             )
 
         elif args[0].lower() in ("off", "no"):
-            await asyncio.to_thread(
-                sql.set_welc_preference, str(chat.id), False
-            )
+            await asyncio.to_thread(sql.set_welc_preference, str(chat.id), False)
             await message.answer(
                 "I'll go loaf around and not welcome anyone then.",
             )
@@ -985,15 +974,11 @@ async def goodbye(message: Message, command: CommandObject):
 
     elif len(args) >= 1:
         if args[0].lower() in ("on", "yes"):
-            await asyncio.to_thread(
-                sql.set_gdbye_preference, str(chat.id), True
-            )
+            await asyncio.to_thread(sql.set_gdbye_preference, str(chat.id), True)
             await message.answer("Okay its set to on!")
 
         elif args[0].lower() in ("off", "no"):
-            await asyncio.to_thread(
-                sql.set_gdbye_preference, str(chat.id), False
-            )
+            await asyncio.to_thread(sql.set_gdbye_preference, str(chat.id), False)
             await message.answer("Okay its set to no!")
 
         else:
@@ -1041,9 +1026,7 @@ async def reset_welcome(message: Message, command: CommandObject):
         sql.DEFAULT_WELCOME,
         sql.Types.TEXT,
     )
-    await message.answer(
-        "Successfully reset welcome message to default!"
-    )
+    await message.answer("Successfully reset welcome message to default!")
 
     return (
         f"<b>{html.escape(chat.title)}:</b>\n"
@@ -1108,9 +1091,7 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
 
     if len(args) >= 1:
         if args[0].lower() in ("off", "no"):
-            await asyncio.to_thread(
-                sql.set_welcome_mutes, chat.id, False
-            )
+            await asyncio.to_thread(sql.set_welcome_mutes, chat.id, False)
             await msg.reply("I will no longer mute people on joining!")
             return (
                 f"<b>{html.escape(chat.title)}:</b>\n"
@@ -1119,9 +1100,7 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
                 f"Has toggled welcome mute to <b>off</b>."
             )
         elif args[0].lower() in ["soft"]:
-            await asyncio.to_thread(
-                sql.set_welcome_mutes, chat.id, "soft"
-            )
+            await asyncio.to_thread(sql.set_welcome_mutes, chat.id, "soft")
             await msg.reply(
                 "I will restrict users permission to send media for 24 hours.",
             )
@@ -1132,9 +1111,7 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
                 f"Has toggled welcome mute to <b>soft</b>."
             )
         elif args[0].lower() in ["strong"]:
-            await asyncio.to_thread(
-                sql.set_welcome_mutes, chat.id, "strong"
-            )
+            await asyncio.to_thread(sql.set_welcome_mutes, chat.id, "strong")
             await msg.reply(
                 "I will now mute people when they join until they prove they're not a bot. They will have 120 seconds before they get kicked.",
             )
@@ -1180,12 +1157,8 @@ async def clean_welcome(message: Message, command: CommandObject) -> str:
         return ""
 
     if args[0].lower() in ("on", "yes"):
-        await asyncio.to_thread(
-            sql.set_clean_welcome, str(chat.id), True
-        )
-        await message.answer(
-            "I'll try to delete old welcome messages!"
-        )
+        await asyncio.to_thread(sql.set_clean_welcome, str(chat.id), True)
+        await message.answer("I'll try to delete old welcome messages!")
         return (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#𝐂𝐋𝐄𝐀𝐍_𝐖𝐄𝐋𝐂𝐎𝐌𝐄\n"
@@ -1193,12 +1166,8 @@ async def clean_welcome(message: Message, command: CommandObject) -> str:
             "Has toggled clean welcomes to <code>on</code>."
         )
     elif args[0].lower() in ("off", "no"):
-        await asyncio.to_thread(
-            sql.set_clean_welcome, str(chat.id), False
-        )
-        await message.answer(
-            "I won't delete old welcome messages."
-        )
+        await asyncio.to_thread(sql.set_clean_welcome, str(chat.id), False)
+        await message.answer("I won't delete old welcome messages.")
         return (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#𝐂𝐋𝐄𝐀𝐍_𝐖𝐄𝐋𝐂𝐎𝐌𝐄\n"
@@ -1216,7 +1185,9 @@ async def clean_welcome(message: Message, command: CommandObject) -> str:
 async def _service_target(message: Message, command: CommandObject):
     """(chat_id, chat) for a service-cleaning command, honouring connections."""
     args = command.args.split() if command.args else []
-    conn = await connected(bot, message, message.chat, message.from_user.id, need_admin=True)
+    conn = await connected(
+        bot, message, message.chat, message.from_user.id, need_admin=True
+    )
     if conn:
         chat = await bot.get_chat(conn)
         return conn, chat, args
@@ -1238,7 +1209,9 @@ async def cleanservice(message: Message, command: CommandObject) -> str:
         await message.answer(
             "Clean service is <code>{}</code>. Types: <code>{}</code>".format(
                 "on" if await asyncio.to_thread(sql.clean_service, chat_id) else "off",
-                ", ".join(sorted(await asyncio.to_thread(sql.get_service_types, chat_id)))
+                ", ".join(
+                    sorted(await asyncio.to_thread(sql.get_service_types, chat_id))
+                )
                 or "all",
             ),
             parse_mode=ParseMode.HTML,
@@ -1250,8 +1223,10 @@ async def cleanservice(message: Message, command: CommandObject) -> str:
     if first in ("on", "yes", "true", "1", "all"):
         await asyncio.to_thread(sql.set_clean_service, chat_id, True)
         # "all" means every type, so clear any narrower list.
-        types = set(SERVICE_TYPES) if first == "all" else await asyncio.to_thread(
-            sql.get_service_types, chat_id
+        types = (
+            set(SERVICE_TYPES)
+            if first == "all"
+            else await asyncio.to_thread(sql.get_service_types, chat_id)
         )
         await asyncio.to_thread(sql.set_service_types, chat_id, ",".join(sorted(types)))
         await message.answer(
@@ -1270,7 +1245,9 @@ async def cleanservice(message: Message, command: CommandObject) -> str:
     if first in ("off", "no", "false", "0"):
         await asyncio.to_thread(sql.set_clean_service, chat_id, False)
         await asyncio.to_thread(sql.set_service_types, chat_id, "")
-        await message.answer("Clean service is now <code>off</code>.", parse_mode=ParseMode.HTML)
+        await message.answer(
+            "Clean service is now <code>off</code>.", parse_mode=ParseMode.HTML
+        )
         return (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#CLEANSERVICE\n"
@@ -1282,7 +1259,9 @@ async def cleanservice(message: Message, command: CommandObject) -> str:
     unknown = wanted - set(SERVICE_TYPES)
     if unknown:
         await message.answer(
-            "Unknown service type(s): <code>{}</code>".format(", ".join(sorted(unknown))),
+            "Unknown service type(s): <code>{}</code>".format(
+                ", ".join(sorted(unknown))
+            ),
             parse_mode=ParseMode.HTML,
         )
         return ""
@@ -1387,7 +1366,9 @@ async def user_button(query: CallbackQuery):
         waitlist_key = (chat.id, user.id)
         member_dict = VERIFIED_USER_WAITLIST.pop(waitlist_key, None)
         if not member_dict:
-            return await query.answer(text="This verification has expired.", show_alert=True)
+            return await query.answer(
+                text="This verification has expired.", show_alert=True
+            )
         member_dict["status"] = True
         VERIFIED_USER_WAITLIST[waitlist_key] = member_dict
         await query.answer(text="Yeet! You're a human, unmuted!")
@@ -1487,9 +1468,7 @@ async def welcome_help(message: Message, command: CommandObject):
         " and calling `/setwelcome`."
     )
 
-    await message.answer(
-        WELC_HELP_TXT, parse_mode=ParseMode.MARKDOWN
-    )
+    await message.answer(WELC_HELP_TXT, parse_mode=ParseMode.MARKDOWN)
 
 
 @check_admin(is_user=True)
@@ -1573,9 +1552,7 @@ for _name, _handler in (
 
 dp.message.register(chain(welcome_help), Command("welcomehelp"))
 dp.message.register(chain(welcome_mute_help), Command("welcomemutehelp"))
-dp.callback_query.register(
-    chain(user_button), F.data.regexp(r"^user_join_\(-?\d+\)$")
-)
+dp.callback_query.register(chain(user_button), F.data.regexp(r"^user_join_\(-?\d+\)$"))
 
 __mod_name__ = "WELCOME"
 __command_list__ = []

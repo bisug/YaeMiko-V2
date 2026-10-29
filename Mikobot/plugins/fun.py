@@ -61,17 +61,13 @@ async def toss(message: Message):
 
 async def shrug(message: Message):
     msg = message
-    reply_text = (
-        msg.reply_to_message.answer if msg.reply_to_message else msg.answer
-    )
+    reply_text = msg.reply_to_message.answer if msg.reply_to_message else msg.answer
     await reply_text(r"¯\_(ツ)_/¯")
 
 
 async def bluetext(message: Message):
     msg = message
-    reply_text = (
-        msg.reply_to_message.answer if msg.reply_to_message else msg.answer
-    )
+    reply_text = msg.reply_to_message.answer if msg.reply_to_message else msg.answer
     await reply_text(
         "/BLUE /TEXT\n/MUST /CLICK\n/I /AM /A /STUPID /ANIMAL /THAT /IS /ATTRACTED /TO /COLORS"
     )
@@ -89,9 +85,7 @@ async def rlg(message: Message):
 
 async def decide(message: Message):
     reply_text = (
-        message.reply_to_message.answer
-        if message.reply_to_message
-        else message.answer
+        message.reply_to_message.answer if message.reply_to_message else message.answer
     )
     await reply_text(random.choice(fun_strings.DECIDE))
 

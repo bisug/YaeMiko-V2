@@ -263,13 +263,17 @@ def main():
         raise
 
     if args.dry_run:
-        print(f"dry run, nothing written ({session.would_write} rows would be upserted):")
+        print(
+            f"dry run, nothing written ({session.would_write} rows would be upserted):"
+        )
     else:
         session.commit()
         print("written in one transaction:")
     print("\n".join(lines))
-    print("\nDC (disabled commands) is not read from Mongo: /disable has always "
-          "written PostgreSQL, so anime.py now reads the same table.")
+    print(
+        "\nDC (disabled commands) is not read from Mongo: /disable has always "
+        "written PostgreSQL, so anime.py now reads the same table."
+    )
     return 0
 
 

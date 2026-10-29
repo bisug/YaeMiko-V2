@@ -164,8 +164,7 @@ async def delete_topic(message: Message, command: CommandObject):
     # Deleting removes the topic and every message in it, and Telegram cannot
     # undo that, so it is confirmed rather than done on the first request.
     await message.reply(
-        "This deletes the topic <b>and every message in it</b>. It cannot be"
-        " undone.",
+        "This deletes the topic <b>and every message in it</b>. It cannot be undone.",
         parse_mode=ParseMode.HTML,
         reply_markup=_confirm_markup(chat.id, message.message_thread_id),
     )

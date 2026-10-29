@@ -96,7 +96,8 @@ async def warn(
                     InlineKeyboardButton(
                         text="🔘 Remove warn",
                         callback_data="rm_warn({})".format(user.id),
-                     style=ButtonStyle.DANGER),
+                        style=ButtonStyle.DANGER,
+                    ),
                 ],
             ],
         )
@@ -119,9 +120,7 @@ async def warn(
         )
 
     try:
-        await message.answer(
-            reply, reply_markup=keyboard, parse_mode=ParseMode.HTML
-        )
+        await message.answer(reply, reply_markup=keyboard, parse_mode=ParseMode.HTML)
     except TelegramAPIError as excp:
         if "reply message not found" in str(excp.message or excp).lower():
             # Do not reply
@@ -129,7 +128,6 @@ async def warn(
                 reply,
                 reply_markup=keyboard,
                 parse_mode=ParseMode.HTML,
-
             )
         else:
             raise
@@ -346,17 +344,13 @@ async def list_warn_filters(message: Message, command: CommandObject):
     for keyword in all_handlers:
         entry = f" - {html.escape(keyword)}\n"
         if len(entry) + len(filter_list) > MessageLimit.MAX_TEXT_LENGTH:
-            await message.reply(
-                filter_list, parse_mode=ParseMode.HTML
-            )
+            await message.reply(filter_list, parse_mode=ParseMode.HTML)
             filter_list = entry
         else:
             filter_list += entry
 
     if filter_list != CURRENT_WARNING_FILTER_STRING:
-        await message.reply(
-            filter_list, parse_mode=ParseMode.HTML
-        )
+        await message.reply(filter_list, parse_mode=ParseMode.HTML)
 
 
 @loggable
@@ -515,10 +509,14 @@ be a sentence, encompass it with quotes, as such: `/addwarn "very angry" This is
 # matching PTB's group 9 ordering.
 dp.message.register(chain(reply_filter), GROUPS, F.text)
 dp.message.register(chain(warn_user), GROUPS, Command(commands=["warn", "dwarn"]))
-dp.message.register(chain(reset_warns), GROUPS, Command(commands=["resetwarn", "resetwarns"]))
+dp.message.register(
+    chain(reset_warns), GROUPS, Command(commands=["resetwarn", "resetwarns"])
+)
 dp.message.register(chain(warns), GROUPS, *disableable("warns"))
 dp.message.register(chain(add_warn_filter), GROUPS, Command("addwarn"))
-dp.message.register(chain(remove_warn_filter), GROUPS, Command(commands=["nowarn", "stopwarn"]))
+dp.message.register(
+    chain(remove_warn_filter), GROUPS, Command(commands=["nowarn", "stopwarn"])
+)
 dp.message.register(
     chain(list_warn_filters),
     GROUPS,

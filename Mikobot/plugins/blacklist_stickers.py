@@ -559,9 +559,7 @@ __mod_name__ = "Stickers Blacklist"
 
 # The deleter watches every group sticker, so it registers first.
 dp.message.register(chain(del_blackliststicker), GROUPS)
-dp.message.register(
-    chain(blackliststicker), *disableable("blsticker", admin_ok=True)
-)
+dp.message.register(chain(blackliststicker), *disableable("blsticker", admin_ok=True))
 dp.message.register(chain(add_blackliststicker), *disableable("addblsticker"))
 dp.message.register(
     chain(unblackliststicker), Command(commands=["unblsticker", "rmblsticker"])

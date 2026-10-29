@@ -2,7 +2,12 @@
 from aiogram.enums import ButtonStyle, ParseMode
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Message
+from aiogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    LinkPreviewOptions,
+    Message,
+)
 
 import Database.sql.rules_sql as sql
 from Mikobot import BOT_USERNAME, bot, dp
@@ -39,7 +44,9 @@ async def send_rules(message, chat_id, from_pm=False):
             raise
 
     rules = sql.get_rules(chat_id)
-    text = f"The rules for {escape_markdown(chat.title)} are:\n\n{markdown_to_html(rules)}"
+    text = (
+        f"The rules for {escape_markdown(chat.title)} are:\n\n{markdown_to_html(rules)}"
+    )
 
     if from_pm and rules:
         await bot.send_message(
@@ -63,7 +70,8 @@ async def send_rules(message, chat_id, from_pm=False):
                         InlineKeyboardButton(
                             text="RULES",
                             url=f"t.me/{BOT_USERNAME}?start={chat_id}",
-                         style=ButtonStyle.PRIMARY),
+                            style=ButtonStyle.PRIMARY,
+                        ),
                     ],
                 ],
             ),
@@ -77,7 +85,8 @@ async def send_rules(message, chat_id, from_pm=False):
                         InlineKeyboardButton(
                             text="RULES",
                             url=f"t.me/{BOT_USERNAME}?start={chat_id}",
-                         style=ButtonStyle.PRIMARY),
+                            style=ButtonStyle.PRIMARY,
+                        ),
                     ],
                 ],
             ),

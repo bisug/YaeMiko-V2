@@ -26,7 +26,16 @@ import threading
 import time
 from collections import deque
 
-from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, inspect, select, text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    String,
+    UnicodeText,
+    inspect,
+    select,
+    text,
+)
 
 from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
 
@@ -249,9 +258,7 @@ def set_clearflood(chat_id, enabled: bool) -> None:
         SESSION.commit()
         # The counter columns are not part of this command, so the cached entry
         # keeps them and only clearflood changes.
-        current_user_id, count, limit, timer, _ = CHAT_FLOOD.get(
-            str(chat_id), DEF_OBJ
-        )
+        current_user_id, count, limit, timer, _ = CHAT_FLOOD.get(str(chat_id), DEF_OBJ)
         CHAT_FLOOD[str(chat_id)] = (current_user_id, count, limit, timer, bool(enabled))
 
 
@@ -285,7 +292,7 @@ def take_flooded_messages(chat_id, user_id) -> list:
         # Default behaviour: remove only the messages sent after the limit was
         # reached, so the conversation up to that point survives.
         keep = max(limit, 0)
-        return list(messages)[min(keep, len(messages)):]
+        return list(messages)[min(keep, len(messages)) :]
     return list(messages)
 
 

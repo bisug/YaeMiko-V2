@@ -138,7 +138,7 @@ def _fed_members(raw):
     """
     try:
         members = ast.literal_eval(ast.literal_eval(raw)["members"])
-    except (ValueError, SyntaxError, KeyError, TypeError):
+    except ValueError, SyntaxError, KeyError, TypeError:
         LOGGER.warning("Unreadable federation member list, treating it as empty")
         return []
     return members if isinstance(members, list) else []
@@ -148,7 +148,7 @@ def _fed_owner(raw, default=None):
     """The owner id from a federation's stored fusers blob, or default."""
     try:
         return ast.literal_eval(ast.literal_eval(raw)["owner"])
-    except (ValueError, SyntaxError, KeyError, TypeError):
+    except ValueError, SyntaxError, KeyError, TypeError:
         LOGGER.warning("Unreadable federation owner field")
         return default
 
@@ -271,7 +271,14 @@ def new_fed(owner_id, fed_name, fed_id):
 
 def del_fed(fed_id, user_id):
     with FEDS_LOCK:
-        global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME, FEDERATION_CHATS, FEDERATION_CHATS_BYID, FEDERATION_BANNED_USERID, FEDERATION_BANNED_FULL
+        global \
+            FEDERATION_BYOWNER, \
+            FEDERATION_BYFEDID, \
+            FEDERATION_BYNAME, \
+            FEDERATION_CHATS, \
+            FEDERATION_CHATS_BYID, \
+            FEDERATION_BANNED_USERID, \
+            FEDERATION_BANNED_FULL
         fed_id = str(fed_id)
         session = Session(ENGINE)
         try:

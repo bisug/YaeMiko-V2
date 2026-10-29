@@ -8,7 +8,11 @@ from aiogram.types import Message
 
 import Database.sql.toggle_sql as toggle_sql
 from Mikobot import dp
-from Mikobot.plugins.helper_funcs.chat_status import ADMIN_CACHE, check_admin, connection_status
+from Mikobot.plugins.helper_funcs.chat_status import (
+    ADMIN_CACHE,
+    check_admin,
+    connection_status,
+)
 from Mikobot.plugins.helper_funcs.misc import is_module_loaded
 from Mikobot.utils.cmdprefix import CMD_STARTERS
 from Mikobot.utils.parser import escape_markdown
@@ -60,9 +64,7 @@ if is_module_loaded(FILENAME):
         async def __call__(self, message: Message) -> bool:
             return not sql.is_command_disabled(message.chat.id, self.friendly)
 
-    def disableable(
-        commands: str | list, admin_ok: bool = False
-    ) -> tuple:
+    def disableable(commands: str | list, admin_ok: bool = False) -> tuple:
         """Return the filters for a toggleable command, in the order they must run."""
         names = [commands] if isinstance(commands, str) else list(commands)
         for name in names:
@@ -75,9 +77,9 @@ if is_module_loaded(FILENAME):
 
         # aiogram takes one prefix string and treats each char as a
         # separate command prefix, so CMD_STARTERS packs into it.
-        return Command(
-            commands=names, prefix="".join(CMD_STARTERS)
-        ), NotDisabled(admin_ok)
+        return Command(commands=names, prefix="".join(CMD_STARTERS)), NotDisabled(
+            admin_ok
+        )
 
     def disableable_friendly(friendly: str) -> NotDisabledFriendly:
         DISABLE_OTHER.append(friendly)

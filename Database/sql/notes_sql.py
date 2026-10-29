@@ -25,7 +25,16 @@ SOFTWARE.
 # Note: chat_id's are stored as strings because the int is too large to be stored in a PSQL database.
 import threading
 
-from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, distinct, func, select
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    String,
+    UnicodeText,
+    distinct,
+    func,
+    select,
+)
 
 from Database.sql import BASE, ENGINE, SESSION, ensure_index, unit_of_work_guard
 from Mikobot.plugins.helper_funcs.msg_types import Types
@@ -89,13 +98,12 @@ def add_note_to_db(chat_id, note_name, note_data, msgtype, buttons=None, file=No
         prev = SESSION.get(Notes, (str(chat_id), note_name))
         if prev:
             with BUTTONS_INSERTION_LOCK:
-                prev_buttons = (
-                    SESSION.scalars(select(Buttons)
-                    .where(
+                prev_buttons = SESSION.scalars(
+                    select(Buttons).where(
                         Buttons.chat_id == str(chat_id),
                         Buttons.note_name == note_name,
-                    )).all()
-                )
+                    )
+                ).all()
                 for btn in prev_buttons:
                     SESSION.delete(btn)
             SESSION.delete(prev)
@@ -115,10 +123,11 @@ def add_note_to_db(chat_id, note_name, note_data, msgtype, buttons=None, file=No
 @unit_of_work_guard
 def get_note(chat_id, note_name):
     try:
-        return (
-            SESSION.scalars(select(Notes)
-            .where(func.lower(Notes.name) == note_name, Notes.chat_id == str(chat_id))).first()
-        )
+        return SESSION.scalars(
+            select(Notes).where(
+                func.lower(Notes.name) == note_name, Notes.chat_id == str(chat_id)
+            )
+        ).first()
     finally:
         SESSION.close()
 
@@ -126,19 +135,19 @@ def get_note(chat_id, note_name):
 @unit_of_work_guard
 def rm_note(chat_id, note_name):
     with NOTES_INSERTION_LOCK:
-        note = (
-            SESSION.scalars(select(Notes)
-            .where(func.lower(Notes.name) == note_name, Notes.chat_id == str(chat_id))).first()
-        )
+        note = SESSION.scalars(
+            select(Notes).where(
+                func.lower(Notes.name) == note_name, Notes.chat_id == str(chat_id)
+            )
+        ).first()
         if note:
             with BUTTONS_INSERTION_LOCK:
-                buttons = (
-                    SESSION.scalars(select(Buttons)
-                    .where(
+                buttons = SESSION.scalars(
+                    select(Buttons).where(
                         Buttons.chat_id == str(chat_id),
                         Buttons.note_name == note_name,
-                    )).all()
-                )
+                    )
+                ).all()
                 for btn in buttons:
                     SESSION.delete(btn)
 
@@ -152,11 +161,11 @@ def rm_note(chat_id, note_name):
 @unit_of_work_guard
 def get_all_chat_notes(chat_id):
     try:
-        return (
-            SESSION.scalars(select(Notes)
+        return SESSION.scalars(
+            select(Notes)
             .where(Notes.chat_id == str(chat_id))
-            .order_by(Notes.name.asc())).all()
-        )
+            .order_by(Notes.name.asc())
+        ).all()
     finally:
         SESSION.close()
 
@@ -172,11 +181,11 @@ def add_note_button_to_db(chat_id, note_name, b_name, url, same_line):
 @unit_of_work_guard
 def get_buttons(chat_id, note_name):
     try:
-        return (
-            SESSION.scalars(select(Buttons)
+        return SESSION.scalars(
+            select(Buttons)
             .where(Buttons.chat_id == str(chat_id), Buttons.note_name == note_name)
-            .order_by(Buttons.id)).all()
-        )
+            .order_by(Buttons.id)
+        ).all()
     finally:
         SESSION.close()
 
@@ -200,16 +209,16 @@ def num_chats():
 @unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with NOTES_INSERTION_LOCK:
-        chat_notes = (
-            SESSION.scalars(select(Notes).where(Notes.chat_id == str(old_chat_id))).all()
-        )
+        chat_notes = SESSION.scalars(
+            select(Notes).where(Notes.chat_id == str(old_chat_id))
+        ).all()
         for note in chat_notes:
             note.chat_id = str(new_chat_id)
 
         with BUTTONS_INSERTION_LOCK:
-            chat_buttons = (
-                SESSION.scalars(select(Buttons).where(Buttons.chat_id == str(old_chat_id))).all()
-            )
+            chat_buttons = SESSION.scalars(
+                select(Buttons).where(Buttons.chat_id == str(old_chat_id))
+            ).all()
             for btn in chat_buttons:
                 btn.chat_id = str(new_chat_id)
 

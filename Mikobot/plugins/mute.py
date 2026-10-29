@@ -76,7 +76,9 @@ async def mute(message: Message, command: CommandObject) -> str:
     except _StopCommand:
         return ""
 
-    user_id, reason = await extract_user_and_text(message, command.args.split() if command.args else [])
+    user_id, reason = await extract_user_and_text(
+        message, command.args.split() if command.args else []
+    )
     reply = await check_user(user_id, bot, chat)
 
     if reply:
@@ -183,7 +185,9 @@ async def temp_mute(message: Message, command: CommandObject) -> str:
     except _StopCommand:
         return ""
 
-    user_id, reason = await extract_user_and_text(message, command.args.split() if command.args else [])
+    user_id, reason = await extract_user_and_text(
+        message, command.args.split() if command.args else []
+    )
     reply = await check_user(user_id, bot, chat)
 
     if reply:
@@ -270,8 +274,6 @@ __help__ = """
 
 dp.message.register(chain(mute), Command(commands=["mute", "dmute"]))
 dp.message.register(chain(unmute), Command("unmute"))
-dp.message.register(
-    chain(temp_mute), Command(commands=["tmute", "tempmute", "dtmute"])
-)
+dp.message.register(chain(temp_mute), Command(commands=["tmute", "tempmute", "dtmute"]))
 
 __mod_name__ = "MUTE"

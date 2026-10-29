@@ -531,7 +531,10 @@ async def reply_filter(message: Message):
                             ),
                         )
                     except TelegramAPIError as excp:
-                        if "unsupported url protocol" in str(excp.message or excp).lower():
+                        if (
+                            "unsupported url protocol"
+                            in str(excp.message or excp).lower()
+                        ):
                             try:
                                 await send_message(
                                     message,
@@ -589,9 +592,16 @@ async def rmall_filters(message: Message):
                     InlineKeyboardButton(
                         text="STOP ALL FILTERS",
                         callback_data="filters_rmall",
-                     style=ButtonStyle.DANGER),
+                        style=ButtonStyle.DANGER,
+                    ),
                 ],
-                [InlineKeyboardButton(text="CANCEL", callback_data="filters_cancel", style=ButtonStyle.PRIMARY)],
+                [
+                    InlineKeyboardButton(
+                        text="CANCEL",
+                        callback_data="filters_cancel",
+                        style=ButtonStyle.PRIMARY,
+                    )
+                ],
             ],
         )
         await message.reply(

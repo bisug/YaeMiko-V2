@@ -80,7 +80,13 @@ async def logs(message: Message):
     with open("Logs.txt", "rb") as f:
         caption = "Here is your log"
         reply_markup = InlineKeyboardMarkup(
-            inline_keyboard=[[InlineKeyboardButton(text="Close", callback_data="close", style=ButtonStyle.PRIMARY)]]
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="Close", callback_data="close", style=ButtonStyle.PRIMARY
+                    )
+                ]
+            ]
         )
         sent = await bot.send_document(
             document=f,
@@ -91,7 +97,9 @@ async def logs(message: Message):
         )
 
         # Store the message ID for later reference
-        user_data.setdefault(message.from_user.id, {})["log_message_id"] = sent.message_id
+        user_data.setdefault(message.from_user.id, {})["log_message_id"] = (
+            sent.message_id
+        )
         store.save()
 
 

@@ -35,9 +35,7 @@ def _is_bot_staff(user_id: int) -> bool:
 
 async def _send_echo(message: Message, command: CommandObject) -> None:
     if not _is_bot_staff(message.from_user.id):
-        await message.reply(
-            "Only the bot owners can do that."
-        )
+        await message.reply("Only the bot owners can do that.")
         return
 
     replied = message.reply_to_message
@@ -91,7 +89,9 @@ async def _broadcast(message: Message, command: CommandObject) -> None:
                 if replied is not None:
                     await replied.copy(chat.chat_id)
                 else:
-                    await bot.send_message(chat.chat_id, text, parse_mode=ParseMode.HTML)
+                    await bot.send_message(
+                        chat.chat_id, text, parse_mode=ParseMode.HTML
+                    )
                 sent += 1
                 break
             except TelegramRetryAfter as exc:

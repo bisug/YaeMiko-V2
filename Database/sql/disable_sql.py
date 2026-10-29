@@ -109,7 +109,9 @@ def num_disabled():
 @unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with DISABLE_INSERTION_LOCK:
-        chats = SESSION.scalars(select(Disable).where(Disable.chat_id == str(old_chat_id))).all()
+        chats = SESSION.scalars(
+            select(Disable).where(Disable.chat_id == str(old_chat_id))
+        ).all()
         for chat in chats:
             chat.chat_id = str(new_chat_id)
             SESSION.add(chat)

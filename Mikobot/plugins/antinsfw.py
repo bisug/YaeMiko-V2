@@ -60,7 +60,10 @@ def get_media_from_message(message):
             return None, None
         return message.video.file_id, "video"
     if message.video_note:
-        if message.video_note.file_size and message.video_note.file_size > MAX_FILE_SIZE:
+        if (
+            message.video_note.file_size
+            and message.video_note.file_size > MAX_FILE_SIZE
+        ):
             return None, None
         return message.video_note.file_id, "video"
     return None, None
@@ -78,8 +81,17 @@ async def prepare_scan_file(client, message, temp_dir):
         return str(downloaded)
     output = Path(temp_dir) / "frame.png"
     process = await asyncio.create_subprocess_exec(
-        "ffmpeg", "-v", "error", "-i", str(downloaded), "-frames:v", "1",
-        "-f", "image2", str(output), stdout=asyncio.subprocess.DEVNULL,
+        "ffmpeg",
+        "-v",
+        "error",
+        "-i",
+        str(downloaded),
+        "-frames:v",
+        "1",
+        "-f",
+        "image2",
+        str(output),
+        stdout=asyncio.subprocess.DEVNULL,
         stderr=asyncio.subprocess.PIPE,
     )
     try:
@@ -146,9 +158,7 @@ async def detect_nsfw(_, message):
 @capture_err
 async def nsfw_scan_command(_, message):
     if not message.reply_to_message:
-        await message.reply(
-            "Reply to an image/document/sticker/animation to scan it."
-        )
+        await message.reply("Reply to an image/document/sticker/animation to scan it.")
         return
     reply = message.reply_to_message
     if (
@@ -159,9 +169,7 @@ async def nsfw_scan_command(_, message):
         and not reply.video
         and not reply.video_note
     ):
-        await message.reply(
-            "Reply to an image/document/sticker/animation to scan it."
-        )
+        await message.reply("Reply to an image/document/sticker/animation to scan it.")
         return
     m = await message.reply("Scanning")
     if not get_media_from_message(reply)[0]:

@@ -145,9 +145,21 @@ class UnitOfWorkSession:
     """
 
     _PASSTHROUGH = (
-        "get", "query", "add", "delete", "merge", "flush", "close",
-        "expunge", "expunge_all", "refresh", "execute", "scalar", "scalars",
-        "scalar_or_none", "connection",
+        "get",
+        "query",
+        "add",
+        "delete",
+        "merge",
+        "flush",
+        "close",
+        "expunge",
+        "expunge_all",
+        "refresh",
+        "execute",
+        "scalar",
+        "scalars",
+        "scalar_or_none",
+        "connection",
     )
 
     def __init__(self, factory: scoped_session):

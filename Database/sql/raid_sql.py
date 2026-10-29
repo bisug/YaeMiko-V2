@@ -79,7 +79,10 @@ def _ensure_columns() -> None:
                 continue
             ddl = f'ALTER TABLE raid_chats ADD COLUMN "{column.name}" {column.type.compile(dialect=ENGINE.dialect)}'
             connection.execute(text(ddl))
-            if column.default is not None and getattr(column.default, "arg", None) is not None:
+            if (
+                column.default is not None
+                and getattr(column.default, "arg", None) is not None
+            ):
                 connection.execute(
                     text(
                         f'UPDATE raid_chats SET "{column.name}" = :value WHERE "{column.name}" IS NULL'

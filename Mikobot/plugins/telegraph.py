@@ -87,9 +87,7 @@ async def _upload(path: Path, host: str) -> str:
     # raise_for_status() discarded exactly that.
     detail = body[:120] or "<empty body>"
     if response.status_code >= 400:
-        raise RuntimeError(
-            f"{host} answered HTTP {response.status_code}: {detail}"
-        )
+        raise RuntimeError(f"{host} answered HTTP {response.status_code}: {detail}")
     raise RuntimeError(f"{host} answered with no URL: {detail}")
 
 
@@ -207,13 +205,11 @@ async def upload_choice(query: CallbackQuery):
             return
 
     elapsed = time.perf_counter() - started
-    note = (
-        f"➼ **Uploaded to {host} in {elapsed:.2f} seconds.**\n\n"
-        f"➼ **Link:** `{link}`"
-    )
+    note = f"➼ **Uploaded to {host} in {elapsed:.2f} seconds.**\n\n➼ **Link:** `{link}`"
     if host == "litterbox":
         note += f"\n\n➼ This link expires after {LITTERBOX_HOURS}."
     await query.message.edit_text(note)
+
 
 # <=================================================== HELP ====================================================>
 __help__ = """

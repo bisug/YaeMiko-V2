@@ -128,7 +128,9 @@ def check_fork_attribution(errors):
         errors.append("README.md: upstream Infamous-Hydra/YaeMiko must stay credited")
     for relative in ("app.json", "Mikobot/__init__.py", "Mikobot/__main__.py"):
         if "bisug/YaeMiko-V2" not in (ROOT / relative).read_text(encoding="utf-8"):
-            errors.append(f"{relative}: repository link should point at bisug/YaeMiko-V2")
+            errors.append(
+                f"{relative}: repository link should point at bisug/YaeMiko-V2"
+            )
 
 
 def check_no_dead_assets(errors):
@@ -143,7 +145,8 @@ def check_no_dead_assets(errors):
     assets = [
         name
         for name in tracked
-        if Path(name).suffix.lower() in {".jpg", ".jpeg", ".png", ".gif", ".ttf", ".webp"}
+        if Path(name).suffix.lower()
+        in {".jpg", ".jpeg", ".png", ".gif", ".ttf", ".webp"}
     ]
     haystack = "\n".join(
         path.read_text(encoding="utf-8", errors="ignore")
@@ -168,7 +171,9 @@ def check_no_duplicate_helper_modules(errors):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in tree.body:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                signatures.setdefault(node.name, []).append(path.relative_to(ROOT).as_posix())
+                signatures.setdefault(node.name, []).append(
+                    path.relative_to(ROOT).as_posix()
+                )
     for name, owners in sorted(signatures.items()):
         if len(owners) > 1:
             errors.append(
@@ -193,7 +198,9 @@ def main():
         for error in errors:
             print(f"FAIL {error}", file=sys.stderr)
         return 1
-    print(f"documentation ok ({len(DOCS)} pages, {len(list(ROOT.glob('docs/assets/*.svg')))} assets)")
+    print(
+        f"documentation ok ({len(DOCS)} pages, {len(list(ROOT.glob('docs/assets/*.svg')))} assets)"
+    )
     return 0
 
 

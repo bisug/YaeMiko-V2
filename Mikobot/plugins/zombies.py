@@ -21,7 +21,11 @@ async def has_ban_rights(message, user_id=None):
 
 
 async def _count_deleted(message):
-    return sum(1 async for member in app.get_chat_members(message.chat.id) if member.user.is_deleted)
+    return sum(
+        1
+        async for member in app.get_chat_members(message.chat.id)
+        if member.user.is_deleted
+    )
 
 
 async def _remove_deleted(message, status):
@@ -41,26 +45,64 @@ async def _remove_deleted(message, status):
     result = f"Removed {removed} deleted account(s)."
     if skipped:
         result += f" Skipped {skipped} admin account(s)."
-    await status.edit(result, reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Close", callback_data="zombies_close", style=ButtonStyle.PRIMARY)]]))
+    await status.edit(
+        result,
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="Close",
+                        callback_data="zombies_close",
+                        style=ButtonStyle.PRIMARY,
+                    )
+                ]
+            ]
+        ),
+    )
 
 
 @app.on_message(filters.regex(r"^[!/]zombies(?:\s+(clean))?(?:@\S+)?$"), group=1)
 async def zombies(_, message):
     if message.chat.type not in {ChatType.GROUP, ChatType.SUPERGROUP}:
-        return await message.reply("Zombies can only be checked in groups or supergroups.")
+        return await message.reply(
+            "Zombies can only be checked in groups or supergroups."
+        )
     clean = len(message.command or []) > 1 and message.command[1].lower() == "clean"
     if not clean:
         deleted = await _count_deleted(message)
         if not deleted:
             return await message.reply("Group is clean; no deleted accounts found.")
-        allowed = await is_administrator(message.from_user.id, message) and await has_ban_rights(message) and await has_ban_rights(message, message.from_user.id)
+        allowed = (
+            await is_administrator(message.from_user.id, message)
+            and await has_ban_rights(message)
+            and await has_ban_rights(message, message.from_user.id)
+        )
         button = "Remove" if allowed else "Close"
         return await message.reply(
-            f"Found {deleted} deleted account(s).\n" + ("You can remove them." if allowed else "Only an admin with ban permission can remove them."),
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=button, callback_data="zombies_remove" if allowed else "zombies_close", style=ButtonStyle.DANGER)]]),
+            f"Found {deleted} deleted account(s).\n"
+            + (
+                "You can remove them."
+                if allowed
+                else "Only an admin with ban permission can remove them."
+            ),
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text=button,
+                            callback_data="zombies_remove"
+                            if allowed
+                            else "zombies_close",
+                            style=ButtonStyle.DANGER,
+                        )
+                    ]
+                ]
+            ),
         )
     if not await is_administrator(message.from_user.id, message):
-        return await message.reply("You need to be an admin to remove deleted accounts.")
+        return await message.reply(
+            "You need to be an admin to remove deleted accounts."
+        )
     status = await message.reply("Removing deleted accounts…")
     await _remove_deleted(message, status)
 

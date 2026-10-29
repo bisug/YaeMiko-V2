@@ -34,8 +34,11 @@ def _has_arabic_script(text: str) -> bool:
     Arabic-Indic digits stay out of it because they are not letters.
     """
     return any(
-        unicodedata.name(char, "").startswith("ARABIC") for char in text if char.isalpha()
+        unicodedata.name(char, "").startswith("ARABIC")
+        for char in text
+        if char.isalpha()
     )
+
 
 def _has_entity(message, kind: str) -> bool:
     """True when the text or the caption carries this entity kind.
@@ -104,6 +107,7 @@ def _has_invite_link(message) -> bool:
         if text and _INVITE_LINK_RE.search(text):
             return True
     return False
+
 
 # Locktypes whose allowlist holds domains rather than ids or pack names.
 DOMAIN_LOCKABLES = {"url", "button"}
@@ -178,7 +182,11 @@ def _is_allowlisted(message, lockable: str) -> bool:
         elif lockable == "anonchannel" and message.from_user:
             candidate = str(message.from_user.id)
         elif lockable == "command":
-            candidate = (message.text or "").split(maxsplit=1)[0].lower() if message.text else None
+            candidate = (
+                (message.text or "").split(maxsplit=1)[0].lower()
+                if message.text
+                else None
+            )
         elif lockable == "sticker" and getattr(message, "sticker", None):
             candidate = message.sticker.set_name or ""
         elif lockable == "emojicustom" and getattr(message, "sticker", None):
@@ -196,6 +204,7 @@ def _is_allowlisted(message, lockable: str) -> bool:
         return candidate.lstrip("@").lower() in wanted
 
     return False
+
 
 LOCK_CHAT_RESTRICTION = {
     "all": {
@@ -381,10 +390,7 @@ async def lock(message: Message, command: CommandObject) -> str:
             await send_message(message, text, parse_mode=ParseMode.MARKDOWN)
 
             return (
-                "<b>{}:</b>"
-                "\n#LOCK"
-                "\n<b>Admin:</b> {}"
-                "\nLocked <code>{}</code>.".format(
+                "<b>{}:</b>\n#LOCK\n<b>Admin:</b> {}\nLocked <code>{}</code>.".format(
                     html.escape(chat.title),
                     mention_html(user.id, user.first_name),
                     ltype,
@@ -586,9 +592,7 @@ async def unlock(message: Message, command: CommandObject) -> str:
             )
 
     else:
-        await send_message(
-            message, "What are you trying to unlock...?"
-        )
+        await send_message(message, "What are you trying to unlock...?")
 
 
 async def del_lockables(message: Message):
@@ -622,7 +626,10 @@ async def del_lockables(message: Message):
                         try:
                             await message.delete()
                         except TelegramAPIError as excp:
-                            if "message to delete not found" in str(excp.message or excp).lower():
+                            if (
+                                "message to delete not found"
+                                in str(excp.message or excp).lower()
+                            ):
                                 pass
                             else:
                                 LOGGER.exception("ERROR in lockables - rtl:caption")
@@ -632,7 +639,10 @@ async def del_lockables(message: Message):
                         try:
                             await message.delete()
                         except TelegramAPIError as excp:
-                            if "message to delete not found" in str(excp.message or excp).lower():
+                            if (
+                                "message to delete not found"
+                                in str(excp.message or excp).lower()
+                            ):
                                 pass
                             else:
                                 LOGGER.exception("ERROR in lockables - rtl:text")
@@ -644,7 +654,10 @@ async def del_lockables(message: Message):
                     try:
                         await message.delete()
                     except TelegramAPIError as excp:
-                        if "message to delete not found" in str(excp.message or excp).lower():
+                        if (
+                            "message to delete not found"
+                            in str(excp.message or excp).lower()
+                        ):
                             pass
                         else:
                             LOGGER.exception("ERROR in lockables - button")
@@ -659,7 +672,10 @@ async def del_lockables(message: Message):
                     try:
                         await message.delete()
                     except TelegramAPIError as excp:
-                        if "message to delete not found" in str(excp.message or excp).lower():
+                        if (
+                            "message to delete not found"
+                            in str(excp.message or excp).lower()
+                        ):
                             pass
                         else:
                             LOGGER.exception("ERROR in lockables - inline")
@@ -672,7 +688,10 @@ async def del_lockables(message: Message):
                         try:
                             await message.delete()
                         except TelegramAPIError as excp:
-                            if "message to delete not found" in str(excp.message or excp).lower():
+                            if (
+                                "message to delete not found"
+                                in str(excp.message or excp).lower()
+                            ):
                                 pass
                             else:
                                 LOGGER.exception("ERROR in lockables - forwardchannel")
@@ -686,7 +705,10 @@ async def del_lockables(message: Message):
                         try:
                             await message.delete()
                         except TelegramAPIError as excp:
-                            if "message to delete not found" in str(excp.message or excp).lower():
+                            if (
+                                "message to delete not found"
+                                in str(excp.message or excp).lower()
+                            ):
                                 pass
                             else:
                                 LOGGER.exception("ERROR in lockables - forwardchannel")
@@ -700,7 +722,10 @@ async def del_lockables(message: Message):
                         try:
                             await message.delete()
                         except TelegramAPIError as excp:
-                            if "message to delete not found" in str(excp.message or excp).lower():
+                            if (
+                                "message to delete not found"
+                                in str(excp.message or excp).lower()
+                            ):
                                 pass
                             else:
                                 LOGGER.exception("ERROR in lockables - anonchannel")
@@ -734,7 +759,10 @@ async def del_lockables(message: Message):
                 try:
                     await message.delete()
                 except TelegramAPIError as excp:
-                    if "message to delete not found" in str(excp.message or excp).lower():
+                    if (
+                        "message to delete not found"
+                        in str(excp.message or excp).lower()
+                    ):
                         pass
                     else:
                         LOGGER.exception("ERROR in lockables")
@@ -783,7 +811,14 @@ async def build_lock_message(chat_id):
         permslist.append("messages = `{}`".format(permissions.can_send_messages))
         media = all(
             getattr(permissions, f"can_send_{kind}")
-            for kind in ("audios", "documents", "photos", "videos", "video_notes", "voice_notes")
+            for kind in (
+                "audios",
+                "documents",
+                "photos",
+                "videos",
+                "video_notes",
+                "voice_notes",
+            )
         )
         permslist.append("media = `{}`".format(media))
         permslist.append("poll = `{}`".format(permissions.can_send_polls))
@@ -853,7 +888,9 @@ ALLOWLIST_LOCKABLES = (
 
 async def _allowlist_target(message: Message):
     """(chat_id, chat) for an allowlist command, honouring connections."""
-    conn = await connected(bot, message, message.chat, message.from_user.id, need_admin=True)
+    conn = await connected(
+        bot, message, message.chat, message.from_user.id, need_admin=True
+    )
     if conn:
         chat = await bot.get_chat(conn)
         return conn, chat
@@ -920,7 +957,9 @@ async def allowlist(message: Message, command: CommandObject) -> str:
                 await message.reply("Reply to a sticker to use `<>`.")
                 return ""
             value = sticker.set_name
-        elif lockable in ("sticker", "emojicustom") and value.startswith(("stickerpack:", "emojipack:")):
+        elif lockable in ("sticker", "emojicustom") and value.startswith(
+            ("stickerpack:", "emojipack:")
+        ):
             value = value.split(":", 1)[1]
 
         item = _normalise_item(lockable, value)

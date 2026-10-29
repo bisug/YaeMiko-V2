@@ -1,4 +1,3 @@
-
 # https://github.com/bisug/YaeMiko-V2
 # https://github.com/Team-ProjectCodeX
 
@@ -64,7 +63,6 @@ AIOGRAM_VERSION = aiogram.__version__
 KURIGRAM_VERSION = pyrogram.__version__
 
 
-
 def _activity_summary(event) -> str:
     user = getattr(event, "from_user", None)
     chat = getattr(event, "chat", None)
@@ -81,10 +79,6 @@ def _activity_summary(event) -> str:
 
 async def log_activity(event):
     LOGGER.info("Activity: %s", _activity_summary(event))
-
-
-
-
 
 
 async def log_kurigram_activity(_, update, users, chats):
@@ -166,7 +160,9 @@ for module_name in ALL_MODULES:
 # do not async
 async def send_help(chat_id, text, keyboard=None):
     if not keyboard:
-        keyboard = InlineKeyboardMarkup(inline_keyboard=paginate_modules(0, HELPABLE, "help"))
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=paginate_modules(0, HELPABLE, "help")
+        )
     await bot.send_message(
         chat_id=chat_id,
         text=text,
@@ -191,7 +187,15 @@ async def start(message: Message, command: CommandObject):
                     message.chat.id,
                     HELPABLE[mod].__help__,
                     InlineKeyboardMarkup(
-                        inline_keyboard=[[InlineKeyboardButton(text="◁", callback_data="help_back", style=ButtonStyle.PRIMARY)]]
+                        inline_keyboard=[
+                            [
+                                InlineKeyboardButton(
+                                    text="◁",
+                                    callback_data="help_back",
+                                    style=ButtonStyle.PRIMARY,
+                                )
+                            ]
+                        ]
                     ),
                 )
 
@@ -239,14 +243,26 @@ async def extra_command_handlered(message: Message, command: CommandObject):
 
     keyboard = [
         [
-            InlineKeyboardButton(text="MANAGEMENT", callback_data="help_back", style=ButtonStyle.PRIMARY),
-            InlineKeyboardButton(text="ANIME", callback_data="anime_command_handler", style=ButtonStyle.PRIMARY),
+            InlineKeyboardButton(
+                text="MANAGEMENT", callback_data="help_back", style=ButtonStyle.PRIMARY
+            ),
+            InlineKeyboardButton(
+                text="ANIME",
+                callback_data="anime_command_handler",
+                style=ButtonStyle.PRIMARY,
+            ),
         ],
         [
-            InlineKeyboardButton(text="GENSHIN", callback_data="genshin_command_handler", style=ButtonStyle.PRIMARY),
+            InlineKeyboardButton(
+                text="GENSHIN",
+                callback_data="genshin_command_handler",
+                style=ButtonStyle.PRIMARY,
+            ),
         ],
         [
-            InlineKeyboardButton(text="HOME", callback_data="Miko_back", style=ButtonStyle.PRIMARY),
+            InlineKeyboardButton(
+                text="HOME", callback_data="Miko_back", style=ButtonStyle.PRIMARY
+            ),
         ],
     ]
 
@@ -267,18 +283,30 @@ async def extra_command_callback(query: CallbackQuery):
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
-                        InlineKeyboardButton(text="MANAGEMENT", callback_data="help_back", style=ButtonStyle.PRIMARY),
+                        InlineKeyboardButton(
+                            text="MANAGEMENT",
+                            callback_data="help_back",
+                            style=ButtonStyle.PRIMARY,
+                        ),
                     ],
                     [
                         InlineKeyboardButton(
-                            text="ANIME", callback_data="anime_command_handler"
-                        , style=ButtonStyle.PRIMARY),
+                            text="ANIME",
+                            callback_data="anime_command_handler",
+                            style=ButtonStyle.PRIMARY,
+                        ),
                         InlineKeyboardButton(
-                            text="GENSHIN", callback_data="genshin_command_handler"
-                        , style=ButtonStyle.PRIMARY),
+                            text="GENSHIN",
+                            callback_data="genshin_command_handler",
+                            style=ButtonStyle.PRIMARY,
+                        ),
                     ],
                     [
-                        InlineKeyboardButton(text="HOME", callback_data="Miko_back", style=ButtonStyle.PRIMARY),
+                        InlineKeyboardButton(
+                            text="HOME",
+                            callback_data="Miko_back",
+                            style=ButtonStyle.PRIMARY,
+                        ),
                     ],
                 ]
             ),
@@ -311,15 +339,23 @@ async def anime_command_callback(query: CallbackQuery):
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
-                        InlineKeyboardButton(text="More Info", url="https://anilist.co/", style=ButtonStyle.PRIMARY),
                         InlineKeyboardButton(
-                            text="㊋Infamous•Hydra", url="https://t.me/Infamous_Hydra"
-                        , style=ButtonStyle.PRIMARY),
+                            text="More Info",
+                            url="https://anilist.co/",
+                            style=ButtonStyle.PRIMARY,
+                        ),
+                        InlineKeyboardButton(
+                            text="㊋Infamous•Hydra",
+                            url="https://t.me/Infamous_Hydra",
+                            style=ButtonStyle.PRIMARY,
+                        ),
                     ],
                     [
                         InlineKeyboardButton(
-                            text="» 𝘽𝘼𝘾𝙆 «", callback_data="extra_command_handler"
-                        , style=ButtonStyle.PRIMARY),
+                            text="» 𝘽𝘼𝘾𝙆 «",
+                            callback_data="extra_command_handler",
+                            style=ButtonStyle.PRIMARY,
+                        ),
                     ],
                 ]
             ),
@@ -348,13 +384,17 @@ async def genshin_command_callback(query: CallbackQuery):
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="More Info", url="https://genshin.mihoyo.com/"
-                        , style=ButtonStyle.PRIMARY),
+                            text="More Info",
+                            url="https://genshin.mihoyo.com/",
+                            style=ButtonStyle.PRIMARY,
+                        ),
                     ],
                     [
                         InlineKeyboardButton(
-                            text="» 𝘽𝘼𝘾𝙆 «", callback_data="extra_command_handler"
-                        , style=ButtonStyle.PRIMARY),
+                            text="» 𝘽𝘼𝘾𝙆 «",
+                            callback_data="extra_command_handler",
+                            style=ButtonStyle.PRIMARY,
+                        ),
                     ],
                 ]
             ),
@@ -421,7 +461,15 @@ async def help_button(query: CallbackQuery):
                 parse_mode=ParseMode.MARKDOWN,
                 link_preview_options=LinkPreviewOptions(is_disabled=True),
                 reply_markup=InlineKeyboardMarkup(
-                    inline_keyboard=[[InlineKeyboardButton(text="◁", callback_data="help_back", style=ButtonStyle.PRIMARY)]]
+                    inline_keyboard=[
+                        [
+                            InlineKeyboardButton(
+                                text="◁",
+                                callback_data="help_back",
+                                style=ButtonStyle.PRIMARY,
+                            )
+                        ]
+                    ]
                 ),
             )
 
@@ -495,7 +543,13 @@ async def gitsource_callback(query: CallbackQuery):
         )
 
         # Adding the inline button
-        keyboard = [[InlineKeyboardButton(text="◁", callback_data="Miko_back", style=ButtonStyle.PRIMARY)]]
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    text="◁", callback_data="Miko_back", style=ButtonStyle.PRIMARY
+                )
+            ]
+        ]
         reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
         await query.message.edit_text(
@@ -536,15 +590,29 @@ async def Miko_about_callback(query: CallbackQuery):
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="ABOUT", callback_data="Miko_support"
-                        , style=ButtonStyle.PRIMARY),
-                        InlineKeyboardButton(text="COMMAND", callback_data="help_back", style=ButtonStyle.PRIMARY),
+                            text="ABOUT",
+                            callback_data="Miko_support",
+                            style=ButtonStyle.PRIMARY,
+                        ),
+                        InlineKeyboardButton(
+                            text="COMMAND",
+                            callback_data="help_back",
+                            style=ButtonStyle.PRIMARY,
+                        ),
                     ],
                     [
-                        InlineKeyboardButton(text="INSIDER", callback_data="insider_", style=ButtonStyle.PRIMARY),
+                        InlineKeyboardButton(
+                            text="INSIDER",
+                            callback_data="insider_",
+                            style=ButtonStyle.PRIMARY,
+                        ),
                     ],
                     [
-                        InlineKeyboardButton(text="◁", callback_data="Miko_back", style=ButtonStyle.PRIMARY),
+                        InlineKeyboardButton(
+                            text="◁",
+                            callback_data="Miko_back",
+                            style=ButtonStyle.PRIMARY,
+                        ),
                     ],
                 ]
             ),
@@ -562,14 +630,20 @@ async def Miko_about_callback(query: CallbackQuery):
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="SUPPORT", url=f"https://t.me/{SUPPORT_CHAT}"
-                        , style=ButtonStyle.PRIMARY),
+                            text="SUPPORT",
+                            url=f"https://t.me/{SUPPORT_CHAT}",
+                            style=ButtonStyle.PRIMARY,
+                        ),
                         InlineKeyboardButton(
-                            text="DEVELOPER", url=f"tg://user?id={OWNER_ID}"
-                        , style=ButtonStyle.PRIMARY),
+                            text="DEVELOPER",
+                            url=f"tg://user?id={OWNER_ID}",
+                            style=ButtonStyle.PRIMARY,
+                        ),
                     ],
                     [
-                        InlineKeyboardButton(text="◁", callback_data="Miko_", style=ButtonStyle.PRIMARY),
+                        InlineKeyboardButton(
+                            text="◁", callback_data="Miko_", style=ButtonStyle.PRIMARY
+                        ),
                     ],
                 ]
             ),
@@ -601,7 +675,8 @@ async def get_help(message: Message, command: CommandObject):
                                 url="https://t.me/{}?start=ghelp_{}".format(
                                     BOT_USERNAME, module
                                 ),
-                             style=ButtonStyle.PRIMARY)
+                                style=ButtonStyle.PRIMARY,
+                            )
                         ]
                     ]
                 ),
@@ -614,16 +689,16 @@ async def get_help(message: Message, command: CommandObject):
                     [
                         InlineKeyboardButton(
                             text="OPEN IN PM",
-                            url="https://t.me/{}?start=help".format(
-                                BOT_USERNAME
-                            ),
-                         style=ButtonStyle.PRIMARY)
+                            url="https://t.me/{}?start=help".format(BOT_USERNAME),
+                            style=ButtonStyle.PRIMARY,
+                        )
                     ],
                     [
                         InlineKeyboardButton(
                             text="OPEN HERE",
                             callback_data="extra_command_handler",
-                         style=ButtonStyle.PRIMARY)
+                            style=ButtonStyle.PRIMARY,
+                        )
                     ],
                 ]
             ),
@@ -643,7 +718,15 @@ async def get_help(message: Message, command: CommandObject):
             chat.id,
             text,
             InlineKeyboardMarkup(
-                inline_keyboard=[[InlineKeyboardButton(text="◁", callback_data="help_back", style=ButtonStyle.PRIMARY)]]
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="◁",
+                            callback_data="help_back",
+                            style=ButtonStyle.PRIMARY,
+                        )
+                    ]
+                ]
             ),
         )
 
@@ -680,7 +763,9 @@ async def send_settings(chat_id, user_id, user=False):
                     chat_name
                 ),
                 reply_markup=InlineKeyboardMarkup(
-                    inline_keyboard=paginate_modules(0, CHAT_SETTINGS, "stngs", chat=chat_id)
+                    inline_keyboard=paginate_modules(
+                        0, CHAT_SETTINGS, "stngs", chat=chat_id
+                    )
                 ),
             )
         else:
@@ -699,7 +784,11 @@ async def settings_button(query: CallbackQuery):
     next_match = re.match(r"stngs_next\((.+?),(.+?)\)", query.data)
     back_match = re.match(r"stngs_back\((.+?)\)", query.data)
     chat_id = next(
-        (match.group(1) for match in (mod_match, prev_match, next_match, back_match) if match),
+        (
+            match.group(1)
+            for match in (mod_match, prev_match, next_match, back_match)
+            if match
+        ),
         None,
     )
     if chat_id is None:
@@ -707,7 +796,9 @@ async def settings_button(query: CallbackQuery):
     try:
         chat = await bot.get_chat(chat_id)
         if not await is_user_admin(chat, user.id):
-            await query.answer("You are no longer an administrator of this chat.", show_alert=True)
+            await query.answer(
+                "You are no longer an administrator of this chat.", show_alert=True
+            )
             return
         if mod_match:
             chat_id = mod_match.group(1)
@@ -725,7 +816,8 @@ async def settings_button(query: CallbackQuery):
                             InlineKeyboardButton(
                                 text="◁",
                                 callback_data="stngs_back({})".format(chat_id),
-                             style=ButtonStyle.PRIMARY)
+                                style=ButtonStyle.PRIMARY,
+                            )
                         ]
                     ]
                 ),
@@ -767,7 +859,9 @@ async def settings_button(query: CallbackQuery):
                 "you're interested in.".format(escape_markdown(chat.title)),
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=InlineKeyboardMarkup(
-                    inline_keyboard=paginate_modules(0, CHAT_SETTINGS, "stngs", chat=chat_id)
+                    inline_keyboard=paginate_modules(
+                        0, CHAT_SETTINGS, "stngs", chat=chat_id
+                    )
                 ),
             )
 
@@ -802,7 +896,8 @@ async def get_settings(message: Message, command: CommandObject):
                                 url="t.me/{}?start=stngs_{}".format(
                                     BOT_USERNAME, chat.id
                                 ),
-                             style=ButtonStyle.PRIMARY)
+                                style=ButtonStyle.PRIMARY,
+                            )
                         ]
                     ]
                 ),
@@ -855,9 +950,7 @@ def main():
         ("extra_command_handler", extra_command_callback),
         ("genshin_command_handler", genshin_command_callback),
     ):
-        dp.callback_query.register(
-            chain(_callback), F.data.startswith(_prefix)
-        )
+        dp.callback_query.register(chain(_callback), F.data.startswith(_prefix))
 
     dp.errors.register(error_callback)
     if ACTIVITY_LOG:

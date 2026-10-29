@@ -45,7 +45,9 @@ async def userinfopic(
     source_path=None,
     output_path=None,
 ):
-    with tempfile.NamedTemporaryFile(prefix="yae-userinfo-", suffix=".png") as source_file:
+    with tempfile.NamedTemporaryFile(
+        prefix="yae-userinfo-", suffix=".png"
+    ) as source_file:
         source_path = source_path or source_file.name
         user_name = unidecode.unidecode(user.first_name)
 
@@ -64,7 +66,9 @@ async def userinfopic(
 
             draw.text((user_x, user_y), user_name, font=font, fill="white")
             draw.text((user_id_x, user_id_y), str(user.id), font=font, fill="white")
-            userinfo = output_path or f"downloads/userinfo_{user.id}_{uuid.uuid4().hex}.png"
+            userinfo = (
+                output_path or f"downloads/userinfo_{user.id}_{uuid.uuid4().hex}.png"
+            )
             background.save(userinfo)
             return userinfo
         except Exception:

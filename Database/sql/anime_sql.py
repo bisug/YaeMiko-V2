@@ -83,11 +83,12 @@ AnimeToken.__table__.create(bind=ENGINE, checkfirst=True)
 def exists(collection: str, chat_id) -> bool:
     try:
         return (
-            SESSION.scalars(select(AnimeGroupSetting)
-            .where(
-                AnimeGroupSetting.collection == collection,
-                AnimeGroupSetting.chat_id == str(chat_id),
-            )).first()
+            SESSION.scalars(
+                select(AnimeGroupSetting).where(
+                    AnimeGroupSetting.collection == collection,
+                    AnimeGroupSetting.chat_id == str(chat_id),
+                )
+            ).first()
             is not None
         )
     finally:
@@ -107,13 +108,12 @@ def add(collection: str, chat_id) -> bool:
 @unit_of_work_guard
 def remove(collection: str, chat_id) -> bool:
     with INSERTION_LOCK:
-        rows = (
-            SESSION.scalars(select(AnimeGroupSetting)
-            .where(
+        rows = SESSION.scalars(
+            select(AnimeGroupSetting).where(
                 AnimeGroupSetting.collection == collection,
                 AnimeGroupSetting.chat_id == str(chat_id),
-            )).all()
-        )
+            )
+        ).all()
         if not rows:
             return False
         for row in rows:
@@ -178,7 +178,9 @@ def key_exists(collection: str, chat_id, key: str) -> bool:
     mean "not set".
     """
     try:
-        return SESSION.get(AnimeGroupSetting, (collection, str(chat_id), key)) is not None
+        return (
+            SESSION.get(AnimeGroupSetting, (collection, str(chat_id), key)) is not None
+        )
     finally:
         SESSION.close()
 
@@ -234,10 +236,11 @@ def owns_channel(cid, user_id) -> bool:
 @unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with INSERTION_LOCK:
-        rows = (
-            SESSION.scalars(select(AnimeGroupSetting)
-            .where(AnimeGroupSetting.chat_id == str(old_chat_id))).all()
-        )
+        rows = SESSION.scalars(
+            select(AnimeGroupSetting).where(
+                AnimeGroupSetting.chat_id == str(old_chat_id)
+            )
+        ).all()
         for row in rows:
             row.chat_id = str(new_chat_id)
         SESSION.commit()
@@ -246,4 +249,3 @@ def migrate_chat(old_chat_id, new_chat_id):
 def command_disabled(chat_id, command: str) -> bool:
     """Read disabled-command state from the PostgreSQL table that owns it."""
     return is_command_disabled(chat_id, command)
-

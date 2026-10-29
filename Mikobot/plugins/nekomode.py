@@ -48,7 +48,9 @@ async def wallpaper(_, event):
         try:
             img_url = await asyncio.to_thread(nekos.img, target)
         except Exception:
-            await event.reply("The neko service is unavailable. Please try again later.")
+            await event.reply(
+                "The neko service is unavailable. Please try again later."
+            )
             return
         await event.reply(file=img_url)
 
@@ -67,12 +69,16 @@ async def disable_nekomode(_, event):
     await event.reply("Nekomode has been disabled.")
 
 
-@app.on_message(filters.regex(r"^/(?:{})(?:@\S+)?$".format("|".join(allowed_commands))), group=1)
+@app.on_message(
+    filters.regex(r"^/(?:{})(?:@\S+)?$".format("|".join(allowed_commands))), group=1
+)
 async def nekomode_commands(_, event):
     chat_id = event.chat.id
     nekomode_status = is_nekomode_on(chat_id)
     if nekomode_status:
-        target = event.text.split()[0].split("@", 1)[0][1:].lower()  # Remove the slash before the command
+        target = (
+            event.text.split()[0].split("@", 1)[0][1:].lower()
+        )  # Remove the slash before the command
         if target in allowed_commands:
             url = f"{url_sfw}{target}"
 
@@ -83,7 +89,9 @@ async def nekomode_commands(_, event):
                 if not isinstance(media_url, str) or not media_url.startswith("http"):
                     raise ValueError("The neko service returned an invalid response.")
             except Exception:
-                await event.reply("The neko service is unavailable. Please try again later.")
+                await event.reply(
+                    "The neko service is unavailable. Please try again later."
+                )
                 return
 
             # Most categories answer with a gif, but spank and neko return a

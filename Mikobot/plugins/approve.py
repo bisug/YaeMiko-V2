@@ -5,7 +5,12 @@ from aiogram import F
 from aiogram.enums import ButtonStyle, ChatMemberStatus, ParseMode
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import CommandObject
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 import Database.sql.approve_sql as sql
 from Mikobot import DRAGONS, bot, dp
@@ -85,7 +90,9 @@ async def disapprove(message: Message, command: CommandObject):
         await message.answer("This user is an admin, they can't be unapproved.")
         return ""
     if not sql.is_approved(message.chat_id, user_id):
-        await message.answer(f"{html.escape(member.user.first_name)} isn't approved yet!")
+        await message.answer(
+            f"{html.escape(member.user.first_name)} isn't approved yet!"
+        )
         return ""
     sql.disapprove(message.chat_id, user_id)
     await message.answer(
@@ -119,10 +126,7 @@ async def approved(message: Message):
         # session's own leaky bucket paces the batch. A user who left is dropped
         # rather than failing the whole list, matching the lookups above.
         members = await asyncio.gather(
-            *(
-                bot.get_chat_member(chat.id, int(i.user_id))
-                for i in approved_users
-            ),
+            *(bot.get_chat_member(chat.id, int(i.user_id)) for i in approved_users),
             return_exceptions=True,
         )
         for i, member in zip(approved_users, members):
@@ -162,9 +166,7 @@ async def unapproveall(message: Message):
 
     approved_users = sql.list_approved(chat.id)
     if not approved_users:
-        await message.reply(
-            f"No users are approved in {html.escape(chat.title)}."
-        )
+        await message.reply(f"No users are approved in {html.escape(chat.title)}.")
         return
 
     if member.status != ChatMemberStatus.CREATOR and user.id not in DRAGONS:
@@ -178,13 +180,15 @@ async def unapproveall(message: Message):
                     InlineKeyboardButton(
                         text="Unapprove all users",
                         callback_data="unapproveall_user",
-                     style=ButtonStyle.DANGER),
+                        style=ButtonStyle.DANGER,
+                    ),
                 ],
                 [
                     InlineKeyboardButton(
                         text="Cancel",
                         callback_data="unapproveall_cancel",
-                     style=ButtonStyle.DANGER),
+                        style=ButtonStyle.DANGER,
+                    ),
                 ],
             ],
         )
@@ -251,9 +255,7 @@ dp.message.register(chain(disapprove), *disableable("unapprove"))
 dp.message.register(chain(approved), *disableable("approved"))
 dp.message.register(chain(approval), *disableable("approval"))
 dp.message.register(chain(unapproveall), *disableable("unapproveall"))
-dp.callback_query.register(
-    chain(unapproveall_btn), F.data.regexp(r"^unapproveall_.*")
-)
+dp.callback_query.register(chain(unapproveall_btn), F.data.regexp(r"^unapproveall_.*"))
 
 __mod_name__ = "APPROVALS"
 __command_list__ = ["approve", "unapprove", "approved", "approval"]

@@ -144,7 +144,9 @@ def num_gbanned_users():
 def __load_gbanned_userid_list():
     global GBANNED_LIST
     try:
-        GBANNED_LIST = {x.user_id for x in SESSION.scalars(select(GloballyBannedUsers)).all()}
+        GBANNED_LIST = {
+            x.user_id for x in SESSION.scalars(select(GloballyBannedUsers)).all()
+        }
     finally:
         SESSION.close()
 
@@ -153,7 +155,9 @@ def __load_gban_stat_list():
     global GBANSTAT_LIST
     try:
         GBANSTAT_LIST = {
-            x.chat_id for x in SESSION.scalars(select(GbanSettings)).all() if not x.setting
+            x.chat_id
+            for x in SESSION.scalars(select(GbanSettings)).all()
+            if not x.setting
         }
     finally:
         SESSION.close()

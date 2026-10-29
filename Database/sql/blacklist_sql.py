@@ -173,9 +173,10 @@ def num_blacklist_filters():
 @unit_of_work_guard
 def num_blacklist_chat_filters(chat_id):
     try:
-        return (
-            SESSION.scalar(select(func.count()).select_from(BlackListFilters)
-            .where(BlackListFilters.chat_id == str(chat_id)))
+        return SESSION.scalar(
+            select(func.count())
+            .select_from(BlackListFilters)
+            .where(BlackListFilters.chat_id == str(chat_id))
         )
     finally:
         SESSION.close()
@@ -293,9 +294,7 @@ def get_silent_enabled(chat_id) -> bool:
 def set_silent_type(chat_id, blacklist_type: int, silent: bool) -> None:
     """Mark one action mode as silent, leaving the others alone."""
     setting = CHAT_SETTINGS_BLACKLISTS.get(str(chat_id)) or {}
-    current = [
-        part for part in str(setting.get("silent_types", "")).split(",") if part
-    ]
+    current = [part for part in str(setting.get("silent_types", "")).split(",") if part]
     wanted = str(int(blacklist_type))
     present = wanted in current
     if silent and not present:
@@ -315,7 +314,9 @@ def is_silent_type(chat_id, blacklist_type: int) -> bool:
 def __load_chat_blacklists():
     global CHAT_BLACKLISTS
     try:
-        chats = SESSION.execute(select(BlackListFilters.chat_id).distinct()).scalars().all()
+        chats = (
+            SESSION.execute(select(BlackListFilters.chat_id).distinct()).scalars().all()
+        )
         for (chat_id,) in chats:  # remove tuple by ( ,)
             CHAT_BLACKLISTS[chat_id] = []
 
@@ -351,10 +352,9 @@ def __load_chat_settings_blacklists():
 @unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with BLACKLIST_FILTER_INSERTION_LOCK:
-        chat_filters = (
-            SESSION.scalars(select(BlackListFilters)
-            .where(BlackListFilters.chat_id == str(old_chat_id))).all()
-        )
+        chat_filters = SESSION.scalars(
+            select(BlackListFilters).where(BlackListFilters.chat_id == str(old_chat_id))
+        ).all()
         for filt in chat_filters:
             filt.chat_id = str(new_chat_id)
         SESSION.commit()

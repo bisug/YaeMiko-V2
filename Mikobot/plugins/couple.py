@@ -101,7 +101,9 @@ async def nibba_nibbi(_, message):
                 message.chat.id, photo=COUPLES_PIC, caption=couple_selection_message
             )
     except Exception:
-        await message.reply("Unable to select a couple right now. Please try again later.")
+        await message.reply(
+            "Unable to select a couple right now. Please try again later."
+        )
 
 
 # <=================================================== HELP ====================================================>

@@ -73,7 +73,7 @@ async def info(message: Message, command: CommandObject):
 
     try:
         chat_obj = await bot.get_chat(userid)
-    except (TelegramAPIError, UnboundLocalError):
+    except TelegramAPIError, UnboundLocalError:
         await reply_with_text("I can't get information about this user/channel/group.")
         return
 
@@ -185,7 +185,7 @@ async def info(message: Message, command: CommandObject):
                 os.remove(f"{chat_obj.id}.png")
             else:
                 await reply_with_text(escape(head))
-        except (TelegramAPIError, OSError):
+        except TelegramAPIError, OSError:
             # The photo path can fail on download, on the caption's HTML, or on
             # the temp file. Falling back to the text form still answers.
             await reply_with_text(escape(head))

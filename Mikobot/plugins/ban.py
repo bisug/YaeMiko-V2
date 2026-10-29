@@ -42,9 +42,9 @@ from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 __mod_name__ = "BAN"
+
+
 @loggable
-
-
 @check_admin(permission="can_restrict_members", is_both=True)
 async def ban(message: Message, command: CommandObject) -> str:
     chat = message.chat
@@ -86,7 +86,8 @@ async def ban(message: Message, command: CommandObject) -> str:
                         InlineKeyboardButton(
                             text="Click to prove Admin.",
                             callback_data=f"bans_{chat.id}=ban={user_id}={action_token}",
-                         style=ButtonStyle.DANGER),
+                            style=ButtonStyle.DANGER,
+                        ),
                     ],
                 ]
             ),
@@ -297,7 +298,6 @@ async def temp_ban(message: Message, command: CommandObject) -> str:
             # Do not reply
             await message.answer(
                 f"Banned! User will be banned for {time_val}.",
-
             )
             return log
         else:
@@ -398,9 +398,7 @@ async def kick(message: Message, command: CommandObject) -> str:
 async def kickme(message: Message):
     user_id = message.from_user.id
     if await is_user_admin(message.chat, user_id):
-        await message.answer(
-            "I wish I could... but you're an admin."
-        )
+        await message.answer("I wish I could... but you're an admin.")
         return
 
     # unban on current user = kick
@@ -448,7 +446,8 @@ async def unban(message: Message, command: CommandObject) -> str:
                         InlineKeyboardButton(
                             text="Click to prove Admin.",
                             callback_data=f"bans_{chat.id}=unban={user_id}={action_token}",
-                         style=ButtonStyle.SUCCESS),
+                            style=ButtonStyle.SUCCESS,
+                        ),
                     ],
                 ]
             ),
@@ -473,9 +472,7 @@ async def unban(message: Message, command: CommandObject) -> str:
             member = await bot.get_chat_member(chat.id, user_id)
 
             if member.status == ChatMemberStatus.ADMINISTRATOR:
-                await message.answer(
-                    "This person is an admin here, Are you drunk???"
-                )
+                await message.answer("This person is an admin here, Are you drunk???")
                 return log_message
 
         except TelegramAPIError as excp:
@@ -521,7 +518,7 @@ async def selfunban(message: Message, command: CommandObject) -> str:
 
     try:
         chat_id = int(args[0])
-    except (TelegramAPIError, IndexError, ValueError, TypeError):
+    except TelegramAPIError, IndexError, ValueError, TypeError:
         await message.answer("Give a valid chat ID.")
         return
 
@@ -572,7 +569,10 @@ async def bans_callback(query: CallbackQuery):
     member = await bot.get_chat_member(chat.id, admin_user.id)
 
     if (
-        (member.status == ChatMemberStatus.ADMINISTRATOR and member.can_restrict_members)
+        (
+            member.status == ChatMemberStatus.ADMINISTRATOR
+            and member.can_restrict_members
+        )
         or member.status == ChatMemberStatus.CREATOR
         or admin_user.id in DRAGONS
     ):
@@ -652,7 +652,9 @@ async def bans_callback(query: CallbackQuery):
             reply += f"<code> </code><b>•  Channel:</b> {html.escape(chat_name)}"
 
         else:
-            log += f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
+            log += (
+                f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
+            )
             reply += f"<code> </code><b>•  User:</b> {mention_html(member.user.id, member.user.first_name)}"
 
         if reason:
@@ -742,7 +744,9 @@ async def bans_callback(query: CallbackQuery):
             await bot.unban_chat_sender_chat(chat.id, user_id)
             await message.answer("Yeah, this channel can speak again.")
         else:
-            log += f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
+            log += (
+                f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
+            )
             await bot.unban_chat_member(chat.id, user_id)
             await message.answer("Yeah, this user can join!")
 

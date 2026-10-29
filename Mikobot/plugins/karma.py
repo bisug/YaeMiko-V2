@@ -177,6 +177,8 @@ __mod_name__ = "KARMA"
 def __migrate__(old_chat_id, new_chat_id):
     # karma_sql owns both the karma and the couple rows.
     karma_sql.migrate_chat(old_chat_id, new_chat_id)
+
+
 __help__ = """
 
 ➠ *UPVOTE* - Use upvote keywords like "+", "+1", "thanks", etc. to upvote a message.

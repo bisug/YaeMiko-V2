@@ -94,10 +94,9 @@ is_karma_on, karma_on, karma_off = _feature_api(KARMA)
 @unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with INSERTION_LOCK:
-        rows = (
-            SESSION.scalars(select(ChatToggle)
-            .where(ChatToggle.chat_id == str(old_chat_id))).all()
-        )
+        rows = SESSION.scalars(
+            select(ChatToggle).where(ChatToggle.chat_id == str(old_chat_id))
+        ).all()
         for row in rows:
             row.chat_id = str(new_chat_id)
         SESSION.commit()

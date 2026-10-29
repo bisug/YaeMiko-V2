@@ -24,7 +24,7 @@ class STRINGS:
     DOWNLOADING_MEDIA = "🔍"
     UPLOADING_TO_API_SERVER = "📤"
     PARSING_RESULT = "📥"
-    RESULT = "Query: {query}\nGoogle Page: <a href=\"{search_url}\">Link</a>"
+    RESULT = 'Query: {query}\nGoogle Page: <a href="{search_url}">Link</a>'
     OPEN_SEARCH_PAGE = "OPEN LINK"
 
 
@@ -87,7 +87,9 @@ async def reverse_image_search(message: Message):
         if not _valid_url(search_url):
             raise ValueError("invalid search URL")
     except Exception:
-        await status_msg.edit_text("The reverse image service returned an invalid response.")
+        await status_msg.edit_text(
+            "The reverse image service returned an invalid response."
+        )
         return
 
     text = STRINGS.RESULT.format(
@@ -98,7 +100,15 @@ async def reverse_image_search(message: Message):
         text,
         link_preview_options=LinkPreviewOptions(is_disabled=True),
         reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[[InlineKeyboardButton(text=STRINGS.OPEN_SEARCH_PAGE, url=search_url, style=ButtonStyle.PRIMARY)]]
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text=STRINGS.OPEN_SEARCH_PAGE,
+                        url=search_url,
+                        style=ButtonStyle.PRIMARY,
+                    )
+                ]
+            ]
         ),
         parse_mode=ParseMode.HTML,
     )

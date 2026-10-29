@@ -84,11 +84,11 @@ def __export_data__(chat_id):
         "sticker_blacklist": list(blsticker_sql.get_chat_stickers(chat_id)),
         "locks": _lock_state(chat_id) + _restriction_state(chat_id),
         "filters": {
-            item.keyword: item.reply
-            for item in filters_sql.get_chat_filters(chat_id)
+            item.keyword: item.reply for item in filters_sql.get_chat_filters(chat_id)
         },
         "notes": {
-            f"/{note.name}": note.value for note in notes_sql.get_all_chat_notes(chat_id)
+            f"/{note.name}": note.value
+            for note in notes_sql.get_all_chat_notes(chat_id)
         },
         "info": {"rules": rules_sql.get_rules(chat_id)},
         "warns": warns_sql.get_all_warns_for_chat(chat_id),
@@ -217,7 +217,9 @@ async def import_settings(message: Message, command: CommandObject) -> str:
     await message.reply(
         "Imported: <code>{}</code>{}".format(
             html.escape(", ".join(applied)) or "nothing",
-            f"\nFailed: <code>{html.escape(', '.join(failed))}</code>" if failed else "",
+            f"\nFailed: <code>{html.escape(', '.join(failed))}</code>"
+            if failed
+            else "",
         ),
         parse_mode=ParseMode.HTML,
     )

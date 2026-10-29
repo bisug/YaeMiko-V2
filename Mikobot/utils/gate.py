@@ -97,9 +97,7 @@ def _end_database_unit_of_work() -> None:
 
         SESSION.end_unit_of_work()
     except Exception:
-        logging.getLogger(__name__).exception(
-            "Could not clear staged database state"
-        )
+        logging.getLogger(__name__).exception("Could not clear staged database state")
 
 
 class GateMiddleware(BaseMiddleware):
@@ -232,7 +230,10 @@ class GateMiddleware(BaseMiddleware):
             member = await bot.get_chat_member(chat.id, user.id)
         except TelegramAPIError:
             return False
-        return member.status in (ChatMemberStatus.CREATOR, ChatMemberStatus.ADMINISTRATOR)
+        return member.status in (
+            ChatMemberStatus.CREATOR,
+            ChatMemberStatus.ADMINISTRATOR,
+        )
 
     async def _bot_command_reviewed(self, bot, event) -> bool:
         """Whether a bot's command may run now.
@@ -384,7 +385,9 @@ class GateMiddleware(BaseMiddleware):
 
         permission = spec["permission"]
         if permission and (spec["is_user"] or spec["is_both"]):
-            if not (status.granted(user_member, permission) or user_id in status.DRAGONS):
+            if not (
+                status.granted(user_member, permission) or user_id in status.DRAGONS
+            ):
                 if spec["no_reply"]:
                     return ("", True)
                 return (f"You don't have permission to {permission}.", False)

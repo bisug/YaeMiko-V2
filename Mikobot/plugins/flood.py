@@ -111,15 +111,10 @@ async def check_flood(message: Message):
             "Beep boop! Boop beep!\n{}!".format(execstrings),
         )
 
-        return (
-            "<b>{}:</b>"
-            "\n#{}"
-            "\n<b>user:</b> {}"
-            "\nFlooded the group.".format(
-                tag,
-                html.escape(chat.title),
-                mention_html(user.id, user.first_name),
-            )
+        return "<b>{}:</b>\n#{}\n<b>user:</b> {}\nFlooded the group.".format(
+            tag,
+            html.escape(chat.title),
+            mention_html(user.id, user.first_name),
         )
 
     except TelegramAPIError:
@@ -354,9 +349,7 @@ async def set_flood_mode(message: Message, command: CommandObject):
             if len(args) == 1:
                 teks = """It looks like you tried to set time value for antiflood but you didn't specified time; Try, `/setfloodmode tban <timevalue>`.
 Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
-                await send_message(
-                    message, teks, parse_mode=ParseMode.MARKDOWN
-                )
+                await send_message(message, teks, parse_mode=ParseMode.MARKDOWN)
                 return
             settypeflood = "tban for {}".format(args[1])
             sql.set_flood_strength(chat_id, 4, str(args[1]))
@@ -364,9 +357,7 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
             if len(args) == 1:
                 teks = """It looks like you tried to set time value for antiflood but you didn't specified time; Try, `/setfloodmode tmute <timevalue>`.
 Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
-                await send_message(
-                    message, teks, parse_mode=ParseMode.MARKDOWN
-                )
+                await send_message(message, teks, parse_mode=ParseMode.MARKDOWN)
                 return
             settypeflood = "tmute for {}".format(args[1])
             sql.set_flood_strength(chat_id, 5, str(args[1]))
@@ -541,9 +532,7 @@ async def clearflood(message: Message, command: CommandObject):
     sql.set_clearflood(chat_id, enabled)
     if chat_id != message.chat.id:
         await msg.answer(
-            "Clearflood is now {} in {}.".format(
-                "on" if enabled else "off", chat_name
-            ),
+            "Clearflood is now {} in {}.".format("on" if enabled else "off", chat_name),
         )
     else:
         await msg.answer("Clearflood is now {}.".format("on" if enabled else "off"))
@@ -593,7 +582,9 @@ __mod_name__ = "ANTI-FLOOD"
 # Registered before the command handlers: in PTB this ran in group 3 and saw
 # every group message, including commands, so antiflood counted them too.
 dp.message.register(chain(check_flood), GROUPS)
-dp.callback_query.register(chain(flood_button), F.data.regexp(r"^unmute_flooder\(-?\d+\)$"))
+dp.callback_query.register(
+    chain(flood_button), F.data.regexp(r"^unmute_flooder\(-?\d+\)$")
+)
 dp.message.register(chain(set_flood), GROUPS, Command("setflood"))
 dp.message.register(chain(set_flood_mode), Command("setfloodmode"))
 dp.message.register(chain(flood), GROUPS, Command("flood"))

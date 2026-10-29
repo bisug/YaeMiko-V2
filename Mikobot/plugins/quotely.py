@@ -16,6 +16,7 @@ def get_display_name(user):
         return None
     return " ".join(part for part in (user.first_name, user.last_name) if part) or None
 
+
 from Mikobot import DEV_USERS, LOGGER, app
 from Mikobot.events import register
 from Mikobot.plugins.telegraph import _upload
@@ -26,12 +27,19 @@ from Mikobot.state import state
 
 # <================================================ CLASS & FUNCTION =======================================================>
 class Quotly:
-
     _API = "https://shnwazdev-quoteapi.vercel.app/quote/generate"
 
     _COLORS = (
-        "#1b1429", "#2b1b3d", "#123456", "#0f2027", "#42275a",
-        "#2c3e50", "#3a1c71", "#4b1248", "#1f4037", "#16222a",
+        "#1b1429",
+        "#2b1b3d",
+        "#123456",
+        "#0f2027",
+        "#42275a",
+        "#2c3e50",
+        "#3a1c71",
+        "#4b1248",
+        "#1f4037",
+        "#16222a",
     )
     _entities = {
         MessageEntityType.PHONE_NUMBER: "phone_number",
@@ -215,7 +223,7 @@ async def async_searcher(
     re_content: bool = False,
     real: bool = False,
     *args,
-    **kwargs
+    **kwargs,
 ):
     request = (
         state.post(url, headers=headers, params=params, json=json, data=data, **kwargs)
@@ -234,9 +242,8 @@ async def async_searcher(
 @register(pattern="^/q(?: |$)(.*)")
 async def quott_(event):
     match = (
-        (event.command[1] if event.command and len(event.command) > 1 else "")
-        .strip()
-    )
+        event.command[1] if event.command and len(event.command) > 1 else ""
+    ).strip()
     if not event.reply_to_message:
         return await event.reply("Please reply to a message.")
 
@@ -285,13 +292,22 @@ async def quott_(event):
         match = choice(Quotly._COLORS)
 
     try:
-        file = await quotly.create_quotly(reply_, bg=match, reply=replied_to, sender=user)
+        file = await quotly.create_quotly(
+            reply_, bg=match, reply=replied_to, sender=user
+        )
         message = await event.reply_photo(file)
-    except (httpx.HTTPError, OSError, KeyError, TypeError, ValueError, RuntimeError) as error:
+    except (
+        httpx.HTTPError,
+        OSError,
+        KeyError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+    ) as error:
         await msg.edit(f"Quote generation failed: {error}")
         return
     finally:
-        if 'file' in locals() and os.path.exists(file):
+        if "file" in locals() and os.path.exists(file):
             os.remove(file)
     await msg.delete()
     return message

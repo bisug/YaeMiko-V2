@@ -21,7 +21,7 @@ async def participant_check(channel, user_id):
     try:
         await app.get_chat_member(channel, int(user_id))
         return True
-    except (UserNotParticipant, ChatAdminRequired):
+    except UserNotParticipant, ChatAdminRequired:
         return False
     except Exception:
         LOGGER.exception(
@@ -36,10 +36,15 @@ async def force_subscribe(message):
         return
     if message.chat.type in {ChatType.GROUP, ChatType.SUPERGROUP}:
         member = await app.get_chat_member(message.chat.id, message.from_user.id)
-        if member.status not in {ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR}:
+        if member.status not in {
+            ChatMemberStatus.OWNER,
+            ChatMemberStatus.ADMINISTRATOR,
+        }:
             return await message.reply("You need to be an admin to do this.")
         if member.status != ChatMemberStatus.OWNER:
-            return await message.reply("❗ Group creator required\nYou have to be the group creator to do that.")
+            return await message.reply(
+                "❗ Group creator required\nYou have to be the group creator to do that."
+            )
     parts = message.text.split(None, 1)
     channel = parts[1] if len(parts) > 1 else None
     if not channel:
@@ -47,7 +52,9 @@ async def force_subscribe(message):
         if not chat_db:
             await message.reply("Force subscribe is disabled in this chat.")
         else:
-            await message.reply(f"Force subscribe is currently enabled. Users are forced to join @{chat_db.channel} to speak here.")
+            await message.reply(
+                f"Force subscribe is currently enabled. Users are forced to join @{chat_db.channel} to speak here."
+            )
         return
     if channel.lower() in FORCESUBSCRIBE_ON:
         return await message.reply("Please specify the channel username.")
@@ -62,7 +69,9 @@ async def force_subscribe(message):
     if not username or channel_entity.type != ChatType.CHANNEL:
         return await message.reply("That's not a valid channel.")
     if not await participant_check(username, BOT_ID):
-        return await message.reply(f"**Not an admin in the channel**\nI am not an admin in the [channel](https://t.me/{username}). Add me as an admin to enable force subscribe.")
+        return await message.reply(
+            f"**Not an admin in the channel**\nI am not an admin in the [channel](https://t.me/{username}). Add me as an admin to enable force subscribe."
+        )
     db.add_channel(message.chat.id, str(username))
     await message.reply(f"Force subscribe is enabled to @{username}.")
 
@@ -72,7 +81,11 @@ async def force_subscribe_new_message(_, message):
     settings = db.fs_settings(message.chat.id)
     if not settings:
         return
-    if not message.from_user or message.from_user.id in DEVS or message.from_user.id == OWNER_ID:
+    if (
+        not message.from_user
+        or message.from_user.id in DEVS
+        or message.from_user.id == OWNER_ID
+    ):
         return
     try:
         sender = await app.get_chat_member(message.chat.id, message.from_user.id)
@@ -101,15 +114,29 @@ async def force_subscribe_new_message(_, message):
     if await participant_check(channel, message.from_user.id):
         return
     name = message.from_user.first_name.replace("<", "&lt;").replace(">", "&gt;")
-    markup = InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="Join Channel", url=f"https://t.me/{channel}", style=ButtonStyle.SUCCESS),
-        InlineKeyboardButton(text="Unmute Me", callback_data=f"fs_{message.from_user.id}", style=ButtonStyle.SUCCESS),
-    ]])
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Join Channel",
+                    url=f"https://t.me/{channel}",
+                    style=ButtonStyle.SUCCESS,
+                ),
+                InlineKeyboardButton(
+                    text="Unmute Me",
+                    callback_data=f"fs_{message.from_user.id}",
+                    style=ButtonStyle.SUCCESS,
+                ),
+            ]
+        ]
+    )
     await message.reply(
         f'<b><a href="tg://user?id={message.from_user.id}">{name}</a></b>, you have <b>not subscribed</b> to our <b><a href="https://t.me/{channel}">channel</a></b> yet. Please join and press the button below to unmute yourself.',
         reply_markup=markup,
     )
-    await app.restrict_chat_member(message.chat.id, message.from_user.id, ChatPermissions(can_send_messages=False))
+    await app.restrict_chat_member(
+        message.chat.id, message.from_user.id, ChatPermissions(can_send_messages=False)
+    )
 
 
 @app.on_callback_query(filters.regex(r"^fs_(\d+)$"))
@@ -122,8 +149,12 @@ async def unmute_force_subscribe(client, callback):
         return await callback.answer("Force subscribe is disabled.", show_alert=True)
     channel = settings["channel"]
     if not await participant_check(channel, user_id):
-        return await callback.answer("You have to join the channel first, to get unmuted!", show_alert=True)
-    await app.restrict_chat_member(callback.message.chat.id, user_id, ChatPermissions(can_send_messages=True))
+        return await callback.answer(
+            "You have to join the channel first, to get unmuted!", show_alert=True
+        )
+    await app.restrict_chat_member(
+        callback.message.chat.id, user_id, ChatPermissions(can_send_messages=True)
+    )
     await callback.answer("You are unmuted.")
     await callback.message.delete()
 

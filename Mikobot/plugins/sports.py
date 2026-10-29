@@ -6,7 +6,12 @@ from urllib.parse import quote
 from aiogram import F
 from aiogram.enums import ButtonStyle, ParseMode
 from aiogram.filters import Command, CommandObject
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 from httpx import HTTPError
 
 from Mikobot import dp
@@ -79,7 +84,15 @@ def _league_keyboard(sport: str, leagues: list[dict]) -> InlineKeyboardMarkup:
 
 def _back_keyboard(sport: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text="⬅️ Leagues", callback_data=f"sport_menu:{sport}", style=ButtonStyle.PRIMARY)]]
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="⬅️ Leagues",
+                    callback_data=f"sport_menu:{sport}",
+                    style=ButtonStyle.PRIMARY,
+                )
+            ]
+        ]
     )
 
 
@@ -95,7 +108,7 @@ async def _show_leagues(message: Message, sport: str) -> None:
         )
     except HTTPError:
         await message.answer("TheSportsDB is unavailable. Please try again later.")
-    except (ValueError, TypeError, KeyError):
+    except ValueError, TypeError, KeyError:
         await message.answer("TheSportsDB returned incomplete league data.")
 
 
@@ -113,7 +126,7 @@ async def _send_league_message(message: Message, sport: str, league_id: str) -> 
         )
     except HTTPError:
         await message.answer("TheSportsDB is unavailable. Please try again later.")
-    except (ValueError, TypeError, KeyError):
+    except ValueError, TypeError, KeyError:
         await message.answer("TheSportsDB returned incomplete match data.")
 
 
@@ -131,8 +144,10 @@ async def _send_league(query: CallbackQuery, sport: str, league_id: str) -> None
             reply_markup=_back_keyboard(sport),
         )
     except HTTPError:
-        await query.message.edit_text("TheSportsDB is unavailable. Please try again later.")
-    except (ValueError, TypeError, KeyError):
+        await query.message.edit_text(
+            "TheSportsDB is unavailable. Please try again later."
+        )
+    except ValueError, TypeError, KeyError:
         await query.message.edit_text("TheSportsDB returned incomplete match data.")
 
 
@@ -141,19 +156,25 @@ async def _show_menu(query: CallbackQuery, sport: str) -> None:
     try:
         leagues = await get_leagues(sport)
         if not leagues:
-            await query.message.edit_text(f"No {sport} leagues are currently available.")
+            await query.message.edit_text(
+                f"No {sport} leagues are currently available."
+            )
             return
         await query.message.edit_text(
             f"Select a {sport} league:",
             reply_markup=_league_keyboard(sport, leagues),
         )
     except HTTPError:
-        await query.message.edit_text("TheSportsDB is unavailable. Please try again later.")
-    except (ValueError, TypeError, KeyError):
+        await query.message.edit_text(
+            "TheSportsDB is unavailable. Please try again later."
+        )
+    except ValueError, TypeError, KeyError:
         await query.message.edit_text("TheSportsDB returned incomplete league data.")
 
 
-async def get_sport_matches(message: Message, command: CommandObject, sport: str) -> None:
+async def get_sport_matches(
+    message: Message, command: CommandObject, sport: str
+) -> None:
     args = command.args.split() if command.args else []
     if len(args) == 1 and args[0].isdigit():
         await _send_league_message(message, sport, args[0])
@@ -170,17 +191,15 @@ async def sport_callback(query: CallbackQuery) -> None:
             await _show_menu(query, parts[2])
         else:
             await _send_league(query, parts[1], parts[2])
-    except (IndexError, ValueError):
+    except IndexError, ValueError:
         await query.answer("Invalid selection.", show_alert=True)
 
 
-dp.message.register(
-    partial(get_sport_matches, sport="cricket"), Command("cricket")
+dp.message.register(partial(get_sport_matches, sport="cricket"), Command("cricket"))
+dp.message.register(partial(get_sport_matches, sport="football"), Command("football"))
+dp.callback_query.register(
+    chain(sport_callback), F.data.regexp(r"^sport_(?:league|menu):")
 )
-dp.message.register(
-    partial(get_sport_matches, sport="football"), Command("football")
-)
-dp.callback_query.register(chain(sport_callback), F.data.regexp(r"^sport_(?:league|menu):"))
 
 __help__ = """
 🏅 <b>Sports schedules</b>

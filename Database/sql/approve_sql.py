@@ -114,11 +114,11 @@ def disapprove(chat_id, user_id):
 @unit_of_work_guard
 def list_approved(chat_id):
     try:
-        return (
-            SESSION.scalars(select(Approvals)
+        return SESSION.scalars(
+            select(Approvals)
             .where(Approvals.chat_id == str(chat_id))
-            .order_by(Approvals.user_id.asc())).all()
-        )
+            .order_by(Approvals.user_id.asc())
+        ).all()
     finally:
         SESSION.close()
 
@@ -126,10 +126,9 @@ def list_approved(chat_id):
 @unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id):
     with APPROVE_INSERTION_LOCK:
-        rows = (
-            SESSION.scalars(select(Approvals)
-            .where(Approvals.chat_id == str(old_chat_id))).all()
-        )
+        rows = SESSION.scalars(
+            select(Approvals).where(Approvals.chat_id == str(old_chat_id))
+        ).all()
         for row in rows:
             row.chat_id = str(new_chat_id)
         SESSION.commit()

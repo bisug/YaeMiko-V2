@@ -95,9 +95,7 @@ async def extract_text(message) -> str:
     )
 
 
-async def extract_unt_fedban(
-    message: Message, args: list[str]
-) -> tuple:
+async def extract_unt_fedban(message: Message, args: list[str]) -> tuple:
     result = await _resolve_target(message, args)
     if result == (None, None) and len(args) >= 1 and args[0][0] == "@":
         await message.answer(

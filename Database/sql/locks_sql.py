@@ -126,7 +126,9 @@ AllowedItem.__table__.create(bind=ENGINE, checkfirst=True)
 PERM_LOCK = threading.RLock()
 RESTR_LOCK = threading.RLock()
 
-LOCK_COLUMNS = [column.name for column in Permissions.__table__.columns if column.name != "chat_id"]
+LOCK_COLUMNS = [
+    column.name for column in Permissions.__table__.columns if column.name != "chat_id"
+]
 
 
 @dataclass
@@ -389,7 +391,9 @@ def unallow_item(chat_id, lockable, item):
 @unit_of_work_guard
 def rmallow_all(chat_id):
     with PERM_LOCK:
-        for row in SESSION.scalars(select(AllowedItem).where(chat_id=str(chat_id))).all():
+        for row in SESSION.scalars(
+            select(AllowedItem).where(chat_id=str(chat_id))
+        ).all():
             SESSION.delete(row)
         SESSION.commit()
 
@@ -400,7 +404,9 @@ def list_allowed(chat_id):
     try:
         return [
             (row.lockable, row.item)
-            for row in SESSION.scalars(select(AllowedItem).where(chat_id=str(chat_id))).all()
+            for row in SESSION.scalars(
+                select(AllowedItem).where(chat_id=str(chat_id))
+            ).all()
         ]
     finally:
         SESSION.close()
@@ -412,8 +418,9 @@ def allowed_for(chat_id, lockable):
     try:
         return {
             row.item
-            for row in SESSION.scalars(select(AllowedItem)
-            .where(chat_id=str(chat_id), lockable=lockable)).all()
+            for row in SESSION.scalars(
+                select(AllowedItem).where(chat_id=str(chat_id), lockable=lockable)
+            ).all()
         }
     finally:
         SESSION.close()

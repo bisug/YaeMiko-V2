@@ -49,10 +49,35 @@ from Mikobot.utils.parser import mention_html
 _KICK_TASKS = set()
 
 WORDS = (
-    "river", "stone", "cloud", "tiger", "ember", "ocean", "birch", "candle",
-    "falcon", "meadow", "anchor", "bridge", "cobalt", "dragon", "fable",
-    "granite", "harbor", "ivory", "jungle", "kernel", "lantern", "marble",
-    "nectar", "orchid", "pebble", "quartz", "ripple", "summit", "thistle",
+    "river",
+    "stone",
+    "cloud",
+    "tiger",
+    "ember",
+    "ocean",
+    "birch",
+    "candle",
+    "falcon",
+    "meadow",
+    "anchor",
+    "bridge",
+    "cobalt",
+    "dragon",
+    "fable",
+    "granite",
+    "harbor",
+    "ivory",
+    "jungle",
+    "kernel",
+    "lantern",
+    "marble",
+    "nectar",
+    "orchid",
+    "pebble",
+    "quartz",
+    "ripple",
+    "summit",
+    "thistle",
 )
 
 # Wrong answers get a short ban: a bot will not brute force one, and a human
@@ -103,7 +128,7 @@ OPTIONS_PER_CHALLENGE = 4
 
 def _neighbour(word: str) -> str:
     index = random.randrange(len(word))
-    return word[:index] + random.choice(string.ascii_lowercase) + word[index + 1:]
+    return word[:index] + random.choice(string.ascii_lowercase) + word[index + 1 :]
 
 
 def _options(answer: str, decoys) -> list:
@@ -148,7 +173,9 @@ def gen_text2():
     decoys = []
     for _ in range(3):
         variant = _neighbour(base)
-        decoys.append(variant.capitalize() if correct.isupper() is False else variant.upper())
+        decoys.append(
+            variant.capitalize() if correct.isupper() is False else variant.upper()
+        )
     # A decoy that differs only by case would be indistinguishable.
     decoys = [d for d in decoys if d != correct and d.lower() != correct.lower()]
     while len(decoys) < 3:
@@ -212,7 +239,9 @@ async def _pass(chat_id, user_id, approve: bool = False) -> None:
         try:
             await bot.approve_chat_join_request(chat_id, user_id)
         except TelegramAPIError:
-            LOGGER.exception("Join request approval failed for %s in %s", user_id, chat_id)
+            LOGGER.exception(
+                "Join request approval failed for %s in %s", user_id, chat_id
+            )
     await asyncio.to_thread(sql.mark_solved, chat_id, user_id)
 
 
@@ -438,7 +467,9 @@ async def button_callback(message, query: CallbackQuery) -> str:
     if await _send_private_challenge(query.from_user, chat_id, settings):
         await query.answer("Check your private messages.", show_alert=True)
     else:
-        await query.answer("I could not message you, so I could not verify you.", show_alert=True)
+        await query.answer(
+            "I could not message you, so I could not verify you.", show_alert=True
+        )
     return ""
 
 
@@ -451,7 +482,9 @@ async def answer_callback(message, query: CallbackQuery) -> str:
 
     entry = _take_challenge(chat_id, user_id)
     if entry is None:
-        await query.answer("That challenge expired. Join again for a new one.", show_alert=True)
+        await query.answer(
+            "That challenge expired. Join again for a new one.", show_alert=True
+        )
         return ""
 
     options = entry.get("options") or []
@@ -527,7 +560,9 @@ async def join_button(message, query: CallbackQuery) -> str:
     if await _send_private_challenge(query.from_user, chat_id, settings):
         await query.answer("Answer it in this chat to be admitted.", show_alert=True)
     else:
-        await query.answer("I could not message you, so I could not verify you.", show_alert=True)
+        await query.answer(
+            "I could not message you, so I could not verify you.", show_alert=True
+        )
     return ""
 
 
@@ -677,10 +712,11 @@ async def captcha_buttons(message: Message, command: CommandObject):
 @check_admin(permission="can_restrict_members", is_both=True)
 @typing_action
 async def captcha_reset_text(message: Message, command: CommandObject):
-    await asyncio.to_thread(
-        sql.set_button_text, message.chat.id, sql.DEF_BUTTON_TEXT
+    await asyncio.to_thread(sql.set_button_text, message.chat.id, sql.DEF_BUTTON_TEXT)
+    await message.reply(
+        f"Button text reset to <code>{html.escape(sql.DEF_BUTTON_TEXT)}</code>.",
+        parse_mode=ParseMode.HTML,
     )
-    await message.reply(f"Button text reset to <code>{html.escape(sql.DEF_BUTTON_TEXT)}</code>.", parse_mode=ParseMode.HTML)
 
 
 @check_admin(permission="can_restrict_members", is_both=True)
@@ -804,7 +840,9 @@ async def captcha_reset(message: Message, command: CommandObject):
     args = command.args.split() if command.args else []
     chat = message.chat
     if not args:
-        await message.reply("Reply to someone with `/resetcaptcha` to make them redo it.")
+        await message.reply(
+            "Reply to someone with `/resetcaptcha` to make them redo it."
+        )
         return ""
 
     if not args[0].isdigit():

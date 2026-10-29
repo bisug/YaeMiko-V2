@@ -67,7 +67,8 @@ def paginate_modules(page_n: int, module_dict: dict, prefix, chat=None) -> list:
                     callback_data="{}_module({})".format(
                         prefix, x.__mod_name__.lower()
                     ),
-                 style=ButtonStyle.PRIMARY)
+                    style=ButtonStyle.PRIMARY,
+                )
                 for x in module_dict.values()
             ]
         )
@@ -79,7 +80,8 @@ def paginate_modules(page_n: int, module_dict: dict, prefix, chat=None) -> list:
                     callback_data="{}_module({},{})".format(
                         prefix, chat, x.__mod_name__.lower()
                     ),
-                 style=ButtonStyle.PRIMARY)
+                    style=ButtonStyle.PRIMARY,
+                )
                 for x in module_dict.values()
             ]
         )
@@ -97,19 +99,31 @@ def paginate_modules(page_n: int, module_dict: dict, prefix, chat=None) -> list:
         pairs = pairs[modulo_page * 6 : 6 * (modulo_page + 1)] + [
             (
                 EqInlineKeyboardButton(
-                    text="◁", callback_data="{}_prev({})".format(prefix, modulo_page)
-                , style=ButtonStyle.PRIMARY),
+                    text="◁",
+                    callback_data="{}_prev({})".format(prefix, modulo_page),
+                    style=ButtonStyle.PRIMARY,
+                ),
                 EqInlineKeyboardButton(
-                    text="» 𝘽𝘼𝘾𝙆 «", callback_data="extra_command_handler"
-                , style=ButtonStyle.PRIMARY),
+                    text="» 𝘽𝘼𝘾𝙆 «",
+                    callback_data="extra_command_handler",
+                    style=ButtonStyle.PRIMARY,
+                ),
                 EqInlineKeyboardButton(
-                    text="▷", callback_data="{}_next({})".format(prefix, modulo_page)
-                , style=ButtonStyle.PRIMARY),
+                    text="▷",
+                    callback_data="{}_next({})".format(prefix, modulo_page),
+                    style=ButtonStyle.PRIMARY,
+                ),
             )
         ]
 
     else:
-        pairs += [[EqInlineKeyboardButton(text="⇦ 𝘽𝘼𝘾𝙆", callback_data="Miko_back", style=ButtonStyle.PRIMARY)]]
+        pairs += [
+            [
+                EqInlineKeyboardButton(
+                    text="⇦ 𝘽𝘼𝘾𝙆", callback_data="Miko_back", style=ButtonStyle.PRIMARY
+                )
+            ]
+        ]
 
     return pairs
 
@@ -156,9 +170,19 @@ def build_keyboard(buttons):
     keyb = []
     for btn in buttons:
         if btn.same_line and keyb:
-            keyb[-1].append(InlineKeyboardButton(text=btn.name, url=btn.url, style=ButtonStyle.PRIMARY))
+            keyb[-1].append(
+                InlineKeyboardButton(
+                    text=btn.name, url=btn.url, style=ButtonStyle.PRIMARY
+                )
+            )
         else:
-            keyb.append([InlineKeyboardButton(text=btn.name, url=btn.url, style=ButtonStyle.PRIMARY)])
+            keyb.append(
+                [
+                    InlineKeyboardButton(
+                        text=btn.name, url=btn.url, style=ButtonStyle.PRIMARY
+                    )
+                ]
+            )
 
     return keyb
 

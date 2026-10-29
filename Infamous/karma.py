@@ -44,17 +44,28 @@ START_BTN = [
         InlineKeyboardButton(
             text="⇦ ADD ME ⇨",
             url=f"https://t.me/{BOT_USERNAME}?startgroup=true",
-         style=ButtonStyle.PRIMARY),
+            style=ButtonStyle.PRIMARY,
+        ),
     ],
     [
-        InlineKeyboardButton(text="HELP", callback_data="extra_command_handler", style=ButtonStyle.PRIMARY),
+        InlineKeyboardButton(
+            text="HELP",
+            callback_data="extra_command_handler",
+            style=ButtonStyle.PRIMARY,
+        ),
     ],
     [
-        InlineKeyboardButton(text="DETAILS", callback_data="Miko_", style=ButtonStyle.PRIMARY),
-        InlineKeyboardButton(text="SOURCE", callback_data="git_source", style=ButtonStyle.PRIMARY),
+        InlineKeyboardButton(
+            text="DETAILS", callback_data="Miko_", style=ButtonStyle.PRIMARY
+        ),
+        InlineKeyboardButton(
+            text="SOURCE", callback_data="git_source", style=ButtonStyle.PRIMARY
+        ),
     ],
     [
-        InlineKeyboardButton(text="CREATOR", url=f"tg://user?id={OWNER_ID}", style=ButtonStyle.PRIMARY),
+        InlineKeyboardButton(
+            text="CREATOR", url=f"tg://user?id={OWNER_ID}", style=ButtonStyle.PRIMARY
+        ),
     ],
 ]
 
@@ -63,24 +74,40 @@ GROUP_START_BTN = [
         InlineKeyboardButton(
             text="⇦ ADD ME ⇨",
             url=f"https://t.me/{BOT_USERNAME}?startgroup=true",
-         style=ButtonStyle.PRIMARY),
+            style=ButtonStyle.PRIMARY,
+        ),
     ],
     [
-        InlineKeyboardButton(text="SUPPORT", url=f"https://t.me/{SUPPORT_CHAT}", style=ButtonStyle.PRIMARY),
-        InlineKeyboardButton(text="CREATOR", url=f"tg://user?id={OWNER_ID}", style=ButtonStyle.PRIMARY),
+        InlineKeyboardButton(
+            text="SUPPORT",
+            url=f"https://t.me/{SUPPORT_CHAT}",
+            style=ButtonStyle.PRIMARY,
+        ),
+        InlineKeyboardButton(
+            text="CREATOR", url=f"tg://user?id={OWNER_ID}", style=ButtonStyle.PRIMARY
+        ),
     ],
 ]
 
 ALIVE_BTN = [
     [
-        ib(text="UPDATES", url="https://t.me/Hydra_Updates", style=PyrogramButtonStyle.PRIMARY),
-        ib(text="SUPPORT", url="https://t.me/hydraXsupport", style=PyrogramButtonStyle.PRIMARY),
+        ib(
+            text="UPDATES",
+            url="https://t.me/Hydra_Updates",
+            style=PyrogramButtonStyle.PRIMARY,
+        ),
+        ib(
+            text="SUPPORT",
+            url="https://t.me/hydraXsupport",
+            style=PyrogramButtonStyle.PRIMARY,
+        ),
     ],
     [
         ib(
             text="⇦ ADD ME ⇨",
             url=f"https://t.me/{BOT_USERNAME}?startgroup=true",
-         style=PyrogramButtonStyle.PRIMARY),
+            style=PyrogramButtonStyle.PRIMARY,
+        ),
     ],
 ]
 

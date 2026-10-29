@@ -54,9 +54,7 @@ async def instadl_command_handler(message: Message, command: CommandObject):
 
     except Exception:
         LOGGER.exception("Instagram download request failed")
-        await message.answer(
-            "An error occurred while processing the request."
-        )
+        await message.answer("An error occurred while processing the request.")
 
     finally:
         if downloading_sticker is not None:

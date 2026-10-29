@@ -39,7 +39,9 @@ async def hyperlink_command(message: Message, command: CommandObject):
         link = args[-1]
         hyperlink = f"[{text}]({link})"
         await message.answer(
-            text=hyperlink, parse_mode=ParseMode.MARKDOWN, link_preview_options=LinkPreviewOptions(is_disabled=True)
+            text=hyperlink,
+            parse_mode=ParseMode.MARKDOWN,
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     else:
         match = re.search(r"/hyperlink ([^\s]+) (.+)", message.text)
@@ -48,7 +50,9 @@ async def hyperlink_command(message: Message, command: CommandObject):
             link = match.group(2)
             hyperlink = f"[{text}]({link})"
             await message.answer(
-                text=hyperlink, parse_mode=ParseMode.HTML, link_preview_options=LinkPreviewOptions(is_disabled=True)
+                text=hyperlink,
+                parse_mode=ParseMode.HTML,
+                link_preview_options=LinkPreviewOptions(is_disabled=True),
             )
         else:
             await message.answer(

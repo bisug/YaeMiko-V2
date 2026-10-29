@@ -73,7 +73,9 @@ async def antiraid(message: Message, command: CommandObject) -> str:
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="Enable AntiRaid" if not active else "Disable AntiRaid",
+                            text="Enable AntiRaid"
+                            if not active
+                            else "Disable AntiRaid",
                             callback_data=f"antiraid_{chat_id}_"
                             f"{'off' if active else 'on'}",
                         )
@@ -129,9 +131,7 @@ async def raidtime(message: Message, command: CommandObject) -> str:
     args = command.args.split() if command.args else []
 
     if not args:
-        _active, raid_time, *_ = await asyncio.to_thread(
-            sql.get_raid_setting, chat_id
-        )
+        _active, raid_time, *_ = await asyncio.to_thread(sql.get_raid_setting, chat_id)
         await message.reply(
             f"AntiRaid stays enabled for <code>{format_duration(raid_time)}</code>.",
             parse_mode=ParseMode.HTML,
@@ -285,7 +285,9 @@ async def _raid_join(message: Message) -> str:
     try:
         status = await bot.get_chat_member(chat.id, new_user.id)
     except Exception:
-        LOGGER.warning("AntiRaid could not read membership of %s in %s", new_user.id, chat.id)
+        LOGGER.warning(
+            "AntiRaid could not read membership of %s in %s", new_user.id, chat.id
+        )
         return ""
     if status.status in (ChatMemberStatus.CREATOR, ChatMemberStatus.ADMINISTRATOR):
         return ""
@@ -329,9 +331,7 @@ async def antiraid_button(message, query) -> str:
 
     if action == "on":
         await asyncio.to_thread(sql.set_raid, chat_id)
-        _active, raid_time, *_ = await asyncio.to_thread(
-            sql.get_raid_setting, chat_id
-        )
+        _active, raid_time, *_ = await asyncio.to_thread(sql.get_raid_setting, chat_id)
         detail = f"AntiRaid is enabled for <code>{format_duration(raid_time)}</code>."
     else:
         await asyncio.to_thread(sql.rem_raid, chat_id)

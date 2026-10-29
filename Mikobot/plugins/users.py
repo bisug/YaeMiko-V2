@@ -50,7 +50,6 @@ def parse_broadcast_request(text: str, has_reply: bool = False):
     return targets, content or None
 
 
-
 # <================================================ FUNCTION =======================================================>
 # Broadcast Function
 @app.on_message(fil.command("gcast"))
@@ -256,6 +255,7 @@ async def log_user(message: Message):
             chat.id,
             chat.title,
         )
+
 
 @check_admin(only_dev=True)
 async def chats(message: Message):

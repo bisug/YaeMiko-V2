@@ -368,10 +368,9 @@ def set_custom_welcome(
         SESSION.add(welcome_settings)
 
         with WELC_BTN_LOCK:
-            prev_buttons = (
-                SESSION.scalars(select(WelcomeButtons)
-                .where(WelcomeButtons.chat_id == str(chat_id))).all()
-            )
+            prev_buttons = SESSION.scalars(
+                select(WelcomeButtons).where(WelcomeButtons.chat_id == str(chat_id))
+            ).all()
             for btn in prev_buttons:
                 SESSION.delete(btn)
 
@@ -414,10 +413,9 @@ def set_custom_gdbye(chat_id, custom_goodbye, goodbye_type, buttons=None):
         SESSION.add(welcome_settings)
 
         with LEAVE_BTN_LOCK:
-            prev_buttons = (
-                SESSION.scalars(select(GoodbyeButtons)
-                .where(GoodbyeButtons.chat_id == str(chat_id))).all()
-            )
+            prev_buttons = SESSION.scalars(
+                select(GoodbyeButtons).where(GoodbyeButtons.chat_id == str(chat_id))
+            ).all()
             for btn in prev_buttons:
                 SESSION.delete(btn)
 
@@ -442,11 +440,11 @@ def get_custom_gdbye(chat_id):
 @unit_of_work_guard
 def get_welc_buttons(chat_id):
     try:
-        return (
-            SESSION.scalars(select(WelcomeButtons)
+        return SESSION.scalars(
+            select(WelcomeButtons)
             .where(WelcomeButtons.chat_id == str(chat_id))
-            .order_by(WelcomeButtons.id)).all()
-        )
+            .order_by(WelcomeButtons.id)
+        ).all()
     finally:
         SESSION.close()
 
@@ -454,11 +452,11 @@ def get_welc_buttons(chat_id):
 @unit_of_work_guard
 def get_gdbye_buttons(chat_id):
     try:
-        return (
-            SESSION.scalars(select(GoodbyeButtons)
+        return SESSION.scalars(
+            select(GoodbyeButtons)
             .where(GoodbyeButtons.chat_id == str(chat_id))
-            .order_by(GoodbyeButtons.id)).all()
-        )
+            .order_by(GoodbyeButtons.id)
+        ).all()
     finally:
         SESSION.close()
 
@@ -516,18 +514,16 @@ def migrate_chat(old_chat_id, new_chat_id):
             chat.chat_id = str(new_chat_id)
 
         with WELC_BTN_LOCK:
-            chat_buttons = (
-                SESSION.scalars(select(WelcomeButtons)
-                .where(WelcomeButtons.chat_id == str(old_chat_id))).all()
-            )
+            chat_buttons = SESSION.scalars(
+                select(WelcomeButtons).where(WelcomeButtons.chat_id == str(old_chat_id))
+            ).all()
             for btn in chat_buttons:
                 btn.chat_id = str(new_chat_id)
 
         with LEAVE_BTN_LOCK:
-            chat_buttons = (
-                SESSION.scalars(select(GoodbyeButtons)
-                .where(GoodbyeButtons.chat_id == str(old_chat_id))).all()
-            )
+            chat_buttons = SESSION.scalars(
+                select(GoodbyeButtons).where(GoodbyeButtons.chat_id == str(old_chat_id))
+            ).all()
             for btn in chat_buttons:
                 btn.chat_id = str(new_chat_id)
 

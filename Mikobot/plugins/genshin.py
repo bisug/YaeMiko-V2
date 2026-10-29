@@ -48,8 +48,13 @@ LANGS = {"en": "English", "fr": "Français"}
 PAGE_SIZE = 6
 
 VISION_EMOJI = {
-    "ANEMO": "🍃", "CRYO": "❄️", "DENDRO": "🌿", "ELECTRO": "⚡",
-    "GEO": "🪨", "HYDRO": "💧", "PYRO": "🔥",
+    "ANEMO": "🍃",
+    "CRYO": "❄️",
+    "DENDRO": "🌿",
+    "ELECTRO": "⚡",
+    "GEO": "🪨",
+    "HYDRO": "💧",
+    "PYRO": "🔥",
 }
 
 RARITY_EMOJI = {1: "⚪", 2: "🔵", 3: "🔷", 4: "🟣", 5: "🟡"}
@@ -93,19 +98,45 @@ class EntityType:
 ENTITY_TYPES = {
     t.name: t
     for t in (
-        EntityType("characters", "Character", "gchar", "🧝", handler="character", image="portrait"),
+        EntityType(
+            "characters",
+            "Character",
+            "gchar",
+            "🧝",
+            handler="character",
+            image="portrait",
+        ),
         EntityType("weapons", "Weapon", "gweapon", "⚔️", handler="weapon", image="icon"),
-        EntityType("artifacts", "Artifact Set", "gartifact", "💍", handler="artifact", image="pieces"),
-        EntityType("consumables", "Consumable", "gconsumable", "🍲", handler="consumable", grouped=True),
-        EntityType("materials", "Material", "gmaterial", "🪵", handler="material", grouped=True),
+        EntityType(
+            "artifacts",
+            "Artifact Set",
+            "gartifact",
+            "💍",
+            handler="artifact",
+            image="pieces",
+        ),
+        EntityType(
+            "consumables",
+            "Consumable",
+            "gconsumable",
+            "🍲",
+            handler="consumable",
+            grouped=True,
+        ),
+        EntityType(
+            "materials", "Material", "gmaterial", "🪵", handler="material", grouped=True
+        ),
         EntityType("enemies", "Enemy", "genemy", "👹", handler="enemy", image="icon"),
         EntityType("domains", "Domain", "gdomain", "🏛️", handler="domain"),
         EntityType("nations", "Nation", "gnation", "🗺️", handler="nation", image="icon"),
-        EntityType("elements", "Element", "gelement", "⚗️", handler="element", image="icon"),
+        EntityType(
+            "elements", "Element", "gelement", "⚗️", handler="element", image="icon"
+        ),
     )
 }
 
 # <=======================================================================================================>
+
 
 # <================================================= HELPERS =================================================>
 def _cut(text, limit: int) -> str:
@@ -122,7 +153,7 @@ def _lines(text, limit: int = 220) -> str:
 def _rarity(value) -> str:
     try:
         return RARITY_EMOJI.get(int(value), "")
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return ""
 
 
@@ -298,8 +329,11 @@ def _bullet(label: str, value) -> InputRichBlockListItem | None:
         return None
     return InputRichBlockListItem(
         label=label,
-        blocks=[InputRichBlockParagraph(text=[RichTextUnderline(
-            text=RichText(text=f"{label} — ")), _t(value)])],
+        blocks=[
+            InputRichBlockParagraph(
+                text=[RichTextUnderline(text=RichText(text=f"{label} — ")), _t(value)]
+            )
+        ],
     )
 
 
@@ -449,7 +483,10 @@ def _render_character(entry: dict) -> list:
                 items=[
                     InputRichBlockListItem(
                         label=f"C{c.get('level', '')}",
-                        blocks=[_para(_bold(c.get("name"))), _para(_italic(c.get("description")))],
+                        blocks=[
+                            _para(_bold(c.get("name"))),
+                            _para(_italic(c.get("description"))),
+                        ],
                     )
                     for c in consts
                     if c.get("name")
@@ -472,7 +509,12 @@ def _render_character(entry: dict) -> list:
             )
             if summary:
                 blocks.append(
-                    _para([RichTextUnderline(text=RichText(text=f"{tier}: ")), _t(summary)])
+                    _para(
+                        [
+                            RichTextUnderline(text=RichText(text=f"{tier}: ")),
+                            _t(summary),
+                        ]
+                    )
                 )
     return [b for b in blocks if b is not None]
 
@@ -545,7 +587,9 @@ def _render_element(entry: dict) -> list:
         if reaction.get("description"):
             runs.append(RichText(text=". "))
             runs.append(_italic(reaction["description"]))
-        items.append(InputRichBlockListItem(label=name[:1] or "•", blocks=[_para(runs)]))
+        items.append(
+            InputRichBlockListItem(label=name[:1] or "•", blocks=[_para(runs)])
+        )
     if items:
         blocks.append(InputRichBlockList(items=items))
     return blocks
@@ -573,14 +617,17 @@ def _render_enemy(entry: dict) -> list:
     if description and description != "N/A":
         blocks.append(_quote(_italic(description)))
 
-    drops = [d for d in (entry.get("drops") or []) if isinstance(d, dict) and d.get("name")]
+    drops = [
+        d for d in (entry.get("drops") or []) if isinstance(d, dict) and d.get("name")
+    ]
     if drops:
         blocks.append(_heading("Drops", 3))
         blocks.append(
             InputRichBlockList(
                 items=[
                     InputRichBlockListItem(
-                        label=_rarity(d.get("rarity")) or "•", blocks=[_para(_t(d.get("name")))]
+                        label=_rarity(d.get("rarity")) or "•",
+                        blocks=[_para(_t(d.get("name")))],
                     )
                     for d in drops
                 ]
@@ -588,7 +635,9 @@ def _render_enemy(entry: dict) -> list:
         )
 
     artifacts = [
-        a for a in (entry.get("artifacts") or []) if isinstance(a, dict) and a.get("name")
+        a
+        for a in (entry.get("artifacts") or [])
+        if isinstance(a, dict) and a.get("name")
     ]
     if artifacts:
         blocks.append(_heading("Artifact sets", 3))
@@ -636,21 +685,27 @@ def _render_domain(entry: dict) -> list:
                 _field("Type", entry.get("type")),
                 _field("Nation", entry.get("nation")),
                 _field("Location", entry.get("location")),
-                _field("Recommended", ", ".join(entry.get("recommendedElements") or []) or None),
+                _field(
+                    "Recommended",
+                    ", ".join(entry.get("recommendedElements") or []) or None,
+                ),
             ]
         )
     )
     if entry.get("description"):
         blocks.append(_quote(_italic(entry["description"])))
 
-    rewards = [r for r in (entry.get("rewards") or []) if isinstance(r, dict) and r.get("name")]
+    rewards = [
+        r for r in (entry.get("rewards") or []) if isinstance(r, dict) and r.get("name")
+    ]
     if rewards:
         blocks.append(_heading("Rewards", 3))
         blocks.append(
             InputRichBlockList(
                 items=[
                     InputRichBlockListItem(
-                        label=str(r.get("level") or "•"), blocks=[_para(_t(r.get("name")))]
+                        label=str(r.get("level") or "•"),
+                        blocks=[_para(_t(r.get("name")))],
                     )
                     for r in rewards
                 ]
@@ -666,11 +721,17 @@ def _render_domain(entry: dict) -> list:
                     InputRichBlockListItem(
                         label=f"AR {r.get('adventureRank', '—')}",
                         blocks=[
-                            _para([_bold("Level "), _t(str(r.get("recommendedLevel", "—")))]),
+                            _para(
+                                [
+                                    _bold("Level "),
+                                    _t(str(r.get("recommendedLevel", "—"))),
+                                ]
+                            ),
                             *[
                                 _para(_italic(str(disorder)))
                                 for disorder in r.get("leyLineDisorder") or []
-                                if str(disorder).strip() and str(disorder).strip() != "None"
+                                if str(disorder).strip()
+                                and str(disorder).strip() != "None"
                             ],
                         ],
                     )
@@ -705,7 +766,11 @@ def _render_grouped(entry: dict, kind: str) -> list:
         blocks.append(_quote(_italic(entry["description"])))
 
     crafting = entry.get("crafting") or entry.get("recipe")
-    crafting = [c for c in crafting if isinstance(c, dict) and c.get("item")] if isinstance(crafting, list) else []
+    crafting = (
+        [c for c in crafting if isinstance(c, dict) and c.get("item")]
+        if isinstance(crafting, list)
+        else []
+    )
     if crafting:
         blocks.append(_heading("Crafting", 3))
         blocks.append(
@@ -713,7 +778,9 @@ def _render_grouped(entry: dict, kind: str) -> list:
                 items=[
                     InputRichBlockListItem(
                         label="•",
-                        blocks=[_para([_t(f"{c['item']} "), _code(f"x{c.get('quantity')}")])],
+                        blocks=[
+                            _para([_t(f"{c['item']} "), _code(f"x{c.get('quantity')}")])
+                        ],
                     )
                     for c in crafting
                 ]
@@ -755,12 +822,18 @@ def _render_list(kind: str, items: list, query: str, page: int, lang: str) -> li
             items=[
                 InputRichBlockListItem(
                     label=(
-                        (VISION_EMOJI.get(str(e.get("vision_key", "")).upper(), "")
-                         if kind == "characters" else "")
+                        (
+                            VISION_EMOJI.get(str(e.get("vision_key", "")).upper(), "")
+                            if kind == "characters"
+                            else ""
+                        )
                         + _rarity(e.get("rarity", e.get("max_rarity")))
-                    ) or "•",
+                    )
+                    or "•",
                     blocks=[
-                        _para([_bold(e.get("name", "?")), _code(f"  {e.get('id', '')}")])
+                        _para(
+                            [_bold(e.get("name", "?")), _code(f"  {e.get('id', '')}")]
+                        )
                     ],
                 )
                 for e in shown
@@ -790,8 +863,11 @@ def _list_keyboard(kind: str, query: str, page: int, lang: str) -> InlineKeyboar
 
 # <=======================================================================================================>
 
+
 # <================================================== SENDING ================================================>
-async def _send_rich(chat_id: int, blocks: list, reply_markup=None, thread_id: int = None):
+async def _send_rich(
+    chat_id: int, blocks: list, reply_markup=None, thread_id: int = None
+):
     """Send a rich message, falling back to plain text if the API rejects it.
 
     sendRichMessage is a comparatively new Bot API method. A bot pointed at an
@@ -842,7 +918,8 @@ def _blocks_to_text(blocks: list) -> str:
             for item in items:
                 label = getattr(item, "label", "")
                 inner = " ".join(
-                    _flatten(getattr(b, "text", "")) for b in getattr(item, "blocks", [])
+                    _flatten(getattr(b, "text", ""))
+                    for b in getattr(item, "blocks", [])
                 )
                 lines.append(f"{label}. {inner}".strip())
             continue
@@ -851,11 +928,7 @@ def _blocks_to_text(blocks: list) -> str:
 
 def _is_run(value) -> bool:
     """A serialised run is `["text", value]`; anything else is not one."""
-    return (
-        isinstance(value, list)
-        and len(value) == 2
-        and value[0] == "text"
-    )
+    return isinstance(value, list) and len(value) == 2 and value[0] == "text"
 
 
 def _flatten(node) -> str:
@@ -935,7 +1008,7 @@ async def _lookup(message: Message, command: CommandObject, kind: str):
                 detail = await _fetch(f"{kind}/{record['id']}", lang)
                 if isinstance(detail, dict):
                     record = detail
-            except (httpx.HTTPError, ValueError, KeyError, TypeError):
+            except httpx.HTTPError, ValueError, KeyError, TypeError:
                 pass
         if isinstance(record.get("characters"), list):
             try:
@@ -944,7 +1017,7 @@ async def _lookup(message: Message, command: CommandObject, kind: str):
                 record["characters"] = [
                     names.get(str(c), str(c)) for c in record["characters"]
                 ]
-            except (httpx.HTTPError, ValueError, KeyError, TypeError):
+            except httpx.HTTPError, ValueError, KeyError, TypeError:
                 LOGGER.debug("Could not resolve character names", exc_info=True)
         blocks = RENDERERS[kind](record)
         markup = None
@@ -998,6 +1071,7 @@ genshin_enemy = _make_handler("enemies")
 genshin_domain = _make_handler("domains")
 genshin_nation = _make_handler("nations")
 genshin_element = _make_handler("elements")
+
 
 async def genshin_page(query: CallbackQuery):
     """Advance a result list.

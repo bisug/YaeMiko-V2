@@ -51,7 +51,9 @@ def _escape(value: object) -> str:
 def _english_text(entries: list[dict], text_key: str) -> str:
     for entry in entries:
         if entry.get("language", {}).get("name") == "en":
-            return html.unescape(str(entry.get(text_key) or "")).replace("\n", " ").strip()
+            return (
+                html.unescape(str(entry.get(text_key) or "")).replace("\n", " ").strip()
+            )
     return ""
 
 
@@ -75,9 +77,7 @@ def _evolution_text(chain: dict) -> str:
     path = flatten(chain.get("chain", {}))
     if not path:
         return "No evolution data available."
-    return " → ".join(
-        _escape(_display_name(item["species"]["name"])) for item in path
-    )
+    return " → ".join(_escape(_display_name(item["species"]["name"])) for item in path)
 
 
 def _keyboard(
@@ -89,32 +89,52 @@ def _keyboard(
         if page > 0:
             buttons.append(
                 InlineKeyboardButton(
-                    text="⬅️ Previous", callback_data=f"{prefix}:moves:{page - 1}"
-                , style=ButtonStyle.PRIMARY)
+                    text="⬅️ Previous",
+                    callback_data=f"{prefix}:moves:{page - 1}",
+                    style=ButtonStyle.PRIMARY,
+                )
             )
         buttons.append(
             InlineKeyboardButton(
-                text=f"Page {page + 1}/{pages}", callback_data=f"{prefix}:info:{page}"
-            , style=ButtonStyle.PRIMARY)
+                text=f"Page {page + 1}/{pages}",
+                callback_data=f"{prefix}:info:{page}",
+                style=ButtonStyle.PRIMARY,
+            )
         )
         if page + 1 < pages:
             buttons.append(
                 InlineKeyboardButton(
-                    text="Next ➡️", callback_data=f"{prefix}:moves:{page + 1}"
-                , style=ButtonStyle.PRIMARY)
+                    text="Next ➡️",
+                    callback_data=f"{prefix}:moves:{page + 1}",
+                    style=ButtonStyle.PRIMARY,
+                )
             )
         return InlineKeyboardMarkup(inline_keyboard=[buttons])
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="Overview", callback_data=f"{prefix}:info:0", style=ButtonStyle.PRIMARY),
-                InlineKeyboardButton(text="Stats", callback_data=f"{prefix}:stats:0", style=ButtonStyle.PRIMARY),
+                InlineKeyboardButton(
+                    text="Overview",
+                    callback_data=f"{prefix}:info:0",
+                    style=ButtonStyle.PRIMARY,
+                ),
+                InlineKeyboardButton(
+                    text="Stats",
+                    callback_data=f"{prefix}:stats:0",
+                    style=ButtonStyle.PRIMARY,
+                ),
             ],
             [
-                InlineKeyboardButton(text="Moves", callback_data=f"{prefix}:moves:0", style=ButtonStyle.PRIMARY),
                 InlineKeyboardButton(
-                    text="Evolution", callback_data=f"{prefix}:evolution:0"
-                , style=ButtonStyle.PRIMARY),
+                    text="Moves",
+                    callback_data=f"{prefix}:moves:0",
+                    style=ButtonStyle.PRIMARY,
+                ),
+                InlineKeyboardButton(
+                    text="Evolution",
+                    callback_data=f"{prefix}:evolution:0",
+                    style=ButtonStyle.PRIMARY,
+                ),
             ],
         ]
     )
@@ -124,13 +144,9 @@ def _overview(pokemon: dict, species: dict) -> tuple[str, str]:
     name = _display_name(pokemon["name"])
     genus = _english_text(species.get("genera", []), "genus") or "Unknown"
     flavor = _flavor_text(species) or "No description available."
-    image = (
-        pokemon.get("sprites", {})
-        .get("other", {})
-        .get("official-artwork", {})
-        .get("front_default")
-        or pokemon.get("sprites", {}).get("front_default")
-    )
+    image = pokemon.get("sprites", {}).get("other", {}).get("official-artwork", {}).get(
+        "front_default"
+    ) or pokemon.get("sprites", {}).get("front_default")
     abilities = ", ".join(
         f"{_escape(item['ability']['name'].replace('-', ' '))}"
         f"{' (hidden)' if item['is_hidden'] else ''}"
@@ -210,16 +226,27 @@ async def pokedex(message: Message, command: CommandObject) -> None:
         species, _ = await get_pokemon_details(pokemon)
         text, image = _overview(pokemon, species)
         if image:
-            await message.answer_photo(photo=image, caption=text, parse_mode=ParseMode.HTML, reply_markup=_keyboard(pokemon["id"]))
+            await message.answer_photo(
+                photo=image,
+                caption=text,
+                parse_mode=ParseMode.HTML,
+                reply_markup=_keyboard(pokemon["id"]),
+            )
         else:
-            await message.answer(text, parse_mode=ParseMode.HTML, reply_markup=_keyboard(pokemon["id"]))
+            await message.answer(
+                text, parse_mode=ParseMode.HTML, reply_markup=_keyboard(pokemon["id"])
+            )
     except HTTPError as error:
         if error.response.status_code == 404:
-            await message.answer("Pokémon not found. Check the name or National Pokédex ID.")
+            await message.answer(
+                "Pokémon not found. Check the name or National Pokédex ID."
+            )
         else:
             await message.answer("PokéAPI is unavailable. Please try again later.")
-    except (ValueError, KeyError, TypeError):
-        await message.answer("PokéAPI returned incomplete data. Please try again later.")
+    except ValueError, KeyError, TypeError:
+        await message.answer(
+            "PokéAPI returned incomplete data. Please try again later."
+        )
 
 
 async def callback_query_handler(query: CallbackQuery) -> None:
@@ -240,8 +267,10 @@ async def callback_query_handler(query: CallbackQuery) -> None:
             )
         await query.answer()
     except HTTPError:
-        await query.answer("PokéAPI is unavailable. Please try again later.", show_alert=True)
-    except (ValueError, KeyError, TypeError):
+        await query.answer(
+            "PokéAPI is unavailable. Please try again later.", show_alert=True
+        )
+    except ValueError, KeyError, TypeError:
         await query.answer("PokéAPI returned incomplete data.", show_alert=True)
 
 

@@ -70,16 +70,13 @@ def apply_elevated_users(data):
         | {int(user_id) for user_id in data["sudos"]}
     )
     Mikobot.DEMONS[:] = sorted(
-        set(Mikobot.CONFIG_DEMONS)
-        | {int(user_id) for user_id in data["supports"]}
+        set(Mikobot.CONFIG_DEMONS) | {int(user_id) for user_id in data["supports"]}
     )
     Mikobot.WOLVES[:] = sorted(
-        set(Mikobot.CONFIG_WOLVES)
-        | {int(user_id) for user_id in data["whitelists"]}
+        set(Mikobot.CONFIG_WOLVES) | {int(user_id) for user_id in data["whitelists"]}
     )
     Mikobot.TIGERS[:] = sorted(
-        set(Mikobot.CONFIG_TIGERS)
-        | {int(user_id) for user_id in data["tigers"]}
+        set(Mikobot.CONFIG_TIGERS) | {int(user_id) for user_id in data["tigers"]}
     )
     Mikobot.SUPPORT_STAFF[:] = list(
         dict.fromkeys(
@@ -92,7 +89,9 @@ def apply_elevated_users(data):
     )
 
 
-async def add_disaster_level(message: Message, level: str, command: CommandObject) -> str:
+async def add_disaster_level(
+    message: Message, level: str, command: CommandObject
+) -> str:
     user = message.from_user
     chat = message.chat
     args = command.args.split() if command.args else []

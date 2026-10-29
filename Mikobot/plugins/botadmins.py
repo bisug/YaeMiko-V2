@@ -49,14 +49,11 @@ async def botstaff(message: Message):
 
     reply += "\n\n➪ <b>NORMAL GRADE USERS :</b>\n"
     reply += (
-        "\n".join(await get_users_list(WOLVES))
-        or "No additional whitelisted users"
+        "\n".join(await get_users_list(WOLVES)) or "No additional whitelisted users"
     )
 
     await message.answer(reply, parse_mode=ParseMode.HTML)
-    LOGGER.info(
-        f"{message.from_user.id} fetched botstaff in {message.chat.id}"
-    )
+    LOGGER.info(f"{message.from_user.id} fetched botstaff in {message.chat.id}")
 
 
 # <================================================ HANDLER =======================================================>

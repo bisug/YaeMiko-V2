@@ -59,7 +59,9 @@ if is_module_loaded(FILENAME):
                     result += f"\nLink: https://t.me/{chat.username}/{message.message_thread_id}/{message.message_id}"
 
                 if chat.type == ChatType.SUPERGROUP and chat.username:
-                    result += f"\nLink: https://t.me/{chat.username}/{message.message_id}"
+                    result += (
+                        f"\nLink: https://t.me/{chat.username}/{message.message_id}"
+                    )
                 log_chat = sql.get_chat_log_channel(chat.id)
                 if log_chat:
                     try:
@@ -92,7 +94,9 @@ if is_module_loaded(FILENAME):
                 if chat.is_forum and chat.username:
                     result += f"\nLink: https://t.me/{chat.username}/{message.message_thread_id}/{message.message_id}"
                 elif chat.type == ChatType.SUPERGROUP and chat.username:
-                    result += f"\nLink: https://t.me/{chat.username}/{message.message_id}"
+                    result += (
+                        f"\nLink: https://t.me/{chat.username}/{message.message_id}"
+                    )
                 if EVENT_LOGS:
                     try:
                         await send_log(EVENT_LOGS, chat.id, result)
@@ -138,7 +142,9 @@ if is_module_loaded(FILENAME):
                 sql.stop_chat_logging(orig_chat_id)
             else:
                 LOGGER.warning("Unable to parse audit log: %s", excp.message)
-                LOGGER.exception("Audit log formatting failed for channel %s", log_chat_id)
+                LOGGER.exception(
+                    "Audit log formatting failed for channel %s", log_chat_id
+                )
 
                 try:
                     await bot.send_message(

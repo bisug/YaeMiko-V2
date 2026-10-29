@@ -23,6 +23,7 @@ from Mikobot import BOT_USERNAME, bot, dp
 from Database.sql.whispers_sql import add_whisper, del_whisper, get_whisper
 from Mikobot.utils.gate import chain
 
+
 # <==================================================== BOOT FUNCTION ===================================================>
 # Inline query handler
 async def mainwhisper(query: InlineQuery):
@@ -78,7 +79,8 @@ async def mainwhisper(query: InlineQuery):
                         InlineKeyboardButton(
                             text="📩 𝗦𝗵𝗼𝘄 𝗪𝗵𝗶𝘀𝗽𝗲𝗿 📩",
                             callback_data=f"whisper_{whisperId}",
-                         style=ButtonStyle.PRIMARY)
+                            style=ButtonStyle.PRIMARY,
+                        )
                     ]
                 ]
             ),
@@ -94,7 +96,9 @@ async def showWhisper(callback_query: CallbackQuery):
     whisper = get_whisper(whisperId)
 
     if not whisper:
-        await callback_query.answer("This whisper is not valid anymore!", show_alert=True)
+        await callback_query.answer(
+            "This whisper is not valid anymore!", show_alert=True
+        )
         return
 
     userType = whisper["usertype"]

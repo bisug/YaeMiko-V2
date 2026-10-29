@@ -3,7 +3,12 @@ import asyncio
 
 from aiogram import F
 from aiogram.enums import ButtonStyle, ParseMode
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 from Mikobot import DEV_USERS, dp
 from Mikobot.plugins.disable import disableable
@@ -21,8 +26,12 @@ def convert(speed):
 async def speedtestxyz(message: Message):
     buttons = [
         [
-            InlineKeyboardButton(text="Image", callback_data="speedtest_image", style=ButtonStyle.PRIMARY),
-            InlineKeyboardButton(text="Text", callback_data="speedtest_text", style=ButtonStyle.PRIMARY),
+            InlineKeyboardButton(
+                text="Image", callback_data="speedtest_image", style=ButtonStyle.PRIMARY
+            ),
+            InlineKeyboardButton(
+                text="Text", callback_data="speedtest_text", style=ButtonStyle.PRIMARY
+            ),
         ],
     ]
     await message.answer(
@@ -57,9 +66,7 @@ async def speedtestxyz_callback(query: CallbackQuery):
         elif query.data == "speedtest_text":
             result = await asyncio.to_thread(speed.results.dict)
             replymsg += f"\nDownload: `{convert(result['download'])}Mb/s`\nUpload: `{convert(result['upload'])}Mb/s`\nPing: `{result['ping']}`"
-            await query.message.edit_text(
-                replymsg, parse_mode=ParseMode.MARKDOWN
-            )
+            await query.message.edit_text(replymsg, parse_mode=ParseMode.MARKDOWN)
         await query.answer("Speedtest complete.")
     else:
         await query.answer("You are required to join Black Bulls to use this command.")

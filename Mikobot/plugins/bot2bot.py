@@ -15,7 +15,12 @@ from aiogram import F
 from aiogram.enums import ChatMemberStatus, ParseMode
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 import Database.sql.bot2bot_sql as sql
 from Mikobot import bot, dp
@@ -142,10 +147,12 @@ async def request_review(bot_user, chat, message) -> bool:
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="Approve", callback_data=f"bot2bot_approve_{chat.id}_{message.message_id}"
+                            text="Approve",
+                            callback_data=f"bot2bot_approve_{chat.id}_{message.message_id}",
                         ),
                         InlineKeyboardButton(
-                            text="Reject", callback_data=f"bot2bot_reject_{chat.id}_{message.message_id}"
+                            text="Reject",
+                            callback_data=f"bot2bot_reject_{chat.id}_{message.message_id}",
                         ),
                     ]
                 ]
@@ -215,10 +222,7 @@ def __migrate__(old_chat_id, new_chat_id):
 
 def __chat_settings__(chat_id, user_id):
     mode, skip, _allowed = sql.get_setting(chat_id)
-    return (
-        f"Bot-to-bot is `{mode}` and command review is "
-        f"`{'off' if skip else 'on'}`."
-    )
+    return f"Bot-to-bot is `{mode}` and command review is `{'off' if skip else 'on'}`."
 
 
 __mod_name__ = "BOT2BOT"

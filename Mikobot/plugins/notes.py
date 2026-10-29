@@ -44,6 +44,7 @@ MYVOICE_MATCHER = re.compile(r"^###voice(!photo)?###:")
 MYVIDEO_MATCHER = re.compile(r"^###video(!photo)?###:")
 MYVIDEONOTE_MATCHER = re.compile(r"^###video_note(!photo)?###:")
 
+
 # <================================================ FUNCTION =======================================================>
 async def get(
     message: Message,
@@ -77,7 +78,10 @@ async def get(
                         message_id=note.value,
                     )
                 except TelegramAPIError as excp:
-                    if "message to forward not found" in str(excp.message or excp).lower():
+                    if (
+                        "message to forward not found"
+                        in str(excp.message or excp).lower()
+                    ):
                         await message.answer(
                             "This message seems to have been lost - I'll remove it "
                             "from your notes list.",
@@ -93,7 +97,10 @@ async def get(
                         message_id=markdown_to_html(note.value),
                     )
                 except TelegramAPIError as excp:
-                    if "message to forward not found" in str(excp.message or excp).lower():
+                    if (
+                        "message to forward not found"
+                        in str(excp.message or excp).lower()
+                    ):
                         await message.answer(
                             "Looks like the original sender of this note has deleted "
                             "their message - sorry! Get your bot admin to start using a "
@@ -242,9 +249,17 @@ async def get(
 async def cmd_get(message: Message, command: CommandObject, connected_chat=None):
     args = command.args.split() if command.args else []
     if len(args) >= 2 and args[1].lower() == "noformat":
-        await get(message, args[0].lower(), show_none=True, no_format=True, connected_chat=connected_chat)
+        await get(
+            message,
+            args[0].lower(),
+            show_none=True,
+            no_format=True,
+            connected_chat=connected_chat,
+        )
     elif len(args) >= 1:
-        await get(message, args[0].lower(), show_none=True, connected_chat=connected_chat)
+        await get(
+            message, args[0].lower(), show_none=True, connected_chat=connected_chat
+        )
     else:
         await message.answer("Get rekt")
 
@@ -331,9 +346,7 @@ async def clear(message: Message, command: CommandObject):
         if sql.rm_note(chat_id, notename):
             await message.reply("Successfully removed note.")
         else:
-            await message.reply(
-                "That's not a note in my database!"
-            )
+            await message.reply("That's not a note in my database!")
 
 
 async def clearall(message: Message):
@@ -351,9 +364,16 @@ async def clearall(message: Message):
                     InlineKeyboardButton(
                         text="Delete all notes",
                         callback_data="notes_rmall",
-                     style=ButtonStyle.DANGER),
+                        style=ButtonStyle.DANGER,
+                    ),
                 ],
-                [InlineKeyboardButton(text="Cancel", callback_data="notes_cancel", style=ButtonStyle.PRIMARY)],
+                [
+                    InlineKeyboardButton(
+                        text="Cancel",
+                        callback_data="notes_cancel",
+                        style=ButtonStyle.PRIMARY,
+                    )
+                ],
             ],
         )
         await message.reply(
@@ -407,9 +427,7 @@ async def list_notes(message: Message):
         else:
             note_name = f"`{note_id}.`  `#{(note.name.lower())}`\n"
         if len(msg) + len(note_name) > MessageLimit.MAX_TEXT_LENGTH:
-            await message.reply(
-                msg, parse_mode=ParseMode.MARKDOWN
-            )
+            await message.reply(msg, parse_mode=ParseMode.MARKDOWN)
             msg = ""
         msg += note_name
 
@@ -417,9 +435,7 @@ async def list_notes(message: Message):
         try:
             await message.reply("No notes in this chat!")
         except TelegramAPIError:
-            await message.reply(
-                "No notes in this chat!"
-            )
+            await message.reply("No notes in this chat!")
 
     elif len(msg) != 0:
         await message.reply(msg, parse_mode=ParseMode.MARKDOWN)

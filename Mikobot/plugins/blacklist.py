@@ -71,9 +71,7 @@ def _base_pattern(trigger: str) -> re.Pattern:
     """
     if "?" in trigger or "*" in trigger:
         return re.compile(_wildcard_pattern(normalize_text(trigger)))
-    return re.compile(
-        r"(?<![\w])" + re.escape(normalize_text(trigger)) + r"(?![\w])"
-    )
+    return re.compile(r"(?<![\w])" + re.escape(normalize_text(trigger)) + r"(?![\w])")
 
 
 # Typed triggers are stored as "type:payload" so one composite primary key can
@@ -97,7 +95,7 @@ def parse_trigger(trigger: str):
     for prefix in TYPED_PREFIXES:
         marker = prefix + ":"
         if trigger.startswith(marker):
-            return prefix, trigger[len(marker):]
+            return prefix, trigger[len(marker) :]
     return None, trigger
 
 
@@ -117,10 +115,21 @@ def matches_text(trigger: str, text: str) -> bool:
         # that a literal comparison would sail straight past.
         body = _wildcard_pattern(normalize_text(payload).replace("*", ""))
         classes = {
-            "a": "[aаa]", "b": "[bвb]", "c": "[cсc]", "e": "[eеe]",
-            "h": "[hһh]", "i": "[iіi]", "j": "[jјj]", "k": "[kкk]",
-            "m": "[mмm]", "o": "[oоo0]", "p": "[pрp]", "s": "[sѕs]",
-            "t": "[tтt]", "x": "[xхx]", "y": "[yуy]",
+            "a": "[aаa]",
+            "b": "[bвb]",
+            "c": "[cсc]",
+            "e": "[eеe]",
+            "h": "[hһh]",
+            "i": "[iіi]",
+            "j": "[jјj]",
+            "k": "[kкk]",
+            "m": "[mмm]",
+            "o": "[oоo0]",
+            "p": "[pрp]",
+            "s": "[sѕs]",
+            "t": "[tтt]",
+            "x": "[xхx]",
+            "y": "[yуy]",
         }
         expanded = "".join(classes.get(char, re.escape(char)) for char in body)
         return bool(re.fullmatch(rf"(?<![\w]){expanded}(?![\w])", target))
@@ -157,9 +166,7 @@ def matches_metadata(trigger: str, message: Message) -> bool:
             return False
         identifier = str(origin.id)
         handle = (origin.username or "").lstrip("@").lower()
-        return identifier == wanted.lstrip("-") or (
-            handle and handle == wanted
-        )
+        return identifier == wanted.lstrip("-") or (handle and handle == wanted)
     if kind == "inline":
         via = message.via_bot
         if via is None:
@@ -184,7 +191,9 @@ def _file_match(pattern: str, filename: str) -> bool:
     """Support "*.pdf" wildcards as well as an exact filename."""
     if "*" in pattern and not pattern.startswith("*"):
         prefix, _, suffix = pattern.partition("*")
-        return filename.lower().startswith(prefix.lower()) and filename.lower().endswith(suffix.lower())
+        return filename.lower().startswith(
+            prefix.lower()
+        ) and filename.lower().endswith(suffix.lower())
     if pattern.startswith("*"):
         return filename.lower().endswith(pattern[1:].lower())
     return filename.lower() == pattern.lower()
@@ -199,7 +208,9 @@ def _pack_match(message: Message, payload: str, kind: str) -> bool:
         message = replied
     if not payload or payload == "<>":
         return False
-    item = getattr(message, "sticker", None) or getattr(message, "custom_emoji_id", None)
+    item = getattr(message, "sticker", None) or getattr(
+        message, "custom_emoji_id", None
+    )
     if item is None:
         return False
     set_name = getattr(item, "set_name", None) or ""
@@ -441,17 +452,13 @@ async def blacklist_mode(message: Message, command: CommandObject):
                 teks = """It looks like you tried to set time value for blacklist but you didn't specified time; Try, `/blacklistmode tban <timevalue>`.
 
 Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
-                await send_message(
-                    message, teks, parse_mode=ParseMode.MARKDOWN
-                )
+                await send_message(message, teks, parse_mode=ParseMode.MARKDOWN)
                 return ""
             restime = await extract_time(msg, args[1])
             if not restime:
                 teks = """Invalid time value!
 Example of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
-                await send_message(
-                    message, teks, parse_mode=ParseMode.MARKDOWN
-                )
+                await send_message(message, teks, parse_mode=ParseMode.MARKDOWN)
                 return ""
             settypeblacklist = "temporarily ban for {}".format(args[1])
             sql.set_blacklist_strength(chat_id, 6, str(args[1]))
@@ -460,17 +467,13 @@ Example of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."
                 teks = """It looks like you tried to set time value for blacklist but you didn't specified  time; try, `/blacklistmode tmute <timevalue>`.
 
 Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
-                await send_message(
-                    message, teks, parse_mode=ParseMode.MARKDOWN
-                )
+                await send_message(message, teks, parse_mode=ParseMode.MARKDOWN)
                 return ""
             restime = await extract_time(msg, args[1])
             if not restime:
                 teks = """Invalid time value!
 Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
-                await send_message(
-                    message, teks, parse_mode=ParseMode.MARKDOWN
-                )
+                await send_message(message, teks, parse_mode=ParseMode.MARKDOWN)
                 return ""
             settypeblacklist = "temporarily mute for {}".format(args[1])
             sql.set_blacklist_strength(chat_id, 7, str(args[1]))
@@ -489,9 +492,7 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
             text = "Changed blacklist mode: `{}`!".format(settypeblacklist)
         await send_message(message, text, parse_mode=ParseMode.MARKDOWN)
         return (
-            "<b>{}:</b>\n"
-            "<b>Admin:</b> {}\n"
-            "Changed the blacklist mode. will {}.".format(
+            "<b>{}:</b>\n<b>Admin:</b> {}\nChanged the blacklist mode. will {}.".format(
                 html.escape(chat.title),
                 mention_html(user.id, user.first_name),
                 settypeblacklist,
@@ -522,9 +523,7 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
             )
         else:
             text = "Current blacklistmode: *{}*.".format(settypeblacklist)
-        await send_message(
-            message, text, parse_mode=ParseMode.MARKDOWN
-        )
+        await send_message(message, text, parse_mode=ParseMode.MARKDOWN)
     return ""
 
 
@@ -764,7 +763,15 @@ async def del_blacklist(message: Message):
     chat_filters = sql.get_chat_blacklist(chat.id)
     for trigger in chat_filters:
         kind, _payload = parse_trigger(trigger)
-        if kind in ("name", "username", "file", "forward", "inline", "stickerpack", "emojipack"):
+        if kind in (
+            "name",
+            "username",
+            "file",
+            "forward",
+            "inline",
+            "stickerpack",
+            "emojipack",
+        ):
             hit = matches_metadata(trigger, message)
         else:
             hit = matches_text(trigger, to_match)
@@ -772,7 +779,10 @@ async def del_blacklist(message: Message):
             try:
                 # /blocklistdelete controls the message separately from the
                 # action, so an admin can ban without the text being removed.
-                if await asyncio.to_thread(sql.get_delete_message, chat.id) and getmode != 0:
+                if (
+                    await asyncio.to_thread(sql.get_delete_message, chat.id)
+                    and getmode != 0
+                ):
                     try:
                         await message.delete()
                     except TelegramAPIError:
@@ -949,9 +959,7 @@ Note:
 dp.message.register(
     chain(del_blacklist), GROUPS, F.text | F.command | F.sticker | F.photo
 )
-dp.message.register(
-    chain(blacklist), *disableable("blacklist", admin_ok=True)
-)
+dp.message.register(chain(blacklist), *disableable("blacklist", admin_ok=True))
 dp.message.register(chain(add_blacklist), Command("addblacklist"))
 dp.message.register(chain(unblacklist), Command("unblacklist"))
 dp.message.register(chain(blacklist_mode), Command("blacklistmode"))
