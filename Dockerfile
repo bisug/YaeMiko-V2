@@ -11,8 +11,7 @@ WORKDIR /build
 
 COPY pyproject.toml uv.lock requirements.txt ./
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev
 
 
 FROM python:3.14.10-slim
@@ -23,9 +22,7 @@ ENV PATH="/opt/venv/bin:$PATH" \
 
 WORKDIR /root/Mikobot
 
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update \
+RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg curl libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
