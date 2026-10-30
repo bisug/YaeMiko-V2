@@ -24,7 +24,6 @@ class AFK(BASE):
         return "afk_status for {}".format(self.user_id)
 
 
-AFK.__table__.create(bind=ENGINE, checkfirst=True)
 INSERTION_LOCK = threading.RLock()
 
 AFK_USERS = {}

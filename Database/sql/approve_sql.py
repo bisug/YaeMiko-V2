@@ -45,7 +45,6 @@ class Approvals(BASE):
         return "<ᴀᴘᴘʀᴏᴠᴇ %s>" % self.user_id
 
 
-Approvals.__table__.create(bind=ENGINE, checkfirst=True)
 
 APPROVE_INSERTION_LOCK = threading.RLock()
 

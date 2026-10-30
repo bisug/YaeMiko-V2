@@ -939,6 +939,13 @@ def main():
         dp.update.outer_middleware.register(_activity)
         app.add_handler(RawUpdateHandler(log_kurigram_activity))
 
+    try:
+        from Database.sql.users_sql import ensure_bot_in_db
+
+        ensure_bot_in_db()
+    except Exception:
+        LOGGER.exception("Failed to record bot identity in database")
+
     loop.run_until_complete(send_booting_message())
 
     LOGGER.info("Mikobot is starting >> Using long polling.")

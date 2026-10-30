@@ -29,7 +29,6 @@ class Whisper(BASE):
         self.created = datetime.now()
 
 
-Whisper.__table__.create(bind=ENGINE, checkfirst=True)
 
 
 @unit_of_work_guard

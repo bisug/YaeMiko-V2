@@ -99,9 +99,6 @@ class WarnSettings(BASE):
         return "<{} ʜᴀs {} ᴘᴏssɪʙʟᴇ ᴡᴀʀɴs.>".format(self.chat_id, self.warn_limit)
 
 
-Warns.__table__.create(bind=ENGINE, checkfirst=True)
-WarnFilters.__table__.create(bind=ENGINE, checkfirst=True)
-WarnSettings.__table__.create(bind=ENGINE, checkfirst=True)
 
 WARN_INSERTION_LOCK = threading.RLock()
 WARN_FILTER_INSERTION_LOCK = threading.RLock()

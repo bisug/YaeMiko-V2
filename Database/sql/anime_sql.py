@@ -75,8 +75,6 @@ class AnimeToken(BASE):
         self.token = token
 
 
-AnimeGroupSetting.__table__.create(bind=ENGINE, checkfirst=True)
-AnimeToken.__table__.create(bind=ENGINE, checkfirst=True)
 
 
 @unit_of_work_guard

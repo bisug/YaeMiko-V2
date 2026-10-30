@@ -24,7 +24,6 @@ class ForceSub(BASE):
         self.channel = channel
 
 
-ForceSub.__table__.create(bind=ENGINE, checkfirst=True)
 
 
 @unit_of_work_guard

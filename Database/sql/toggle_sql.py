@@ -43,7 +43,6 @@ class ChatToggle(BASE):
         self.enabled = enabled
 
 
-ChatToggle.__table__.create(bind=ENGINE, checkfirst=True)
 
 INSERTION_LOCK = threading.RLock()
 

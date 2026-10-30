@@ -280,3 +280,48 @@ def unit_of_work_guard(func):
                 SESSION.end_unit_of_work(force=True)
 
     return wrapper
+
+
+def create_all_tables() -> None:
+    """Ensure all model tables are registered and created in a single batch."""
+    try:
+        from Database.sql import (
+            afk_sql,
+            anime_sql,
+            antiflood_sql,
+            approve_sql,
+            blacklist_sql,
+            blsticker_sql,
+            bot2bot_sql,
+            captcha_sql,
+            cleaner_sql,
+            connection_sql,
+            cust_filters_sql,
+            disable_sql,
+            feds_sql,
+            fsub_sql,
+            global_bans_sql,
+            karma_sql,
+            locale_sql,
+            locks_sql,
+            log_channel_sql,
+            notes_sql,
+            raid_sql,
+            remind_sql,
+            rules_sql,
+            sangmata_sql,
+            toggle_sql,
+            topics_sql,
+            users_sql,
+            warns_sql,
+            welcome_sql,
+            whispers_sql,
+        )
+
+        if ENGINE is not None:
+            BASE.metadata.create_all(ENGINE)
+    except Exception:
+        log.exception("[PostgreSQL] Failed to create tables")
+
+
+create_all_tables()

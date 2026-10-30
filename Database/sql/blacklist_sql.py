@@ -88,8 +88,6 @@ class BlacklistSettings(BASE):
         )
 
 
-BlackListFilters.__table__.create(bind=ENGINE, checkfirst=True)
-BlacklistSettings.__table__.create(bind=ENGINE, checkfirst=True)
 
 
 def _ensure_columns() -> None:

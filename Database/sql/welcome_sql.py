@@ -168,12 +168,6 @@ class RaidMode(BASE):
         # self.permanent = permanent
 
 
-Welcome.__table__.create(bind=ENGINE, checkfirst=True)
-WelcomeButtons.__table__.create(bind=ENGINE, checkfirst=True)
-GoodbyeButtons.__table__.create(bind=ENGINE, checkfirst=True)
-WelcomeMute.__table__.create(bind=ENGINE, checkfirst=True)
-WelcomeMuteUsers.__table__.create(bind=ENGINE, checkfirst=True)
-CleanServiceSetting.__table__.create(bind=ENGINE, checkfirst=True)
 
 
 def _ensure_clean_service_columns() -> None:
@@ -194,7 +188,6 @@ def _ensure_clean_service_columns() -> None:
 
 
 _ensure_clean_service_columns()
-RaidMode.__table__.create(bind=ENGINE, checkfirst=True)
 
 INSERTION_LOCK = threading.RLock()
 WELC_BTN_LOCK = threading.RLock()

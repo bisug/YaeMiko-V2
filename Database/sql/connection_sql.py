@@ -73,9 +73,6 @@ class ConnectionHistory(BASE):
         return "<ᴄᴏɴɴᴇᴄᴛɪᴏɴ ᴜsᴇʀ {} ʜɪsᴛᴏʀʏ {}>".format(self.user_id, self.chat_id)
 
 
-ChatAccessConnectionSettings.__table__.create(bind=ENGINE, checkfirst=True)
-Connection.__table__.create(bind=ENGINE, checkfirst=True)
-ConnectionHistory.__table__.create(bind=ENGINE, checkfirst=True)
 
 # curr_connection filters on chat_id, and the primary key is the user, so the
 # lookup scanned the table once per call.

@@ -87,8 +87,6 @@ class FloodSettings(BASE):
         return "<{} ᴡɪʟʟ ᴇxᴇᴄᴜᴛɪɴɢ {} ғᴏʀ ғʟᴏᴏᴅ.>".format(self.chat_id, self.flood_type)
 
 
-FloodControl.__table__.create(bind=ENGINE, checkfirst=True)
-FloodSettings.__table__.create(bind=ENGINE, checkfirst=True)
 
 
 def _ensure_columns() -> None:

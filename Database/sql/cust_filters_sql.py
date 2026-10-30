@@ -99,8 +99,6 @@ class Buttons(BASE):
         self.same_line = same_line
 
 
-CustomFilters.__table__.create(bind=ENGINE, checkfirst=True)
-Buttons.__table__.create(bind=ENGINE, checkfirst=True)
 
 CUST_FILT_LOCK = threading.RLock()
 BUTTON_LOCK = threading.RLock()

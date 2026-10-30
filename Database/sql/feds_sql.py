@@ -101,11 +101,6 @@ class FedSubs(BASE):
 # BansF.__table__.drop()
 # FedSubs.__table__.drop()
 
-Federations.__table__.create(bind=ENGINE, checkfirst=True)
-ChatF.__table__.create(bind=ENGINE, checkfirst=True)
-BansF.__table__.create(bind=ENGINE, checkfirst=True)
-FedsUserSettings.__table__.create(bind=ENGINE, checkfirst=True)
-FedSubs.__table__.create(bind=ENGINE, checkfirst=True)
 
 # chat_feds filters and deletes by fed_id, which the chat_id primary key
 # cannot serve without a full table scan.

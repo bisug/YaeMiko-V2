@@ -69,8 +69,6 @@ class CaptchaSolved(BASE):
         return "<ᴄᴀᴘᴛᴄʜᴀ ѕᴏʟᴠᴇᴅ %s in %s>" % (self.user_id, self.chat_id)
 
 
-CaptchaSettings.__table__.create(bind=ENGINE, checkfirst=True)
-CaptchaSolved.__table__.create(bind=ENGINE, checkfirst=True)
 
 SETTINGS_LOCK = threading.RLock()
 SOLVED_LOCK = threading.RLock()

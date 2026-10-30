@@ -113,7 +113,6 @@ class BotToBot(BASE):
         return "<ʙᴏᴛ ᴛᴏ ʙᴏᴛ %s for %s>" % (self.mode, self.chat_id)
 
 
-BotToBot.__table__.create(bind=ENGINE, checkfirst=True)
 INSERTION_LOCK = threading.RLock()
 
 _cache: dict = {}

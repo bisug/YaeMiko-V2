@@ -389,6 +389,8 @@ def fetch_bot_info():
     try:
         info = loop.run_until_complete(bot.me())
         _BOT_INFO = (info.id, info.first_name, info.username)
+        if _BOT_INFO[2]:
+            app.name = _BOT_INFO[2]
     except Exception:
         LOGGER.warning("Unable to reach the Telegram API for bot info", exc_info=True)
         return (0, "Bot", "")
@@ -420,7 +422,7 @@ def alive_msg() -> str:
 # <=============================================== CLIENT SETUP ========================================================>
 # Create the Kurigram client instance
 app = Client(
-    fetch_bot_info()[2] or "bot",
+    "bot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=TOKEN,

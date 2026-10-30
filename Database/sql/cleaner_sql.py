@@ -60,9 +60,6 @@ class CleanerBlueTextGlobal(BASE):
         self.command = command
 
 
-CleanerBlueTextChatSettings.__table__.create(bind=ENGINE, checkfirst=True)
-CleanerBlueTextChat.__table__.create(bind=ENGINE, checkfirst=True)
-CleanerBlueTextGlobal.__table__.create(bind=ENGINE, checkfirst=True)
 
 CLEANER_CHAT_SETTINGS = threading.RLock()
 CLEANER_CHAT_LOCK = threading.RLock()

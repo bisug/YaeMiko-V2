@@ -21,7 +21,6 @@ class ChatLocale(BASE):
     lang = Column(String(8))
 
 
-ChatLocale.__table__.create(bind=ENGINE, checkfirst=True)
 
 
 @unit_of_work_guard

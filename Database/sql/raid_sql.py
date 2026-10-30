@@ -58,7 +58,6 @@ class RaidChats(BASE):
         return "<ʀᴀɪᴅ sᴇᴛᴛɪɴɢs ғᴏʀ %s>" % self.chat_id
 
 
-RaidChats.__table__.create(bind=ENGINE, checkfirst=True)
 
 
 def _ensure_columns() -> None:

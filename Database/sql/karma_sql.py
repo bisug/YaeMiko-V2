@@ -46,8 +46,6 @@ class Couple(BASE):
         self.c2_id = c2_id
 
 
-Karma.__table__.create(bind=ENGINE, checkfirst=True)
-Couple.__table__.create(bind=ENGINE, checkfirst=True)
 
 INSERTION_LOCK = threading.RLock()
 

@@ -9,29 +9,29 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /build
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY pyproject.toml uv.lock requirements.txt ./
 
-RUN uv sync --frozen --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
 
 FROM python:3.14.10-slim
 
 ENV PATH="/opt/venv/bin:$PATH" \
     VIRTUAL_ENV="/opt/venv" \
-    PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONUNBUFFERED=1
 
 WORKDIR /root/Mikobot
 
-RUN apt-get update \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg curl libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/venv /opt/venv
 COPY . .
+
+RUN python -m compileall -q .
 
 CMD ["python", "-m", "Mikobot"]

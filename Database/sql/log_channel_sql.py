@@ -91,8 +91,6 @@ class LogChannelSettings(BASE):
         return self.log_action
 
 
-GroupLogs.__table__.create(bind=ENGINE, checkfirst=True)
-LogChannelSettings.__table__.create(bind=ENGINE, checkfirst=True)
 
 
 def _ensure_chat_id_type() -> None:

@@ -42,7 +42,6 @@ class Disable(BASE):
         return "ᴅɪsᴀʙʟᴇᴅ ᴄᴍᴅ {} in {}".format(self.command, self.chat_id)
 
 
-Disable.__table__.create(bind=ENGINE, checkfirst=True)
 DISABLE_INSERTION_LOCK = threading.RLock()
 
 DISABLED = {}

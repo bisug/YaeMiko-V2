@@ -30,7 +30,6 @@ class ActionTopic(BASE):
         return "<ᴀᴄᴛɪᴏɴ ᴛᴏᴘɪᴄ %s for %s>" % (self.message_thread_id, self.chat_id)
 
 
-ActionTopic.__table__.create(bind=ENGINE, checkfirst=True)
 INSERTION_LOCK = threading.RLock()
 
 

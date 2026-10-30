@@ -34,7 +34,6 @@ class SangmataUser(BASE):
         self.last_name = last_name
 
 
-SangmataUser.__table__.create(bind=ENGINE, checkfirst=True)
 
 INSERTION_LOCK = threading.RLock()
 

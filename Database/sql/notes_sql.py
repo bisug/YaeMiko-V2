@@ -78,8 +78,6 @@ class Buttons(BASE):
         self.same_line = same_line
 
 
-Notes.__table__.create(bind=ENGINE, checkfirst=True)
-Buttons.__table__.create(bind=ENGINE, checkfirst=True)
 
 # get_note and rm_note compare lower(name), which the (chat_id, name) primary
 # key cannot serve because the function breaks the ordering.

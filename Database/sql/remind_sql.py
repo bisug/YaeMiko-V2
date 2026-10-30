@@ -51,7 +51,6 @@ class Reminds(BASE):
 
 
 # Reminds.__table__.drop()
-Reminds.__table__.create(bind=ENGINE, checkfirst=True)
 
 INSERTION_LOCK = threading.RLock()
 
