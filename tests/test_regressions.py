@@ -6843,6 +6843,19 @@ class CatboxLitterboxTests(unittest.TestCase):
         self.assertIn("fileToUpload", kwargs["files"])
         self.assertEqual(link, "https://files.catbox.moe/abc.png")
 
+    def test_catbox_posts_userhash_when_set(self):
+        namespace, state = self._module()
+        namespace["CATBOX_USERHASH"] = "testhash123"
+        state.response = self._response("https://files.catbox.moe/abc.png\n")
+        with tempfile.NamedTemporaryFile(suffix=".png") as handle:
+            link = asyncio.run(namespace["_upload"](Path(handle.name), "catbox"))
+        url, kwargs = state.calls[0]
+        self.assertEqual(url, "https://catbox.moe/user/api.php")
+        self.assertEqual(
+            kwargs["data"], {"reqtype": "fileupload", "userhash": "testhash123"}
+        )
+        self.assertEqual(link, "https://files.catbox.moe/abc.png")
+
     def test_litterbox_posts_the_expiry_and_its_own_endpoint(self):
         namespace, state = self._module()
         state.response = self._response("https://litter.catbox.moe/xyz.png")
@@ -6974,6 +6987,10 @@ class UploadButtonTests(unittest.TestCase):
             source.index("link = await _upload("),
             "one button press must be one attempt",
         )
+
+    def test_catbox_failure_falls_back_to_litterbox(self):
+        source = self._source()
+        self.assertIn('link = await _upload(upload_path, "litterbox")', source)
 
     def test_the_dead_telegraph_endpoint_is_no_longer_called(self):
         source = self._source()

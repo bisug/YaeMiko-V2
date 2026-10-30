@@ -69,7 +69,14 @@ class Quotly:
                 with Image.open(file_) as image:
                     converted = image.convert("RGB")
                     converted.save(png_file, "PNG")
-                return await _upload(Path(png_file), "catbox")
+                try:
+                    return await _upload(Path(png_file), "catbox")
+                except Exception as err:
+                    LOGGER.warning(
+                        "Catbox upload failed for quote media (%s), falling back to litterbox",
+                        err,
+                    )
+                    return await _upload(Path(png_file), "litterbox")
             finally:
                 if os.path.exists(png_file):
                     try:

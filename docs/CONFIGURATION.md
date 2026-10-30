@@ -64,6 +64,7 @@ environment variables.
 | `LOGGER` | `True` | Unused, kept so existing deployments do not break. Log files are always written |
 | `LOG_LEVEL` | `INFO` | Root log level, one of `CRITICAL ERROR WARNING INFO DEBUG NOTSET` |
 | `ACTIVITY_LOG` | `False` | Log a summary line for every incoming update |
+| `CATBOX_USERHASH` | empty | Optional user hash for Catbox uploads to authenticate and avoid datacenter IP blocks |
 | `LITTERBOX_HOURS` | `72h` | Expiry duration for temporary Litterbox uploads (`1h`, `12h`, `24h`, `72h`) |
 | `PREFERRED_LANGUAGE` | empty | Language code for anime synopsis and description translation |
 

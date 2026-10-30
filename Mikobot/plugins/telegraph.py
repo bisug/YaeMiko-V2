@@ -46,6 +46,7 @@ if LITTERBOX_HOURS not in LITTERBOX_EXPIRY:
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 UPLOAD_TIMEOUT = 300
 PENDING_PREFIX = "hostup_"
+CATBOX_USERHASH = os.environ.get("CATBOX_USERHASH", "").strip()
 
 
 async def _upload(path: Path, host: str) -> str:
@@ -68,6 +69,10 @@ async def _upload(path: Path, host: str) -> str:
     if host == "litterbox":
         data["time"] = LITTERBOX_HOURS
         url = LITTERBOX_API
+    else:
+        userhash = globals().get("CATBOX_USERHASH", "")
+        if userhash:
+            data["userhash"] = userhash
 
     with open(path, "rb") as handle:
         response = await state.post(
@@ -190,24 +195,55 @@ async def upload_choice(query: CallbackQuery):
                 image.save(png_path, "PNG")
             upload_path = png_path
 
+        fallback_used = False
         try:
             link = await _upload(upload_path, host)
         except Exception as error:
-            LOGGER.warning(
-                "Upload to %s failed: %s: %s", host, type(error).__name__, error
-            )
-            # _upload already carries the host's own explanation in its message,
-            # so it is shown rather than the exception class alone, which said
-            # nothing about a 412 the operator could otherwise not diagnose.
-            await query.message.edit_text(
-                f"Upload to {host} failed: {error}\nNothing was saved."
-            )
-            return
+            if host == "catbox":
+                LOGGER.warning(
+                    "Upload to catbox failed: %s: %s; attempting fallback to litterbox",
+                    type(error).__name__,
+                    error,
+                )
+                try:
+                    link = await _upload(upload_path, "litterbox")
+                    host = "litterbox"
+                    fallback_used = True
+                except Exception as fallback_error:
+                    LOGGER.warning(
+                        "Fallback upload to litterbox failed: %s: %s",
+                        type(fallback_error).__name__,
+                        fallback_error,
+                    )
+                    await query.message.edit_text(
+                        f"Upload to catbox failed: {error}\n"
+                        f"Fallback to litterbox failed: {fallback_error}\n"
+                        "Nothing was saved."
+                    )
+                    return
+            else:
+                LOGGER.warning(
+                    "Upload to %s failed: %s: %s", host, type(error).__name__, error
+                )
+                # _upload already carries the host's own explanation in its message,
+                # so it is shown rather than the exception class alone, which said
+                # nothing about a 412 the operator could otherwise not diagnose.
+                await query.message.edit_text(
+                    f"Upload to {host} failed: {error}\nNothing was saved."
+                )
+                return
 
     elapsed = time.perf_counter() - started
-    note = f"➼ **Uploaded to {host} in {elapsed:.2f} seconds.**\n\n➼ **Link:** `{link}`"
-    if host == "litterbox":
-        note += f"\n\n➼ This link expires after {LITTERBOX_HOURS}."
+    if fallback_used:
+        note = (
+            f"➼ **Catbox upload failed ({error}); saved to Litterbox instead in {elapsed:.2f} seconds.**\n\n"
+            f"➼ **Link:** `{link}`\n\n"
+            f"➼ This link expires after {LITTERBOX_HOURS}."
+        )
+    else:
+        note = f"➼ **Uploaded to {host} in {elapsed:.2f} seconds.**\n\n➼ **Link:** `{link}`"
+        if host == "litterbox":
+            note += f"\n\n➼ This link expires after {LITTERBOX_HOURS}."
     await query.message.edit_text(note)
 
 
