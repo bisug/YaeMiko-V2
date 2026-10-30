@@ -324,6 +324,8 @@ def __load_chat_blacklists():
 
         CHAT_BLACKLISTS = {x: set(y) for x, y in CHAT_BLACKLISTS.items()}
 
+    except Exception:
+        pass
     finally:
         SESSION.close()
 
@@ -343,6 +345,8 @@ def __load_chat_settings_blacklists():
                 "silent_types": x.silent_types or "",
             }
 
+    except Exception:
+        pass
     finally:
         SESSION.close()
 

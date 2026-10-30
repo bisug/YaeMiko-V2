@@ -370,6 +370,8 @@ def __load_flood_settings():
             )
             for chat in all_chats
         }
+    except Exception:
+        pass
     finally:
         SESSION.close()
 

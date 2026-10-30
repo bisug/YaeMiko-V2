@@ -320,6 +320,28 @@ def create_all_tables() -> None:
 
         if ENGINE is not None:
             BASE.metadata.create_all(ENGINE)
+
+        # Populate caches now that all tables exist in the database
+        afk_sql.__load_afk_users()
+        antiflood_sql.__load_flood_settings()
+        blacklist_sql.__load_chat_blacklists()
+        blacklist_sql.__load_chat_settings_blacklists()
+        blsticker_sql.__load_CHAT_STICKERS()
+        blsticker_sql.__load_chat_stickerset_blacklists()
+        cleaner_sql.__load_cleaner_list()
+        connection_sql.__load_user_history()
+        cust_filters_sql.__load_chat_filters()
+        disable_sql.__load_disabled_commands()
+        feds_sql.__load_all_feds()
+        feds_sql.__load_all_feds_chats()
+        feds_sql.__load_all_feds_banned()
+        feds_sql.__load_all_feds_settings()
+        feds_sql.__load_feds_subscriber()
+        global_bans_sql.__load_gbanned_userid_list()
+        global_bans_sql.__load_gban_stat_list()
+        locks_sql.__load_locks_cache()
+        log_channel_sql.__load_log_channels()
+        warns_sql.__load_chat_warn_filters()
     except Exception:
         log.exception("[PostgreSQL] Failed to create tables")
 

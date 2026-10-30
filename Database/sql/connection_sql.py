@@ -246,6 +246,8 @@ def __load_user_history():
                 "chat_id": x.chat_id,
                 "conn_time": x.conn_time,
             }
+    except Exception:
+        pass
     finally:
         SESSION.close()
 

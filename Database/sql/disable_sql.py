@@ -128,6 +128,8 @@ def __load_disabled_commands():
         for chat in all_chats:
             DISABLED.setdefault(chat.chat_id, set()).add(chat.command)
 
+    except Exception:
+        pass
     finally:
         SESSION.close()
 

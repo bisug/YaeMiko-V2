@@ -895,6 +895,8 @@ def __load_all_feds():
                 "flog": x.fed_log,
                 "fusers": str(x.fed_users),
             }
+    except Exception:
+        pass
     finally:
         SESSION.close()
 
@@ -916,6 +918,8 @@ def __load_all_feds_chats():
             if check is None:
                 FEDERATION_CHATS_BYID[x.fed_id] = []
             FEDERATION_CHATS_BYID[x.fed_id].append(x.chat_id)
+    except Exception:
+        pass
     finally:
         SESSION.close()
 
@@ -929,6 +933,8 @@ def __load_all_feds_banned():
         for x in qall:
             user_ids = FEDERATION_BANNED_USERID.setdefault(str(x.fed_id), set())
             user_ids.add(int(x.user_id))
+    except Exception:
+        pass
     finally:
         SESSION.close()
 
@@ -939,6 +945,8 @@ def __load_all_feds_settings():
         getuser = SESSION.scalars(select(FedsUserSettings)).all()
         for x in getuser:
             FEDERATION_NOTIFICATION[str(x.user_id)] = x.should_report
+    except Exception:
+        pass
     finally:
         SESSION.close()
 
@@ -956,6 +964,8 @@ def __load_feds_subscriber():
             MYFEDS_SUBSCRIBER.setdefault(subscription.fed_subs, set()).add(
                 subscription.fed_id
             )
+    except Exception:
+        pass
     finally:
         SESSION.close()
 

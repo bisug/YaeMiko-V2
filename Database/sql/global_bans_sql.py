@@ -145,6 +145,8 @@ def __load_gbanned_userid_list():
         GBANNED_LIST = {
             x.user_id for x in SESSION.scalars(select(GloballyBannedUsers)).all()
         }
+    except Exception:
+        pass
     finally:
         SESSION.close()
 
@@ -157,6 +159,8 @@ def __load_gban_stat_list():
             for x in SESSION.scalars(select(GbanSettings)).all()
             if not x.setting
         }
+    except Exception:
+        pass
     finally:
         SESSION.close()
 

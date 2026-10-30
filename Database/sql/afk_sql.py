@@ -95,6 +95,8 @@ def __load_afk_users():
             for user in all_afk
             if user.is_afk
         }
+    except Exception:
+        pass
     finally:
         SESSION.close()
 

@@ -206,6 +206,8 @@ def __load_cleaner_list():
         GLOBAL_IGNORE_COMMANDS = {
             x.command for x in SESSION.scalars(select(CleanerBlueTextGlobal)).all()
         }
+    except Exception:
+        pass
     finally:
         SESSION.close()
 
@@ -213,6 +215,8 @@ def __load_cleaner_list():
         for x in SESSION.scalars(select(CleanerBlueTextChatSettings)).all():
             CLEANER_CHATS.setdefault(x.chat_id, {"setting": False, "commands": set()})
             CLEANER_CHATS[x.chat_id]["setting"] = x.is_enable
+    except Exception:
+        pass
     finally:
         SESSION.close()
 
@@ -220,6 +224,8 @@ def __load_cleaner_list():
         for x in SESSION.scalars(select(CleanerBlueTextChat)).all():
             CLEANER_CHATS.setdefault(x.chat_id, {"setting": False, "commands": set()})
             CLEANER_CHATS[x.chat_id]["commands"].add(x.command)
+    except Exception:
+        pass
     finally:
         SESSION.close()
 

@@ -332,6 +332,8 @@ def __load_chat_warn_filters():
             for x, y in WARN_FILTERS.items()
         }
 
+    except Exception:
+        pass
     finally:
         SESSION.close()
 

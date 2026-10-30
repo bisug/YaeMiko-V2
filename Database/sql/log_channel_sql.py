@@ -207,6 +207,8 @@ def __load_log_channels():
     try:
         all_chats = SESSION.scalars(select(GroupLogs)).all()
         CHANNELS = {chat.chat_id: chat.log_channel for chat in all_chats}
+    except Exception:
+        pass
     finally:
         SESSION.close()
 

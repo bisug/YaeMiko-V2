@@ -324,6 +324,8 @@ def __load_chat_filters():
             for x, y in CHAT_FILTERS.items()
         }
 
+    except Exception:
+        pass
     finally:
         SESSION.close()
 

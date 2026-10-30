@@ -217,6 +217,13 @@ def _mark_user_db_fresh(user_id, username, chat_id, chat_name):
         USER_DB_CACHE[(user_id, chat_id)] = (username, chat_name)
 
 
+async def _async_update_user(user_id, username, chat_id, chat_title):
+    try:
+        await asyncio.to_thread(sql.update_user, user_id, username, chat_id, chat_title)
+    except Exception:
+        LOGGER.exception("Failed to update user in database")
+
+
 async def log_user(message: Message):
     chat = message.chat
     msg = message
@@ -224,15 +231,16 @@ async def log_user(message: Message):
     if msg.from_user and not _user_db_is_fresh(
         msg.from_user.id, msg.from_user.username, chat.id, chat.title
     ):
-        await asyncio.to_thread(
-            sql.update_user,
-            msg.from_user.id,
-            msg.from_user.username,
-            chat.id,
-            chat.title,
-        )
         _mark_user_db_fresh(
             msg.from_user.id, msg.from_user.username, chat.id, chat.title
+        )
+        asyncio.create_task(
+            _async_update_user(
+                msg.from_user.id,
+                msg.from_user.username,
+                chat.id,
+                chat.title,
+            )
         )
 
     if (
@@ -245,18 +253,19 @@ async def log_user(message: Message):
             chat.title,
         )
     ):
-        await asyncio.to_thread(
-            sql.update_user,
-            msg.reply_to_message.from_user.id,
-            msg.reply_to_message.from_user.username,
-            chat.id,
-            chat.title,
-        )
         _mark_user_db_fresh(
             msg.reply_to_message.from_user.id,
             msg.reply_to_message.from_user.username,
             chat.id,
             chat.title,
+        )
+        asyncio.create_task(
+            _async_update_user(
+                msg.reply_to_message.from_user.id,
+                msg.reply_to_message.from_user.username,
+                chat.id,
+                chat.title,
+            )
         )
 
 

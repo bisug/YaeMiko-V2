@@ -361,6 +361,8 @@ def __load_locks_cache():
             PERM_CACHE.clear()
             for row in rows:
                 PERM_CACHE[row.chat_id] = ChatLocks.from_row(row)
+    except Exception:
+        pass
     finally:
         SESSION.close()
 

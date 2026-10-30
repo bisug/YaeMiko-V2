@@ -196,6 +196,8 @@ def __load_CHAT_STICKERS():
 
         CHAT_STICKERS = {x: set(y) for x, y in CHAT_STICKERS.items()}
 
+    except Exception:
+        pass
     finally:
         SESSION.close()
 
@@ -210,6 +212,8 @@ def __load_chat_stickerset_blacklists():
                 "value": x.value,
             }
 
+    except Exception:
+        pass
     finally:
         SESSION.close()
 
