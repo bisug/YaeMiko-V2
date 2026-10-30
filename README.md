@@ -10,7 +10,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blueviolet?style=for-the-badge)](https://github.com/bisug/YaeMiko-V2/blob/main/LICENSE)
 [![aiogram](https://img.shields.io/badge/aiogram-3.31-2AABEE?style=for-the-badge&logo=telegram&logoColor=white)](https://pypi.org/project/aiogram/)
 [![Kurigram](https://img.shields.io/badge/Kurigram-2.2.26-2AABEE?style=for-the-badge&logo=python&logoColor=white)](https://pypi.org/project/Kurigram/)
-[![TgCryptoRust](https://img.shields.io/badge/TgCryptoRust-1.3.1-2AABEE?style=for-the-badge&logo=rust&logoColor=white)](https://pypi.org/project/TgCryptoRust/)
+[![TgCrypto-C](https://img.shields.io/badge/TgCrypto--C-1.3.1-2AABEE?style=for-the-badge&logo=c&logoColor=white)](https://pypi.org/project/tgcrypto-c/)
 [![Docker](https://img.shields.io/badge/docker-multistage-2496ED?style=for-the-badge&logo=docker&logoColor=white)](Dockerfile)
 [![Heroku](https://img.shields.io/badge/deploy-heroku-79589F?style=for-the-badge&logo=heroku&logoColor=white)](https://dashboard.heroku.com/apps/new?template=https://github.com/bisug/YaeMiko-V2)
 [![Render](https://img.shields.io/badge/deploy-render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://dashboard.render.com/blueprint/new)
@@ -163,7 +163,7 @@ execution. Persistence, reply construction and error handling surround that spin
 | --- | --- | --- |
 | aiogram | 3.31 | [PyPI](https://pypi.org/project/aiogram/) |
 | Kurigram | 2.2.26 | [PyPI](https://pypi.org/project/Kurigram/) |
-| TgCryptoRust | 1.3.1 | [PyPI](https://pypi.org/project/TgCryptoRust/) |
+| TgCrypto-C | 1.3.1 | [PyPI](https://pypi.org/project/tgcrypto-c/) |
 | ThrottledSession | [`Mikobot/utils/throttle.py`](Mikobot/utils/throttle.py) | aiogram session subclass applying rate limits |
 | DataStore | [`Mikobot/utils/persistence.py`](Mikobot/utils/persistence.py) | Pickle backed store for chat and user context |
 | ButtonStyle | from aiogram | [docs](https://docs.aiogram.dev/en/latest/api/enums/aiogram.enums.ButtonStyle.html) |
@@ -591,7 +591,7 @@ Meaningful changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 - [aiogram](https://github.com/aiogram/aiogram) for the Bot API dispatcher, session and filters
 - [Kurigram](https://github.com/KurimuzonAkuma/Kurigram) for the MTProto client
-- [TgCryptoRust](https://pypi.org/project/TgCryptoRust/) for accelerated encryption
+- [TgCrypto-C](https://pypi.org/project/tgcrypto-c/) for accelerated encryption
 - [SQLAlchemy](https://github.com/sqlalchemy/sqlalchemy) and
   [psycopg](https://github.com/psycopg/psycopg) for the PostgreSQL layer
 - [httpx](https://github.com/encode/httpx) for the shared asynchronous HTTP client
