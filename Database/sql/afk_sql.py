@@ -88,6 +88,8 @@ def toggle_afk(user_id, reason=""):
 
 def __load_afk_users():
     global AFK_USERS
+    if SESSION is None:
+        return
     try:
         all_afk = SESSION.scalars(select(AFK)).all()
         AFK_USERS = {

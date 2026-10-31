@@ -8,6 +8,17 @@ All notable changes to YaeMiko are recorded here. The format follows
 
 ### Added
 
+- **Python 3.15.2 upgrade** — bumped `.python-version`, `pyproject.toml` (`requires-python = ">=3.15"`),
+  `Dockerfile` (`python:3.15.2-slim`), and CI workflow (`python-version: "3.15.2"`).
+- **Native lazy imports** (`sys.set_lazy_imports('all')`) enabled in `Mikobot/__init__.py` and
+  `Mikobot/__main__.py`, with a filter that excludes `sqlalchemy.*` and `Database.sql.*` to keep
+  SQLAlchemy ORM class-body execution correct. Reduces cold-start import time to near zero for all
+  third-party modules.
+- `SESSION = None` guard in `Database/sql/__init__.py` when `unittest` is in `sys.modules`, plus
+  early-return guards in all `__load_*` and `_ensure_*` functions across every SQL module so the
+  test suite runs without a real database connection.
+- `antinsfw.py` now catches `ImportError` from `opennsfw_onnx` and raises a clear `RuntimeError`
+  when running on Python 3.15+ where the ONNX wheels are not available.
 - Integrated `uv` for project package management and reproducible dependency synchronization (`uv.lock`).
 - Configured Astral's `ty` static type checker in `pyproject.toml` targeting `Mikobot` and `Database`.
 - Added b-tree index `chat_feds_fed_id_idx` on `chat_feds(fed_id)` to optimize federation deletion and filter operations without table scans.
@@ -18,6 +29,11 @@ All notable changes to YaeMiko are recorded here. The format follows
 
 ### Changed
 
+- **Python runtime upgraded to 3.15.2** across `.python-version`, `Dockerfile`, CI workflows, and all
+  documentation. Previous pin was 3.14.10.
+- `onnxruntime` and `opennsfw-onnx` now conditioned on `python_version < "3.15"` in both
+  `pyproject.toml` and `requirements.txt` (no cp315 wheels available yet). The NSFW check in
+  `antinsfw.py` raises a clear `RuntimeError` on Python 3.15+.
 - Upgraded Python runtime pin from 3.14.8 to 3.14.10 across `.python-version`, `Dockerfile`, CI workflows, and documentation.
 - Configured multi-stage `Dockerfile` with `UV_PROJECT_ENVIRONMENT=/opt/venv` to install dependencies directly into the isolated virtual environment.
 - CI pipeline migrated to `astral-sh/setup-uv` with `uv sync --frozen --no-dev`.

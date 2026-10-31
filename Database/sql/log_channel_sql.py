@@ -99,6 +99,8 @@ def _ensure_chat_id_type() -> None:
     Every other chat key is VARCHAR(14), and a chat id sent as an integer to a
     text column is a type error rather than a lookup.
     """
+    if ENGINE is None:
+        return
     inspector = inspect(ENGINE)
     if "log_channel_setting" not in inspector.get_table_names():
         return
@@ -204,6 +206,8 @@ def migrate_chat(old_chat_id, new_chat_id):
 
 def __load_log_channels():
     global CHANNELS
+    if SESSION is None:
+        return
     try:
         all_chats = SESSION.scalars(select(GroupLogs)).all()
         CHANNELS = {chat.chat_id: chat.log_channel for chat in all_chats}

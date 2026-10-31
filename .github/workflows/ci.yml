@@ -51,7 +51,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: "3.14.10"
+          python-version: "3.15.2"
 
       # The suite asserts framework constructors against the real package, and
       # the SQL-layer tests need a real driver to reach the postgres service

@@ -92,6 +92,8 @@ class BlacklistSettings(BASE):
 
 def _ensure_columns() -> None:
     """Add the delete/silent columns to a table made by an older build."""
+    if ENGINE is None:
+        return
     inspector = inspect(ENGINE)
     if "blacklist_settings" not in inspector.get_table_names():
         return
@@ -311,6 +313,8 @@ def is_silent_type(chat_id, blacklist_type: int) -> bool:
 
 def __load_chat_blacklists():
     global CHAT_BLACKLISTS
+    if SESSION is None:
+        return
     try:
         chats = (
             SESSION.execute(select(BlackListFilters.chat_id).distinct()).scalars().all()
@@ -332,6 +336,8 @@ def __load_chat_blacklists():
 
 def __load_chat_settings_blacklists():
     global CHAT_SETTINGS_BLACKLISTS
+    if SESSION is None:
+        return
     try:
         chats_settings = SESSION.scalars(select(BlacklistSettings)).all()
         for x in chats_settings:  # remove tuple by ( ,)

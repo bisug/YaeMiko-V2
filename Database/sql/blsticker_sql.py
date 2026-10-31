@@ -183,6 +183,8 @@ def get_blacklist_setting(chat_id):
 
 def __load_CHAT_STICKERS():
     global CHAT_STICKERS
+    if SESSION is None:
+        return
     try:
         chats = (
             SESSION.execute(select(StickersFilters.chat_id).distinct()).scalars().all()
@@ -204,6 +206,8 @@ def __load_CHAT_STICKERS():
 
 def __load_chat_stickerset_blacklists():
     global CHAT_BLSTICK_BLACKLISTS
+    if SESSION is None:
+        return
     try:
         chats_settings = SESSION.scalars(select(StickerSettings)).all()
         for x in chats_settings:  # remove tuple by ( ,)

@@ -1,4 +1,4 @@
-FROM python:3.14.10-slim AS builder
+FROM python:3.15.2-slim AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
@@ -14,11 +14,12 @@ COPY pyproject.toml uv.lock requirements.txt ./
 RUN uv sync --frozen --no-dev
 
 
-FROM python:3.14.10-slim
+FROM python:3.15.2-slim
 
 ENV PATH="/opt/venv/bin:$PATH" \
     VIRTUAL_ENV="/opt/venv" \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PYTHON_LAZY_IMPORTS=all
 
 WORKDIR /root/Mikobot
 

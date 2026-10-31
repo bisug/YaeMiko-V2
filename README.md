@@ -6,7 +6,7 @@
   <img alt="YaeMiko wordmark" src="docs/assets/wordmark-dark.svg" width="560">
 </picture>
 
-[![Python](https://img.shields.io/badge/python-3.14-blueviolet?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.15-blueviolet?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-blueviolet?style=for-the-badge)](https://github.com/bisug/YaeMiko-V2/blob/main/LICENSE)
 [![aiogram](https://img.shields.io/badge/aiogram-3.31-2AABEE?style=for-the-badge&logo=telegram&logoColor=white)](https://pypi.org/project/aiogram/)
 [![Kurigram](https://img.shields.io/badge/Kurigram-2.2.26-2AABEE?style=for-the-badge&logo=python&logoColor=white)](https://pypi.org/project/Kurigram/)
@@ -45,16 +45,16 @@
 
 **YaeMiko** is a modular Telegram group management bot that runs two Telegram clients in a single
 process: [aiogram](https://docs.aiogram.dev/) for the Bot API and
-[Kurigram](https://docs.kurigram.live/) for MTProto features. It targets Python 3.14, stores chat
+[Kurigram](https://docs.kurigram.live/) for MTProto features. It targets Python 3.15, stores chat
 state in PostgreSQL, and ships 62 plugin modules.
 
 | | |
 | --- | --- |
-| **Runtime** | Python 3.14.10, single `asyncio` event loop, long polling |
+| **Runtime** | Python 3.15.2, single `asyncio` event loop, long polling, lazy imports |
 | **Telegram** | aiogram 3.31 on the Bot API, Kurigram 2.2.26 on MTProto, side by side |
 | **Storage** | PostgreSQL 18 through SQLAlchemy 2.1 |
 | **Modules** | 62 auto discovered plugins under `Mikobot/plugins` |
-| **Requirements** | 512 MB RAM minimum, 1 GB recommended, Python 3.14.10 |
+| **Requirements** | 512 MB RAM minimum, 1 GB recommended, Python 3.15.2 |
 | **Deployment** | Render, Railway, Heroku, Docker, or a bare VPS |
 | **Guarantees** | CI compile, unit, JSON and whitespace gates, weekly CodeQL, Dependabot updates |
 
@@ -152,10 +152,10 @@ execution. Persistence, reply construction and error handling surround that spin
 
 | Component | Version | Link |
 | --- | --- | --- |
-| Python | 3.14.10 | [python.org](https://www.python.org/) |
+| Python | 3.15.2 | [python.org](https://www.python.org/) |
 | ffmpeg and libgomp1 | system packages | Frame extraction and ONNX Runtime |
 | asyncio event loop | stdlib | [docs](https://docs.python.org/3/library/asyncio.html) |
-| Pinned interpreter | `python-3.14.10` | [.python-version](.python-version) |
+| Pinned interpreter | `python-3.15.2` | [.python-version](.python-version) |
 
 ### Telegram clients
 
@@ -226,7 +226,7 @@ scale down: [docs/SYSTEM-REQUIREMENTS.md](docs/SYSTEM-REQUIREMENTS.md).
 | **Disk** | 5 GB | 10 GB | 20 GB |
 | **Swap** | 1 GB | none needed | none needed |
 | **OS** | Debian 12, Ubuntu 24.04, or any Docker host | same | same |
-| **Python** | 3.14.10 | 3.14.10 | 3.14.10 |
+| **Python** | 3.15.2 | 3.15.2 | 3.15.2 |
 | **Network** | 1 Mbps up, 5 GB per month | 10 Mbps up, 100 GB | 25 Mbps up, unmetered |
 | **Groups** | 1 to 3 | 10 to 30 | 100 or more |
 | **Platform fit** | Render `0.5c-512mb` | Render `1c-2g`, Railway, 1 GB VPS | 2 GB VPS |
@@ -245,12 +245,12 @@ Where the memory and disk go, measured from PyPI wheel sizes for the pinned depe
 
 | Dependency | Wheel | Consequence |
 | --- | --- | --- |
-| onnxruntime | 22.7 MB | Largest single allocation, loaded on first anti-NSFW check |
-| opennsfw-onnx | 20.9 MB | Ships the model inside the wheel |
+| onnxruntime | 22.7 MB | Largest single allocation, loaded on first anti-NSFW check (**Python < 3.15 only**) |
+| opennsfw-onnx | 20.9 MB | Ships the model inside the wheel (**Python < 3.15 only**) |
 | Pillow | 6.8 MB | Image buffers |
 | Kurigram | 5.8 MB | MTProto client |
 | SQLAlchemy | 4.6 MB | Native extensions |
-| All 23 direct dependencies | 80.5 MB | Install footprint before transitive dependencies |
+| All 21 direct dependencies (Python 3.15+) | ~37 MB | Install footprint without ONNX wheels |
 
 The RAM figures are estimates, not measurements of a live bot. To size your own instance, read the
 peak rather than the current usage:
@@ -472,7 +472,7 @@ Steps:
 ### Docker
 
 [`Dockerfile`](Dockerfile) is a two stage build: a `builder` stage installs the wheels, and the
-runtime stage is `python:3.14.10-slim` with `ffmpeg`, `curl` and `libgomp1` for ONNX Runtime.
+runtime stage is `python:3.15.2-slim` with `ffmpeg`, `curl` and `libgomp1` for ONNX Runtime.
 
 ```bash
 docker build -t yaemiko .

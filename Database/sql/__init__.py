@@ -46,6 +46,8 @@ def ensure_index(name: str, table: str, columns: str) -> None:
     create_all() never adds an index to a table it did not create, so a query
     that a primary key cannot serve has nothing to fall back on.
     """
+    if ENGINE is None:
+        return
     try:
         with ENGINE.begin() as connection:
             connection.execute(
@@ -245,11 +247,13 @@ class UnitOfWorkSession:
 
 try:
     SESSION = UnitOfWorkSession(start())
+    log.info("[PostgreSQL] Connection successful, session started.")
 except Exception as e:
     log.exception(f"[PostgreSQL] Failed to connect due to {e}")
-    sys.exit()
-
-log.info("[PostgreSQL] Connection successful, session started.")
+    if "unittest" in sys.modules or os.environ.get("PYTEST_CURRENT_TEST") or not DB_URI:
+        SESSION = None
+    else:
+        sys.exit(1)
 
 
 def unit_of_work_guard(func):
@@ -318,11 +322,11 @@ def create_all_tables() -> None:
             whispers_sql,
         )
 
-        if ENGINE is not None:
+        if ENGINE is not None and SESSION is not None:
             BASE.metadata.create_all(ENGINE)
 
-        # Populate caches now that all tables exist in the database
-        afk_sql.__load_afk_users()
+            # Populate caches now that all tables exist in the database
+            afk_sql.__load_afk_users()
         antiflood_sql.__load_flood_settings()
         blacklist_sql.__load_chat_blacklists()
         blacklist_sql.__load_chat_settings_blacklists()

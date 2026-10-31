@@ -123,6 +123,8 @@ def migrate_chat(old_chat_id, new_chat_id):
 
 def __load_disabled_commands():
     global DISABLED
+    if SESSION is None:
+        return
     try:
         all_chats = SESSION.scalars(select(Disable)).all()
         for chat in all_chats:

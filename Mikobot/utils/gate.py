@@ -95,7 +95,8 @@ def _end_database_unit_of_work() -> None:
     try:
         from Database.sql import SESSION
 
-        SESSION.end_unit_of_work()
+        if SESSION is not None:
+            SESSION.end_unit_of_work()
     except Exception:
         logging.getLogger(__name__).exception("Could not clear staged database state")
 

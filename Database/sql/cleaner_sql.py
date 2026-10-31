@@ -201,6 +201,8 @@ def get_all_ignored(chat_id):
 def __load_cleaner_list():
     global GLOBAL_IGNORE_COMMANDS
     global CLEANER_CHATS
+    if SESSION is None:
+        return
 
     try:
         GLOBAL_IGNORE_COMMANDS = {

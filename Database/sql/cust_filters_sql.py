@@ -308,6 +308,8 @@ def num_chats():
 
 def __load_chat_filters():
     global CHAT_FILTERS
+    if SESSION is None:
+        return
     try:
         chats = (
             SESSION.execute(select(CustomFilters.chat_id).distinct()).scalars().all()

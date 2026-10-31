@@ -172,6 +172,8 @@ class RaidMode(BASE):
 
 def _ensure_clean_service_columns() -> None:
     """Add service_types to a clean_service table made by an older build."""
+    if ENGINE is None:
+        return
     inspector = inspect(ENGINE)
     if "clean_service" not in inspector.get_table_names():
         return
@@ -564,6 +566,8 @@ def toggleRaidStatus(chat_id):
 
 @unit_of_work_guard
 def _ResetRaidOnRestart():
+    if SESSION is None:
+        return
     with RAID_LOCK:
         raid = SESSION.scalars(select(RaidMode)).all()
         for r in raid:

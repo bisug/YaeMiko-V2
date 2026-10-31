@@ -318,6 +318,8 @@ def num_warn_filter_chats():
 
 def __load_chat_warn_filters():
     global WARN_FILTERS
+    if SESSION is None:
+        return
     try:
         chats = SESSION.execute(select(WarnFilters.chat_id).distinct()).scalars().all()
         for (chat_id,) in chats:  # remove tuple by ( ,)

@@ -30,7 +30,7 @@ Back to [README](../README.md).
 | **Disk** | 5 GB | 10 GB | 20 GB |
 | **Swap** | 1 GB | none needed | none needed |
 | **OS** | Debian 12, Ubuntu 24.04, or any Docker host | same | same |
-| **Python** | 3.14.10 | 3.14.10 | 3.14.10 |
+| **Python** | 3.15.2 | 3.15.2 | 3.15.2 |
 | **Network** | 1 Mbps up, 5 GB per month | 10 Mbps up, 100 GB | 25 Mbps up, unmetered |
 | **Groups served** | 1 to 3 | 10 to 30 | 100 or more |
 | **Platform fit** | Render `0.5c-512mb` | Render `1c-2g`, Railway, 1 GB VPS | 2 GB VPS or better |
@@ -48,9 +48,9 @@ Being precise about this, because the numbers below drive real hosting choices.
 | --- | --- |
 | Repository size, 9.2 MB without `.git` | `du -sh --exclude=.git .` on this checkout |
 | 129 Python files, 38,708 lines | `find ... | wc -l` on this checkout |
-| 66.1 MB of direct dependency wheels | `uv pip download --no-deps -r requirements.txt`, the CPython 3.14 x86_64 wheels |
-| ONNX Runtime 1.31.1 wheel, 23.8 MB | `uv pip download`, cp314 manylinux x86_64 |
-| opennsfw-onnx 0.1.0 wheel, 22.0 MB | same, the wheel ships the model |
+| 66.1 MB of direct dependency wheels | `uv pip download --no-deps -r requirements.txt`, the CPython 3.15 x86_64 wheels |
+| ONNX Runtime 1.31.1 wheel, 23.8 MB | `uv pip download`, cp314 manylinux x86_64 — **Python < 3.15 only** |
+| opennsfw-onnx 0.1.0 wheel, 22.0 MB | same, the wheel ships the model — **Python < 3.15 only** |
 | Pillow 13.0.0 wheel, 7.0 MB | same |
 | Kurigram 2.2.26 wheel, 6.0 MB | same |
 | `concurrent_updates(64)` | `Mikobot/__init__.py:296` |
@@ -71,7 +71,7 @@ CPU    1 shared vCPU
 RAM    512 MB
 Disk   5 GB free
 Swap   1 GB configured
-Python 3.14.10
+Python 3.15.2
 ```
 
 What you give up:
@@ -176,22 +176,26 @@ Measured wheel sizes for the dependencies that actually matter:
 
 | Dependency | Wheel | Why it is heavy |
 | --- | --- | --- |
-| onnxruntime | 22.7 MB | Native inference engine, the largest single wheel |
-| opennsfw-onnx | 20.9 MB | Ships the pre trained model inside the wheel |
+| onnxruntime | 22.7 MB | Native inference engine — **Python < 3.15 only**, no cp315 wheels yet |
+| opennsfw-onnx | 20.9 MB | Ships the pre trained model inside the wheel — **Python < 3.15 only** |
 | Pillow | 6.8 MB | Native image codecs |
 | Kurigram | 5.8 MB | MTProto implementation |
 | SQLAlchemy | 4.6 MB | Includes the native C extensions |
 | aiogram | 9.6 MB | Bot API dispatcher, pulls aiohttp and pydantic |
-| All 23 direct dependencies | 80.5 MB | Download size, excluding transitive dependencies |
+| All 23 direct dependencies (Python < 3.15) | 80.5 MB | Download size, excluding transitive dependencies |
+| All 21 direct dependencies (Python 3.15+) | ~37 MB | ONNX wheels excluded, download size |
 
-So the install is roughly 64 MB of wheels plus transitive dependencies, and the runtime memory is
-dominated by two things: the ONNX session and the two concurrent clients, aiogram and Kurigram,
-each holding its own connection state.
+So the install on Python 3.15+ is roughly 37 MB of wheels (no ONNX). On Python < 3.15, add ~44 MB for the
+ONNX runtime and model, bringing it to ~81 MB. The runtime memory is dominated by the two concurrent
+clients, aiogram and Kurigram, each holding its own connection state.
 
-Two things are lazy on purpose, so you are not paying for them at startup:
+Three things are lazy on purpose, so you are not paying for them at startup:
 
+- **Python 3.15 native lazy imports** (`sys.set_lazy_imports('all')`) defers all third-party modules
+  until their first use. SQLAlchemy and `Database.sql.*` are excluded from this to keep ORM
+  class-body execution correct.
 - The ONNX classifier is imported inside the function that needs it, not at module import, so the
-  20.9 MB model is only loaded when an anti-NSFW check actually runs.
+  20.9 MB model is only loaded when an anti-NSFW check actually runs (Python < 3.15 only).
 - The MTProto and Bot API clients both start, because both are always needed, but no other heavy work
   happens during import.
 

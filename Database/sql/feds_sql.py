@@ -859,6 +859,8 @@ def get_subscriber(fed_id):
 
 def __load_all_feds():
     global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME
+    if SESSION is None:
+        return
     try:
         feds = SESSION.scalars(select(Federations)).all()
         for x in feds:  # remove tuple by ( ,)
@@ -903,6 +905,8 @@ def __load_all_feds():
 
 def __load_all_feds_chats():
     global FEDERATION_CHATS, FEDERATION_CHATS_BYID
+    if SESSION is None:
+        return
     try:
         qall = SESSION.scalars(select(ChatF)).all()
         FEDERATION_CHATS = {}
@@ -926,6 +930,8 @@ def __load_all_feds_chats():
 
 def __load_all_feds_banned():
     global FEDERATION_BANNED_USERID, FEDERATION_BANNED_FULL
+    if SESSION is None:
+        return
     try:
         FEDERATION_BANNED_USERID = {}
         FEDERATION_BANNED_FULL = {}
@@ -941,6 +947,8 @@ def __load_all_feds_banned():
 
 def __load_all_feds_settings():
     global FEDERATION_NOTIFICATION
+    if SESSION is None:
+        return
     try:
         getuser = SESSION.scalars(select(FedsUserSettings)).all()
         for x in getuser:
@@ -954,6 +962,8 @@ def __load_all_feds_settings():
 def __load_feds_subscriber():
     global FEDS_SUBSCRIBER
     global MYFEDS_SUBSCRIBER
+    if SESSION is None:
+        return
     try:
         FEDS_SUBSCRIBER = {}
         MYFEDS_SUBSCRIBER = {}

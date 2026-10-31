@@ -355,6 +355,8 @@ def migrate_chat(old_chat_id, new_chat_id):
 
 def __load_locks_cache():
     """Read every chat's locks once, so the message path never queries."""
+    if SESSION is None:
+        return
     try:
         rows = SESSION.scalars(select(Permissions)).all()
         with PERM_LOCK:

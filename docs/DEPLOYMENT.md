@@ -203,7 +203,7 @@ sudo apt-get install -y git ffmpeg libgomp1 tmux
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-`ffmpeg` is needed for media features. `libgomp1` is needed by ONNX Runtime for the NSFW check. `uv` installs and manages Python 3.14 and virtual environments automatically.
+`ffmpeg` is needed for media features. `libgomp1` is needed by ONNX Runtime for the NSFW check. `uv` installs and manages Python 3.15 and virtual environments automatically.
 
 ### Step 3: create a dedicated user
 
@@ -342,7 +342,7 @@ service on the same box, open only the ports that service needs.
 ## Docker anywhere
 
 The [Dockerfile](../Dockerfile) is a two stage build. The builder installs the wheels, and the
-runtime stage is `python:3.14.10-slim` with `ffmpeg`, `curl` and `libgomp1`.
+runtime stage is `python:3.15.2-slim` with `ffmpeg`, `curl` and `libgomp1`.
 
 ```bash
 docker build -t yaemiko .
@@ -394,7 +394,7 @@ PostgreSQL holds everything, so `DATABASE_URL` is the only database setting in `
 | `Your OWNER_ID env variable is not a valid integer` | A stray space or text in the value | It must be digits only |
 | Module does not appear in `/help` | `__mod_name__` missing, or the file ends in `.txt` | Set `__mod_name__` and rename the file to `.py` |
 | Deploys fine, then restarts repeatedly | Crash loop, usually a database or token problem | Read the deploy log, the first traceback is the cause |
-| `Could not find a version that satisfies the requirement` | Python version mismatch outside Docker | Use Python 3.14, check with `python3 --version` |
+| `Could not find a version that satisfies the requirement` | Python version mismatch outside Docker | Use Python 3.15, check with `python3 --version` |
 | Bot works locally, fails on the platform | `ENV` not set, so `variables.py` was read | Set `ENV=True` on the service |
 
 Logs never contain your token. `RedactingFormatter` rewrites anything shaped like a bot token to

@@ -95,6 +95,8 @@ def _ensure_columns() -> None:
     create(checkfirst=True) leaves an existing table untouched, so without this
     the timer and clearflood columns are missing and every read of them fails.
     """
+    if ENGINE is None:
+        return
     inspector = inspect(ENGINE)
     if "antiflood" not in inspector.get_table_names():
         return
@@ -358,6 +360,8 @@ def migrate_chat(old_chat_id, new_chat_id):
 
 def __load_flood_settings():
     global CHAT_FLOOD
+    if SESSION is None:
+        return
     try:
         all_chats = SESSION.scalars(select(FloodControl)).all()
         CHAT_FLOOD = {

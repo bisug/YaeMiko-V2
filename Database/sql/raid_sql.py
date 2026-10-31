@@ -68,6 +68,8 @@ def _ensure_columns() -> None:
     SELECT of raid_until fails at runtime. Startup is the only place the
     difference is cheap to absorb.
     """
+    if ENGINE is None:
+        return
     inspector = inspect(ENGINE)
     if "raid_chats" not in inspector.get_table_names():
         return

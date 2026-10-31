@@ -22,9 +22,13 @@ MAX_FILE_SIZE = 3 * 1024 * 1024
 async def _scan(file_path: str):
     global classifier
     if classifier is None:
-        from opennsfw_onnx import NSFWClassifier
-
-        classifier = NSFWClassifier()
+        try:
+            from opennsfw_onnx import NSFWClassifier
+            classifier = NSFWClassifier()
+        except ImportError:
+            raise RuntimeError(
+                "NSFW scanning is unavailable (requires opennsfw-onnx and onnxruntime)."
+            )
     return await asyncio.to_thread(classifier.classify, file_path)
 
 

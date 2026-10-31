@@ -35,7 +35,7 @@
   <text class="big" x="64" y="206">512 MB</text>
   <text class="unit" x="64" y="226">RAM, 1 shared vCPU</text>
   <text class="sub" x="64" y="262">Disk 5 GB, swap 1 GB</text>
-  <text class="sub" x="64" y="284">Python 3.14.10</text>
+  <text class="sub" x="64" y="284">Python 3.15.2</text>
   <text class="sub" x="64" y="306">1 to 3 groups</text>
   <text class="sub" x="64" y="344">What you give up:</text>
   <text class="sub" x="64" y="366">ONNX loads a 20.9 MB model on first use</text>
@@ -50,7 +50,7 @@
   <text class="big" x="474" y="206">1 GB</text>
   <text class="unit" x="474" y="226">RAM, 1 dedicated vCPU</text>
   <text class="sub" x="474" y="262">Disk 10 GB</text>
-  <text class="sub" x="474" y="284">Python 3.14.10</text>
+  <text class="sub" x="474" y="284">Python 3.15.2</text>
   <text class="sub" x="474" y="306">10 to 30 groups</text>
   <text class="sub" x="474" y="344">What you gain:</text>
   <text class="sub" x="474" y="366">Room for the ONNX session and buffers</text>
@@ -65,7 +65,7 @@
   <text class="big" x="884" y="206">2 GB</text>
   <text class="unit" x="884" y="226">RAM, 2 dedicated vCPU</text>
   <text class="sub" x="884" y="262">Disk 20 GB</text>
-  <text class="sub" x="884" y="284">Python 3.14.10</text>
+  <text class="sub" x="884" y="284">Python 3.15.2</text>
   <text class="sub" x="884" y="306">100 or more groups</text>
   <text class="sub" x="884" y="344">What you gain:</text>
   <text class="sub" x="884" y="366">ONNX uses one thread per core</text>
@@ -76,7 +76,7 @@
 
   <rect class="panel" x="40" y="524" width="1200" height="110"/>
   <text class="head" x="64" y="554">Where the weight sits, measured from PyPI wheel sizes</text>
-  <text class="sub" x="64" y="580">onnxruntime 22.5 MB, opennsfw-onnx 20.9 MB, Pillow 6.8 MB, Kurigram 5.8 MB, SQLAlchemy 4.6 MB, aiogram 9.6 MB</text>
+  <text class="sub" x="64" y="580">Pillow 6.8 MB, Kurigram 5.8 MB, SQLAlchemy 4.6 MB, aiogram 9.6 MB (onnxruntime + opennsfw-onnx: Python &lt; 3.15 only)</text>
   <text class="sub" x="64" y="602">23 direct dependencies total 80.5 MB of wheels, uvloop being 16.2 MB of that. The ONNX session is lazy, it loads only when an anti-NSFW check runs.</text>
   <text class="sub" x="64" y="624">RAM figures are estimates. Measure your own instance with VmHWM in /proc, see docs/SYSTEM-REQUIREMENTS.md.</text>
 </svg>

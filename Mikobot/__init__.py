@@ -4,15 +4,26 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
 import json
-import re
-
-import logging.handlers
-
 import logging
+import logging.handlers
 import os
+import re
+import sys
 import time
 from html import escape
 from random import choice
+
+# Configure Python 3.15+ lazy imports for fast boot times and reduced memory usage
+if hasattr(sys, "set_lazy_imports"):
+    def _lazy_imports_filter(importing_mod, imported_mod, fromlist=None):
+        for mod in (importing_mod, imported_mod):
+            if mod and mod.startswith(("sqlalchemy", "Database.sql")):
+                return False
+        return True
+
+    sys.set_lazy_imports("all")
+    if hasattr(sys, "set_lazy_imports_filter"):
+        sys.set_lazy_imports_filter(_lazy_imports_filter)
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties

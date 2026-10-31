@@ -141,6 +141,8 @@ def num_gbanned_users():
 
 def __load_gbanned_userid_list():
     global GBANNED_LIST
+    if SESSION is None:
+        return
     try:
         GBANNED_LIST = {
             x.user_id for x in SESSION.scalars(select(GloballyBannedUsers)).all()
@@ -153,6 +155,8 @@ def __load_gbanned_userid_list():
 
 def __load_gban_stat_list():
     global GBANSTAT_LIST
+    if SESSION is None:
+        return
     try:
         GBANSTAT_LIST = {
             x.chat_id

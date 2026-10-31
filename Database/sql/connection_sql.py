@@ -234,6 +234,8 @@ def migrate_chat(old_chat_id, new_chat_id):
 
 def __load_user_history():
     global HISTORY_CONNECT
+    if SESSION is None:
+        return
     try:
         qall = SESSION.scalars(select(ConnectionHistory)).all()
         HISTORY_CONNECT = {}

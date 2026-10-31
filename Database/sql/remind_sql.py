@@ -128,6 +128,8 @@ def get_reminds_in_chat(chat_id):
 
 
 def __get_all_reminds():
+    if SESSION is None:
+        return
     try:
         chats = SESSION.scalars(select(Reminds)).all()
         for chat in chats:
