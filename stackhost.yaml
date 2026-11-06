@@ -1,0 +1,37 @@
+# StackHost configuration file
+# Reference: https://www.stackhost.org/docs?article=stackhost-yaml
+
+# Version: 2.0.0
+
+user:
+  name: Bisu Ghalan
+  github: bisug
+
+runtime:
+  # Supported runtimes: python, node, go, rust, ruby, java, php, dotnet, elixir, perl, swift
+  # python-nodejs includes Python 3.13 and pre-installed ffmpeg (required for media/sticker processing)
+  # Alternative pure-Python image (without ffmpeg): python:3.11-slim
+  image: python-nodejs
+
+commands:
+  # Apt packages (restricted to StackHost-approved list, e.g. inxi; ffmpeg is pre-installed in python-nodejs)
+  package: ""
+  build:
+    - pip install -r requirements.txt
+  start: python3 -m Mikobot
+
+repository:
+  branch: main
+  auto_deploy: true
+
+env:
+  - ENV: "True"
+  - PYTHONUNBUFFERED: "1"
+  # Provide sensitive bot credentials here or in the StackHost project dashboard:
+  # - API_ID: "123456"
+  # - API_HASH: "your_api_hash"
+  # - TOKEN: "your_telegram_bot_token"
+  # - OWNER_ID: "12345678"
+  # - DATABASE_URL: "postgresql://user:pass@host:5432/dbname"
+  # - EVENT_LOGS: "-100123456789"
+  # - MESSAGE_DUMP: "-100123456789"
