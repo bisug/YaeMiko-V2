@@ -6,7 +6,7 @@ beautifulsoup4==4.15.0
 cachetools==7.2.7
 
 # Database
-psycopg[binary,pool]==3.3.6
+psycopg[binary,pool]==3.3.8
 SQLAlchemy==2.1.6
 
 # Telegram clients
