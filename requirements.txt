@@ -7,7 +7,7 @@ cachetools==7.2.7
 
 # Database
 psycopg[binary,pool]==3.3.6
-SQLAlchemy==2.1.6
+SQLAlchemy==2.1.8
 
 # Telegram clients
 
