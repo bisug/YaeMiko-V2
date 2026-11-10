@@ -9,8 +9,8 @@
 [![Python](https://img.shields.io/badge/python-3.15-blueviolet?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-blueviolet?style=for-the-badge)](https://github.com/bisug/YaeMiko-V2/blob/main/LICENSE)
 [![aiogram](https://img.shields.io/badge/aiogram-3.31-2AABEE?style=for-the-badge&logo=telegram&logoColor=white)](https://pypi.org/project/aiogram/)
-[![Kurigram](https://img.shields.io/badge/Kurigram-2.2.26-2AABEE?style=for-the-badge&logo=python&logoColor=white)](https://pypi.org/project/Kurigram/)
-[![TgCrypto-C](https://img.shields.io/badge/TgCrypto--C-1.3.1-2AABEE?style=for-the-badge&logo=c&logoColor=white)](https://pypi.org/project/tgcrypto-c/)
+[![Kurigram](https://img.shields.io/badge/Kurigram-2.2.27-2AABEE?style=for-the-badge&logo=python&logoColor=white)](https://pypi.org/project/Kurigram/)
+[![kuricrypt](https://img.shields.io/badge/kuricrypt-0.1.1-2AABEE?style=for-the-badge&logo=rust&logoColor=white)](https://pypi.org/project/kuricrypt/)
 [![Docker](https://img.shields.io/badge/docker-multistage-2496ED?style=for-the-badge&logo=docker&logoColor=white)](Dockerfile)
 [![Heroku](https://img.shields.io/badge/deploy-heroku-79589F?style=for-the-badge&logo=heroku&logoColor=white)](https://dashboard.heroku.com/apps/new?template=https://github.com/bisug/YaeMiko-V2)
 [![Render](https://img.shields.io/badge/deploy-render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://dashboard.render.com/blueprint/new)
@@ -51,7 +51,7 @@ state in PostgreSQL, and ships 62 plugin modules.
 | | |
 | --- | --- |
 | **Runtime** | Python 3.15.2, single `asyncio` event loop, long polling, lazy imports |
-| **Telegram** | aiogram 3.31 on the Bot API, Kurigram 2.2.26 on MTProto, side by side |
+| **Telegram** | aiogram 3.31 on the Bot API, Kurigram 2.2.27 on MTProto, side by side |
 | **Storage** | PostgreSQL 18 through SQLAlchemy 2.1 |
 | **Modules** | 62 auto discovered plugins under `Mikobot/plugins` |
 | **Requirements** | 512 MB RAM minimum, 1 GB recommended, Python 3.15.2 |
@@ -162,8 +162,8 @@ execution. Persistence, reply construction and error handling surround that spin
 | Component | Version | Link |
 | --- | --- | --- |
 | aiogram | 3.31 | [PyPI](https://pypi.org/project/aiogram/) |
-| Kurigram | 2.2.26 | [PyPI](https://pypi.org/project/Kurigram/) |
-| TgCrypto-C | 1.3.1 | [PyPI](https://pypi.org/project/tgcrypto-c/) |
+| Kurigram | 2.2.27 | [PyPI](https://pypi.org/project/Kurigram/) |
+| kuricrypt | 0.1.1 | [PyPI](https://pypi.org/project/kuricrypt/) |
 | ThrottledSession | [`Mikobot/utils/throttle.py`](Mikobot/utils/throttle.py) | aiogram session subclass applying rate limits |
 | DataStore | [`Mikobot/utils/persistence.py`](Mikobot/utils/persistence.py) | Pickle backed store for chat and user context |
 | ButtonStyle | from aiogram | [docs](https://docs.aiogram.dev/en/latest/api/enums/aiogram.enums.ButtonStyle.html) |
@@ -173,8 +173,8 @@ execution. Persistence, reply construction and error handling surround that spin
 | Component | Version | Link |
 | --- | --- | --- |
 | PostgreSQL | 18 | [postgresql.org](https://www.postgresql.org/) |
-| SQLAlchemy | 2.1.6 | [sqlalchemy.org](https://www.sqlalchemy.org/) |
-| psycopg (binary, pool) | 3.3.6 | [psycopg.org](https://www.psycopg.org/) |
+| SQLAlchemy | 2.1.8 | [sqlalchemy.org](https://www.sqlalchemy.org/) |
+| psycopg (binary, pool) | 3.3.8 | [psycopg.org](https://www.psycopg.org/) |
 
 ### HTTP, media and processing
 
@@ -591,7 +591,7 @@ Meaningful changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 - [aiogram](https://github.com/aiogram/aiogram) for the Bot API dispatcher, session and filters
 - [Kurigram](https://github.com/KurimuzonAkuma/Kurigram) for the MTProto client
-- [TgCrypto-C](https://pypi.org/project/tgcrypto-c/) for accelerated encryption
+- [kuricrypt](https://pypi.org/project/kuricrypt/) for accelerated encryption
 - [SQLAlchemy](https://github.com/sqlalchemy/sqlalchemy) and
   [psycopg](https://github.com/psycopg/psycopg) for the PostgreSQL layer
 - [httpx](https://github.com/encode/httpx) for the shared asynchronous HTTP client

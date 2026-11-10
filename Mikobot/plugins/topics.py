@@ -27,7 +27,7 @@ from Mikobot.utils.parser import mention_html
 async def _forum_or_reply(message: Message):
     """Return the forum chat, or None after explaining why it cannot be used."""
     chat = message.chat
-    if not chat.is_forum:
+    if not (chat.is_forum or getattr(chat, "has_forum_sidebar", False)):
         await message.reply("That only works in a forum with topics enabled.")
         return None
     return chat

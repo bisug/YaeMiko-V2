@@ -52,7 +52,7 @@ Being precise about this, because the numbers below drive real hosting choices.
 | ONNX Runtime 1.31.1 wheel, 23.8 MB | `uv pip download`, cp314 manylinux x86_64 — **Python < 3.15 only** |
 | opennsfw-onnx 0.1.0 wheel, 22.0 MB | same, the wheel ships the model — **Python < 3.15 only** |
 | Pillow 13.0.0 wheel, 7.0 MB | same |
-| Kurigram 2.2.26 wheel, 6.0 MB | same |
+| Kurigram 2.2.27 wheel, 6.0 MB | same |
 | `concurrent_updates(64)` | `Mikobot/__init__.py:296` |
 | 20 second HTTP timeout | `Mikobot/state.py` |
 | Disk figures | Wheel sizes plus the source tree, with room for logs, temp media and the pickle file |

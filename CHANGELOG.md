@@ -8,6 +8,11 @@ All notable changes to YaeMiko are recorded here. The format follows
 
 ### Added
 
+- **Kurigram 2.2.27 & kuricrypt integration** — migrated fast cryptography backend from `tgcrypto-c` to
+  `kuricrypt==0.1.1` (Rust/PyO3) and updated Kurigram to `2.2.27`.
+- **Forum sidebar support** — updated forum topic validation in `Mikobot/plugins/topics.py` to recognize
+  `has_forum_sidebar` on chats with sidebar topics enabled.
+
 - **Python 3.15.2 upgrade** — bumped `.python-version`, `pyproject.toml` (`requires-python = ">=3.15"`),
   `Dockerfile` (`python:3.15.2-slim`), and CI workflow (`python-version: "3.15.2"`).
 - **Native lazy imports** (`sys.set_lazy_imports('all')`) enabled in `Mikobot/__init__.py` and
