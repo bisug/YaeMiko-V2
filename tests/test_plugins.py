@@ -1,11 +1,36 @@
 from __future__ import annotations
 
 import ast
+import importlib
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGINS_DIR = ROOT / "Mikobot" / "plugins"
+
+
+def test_every_plugin_module_imports(monkeypatch):
+    """A plugin that raises while importing stops the bot from starting.
+
+    The bot imports every plugin in a loop, so one bad module takes the
+    whole process down with it. The identity is faked here so the import
+    does not reach for the Telegram API.
+    """
+    import Mikobot
+    from Mikobot.plugins import ALL_MODULES
+
+    monkeypatch.setattr(
+        Mikobot, "_BOT_INFO", (123456789, "YaeMikoTest", "YaeMikoTestBot")
+    )
+
+    failures = []
+    for name in ALL_MODULES:
+        try:
+            importlib.import_module(f"Mikobot.plugins.{name}")
+        except Exception as error:
+            failures.append(f"{name}: {type(error).__name__}: {error}")
+
+    assert not failures, "plugin modules failed to import:\n" + "\n".join(failures)
 
 
 def test_quotely_entity_types():

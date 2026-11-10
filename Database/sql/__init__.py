@@ -283,6 +283,15 @@ def unit_of_work_guard(func):
 
     @wraps(func)
     def wrapper(*args, **kwargs):
+        if SESSION is None:
+            # No session means no database: the helper has nothing to read or
+            # write. The guard used to raise AttributeError on SESSION._depth,
+            # which killed the import of the module that called it.
+            log.warning(
+                "[PostgreSQL] %s skipped: there is no database session",
+                func.__name__,
+            )
+            return None
         outermost = getattr(SESSION._depth, "value", 0) == 0
         if outermost:
             SESSION.begin_unit_of_work()

@@ -25,7 +25,7 @@ from Mikobot.plugins.helper_funcs.alternate import send_message, typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.plugins.helper_funcs.extraction import extract_text
 from Mikobot.plugins.helper_funcs.misc import build_keyboard_parser
-from Mikobot.plugins.helper_funcs.msg_types import get_filter_type
+from Mikobot.plugins.helper_funcs.msg_types import Types, get_filter_type
 from Mikobot.plugins.helper_funcs.string_handling import (
     button_markdown_parser,
     entities_map,
@@ -41,14 +41,14 @@ from Mikobot.utils.parser import escape_markdown, mention_html
 # <=======================================================================================================>
 
 ENUM_FUNC_MAP = {
-    sql.Types.TEXT.value: bot.send_message,
-    sql.Types.BUTTON_TEXT.value: bot.send_message,
-    sql.Types.STICKER.value: bot.send_sticker,
-    sql.Types.DOCUMENT.value: bot.send_document,
-    sql.Types.PHOTO.value: bot.send_photo,
-    sql.Types.AUDIO.value: bot.send_audio,
-    sql.Types.VOICE.value: bot.send_voice,
-    sql.Types.VIDEO.value: bot.send_video,
+    Types.TEXT.value: bot.send_message,
+    Types.BUTTON_TEXT.value: bot.send_message,
+    Types.STICKER.value: bot.send_sticker,
+    Types.DOCUMENT.value: bot.send_document,
+    Types.PHOTO.value: bot.send_photo,
+    Types.AUDIO.value: bot.send_audio,
+    Types.VOICE.value: bot.send_voice,
+    Types.VIDEO.value: bot.send_video,
 }
 
 
@@ -445,7 +445,7 @@ async def reply_filter(message: Message):
                 else:
                     filtext = ""
 
-                if filt.file_type in (sql.Types.BUTTON_TEXT, sql.Types.TEXT):
+                if filt.file_type in (Types.BUTTON_TEXT, Types.TEXT):
                     try:
                         await message.answer(
                             markdown_to_html(filtext),
@@ -467,8 +467,8 @@ async def reply_filter(message: Message):
                 else:
                     try:
                         if filt.file_type not in [
-                            sql.Types.PHOTO.value,
-                            sql.Types.VIDEO,
+                            Types.PHOTO.value,
+                            Types.VIDEO,
                         ]:
                             await ENUM_FUNC_MAP[filt.file_type](
                                 chat.id,

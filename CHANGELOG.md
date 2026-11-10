@@ -76,6 +76,16 @@ All notable changes to YaeMiko are recorded here. The format follows
 
 ### Fixed
 
+- The `cust_filters` plugin imports `Types` from `msg_types` itself now. It read
+  `sql.Types.TEXT.value` through the database module, which never exposed `Types`, so the plugin
+  raised `AttributeError` while importing and the bot died on startup with the database connected.
+- `unit_of_work_guard` no longer raises `AttributeError` when there is no session. The guard ran
+  before the helper body, so the `if SESSION is None` guard inside a helper never got a chance to
+  answer, and a module level call such as `welcome_sql._ResetRaidOnRestart()` took the import of the
+  whole module down. A failed import also left the module out of `sys.modules`, so the next import
+  defined its tables a second time and raised `Table 'welcome_pref' is already defined`.
+- New test imports every plugin module, so an import time error like the two above fails the build
+  instead of the dyno.
 - A database that cannot be reached now produces one error line and a clean exit instead of four
   tracebacks. The `unittest` check that decided "test mode" matched on a production dyno, because
   importing the bot pulls `unittest` in through a third party package, so the bot kept running with
