@@ -77,6 +77,10 @@ class ConnectionHistory(BASE):
 # lookup scanned the table once per call.
 ensure_index("connection_chat_id_idx", "connection", "chat_id")
 
+# The history is keyed by (user_id, chat_id) and is read per chat when a chat
+# is renamed, so the chat column needs an index of its own.
+ensure_index("connection_history_chat_id_idx", "connection_history", "chat_id")
+
 CHAT_ACCESS_LOCK = threading.RLock()
 CONNECTION_INSERTION_LOCK = threading.RLock()
 CONNECTION_HISTORY_LOCK = threading.RLock()

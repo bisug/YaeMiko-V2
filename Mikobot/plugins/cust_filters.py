@@ -347,7 +347,10 @@ async def reply_filter(message: Message):
             if MessageHandlerChecker.check_user(message.from_user.id):
                 return
             filt = sql.get_filter(chat.id, keyword)
-            if filt.reply == "there is should be a new reply":
+            # A filter saved in the newer format carries its text in
+            # reply_text. The old format put a placeholder in reply and left
+            # reply_text empty, and that placeholder was the only marker.
+            if filt.reply_text is not None:
                 buttons = sql.get_buttons(chat.id, filt.keyword)
                 keyb = build_keyboard_parser(chat.id, buttons)
                 keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)

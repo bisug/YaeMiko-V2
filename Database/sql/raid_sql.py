@@ -26,7 +26,7 @@ import threading
 import time
 from collections import deque
 
-from sqlalchemy import BigInteger, Boolean, Column, String, inspect, select, text
+from sqlalchemy import BigInteger, Column, String, inspect, select, text
 
 from Database.sql import BASE, ENGINE, SESSION, run_migration, unit_of_work_guard
 
@@ -44,7 +44,6 @@ class RaidChats(BASE):
     raid_time = Column(BigInteger, default=DEF_RAID_TIME)
     action_time = Column(BigInteger, default=DEF_ACTION_TIME)
     auto_antiraid = Column(BigInteger, default=DEF_AUTO_ANTIRAID)
-    notified = Column(Boolean, default=False)
 
     def __init__(self, chat_id):
         self.chat_id = str(chat_id)
@@ -52,7 +51,6 @@ class RaidChats(BASE):
         self.raid_time = DEF_RAID_TIME
         self.action_time = DEF_ACTION_TIME
         self.auto_antiraid = DEF_AUTO_ANTIRAID
-        self.notified = False
 
     def __repr__(self):
         return "<ʀᴀɪᴅ sᴇᴛᴛɪɴɢs ғᴏʀ %s>" % self.chat_id
@@ -143,7 +141,6 @@ def set_raid(chat_id, duration: int = None) -> None:
         if not row:
             row = RaidChats(str(chat_id))
         row.raid_until = int(time.time()) + seconds
-        row.notified = False
         SESSION.add(row)
         SESSION.commit()
 
@@ -205,17 +202,6 @@ def get_raid_setting(chat_id):
         )
     finally:
         SESSION.close()
-
-
-@unit_of_work_guard
-def mark_notified(chat_id) -> None:
-    """Record that the raid-alert was sent, so it is posted once per raid."""
-    with INSERTION_LOCK:
-        row = _row(chat_id)
-        if row:
-            row.notified = True
-            SESSION.add(row)
-        SESSION.commit()
 
 
 @unit_of_work_guard

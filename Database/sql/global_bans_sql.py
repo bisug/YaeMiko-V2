@@ -13,7 +13,9 @@ class GloballyBannedUsers(BASE):
 
     def __init__(self, user_id, name, reason=None):
         self.user_id = user_id
-        self.name = name
+        # The column is NOT NULL and Telegram sends no name for a user that
+        # never set one, so the raw value could not be stored.
+        self.name = name or str(user_id)
         self.reason = reason
 
     def __repr__(self):

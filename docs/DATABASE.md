@@ -277,10 +277,8 @@ erDiagram
     antiflood {
         VARCHAR chat_id PK "varchar(14)"
         BOOLEAN clearflood
-        BIGINT count
         BIGINT limit
         BIGINT timer
-        BIGINT user_id
     }
     antiflood_settings {
         VARCHAR chat_id PK "varchar(14)"
@@ -325,7 +323,6 @@ erDiagram
         VARCHAR chat_id PK "varchar(14)"
         BIGINT action_time
         BIGINT auto_antiraid
-        BOOLEAN notified
         BIGINT raid_time
         BIGINT raid_until
     }
@@ -433,6 +430,7 @@ erDiagram
     welcome_pref {
         VARCHAR chat_id PK "varchar(14)"
         BIGINT clean_welcome
+        BOOLEAN clean_welcome_enabled
         TEXT custom_content
         TEXT custom_leave
         TEXT custom_welcome
@@ -457,7 +455,7 @@ erDiagram
     }
     welcome_mutes {
         VARCHAR chat_id PK "varchar(14)"
-        TEXT welcomemutes
+        VARCHAR welcomemutes "varchar(16)"
     }
     clean_service {
         VARCHAR chat_id PK "varchar(14)"
@@ -503,8 +501,6 @@ erDiagram
         VARCHAR chat_id PK "varchar(14)"
         TEXT name PK
         TEXT file
-        BOOLEAN has_buttons
-        BOOLEAN is_reply
         BIGINT msgtype
         TEXT value
     }
@@ -522,7 +518,7 @@ erDiagram
         TEXT file_id
         INTEGER file_type
         BOOLEAN has_buttons
-        BOOLEAN has_markdown
+        BOOLEAN has_media_spoiler
         BOOLEAN is_audio
         BOOLEAN is_document
         BOOLEAN is_image
@@ -605,7 +601,7 @@ erDiagram
 
 ## Indexes
 
-Primary keys cover lookups by key. Five queries were not one of those, and each had nothing
+Primary keys cover lookups by key. The queries that were not one of those, and each had nothing
 to fall back on, because `create_all` never adds an index to a table it did not create:
 
 | Index | Serves |
@@ -615,11 +611,33 @@ to fall back on, because `create_all` never adds an index to a table it did not 
 | `notes_name_lower_idx` | `get_note` and `rm_note`, which compare `lower(name)` within a chat |
 | `connection_chat_id_idx` | `curr_connection`, where the primary key is the user |
 | `chat_feds_fed_id_idx` | `chat_feds` `fed_id` filter and deletion queries, which the `chat_id` primary key cannot serve |
+| `connection_history_chat_id_idx` | the rename of a chat, which filters the history on the chat |
+| `warns_chat_id_idx` | the warnings of a chat, where the primary key starts with the user |
+| `feds_subs_sub_idx` | the deletion of a federation, which filters the subscriptions on the subscriber |
 
 The two functional indexes exist because a function breaks the ordering a b-tree index relies
 on, so neither `username` nor `name` is reachable through its own primary key.
 `ensure_index()` in `Database/sql/__init__.py` runs `CREATE INDEX IF NOT EXISTS` next to the
 table it covers.
+
+The modules ask for their indexes while they are imported, and that happens before
+`create_all` has made the table. `create_pending_indexes()` replays the list once the tables
+exist, so a fresh database gets its indexes on the first start and not the second.
+
+Five indexes hold a uniqueness that the code assumed and the schema did not state. A chat
+cannot have two welcome buttons with the same name, a note cannot have two buttons with the
+same name, a filter cannot have two buttons with the same name, and two federations cannot
+share a name or an owner: the caches keyed by name and by owner hold one entry each, so a
+duplicate silently hid a federation.
+
+| Index | Serves |
+| --- | --- |
+| `welcome_urls_uc` | `welcome_urls` `(chat_id, name)` |
+| `leave_urls_uc` | `leave_urls` `(chat_id, name)` |
+| `note_urls_uc` | `note_urls` `(chat_id, note_name)` |
+| `cust_filter_urls_uc` | `cust_filter_urls` `(chat_id, keyword)` |
+| `feds_name_uc`, `feds_owner_uc` | `feds` `fed_name` and `owner_id` |
+
 
 ## Referential integrity
 
@@ -664,7 +682,7 @@ modules are imported by no plugin, so nothing writes those rows.
 ## Schema evolution
 
 `create_all` and `checkfirst=True` create missing tables but never add a column to one that
-already exists. Four modules therefore run a column check at import, reading the live column
+already exists. Six modules therefore run a column check at import, reading the live column
 list first so the pass is idempotent:
 
 | Module | Table | Columns added |
@@ -672,18 +690,27 @@ list first so the pass is idempotent:
 | `antiflood_sql.py` | `antiflood` | every column the model declares that the server lacks |
 | `blacklist_sql.py` | `blacklist_settings` | same |
 | `raid_sql.py` | `raid_chats` | same |
+| `cust_filters_sql.py` | `cust_filters` | same, and it drops the legacy `has_markdown` |
 | `welcome_sql.py` | `clean_service` | `service_types` |
+| `welcome_sql.py` | `welcome_pref` | `clean_welcome_enabled` |
 | `log_channel_sql.py` | `log_channel_setting` | widens `chat_id` from `BIGINT` to `VARCHAR(14)` |
+
+`karma_sql.py` widens the two user id columns of `couple` to `BIGINT`, which the model has
+always declared. The table was created with an integer column, which caps a Telegram user id
+at 2\*\*31-1, and the ids above that exist.
 
 The first three also write the column default into the rows that were there before, so an
 upgraded row reads as the new default instead of NULL.
 
-`cust_filters` is the gap: the `ALTER TABLE` statements that add `reply_text`, `file_type` and
-`file_id` are commented out in `cust_filters_sql.py`, so a deployment whose `cust_filters` table
-predates those columns keeps the old shape and every read of them fails. A fresh database gets
-them from `create_all`, which is why the failure only shows up after an upgrade.
+`welcome_pref.clean_welcome` used to hold two things: the id of the last welcome message and
+the switch that says whether old welcomes are deleted. The switch was stored as 1, and the
+reader took a stored 1 for a message id and asked the bot to delete message 1 of the chat.
+The switch is `welcome_pref.clean_welcome_enabled` now, and the migration reads the old
+column: a row that holds a message id is a chat that had the switch on.
 
 `whispers.id` is `VARCHAR(32)` and not the `VARCHAR(20)` an earlier version declared:
 `whispers.py` builds the id with `uuid4().hex`, which PostgreSQL rejects as too long for 20
 characters.
 
+`scripts/db_cleanup.sql` holds the rest: the tables from the MongoDB era that no model
+declares, and the columns that no model declares any more. Nothing in it runs by itself.

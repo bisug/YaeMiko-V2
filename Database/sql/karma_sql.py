@@ -11,9 +11,9 @@ were never persistence.
 
 import threading
 
-from sqlalchemy import BigInteger, Column, Integer, String, select
+from sqlalchemy import BigInteger, Column, Integer, String, inspect, select, text
 
-from Database.sql import BASE, SESSION, unit_of_work_guard
+from Database.sql import BASE, ENGINE, SESSION, run_migration, unit_of_work_guard
 
 
 class Karma(BASE):
@@ -47,6 +47,34 @@ class Couple(BASE):
 
 
 INSERTION_LOCK = threading.RLock()
+
+
+def _ensure_column_types() -> None:
+    """Widen the couple user id columns to BIGINT.
+
+    The table was created with an integer column, which caps a Telegram user
+    id at 2**31-1. Ids above that exist, and the insert then fails with
+    "integer out of range" instead of storing the couple.
+    """
+    if ENGINE is None:
+        return
+    inspector = inspect(ENGINE)
+    if "couple" not in inspector.get_table_names():
+        return
+    columns = {column["name"]: column for column in inspector.get_columns("couple")}
+    with ENGINE.begin() as connection:
+        for name in ("c1_id", "c2_id"):
+            column = columns.get(name)
+            if column is None:
+                continue
+            if str(column["type"]).upper() != "INTEGER":
+                continue
+            connection.execute(
+                text(f'ALTER TABLE couple ALTER COLUMN "{name}" TYPE BIGINT')
+            )
+
+
+run_migration(_ensure_column_types)
 
 
 def int_to_alpha(user_id: int) -> str:

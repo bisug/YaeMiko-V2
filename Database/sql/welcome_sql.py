@@ -37,7 +37,14 @@ from sqlalchemy import (
     text,
 )
 
-from Database.sql import BASE, ENGINE, SESSION, run_migration, unit_of_work_guard
+from Database.sql import (
+    BASE,
+    ENGINE,
+    SESSION,
+    ensure_index,
+    run_migration,
+    unit_of_work_guard,
+)
 from Mikobot.plugins.helper_funcs.msg_types import Types
 
 DEFAULT_WELCOME = "ʜᴇʏ {first}, ʜᴏᴡ ᴀʀᴇ ʏᴏᴜ?"
@@ -71,6 +78,11 @@ class Welcome(BASE):
     leave_type = Column(Integer, default=Types.TEXT.value)
 
     clean_welcome = Column(BigInteger)
+    # The message id of the last welcome message, and the switch that says
+    # whether old welcomes are deleted at all. One column held both before:
+    # the switch was stored as 1, and the reader then took 1 for a message id
+    # and asked the bot to delete message 1 of the chat.
+    clean_welcome_enabled = Column(Boolean, nullable=False, default=False)
 
     def __init__(self, chat_id, should_welcome=True, should_goodbye=True):
         self.chat_id = chat_id
@@ -116,7 +128,9 @@ class GoodbyeButtons(BASE):
 class WelcomeMute(BASE):
     __tablename__ = "welcome_mutes"
     chat_id = Column(String(14), primary_key=True)
-    welcomemutes = Column(UnicodeText, default=False)
+    # "off", "soft" or "strong". The column used to hold a Python False, which
+    # PostgreSQL refuses to store in a text column.
+    welcomemutes = Column(String(16), default="off")
 
     def __init__(self, chat_id, welcomemutes):
         self.chat_id = str(chat_id)  # ensure string
@@ -127,7 +141,7 @@ class WelcomeMuteUsers(BASE):
     __tablename__ = "human_checks"
     user_id = Column(BigInteger, primary_key=True)
     chat_id = Column(String(14), primary_key=True)
-    human_check = Column(Boolean)
+    human_check = Column(Boolean, nullable=False, default=False)
 
     def __init__(self, user_id, chat_id, human_check):
         self.user_id = user_id  # ensure string
@@ -156,16 +170,14 @@ class RaidMode(BASE):
     __tablename__ = "raid_mode"
     chat_id = Column(String(14), primary_key=True)
     status = Column(Boolean, default=False)
-    time = Column(Integer, default=21600)
-    acttime = Column(Integer, default=3600)
-    # permanent = Column(Boolean, default=False)
+    time = Column(BigInteger, default=21600)
+    acttime = Column(BigInteger, default=3600)
 
     def __init__(self, chat_id, status, time, acttime):
         self.chat_id = str(chat_id)
         self.status = status
         self.time = time
         self.acttime = acttime
-        # self.permanent = permanent
 
 
 def _ensure_clean_service_columns() -> None:
@@ -189,6 +201,44 @@ def _ensure_clean_service_columns() -> None:
 
 run_migration(_ensure_clean_service_columns)
 
+
+def _ensure_welcome_pref_columns() -> None:
+    """Split the clean welcome switch out of the message id column.
+
+    The switch used to live in welcome_pref.clean_welcome as 1 and 0, and the
+    message id in the same column. A row that holds a message id is a chat
+    that had the switch on, so the switch is read back from "the column is
+    not zero".
+    """
+    if ENGINE is None:
+        return
+    inspector = inspect(ENGINE)
+    if "welcome_pref" not in inspector.get_table_names():
+        return
+    present = {c["name"] for c in inspector.get_columns("welcome_pref")}
+    with ENGINE.begin() as connection:
+        if "clean_welcome_enabled" not in present:
+            connection.execute(
+                text(
+                    'ALTER TABLE welcome_pref ADD COLUMN "clean_welcome_enabled" '
+                    "BOOLEAN NOT NULL DEFAULT FALSE"
+                )
+            )
+            connection.execute(
+                text(
+                    'UPDATE welcome_pref SET "clean_welcome_enabled" = TRUE '
+                    'WHERE "clean_welcome" IS NOT NULL AND "clean_welcome" <> 0'
+                )
+            )
+
+
+run_migration(_ensure_welcome_pref_columns)
+
+# The buttons of a chat are replaced as a set, so one chat cannot hold two
+# buttons with the same name.
+ensure_index("welcome_urls_uc", "welcome_urls", "chat_id, name", unique=True)
+ensure_index("leave_urls_uc", "leave_urls", "chat_id, name", unique=True)
+
 INSERTION_LOCK = threading.RLock()
 WELC_BTN_LOCK = threading.RLock()
 LEAVE_BTN_LOCK = threading.RLock()
@@ -203,20 +253,28 @@ def welcome_mutes(chat_id):
         welcomemutes = SESSION.get(WelcomeMute, str(chat_id))
         if welcomemutes:
             return welcomemutes.welcomemutes
-        return False
+        return "off"
     finally:
         SESSION.close()
 
 
 @unit_of_work_guard
 def set_welcome_mutes(chat_id, welcomemutes):
+    """Store the mute mode: "off", "soft" or "strong".
+
+    The caller used to pass a Python False for "off", which PostgreSQL refuses
+    to store in a text column, so the command that turned the mute off failed.
+    """
+    mode = str(welcomemutes).lower()
+    if mode not in ("soft", "strong"):
+        mode = "off"
     with WM_LOCK:
         welcome_m = SESSION.get(WelcomeMute, str(chat_id))
         if welcome_m is None:
-            welcome_m = WelcomeMute(str(chat_id), welcomemutes)
+            welcome_m = WelcomeMute(str(chat_id), mode)
             SESSION.add(welcome_m)
         else:
-            welcome_m.welcomemutes = welcomemutes
+            welcome_m.welcomemutes = mode
         SESSION.commit()
 
 
@@ -256,7 +314,7 @@ def get_welc_mutes_pref(chat_id):
     if welcomemutes:
         return welcomemutes.welcomemutes
 
-    return False
+    return "off"
 
 
 @unit_of_work_guard
@@ -289,6 +347,7 @@ def get_gdbye_pref(chat_id):
 
 @unit_of_work_guard
 def set_clean_welcome(chat_id, clean_welcome):
+    """Remember the message id of the welcome message that was just sent."""
     with INSERTION_LOCK:
         curr = SESSION.get(Welcome, str(chat_id))
         if not curr:
@@ -298,6 +357,32 @@ def set_clean_welcome(chat_id, clean_welcome):
 
         SESSION.add(curr)
         SESSION.commit()
+
+
+@unit_of_work_guard
+def set_clean_welcome_enabled(chat_id, enabled):
+    """Turn the deletion of old welcome messages on or off."""
+    with INSERTION_LOCK:
+        curr = SESSION.get(Welcome, str(chat_id))
+        if not curr:
+            curr = Welcome(str(chat_id))
+
+        curr.clean_welcome_enabled = bool(enabled)
+
+        SESSION.add(curr)
+        SESSION.commit()
+
+
+@unit_of_work_guard
+def is_clean_welcome_enabled(chat_id):
+    """True when the chat asked for old welcome messages to be deleted."""
+    welc = SESSION.get(Welcome, str(chat_id))
+    SESSION.close()
+
+    if welc:
+        return bool(welc.clean_welcome_enabled)
+
+    return False
 
 
 @unit_of_work_guard
@@ -368,6 +453,10 @@ def set_custom_welcome(
                 SESSION.delete(btn)
 
             for b_name, url, same_line in buttons:
+                # The name and the url are NOT NULL, and a malformed button
+                # tuple used to take the whole save down.
+                if not b_name or not url:
+                    continue
                 button = WelcomeButtons(chat_id, b_name, url, same_line)
                 SESSION.add(button)
 
@@ -413,6 +502,8 @@ def set_custom_gdbye(chat_id, custom_goodbye, goodbye_type, buttons=None):
                 SESSION.delete(btn)
 
             for b_name, url, same_line in buttons:
+                if not b_name or not url:
+                    continue
                 button = GoodbyeButtons(chat_id, b_name, url, same_line)
                 SESSION.add(button)
 

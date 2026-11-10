@@ -31,6 +31,28 @@ All notable changes to YaeMiko are recorded here. The format follows
 
 ### Changed
 
+- **The database layer was cleaned up.** The schema, the migrations and the queries were audited
+  against the live database, and the following changed:
+  - Nine indexes added: `warns_chat_id_idx`, `connection_history_chat_id_idx`,
+    `feds_subs_sub_idx`, and the unique indexes `welcome_urls_uc`, `leave_urls_uc`,
+    `note_urls_uc`, `cust_filter_urls_uc`, `feds_name_uc`, `feds_owner_uc`. The unique ones hold
+    a uniqueness the code assumed and the schema did not state, so a duplicate silently hid a
+    federation or a button.
+  - `ensure_index()` takes a `unique` flag, and `create_pending_indexes()` replays the list after
+    `create_all` has made the tables. The modules ask for their indexes while they are imported,
+    which is before the tables exist, so a fresh database used to get its indexes on the second
+    start.
+  - `couple.c1_id` and `couple.c2_id` are widened to `BIGINT`. The table was created with an
+    integer column, which caps a Telegram user id at 2\*\*31-1.
+  - `cust_filters` gained the missing column migration, so a deployment whose table predates
+    `reply_text`, `file_type` and `file_id` keeps the old shape no longer, and the legacy
+    `has_markdown` column is dropped because the model no longer declares it.
+  - Dead columns removed from the models: `notes.is_reply`, `notes.has_buttons`,
+    `cust_filters.has_markdown`, `antiflood.count`, `antiflood.user_id` and `raid_chats.notified`.
+    Nothing wrote them and nothing read them.
+  - `raid_mode.time` and `raid_mode.acttime` are `BIGINT`, like the raid columns they sit next to.
+  - `scripts/db_cleanup.sql` holds the tables from the MongoDB era that no model declares and the
+    columns that no model declares any more. Nothing in it runs by itself.
 - **Python runtime pinned to 3.14.10** across `.python-version`, `pyproject.toml`
   (`requires-python = ">=3.14"`, ruff `target-version = "py314"`), `Dockerfile`, CI workflows, and all
   documentation. Previous pin was 3.15.2.
@@ -76,6 +98,29 @@ All notable changes to YaeMiko are recorded here. The format follows
 
 ### Fixed
 
+- The lock allowlist helpers raised `TypeError` on every call. `Select.where()` takes its criteria
+  positionally, and `rmallow_all`, `list_allowed` and `allowed_for` passed the column as a keyword
+  argument. `allowed_for` is on the per message path, so the allowlist never worked.
+- The clean welcome switch and the id of the last welcome message shared the column
+  `welcome_pref.clean_welcome`. The switch was stored as 1, and the reader took a stored 1 for a
+  message id and asked the bot to delete message 1 of the chat. The switch is
+  `welcome_pref.clean_welcome_enabled` now, and the migration reads the old column: a row that
+  holds a message id is a chat that had the switch on.
+- The welcome mute mode was written as a Python False into a text column, which PostgreSQL
+  refuses, so the command that turned the mute off failed. The mode is `off`, `soft` or `strong`.
+- A filter saved in the newer format raised `AttributeError` when it was sent: the plugin read
+  `has_media_spoiler` off the row and the model never declared it.
+- A filter saved in the newer format was recognised by a placeholder string in the reply column, so
+  a user who typed that exact text got the newer format instead of their own. The text is stored in
+  both columns now and the newer format is recognised by `reply_text`.
+- `anime_group_settings` lost the number of a key when a value was written for it, and the value
+  when a number was written. Each setter writes its own column now.
+- `bans_feds.first_name` and `gbans.name` are NOT NULL, and Telegram sends no name for a user that
+  never set one, so the insert failed. Both fall back to a value now.
+- A malformed welcome or goodbye button tuple took the whole save down, because the name and the
+  url are NOT NULL. A button without a name or a url is skipped now.
+- `except ValueError, SyntaxError, KeyError, TypeError:` in `feds_sql.py` is Python 3.14 syntax
+  and breaks on every earlier Python 3.
 - The `cust_filters` plugin imports `Types` from `msg_types` itself now. It read
   `sql.Types.TEXT.value` through the database module, which never exposed `Types`, so the plugin
   raised `AttributeError` while importing and the bot died on startup with the database connected.

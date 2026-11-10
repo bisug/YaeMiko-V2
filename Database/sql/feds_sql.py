@@ -63,7 +63,9 @@ class BansF(BASE):
     def __init__(self, fed_id, user_id, first_name, last_name, user_name, reason, time):
         self.fed_id = fed_id
         self.user_id = user_id
-        self.first_name = first_name
+        # The column is NOT NULL and Telegram sends no first name for a user
+        # that never set one, so the raw value could not be stored.
+        self.first_name = first_name or ""
         self.last_name = last_name
         self.user_name = user_name
         self.reason = reason
@@ -105,6 +107,16 @@ class FedSubs(BASE):
 # chat_feds filters and deletes by fed_id, which the chat_id primary key
 # cannot serve without a full table scan.
 ensure_index("chat_feds_fed_id_idx", "chat_feds", "fed_id")
+
+# A federation is looked up by name and by owner, and both caches hold one
+# entry per name and per owner. Two federations with the same name or the same
+# owner silently overwrote each other in the cache.
+ensure_index("feds_name_uc", "feds", "fed_name", unique=True)
+ensure_index("feds_owner_uc", "feds", "owner_id", unique=True)
+
+# del_fed deletes the subscriptions of a federation by subscriber, and the
+# primary key starts with the federation id.
+ensure_index("feds_subs_sub_idx", "feds_subs", "fed_subs")
 
 FEDS_LOCK = threading.RLock()
 CHAT_FEDS_LOCK = threading.RLock()

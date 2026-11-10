@@ -46,8 +46,8 @@ class Notes(BASE):
     name = Column(UnicodeText, primary_key=True)
     value = Column(UnicodeText, nullable=False)
     file = Column(UnicodeText)
-    is_reply = Column(Boolean, default=False)
-    has_buttons = Column(Boolean, default=False)
+    # is_reply and has_buttons were never written: nothing set is_reply, so the
+    # branch that read it never ran, and has_buttons was read by nobody.
     msgtype = Column(BigInteger, default=Types.BUTTON_TEXT.value)
 
     def __init__(self, chat_id, name, value, msgtype, file=None):
@@ -81,6 +81,10 @@ class Buttons(BASE):
 # get_note and rm_note compare lower(name), which the (chat_id, name) primary
 # key cannot serve because the function breaks the ordering.
 ensure_index("notes_name_lower_idx", "notes", "chat_id, lower(name)")
+
+# The buttons of a note are replaced as a set, so one note cannot hold two
+# buttons with the same name.
+ensure_index("note_urls_uc", "note_urls", "chat_id, note_name", unique=True)
 
 NOTES_INSERTION_LOCK = threading.RLock()
 BUTTONS_INSERTION_LOCK = threading.RLock()

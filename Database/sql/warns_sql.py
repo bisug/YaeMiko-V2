@@ -36,7 +36,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects import postgresql
 
-from Database.sql import BASE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, ensure_index, unit_of_work_guard
 
 
 class Warns(BASE):
@@ -102,6 +102,10 @@ class WarnSettings(BASE):
 WARN_INSERTION_LOCK = threading.RLock()
 WARN_FILTER_INSERTION_LOCK = threading.RLock()
 WARN_SETTINGS_LOCK = threading.RLock()
+
+# The warnings of a chat are listed by chat id, and the primary key starts
+# with the user id, so the lookup scanned the whole table.
+ensure_index("warns_chat_id_idx", "warns", "chat_id")
 
 WARN_FILTERS = {}
 

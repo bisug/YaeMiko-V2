@@ -53,8 +53,8 @@ DEF_OBJ = (None, DEF_COUNT, DEF_LIMIT, DEF_TIMER, DEF_CLEARFLOOD)
 class FloodControl(BASE):
     __tablename__ = "antiflood"
     chat_id = Column(String(14), primary_key=True)
-    user_id = Column(BigInteger)
-    count = Column(BigInteger, default=DEF_COUNT)
+    # The user id and the counter used to live here. The counter is kept in
+    # the CHAT_FLOOD cache and the user id was only ever set to None.
     limit = Column(BigInteger, default=DEF_LIMIT)
     # 0 = act on N consecutive messages, >0 = act on N messages within this
     # many seconds. Timed mode is what makes this usable for non-consecutive
@@ -141,7 +141,6 @@ def set_flood(chat_id, amount):
         if not flood:
             flood = FloodControl(str(chat_id))
 
-        flood.user_id = None
         flood.limit = amount
 
         CHAT_FLOOD[str(chat_id)] = (
@@ -231,7 +230,6 @@ def set_flood_timer(chat_id, amount, seconds):
             flood = FloodControl(str(chat_id))
         flood.limit = int(amount)
         flood.timer = int(seconds)
-        flood.user_id = None
         CHAT_FLOOD[str(chat_id)] = (
             None,
             DEF_COUNT,

@@ -393,7 +393,7 @@ def unallow_item(chat_id, lockable, item):
 def rmallow_all(chat_id):
     with PERM_LOCK:
         for row in SESSION.scalars(
-            select(AllowedItem).where(chat_id=str(chat_id))
+            select(AllowedItem).where(AllowedItem.chat_id == str(chat_id))
         ).all():
             SESSION.delete(row)
         SESSION.commit()
@@ -406,7 +406,7 @@ def list_allowed(chat_id):
         return [
             (row.lockable, row.item)
             for row in SESSION.scalars(
-                select(AllowedItem).where(chat_id=str(chat_id))
+                select(AllowedItem).where(AllowedItem.chat_id == str(chat_id))
             ).all()
         ]
     finally:
@@ -420,7 +420,10 @@ def allowed_for(chat_id, lockable):
         return {
             row.item
             for row in SESSION.scalars(
-                select(AllowedItem).where(chat_id=str(chat_id), lockable=lockable)
+                select(AllowedItem).where(
+                    AllowedItem.chat_id == str(chat_id),
+                    AllowedItem.lockable == lockable,
+                )
             ).all()
         }
     finally:

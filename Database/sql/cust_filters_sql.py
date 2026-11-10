@@ -8,10 +8,19 @@ from sqlalchemy import (
     UnicodeText,
     distinct,
     func,
+    inspect,
     select,
+    text,
 )
 
-from Database.sql import BASE, SESSION, unit_of_work_guard
+from Database.sql import (
+    BASE,
+    ENGINE,
+    SESSION,
+    ensure_index,
+    run_migration,
+    unit_of_work_guard,
+)
 
 
 class CustomFilters(BASE):
@@ -27,16 +36,15 @@ class CustomFilters(BASE):
     is_video = Column(Boolean, nullable=False, default=False)
 
     has_buttons = Column(Boolean, nullable=False, default=False)
-    # NOTE: Here for legacy purposes, to ensure older filters don't mess up.
-    has_markdown = Column(Boolean, nullable=False, default=False)
 
-    # NEW FILTER
-    # alter table cust_filters add column reply_text text;
-    # alter table cust_filters add column file_type integer default 1;
-    # alter table cust_filters add column file_id text;
+    # The reply text, the type and the file id of a filter saved in the newer
+    # format, and whether the media carries a spoiler. The spoiler flag was
+    # read by the plugin but never stored, so sending a video filter raised
+    # AttributeError.
     reply_text = Column(UnicodeText)
     file_type = Column(Integer, nullable=False, default=1)
     file_id = Column(UnicodeText, default=None)
+    has_media_spoiler = Column(Boolean, nullable=False, default=False)
 
     def __init__(
         self,
@@ -53,6 +61,7 @@ class CustomFilters(BASE):
         reply_text=None,
         file_type=1,
         file_id=None,
+        has_media_spoiler=False,
     ):
         self.chat_id = str(chat_id)  # ensure string
         self.keyword = keyword
@@ -64,11 +73,11 @@ class CustomFilters(BASE):
         self.is_voice = is_voice
         self.is_video = is_video
         self.has_buttons = has_buttons
-        self.has_markdown = True
 
         self.reply_text = reply_text
         self.file_type = file_type
         self.file_id = file_id
+        self.has_media_spoiler = has_media_spoiler
 
     def __repr__(self):
         return "<Permissions for %s>" % self.chat_id
@@ -101,6 +110,54 @@ class Buttons(BASE):
 CUST_FILT_LOCK = threading.RLock()
 BUTTON_LOCK = threading.RLock()
 CHAT_FILTERS = {}
+
+
+def _ensure_columns() -> None:
+    """Add the new filter columns to a table made by an older build.
+
+    create(checkfirst=True) leaves an existing table untouched, so without this
+    the reply_text, file_type and file_id columns are missing and every read of
+    them fails.
+
+    The legacy has_markdown column goes the other way: it was NOT NULL and the
+    model no longer declares it, so an insert that leaves it out is refused by
+    the server.
+    """
+    if ENGINE is None:
+        return
+    inspector = inspect(ENGINE)
+    if "cust_filters" not in inspector.get_table_names():
+        return
+    present = {column["name"] for column in inspector.get_columns("cust_filters")}
+    with ENGINE.begin() as connection:
+        if "has_markdown" in present:
+            connection.execute(
+                text("ALTER TABLE cust_filters DROP COLUMN IF EXISTS has_markdown")
+            )
+        for column in CustomFilters.__table__.columns:
+            if column.name in present:
+                continue
+            ddl = (
+                f'ALTER TABLE cust_filters ADD COLUMN "{column.name}" '
+                f"{column.type.compile(dialect=ENGINE.dialect)}"
+            )
+            connection.execute(text(ddl))
+            default = getattr(column.default, "arg", None)
+            if default is not None:
+                connection.execute(
+                    text(
+                        f'UPDATE cust_filters SET "{column.name}" = :value'
+                        f' WHERE "{column.name}" IS NULL'
+                    ),
+                    {"value": default},
+                )
+
+
+run_migration(_ensure_columns)
+
+# The buttons of a filter are replaced as a set, so one filter cannot hold two
+# buttons with the same name.
+ensure_index("cust_filter_urls_uc", "cust_filter_urls", "chat_id, keyword", unique=True)
 
 
 @unit_of_work_guard
@@ -192,7 +249,7 @@ def new_add_filter(
         filt = CustomFilters(
             str(chat_id),
             keyword,
-            reply="there is should be a new reply",
+            reply=reply_text or "",
             is_sticker=False,
             is_document=False,
             is_image=False,
@@ -203,6 +260,7 @@ def new_add_filter(
             reply_text=reply_text,
             file_type=file_type.value,
             file_id=file_id,
+            has_media_spoiler=bool(media_spoiler),
         )
 
         SESSION.add(filt)

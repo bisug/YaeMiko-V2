@@ -39,22 +39,50 @@ def top_statements(limit: int = 5) -> list[tuple[str, int]]:
     return sorted(STATEMENT_COUNTS.items(), key=lambda item: -item[1])[:limit]
 
 
-def ensure_index(name: str, table: str, columns: str) -> None:
+# The indexes the modules asked for, replayed once the tables exist.
+_PENDING_INDEXES: list[tuple[str, str, str, bool]] = []
+
+
+def ensure_index(name: str, table: str, columns: str, unique: bool = False) -> None:
     """Create an index the first time the module that owns the table runs.
 
     create_all() never adds an index to a table it did not create, so a query
     that a primary key cannot serve has nothing to fall back on.
+
+    The name, the table and the columns are literals from this package, never
+    anything a user can reach.
+    """
+    _PENDING_INDEXES.append((name, table, columns, unique))
+    _create_index(name, table, columns, unique)
+
+
+def _create_index(name: str, table: str, columns: str, unique: bool) -> None:
+    """Create one index, doing nothing when the table is not there yet.
+
+    The modules that own a table call ensure_index while they are imported,
+    and that happens before create_all() has made the table. The index is
+    therefore created on the second start of a fresh database, unless the
+    pending list is replayed once the tables exist.
     """
     if ENGINE is None:
         return
     try:
         with ENGINE.begin() as connection:
             connection.execute(
-                text(f'CREATE INDEX IF NOT EXISTS "{name}" ON {table} ({columns})')
+                text(
+                    f"CREATE {'UNIQUE ' if unique else ''}INDEX IF NOT EXISTS "
+                    f'"{name}" ON "{table}" ({columns})'
+                )
             )
     except Exception:
         # Best effort: if database is unreachable or offline during lightweight imports
         pass
+
+
+def create_pending_indexes() -> None:
+    """Create the indexes that were asked for before the tables existed."""
+    for name, table, columns, unique in _PENDING_INDEXES:
+        _create_index(name, table, columns, unique)
 
 
 # Best effort rather than exact: two worker threads can lose an increment, which
@@ -365,6 +393,9 @@ def create_all_tables() -> None:
 
         if ENGINE is not None and SESSION is not None:
             BASE.metadata.create_all(ENGINE)
+            # The modules were imported above, and they asked for their indexes
+            # before create_all() made the tables. Now the tables are there.
+            create_pending_indexes()
 
             # Populate caches now that all tables exist in the database
             afk_sql.__load_afk_users()

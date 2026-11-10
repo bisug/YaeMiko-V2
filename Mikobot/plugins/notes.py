@@ -17,7 +17,7 @@ from aiogram.types import (
 )
 
 import Database.sql.notes_sql as sql
-from Mikobot import DRAGONS, LOGGER, MESSAGE_DUMP, SUPPORT_CHAT, bot, dp
+from Mikobot import DRAGONS, LOGGER, SUPPORT_CHAT, bot, dp
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.chat_status import check_admin, connection_status
 from Mikobot.plugins.helper_funcs.misc import build_keyboard, revert_buttons
@@ -69,184 +69,138 @@ async def get(
             reply_id = message.reply_to_message.message_id
         else:
             reply_id = message.message_id
-        if note.is_reply:
-            if MESSAGE_DUMP:
-                try:
-                    await bot.forward_message(
-                        chat_id=chat_id,
-                        from_chat_id=MESSAGE_DUMP,
-                        message_id=note.value,
-                    )
-                except TelegramAPIError as excp:
-                    if (
-                        "message to forward not found"
-                        in str(excp.message or excp).lower()
-                    ):
-                        await message.answer(
-                            "This message seems to have been lost - I'll remove it "
-                            "from your notes list.",
-                        )
-                        sql.rm_note(note_chat_id, notename)
-                    else:
-                        raise
-            else:
-                try:
-                    await bot.forward_message(
-                        chat_id=chat_id,
-                        from_chat_id=chat_id,
-                        message_id=markdown_to_html(note.value),
-                    )
-                except TelegramAPIError as excp:
-                    if (
-                        "message to forward not found"
-                        in str(excp.message or excp).lower()
-                    ):
-                        await message.answer(
-                            "Looks like the original sender of this note has deleted "
-                            "their message - sorry! Get your bot admin to start using a "
-                            "message dump to avoid this. I'll remove this note from "
-                            "your saved notes.",
-                        )
-                        sql.rm_note(note_chat_id, notename)
-                    else:
-                        raise
-        else:
-            VALID_NOTE_FORMATTERS = [
-                "first",
-                "last",
-                "fullname",
-                "username",
-                "id",
-                "chatname",
-                "mention",
-            ]
-            valid_format = escape_invalid_curly_brackets(
-                note.value,
-                VALID_NOTE_FORMATTERS,
-            )
-            if valid_format:
-                if not no_format:
-                    if "%%%" in valid_format:
-                        split = valid_format.split("%%%")
-                        if all(split):
-                            text = random.choice(split)
-                        else:
-                            text = valid_format
+        VALID_NOTE_FORMATTERS = [
+            "first",
+            "last",
+            "fullname",
+            "username",
+            "id",
+            "chatname",
+            "mention",
+        ]
+        valid_format = escape_invalid_curly_brackets(
+            note.value,
+            VALID_NOTE_FORMATTERS,
+        )
+        if valid_format:
+            if not no_format:
+                if "%%%" in valid_format:
+                    split = valid_format.split("%%%")
+                    if all(split):
+                        text = random.choice(split)
                     else:
                         text = valid_format
                 else:
                     text = valid_format
-                from_user = message.from_user
-                first_name = (
-                    from_user.first_name
-                    if from_user
-                    else (message.sender_chat.title if message.sender_chat else "User")
-                )
-                last_name = (
-                    (from_user.last_name or first_name) if from_user else first_name
-                )
-                fullname = (
-                    " ".join([first_name, from_user.last_name])
-                    if from_user and from_user.last_name
-                    else first_name
-                )
-                username = (
-                    ("@" + from_user.username)
-                    if from_user and from_user.username
-                    else (
-                        mention_markdown(from_user.id, first_name)
-                        if from_user
-                        else first_name
-                    )
-                )
-                mention = (
+            else:
+                text = valid_format
+            from_user = message.from_user
+            first_name = (
+                from_user.first_name
+                if from_user
+                else (message.sender_chat.title if message.sender_chat else "User")
+            )
+            last_name = (from_user.last_name or first_name) if from_user else first_name
+            fullname = (
+                " ".join([first_name, from_user.last_name])
+                if from_user and from_user.last_name
+                else first_name
+            )
+            username = (
+                ("@" + from_user.username)
+                if from_user and from_user.username
+                else (
                     mention_markdown(from_user.id, first_name)
                     if from_user
                     else first_name
                 )
-                chatname = (
-                    message.chat.title if message.chat.type != "private" else first_name
-                )
-                user_id = (
-                    from_user.id
-                    if from_user
-                    else (message.sender_chat.id if message.sender_chat else 0)
-                )
-                text = text.format(
-                    first=escape_markdown(first_name),
-                    last=escape_markdown(last_name),
-                    fullname=escape_markdown(fullname),
-                    username=username,
-                    mention=mention,
-                    chatname=escape_markdown(chatname),
-                    id=user_id,
+            )
+            mention = (
+                mention_markdown(from_user.id, first_name) if from_user else first_name
+            )
+            chatname = (
+                message.chat.title if message.chat.type != "private" else first_name
+            )
+            user_id = (
+                from_user.id
+                if from_user
+                else (message.sender_chat.id if message.sender_chat else 0)
+            )
+            text = text.format(
+                first=escape_markdown(first_name),
+                last=escape_markdown(last_name),
+                fullname=escape_markdown(fullname),
+                username=username,
+                mention=mention,
+                chatname=escape_markdown(chatname),
+                id=user_id,
+            )
+        else:
+            text = ""
+
+        keyb = []
+        parseMode = ParseMode.HTML
+        buttons = sql.get_buttons(note_chat_id, notename)
+        if no_format:
+            parseMode = None
+            text += revert_buttons(buttons)
+        else:
+            keyb = build_keyboard(buttons)
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
+
+        try:
+            if note.msgtype in (sql.Types.BUTTON_TEXT, sql.Types.TEXT):
+                await bot.send_message(
+                    chat_id,
+                    markdown_to_html(text),
+                    reply_to_message_id=reply_id,
+                    parse_mode=parseMode,
+                    link_preview_options=LinkPreviewOptions(is_disabled=True),
+                    reply_markup=keyboard,
+                    message_thread_id=(
+                        message.message_thread_id if chat.is_forum else None
+                    ),
                 )
             else:
-                text = ""
+                await ENUM_FUNC_MAP[note.msgtype](
+                    chat_id,
+                    note.file,
+                    caption=markdown_to_html(text),
+                    reply_to_message_id=reply_id,
+                    parse_mode=parseMode,
+                    link_preview_options=LinkPreviewOptions(is_disabled=True),
+                    reply_markup=keyboard,
+                    message_thread_id=(
+                        message.message_thread_id if chat.is_forum else None
+                    ),
+                )
 
-            keyb = []
-            parseMode = ParseMode.HTML
-            buttons = sql.get_buttons(note_chat_id, notename)
-            if no_format:
-                parseMode = None
-                text += revert_buttons(buttons)
+        except TelegramAPIError as excp:
+            if excp.message == "Entity_mention_user_invalid":
+                await message.answer(
+                    "Looks like you tried to mention someone I've never seen before. If you really "
+                    "want to mention them, forward one of their messages to me, and I'll be able "
+                    "to tag them!",
+                )
+            elif FILE_MATCHER.match(note.value):
+                await message.answer(
+                    "This note was an incorrectly imported file from another bot - I can't use "
+                    "it. If you really need it, you'll have to save it again. In "
+                    "the meantime, I'll remove it from your notes list.",
+                )
+                sql.rm_note(note_chat_id, notename)
             else:
-                keyb = build_keyboard(buttons)
-
-            keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
-
-            try:
-                if note.msgtype in (sql.Types.BUTTON_TEXT, sql.Types.TEXT):
-                    await bot.send_message(
-                        chat_id,
-                        markdown_to_html(text),
-                        reply_to_message_id=reply_id,
-                        parse_mode=parseMode,
-                        link_preview_options=LinkPreviewOptions(is_disabled=True),
-                        reply_markup=keyboard,
-                        message_thread_id=(
-                            message.message_thread_id if chat.is_forum else None
-                        ),
-                    )
-                else:
-                    await ENUM_FUNC_MAP[note.msgtype](
-                        chat_id,
-                        note.file,
-                        caption=markdown_to_html(text),
-                        reply_to_message_id=reply_id,
-                        parse_mode=parseMode,
-                        link_preview_options=LinkPreviewOptions(is_disabled=True),
-                        reply_markup=keyboard,
-                        message_thread_id=(
-                            message.message_thread_id if chat.is_forum else None
-                        ),
-                    )
-
-            except TelegramAPIError as excp:
-                if excp.message == "Entity_mention_user_invalid":
-                    await message.answer(
-                        "Looks like you tried to mention someone I've never seen before. If you really "
-                        "want to mention them, forward one of their messages to me, and I'll be able "
-                        "to tag them!",
-                    )
-                elif FILE_MATCHER.match(note.value):
-                    await message.answer(
-                        "This note was an incorrectly imported file from another bot - I can't use "
-                        "it. If you really need it, you'll have to save it again. In "
-                        "the meantime, I'll remove it from your notes list.",
-                    )
-                    sql.rm_note(note_chat_id, notename)
-                else:
-                    await message.answer(
-                        "This note could not be sent, as it is incorrectly formatted. Ask in "
-                        f"@{SUPPORT_CHAT} if you can't figure out why!",
-                    )
-                    LOGGER.exception(
-                        "Could not parse message #%s in chat %s",
-                        notename,
-                        str(note_chat_id),
-                    )
-                    LOGGER.warning("Message was: %s", str(note.value))
+                await message.answer(
+                    "This note could not be sent, as it is incorrectly formatted. Ask in "
+                    f"@{SUPPORT_CHAT} if you can't figure out why!",
+                )
+                LOGGER.exception(
+                    "Could not parse message #%s in chat %s",
+                    notename,
+                    str(note_chat_id),
+                )
+                LOGGER.warning("Message was: %s", str(note.value))
         return
     elif show_none:
         await message.answer("This note doesn't exist")

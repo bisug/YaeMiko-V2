@@ -144,8 +144,19 @@ def get_value(collection: str, chat_id, key: str, default=None):
 
 @unit_of_work_guard
 def set_value(collection: str, chat_id, key: str, value, user_id=None) -> None:
+    """Store the value of a key, leaving the number of that key alone.
+
+    The row used to be replaced wholesale, so writing a value cleared the
+    number of the same key and writing a number cleared the value.
+    """
     with INSERTION_LOCK:
-        SESSION.merge(AnimeGroupSetting(collection, chat_id, key, value, user_id))
+        row = SESSION.get(AnimeGroupSetting, (collection, str(chat_id), key))
+        if row is None:
+            SESSION.add(AnimeGroupSetting(collection, chat_id, key, value, user_id))
+        else:
+            row.value = value
+            if user_id is not None:
+                row.user_id = user_id
         SESSION.commit()
 
 
@@ -153,7 +164,11 @@ def set_value(collection: str, chat_id, key: str, value, user_id=None) -> None:
 def set_number(collection: str, chat_id, key: str, number) -> None:
     """Store an integer, for the fields read back with a type check."""
     with INSERTION_LOCK:
-        SESSION.merge(AnimeGroupSetting(collection, chat_id, key, None, None, number))
+        row = SESSION.get(AnimeGroupSetting, (collection, str(chat_id), key))
+        if row is None:
+            SESSION.add(AnimeGroupSetting(collection, chat_id, key, None, None, number))
+        else:
+            row.number = number
         SESSION.commit()
 
 

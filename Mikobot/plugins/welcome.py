@@ -710,12 +710,13 @@ async def new_member(message: Message, command: CommandObject):
                 )
             else:
                 sent = await send(message, res, keyboard, backup_message)
-            prev_welc = await asyncio.to_thread(sql.get_clean_pref, chat.id)
-            if prev_welc:
-                try:
-                    await bot.delete_message(chat.id, prev_welc)
-                except TelegramAPIError:
-                    pass
+            if await asyncio.to_thread(sql.is_clean_welcome_enabled, chat.id):
+                prev_welc = await asyncio.to_thread(sql.get_clean_pref, chat.id)
+                if prev_welc:
+                    try:
+                        await bot.delete_message(chat.id, prev_welc)
+                    except TelegramAPIError:
+                        pass
 
                 if sent:
                     await asyncio.to_thread(
@@ -1094,7 +1095,7 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
 
     if len(args) >= 1:
         if args[0].lower() in ("off", "no"):
-            await asyncio.to_thread(sql.set_welcome_mutes, chat.id, False)
+            await asyncio.to_thread(sql.set_welcome_mutes, chat.id, "off")
             await msg.reply("I will no longer mute people on joining!")
             return (
                 f"<b>{html.escape(chat.title)}:</b>\n"
@@ -1148,7 +1149,7 @@ async def clean_welcome(message: Message, command: CommandObject) -> str:
     user = message.from_user
 
     if not args:
-        clean_pref = await asyncio.to_thread(sql.get_clean_pref, chat.id)
+        clean_pref = await asyncio.to_thread(sql.is_clean_welcome_enabled, chat.id)
         if clean_pref:
             await message.answer(
                 "I should be deleting welcome messages up to two days old.",
@@ -1160,7 +1161,7 @@ async def clean_welcome(message: Message, command: CommandObject) -> str:
         return ""
 
     if args[0].lower() in ("on", "yes"):
-        await asyncio.to_thread(sql.set_clean_welcome, str(chat.id), True)
+        await asyncio.to_thread(sql.set_clean_welcome_enabled, str(chat.id), True)
         await message.answer("I'll try to delete old welcome messages!")
         return (
             f"<b>{html.escape(chat.title)}:</b>\n"
@@ -1169,7 +1170,7 @@ async def clean_welcome(message: Message, command: CommandObject) -> str:
             "Has toggled clean welcomes to <code>on</code>."
         )
     elif args[0].lower() in ("off", "no"):
-        await asyncio.to_thread(sql.set_clean_welcome, str(chat.id), False)
+        await asyncio.to_thread(sql.set_clean_welcome_enabled, str(chat.id), False)
         await message.answer("I won't delete old welcome messages.")
         return (
             f"<b>{html.escape(chat.title)}:</b>\n"
@@ -1421,12 +1422,13 @@ async def user_button(query: CallbackQuery):
                     member_dict["backup_message"],
                 )
 
-            prev_welc = await asyncio.to_thread(sql.get_clean_pref, chat.id)
-            if prev_welc:
-                try:
-                    await bot.delete_message(chat.id, prev_welc)
-                except TelegramAPIError:
-                    pass
+            if await asyncio.to_thread(sql.is_clean_welcome_enabled, chat.id):
+                prev_welc = await asyncio.to_thread(sql.get_clean_pref, chat.id)
+                if prev_welc:
+                    try:
+                        await bot.delete_message(chat.id, prev_welc)
+                    except TelegramAPIError:
+                        pass
 
                 if sent:
                     await asyncio.to_thread(
