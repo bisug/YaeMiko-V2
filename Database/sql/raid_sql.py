@@ -28,7 +28,7 @@ from collections import deque
 
 from sqlalchemy import BigInteger, Boolean, Column, String, inspect, select, text
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, ENGINE, SESSION, run_migration, unit_of_work_guard
 
 DEF_RAID_TIME = 60 * 60 * 6  # 6 hours, per the documented default
 DEF_ACTION_TIME = 60 * 60  # 1 hour
@@ -90,7 +90,7 @@ def _ensure_columns() -> None:
                 )
 
 
-_ensure_columns()
+run_migration(_ensure_columns)
 INSERTION_LOCK = threading.RLock()
 
 # chat_id -> deque of join timestamps inside the current window, used to decide

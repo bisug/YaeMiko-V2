@@ -37,7 +37,7 @@ from sqlalchemy import (
     text,
 )
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, ENGINE, SESSION, run_migration, unit_of_work_guard
 from Mikobot.plugins.helper_funcs.msg_types import Types
 
 DEFAULT_WELCOME = "ʜᴇʏ {first}, ʜᴏᴡ ᴀʀᴇ ʏᴏᴜ?"
@@ -187,7 +187,7 @@ def _ensure_clean_service_columns() -> None:
         )
 
 
-_ensure_clean_service_columns()
+run_migration(_ensure_clean_service_columns)
 
 INSERTION_LOCK = threading.RLock()
 WELC_BTN_LOCK = threading.RLock()

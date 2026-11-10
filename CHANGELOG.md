@@ -76,6 +76,13 @@ All notable changes to YaeMiko are recorded here. The format follows
 
 ### Fixed
 
+- A database that cannot be reached now produces one error line and a clean exit instead of four
+  tracebacks. The `unittest` check that decided "test mode" matched on a production dyno, because
+  importing the bot pulls `unittest` in through a third party package, so the bot kept running with
+  a dead database and later died inside a plugin import. The test check is now pytest based, the
+  engine is cleared when the connection fails, and the schema migrations that run at import time
+  (`raid_sql`, `log_channel_sql`, `blacklist_sql`, `antiflood_sql`, `welcome_sql`) skip a database
+  that is unreachable rather than raising out of the import.
 - Guarded `message.from_user` and `reply_to_message.from_user` against `None` across plugins (`antinsfw`, `bug`, `karma`, `pkang`, `unbanall`, `users`, `zombies`, `extraction`, `info`, `warns`, `notes`, `stickers`, `admin`, `ban`, `locks`, `gate`, `echo`, `anime`, `feds`) preventing crashes on channel posts or anonymous messages.
 - Fixed Quotely regex argument parsing, non-existent entity attribute crash (`EXPANDABLE_BLOCKQUOTE`), missing message entities (italic, bold, code, pre, etc.), and missing group chat reply context.
 - Fixed Quotely sticker output and permission checks when attempting to delete replied-to messages.

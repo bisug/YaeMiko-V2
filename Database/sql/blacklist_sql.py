@@ -37,7 +37,7 @@ from sqlalchemy import (
     text,
 )
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, ENGINE, SESSION, run_migration, unit_of_work_guard
 
 
 class BlackListFilters(BASE):
@@ -117,7 +117,7 @@ def _ensure_columns() -> None:
                 )
 
 
-_ensure_columns()
+run_migration(_ensure_columns)
 
 BLACKLIST_FILTER_INSERTION_LOCK = threading.RLock()
 BLACKLIST_SETTINGS_INSERTION_LOCK = threading.RLock()

@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import Boolean, Column, String, distinct, func, inspect, select, text
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, ENGINE, SESSION, run_migration, unit_of_work_guard
 
 
 class GroupLogs(BASE):
@@ -121,7 +121,7 @@ def _ensure_chat_id_type() -> None:
         )
 
 
-_ensure_chat_id_type()
+run_migration(_ensure_chat_id_type)
 
 LOGS_INSERTION_LOCK = threading.RLock()
 LOG_SETTING_LOCK = threading.RLock()

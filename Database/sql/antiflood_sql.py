@@ -37,7 +37,7 @@ from sqlalchemy import (
     text,
 )
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, ENGINE, SESSION, run_migration, unit_of_work_guard
 
 DEF_COUNT = 1
 DEF_LIMIT = 0
@@ -119,7 +119,7 @@ def _ensure_columns() -> None:
                 )
 
 
-_ensure_columns()
+run_migration(_ensure_columns)
 
 INSERTION_FLOOD_LOCK = threading.RLock()
 INSERTION_FLOOD_SETTINGS_LOCK = threading.RLock()

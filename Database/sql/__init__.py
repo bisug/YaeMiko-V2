@@ -244,14 +244,29 @@ class UnitOfWorkSession:
         return self._scoped(*args, **kwargs)
 
 
+def _running_tests() -> bool:
+    """True while the pytest suite is running.
+
+    "unittest" in sys.modules is not a test signal: importing the bot pulls
+    unittest in through a third party package, so on a production dyno that
+    check said "test" and the bot kept running with a dead database instead
+    of failing fast.
+    """
+    return "pytest" in sys.modules or bool(os.environ.get("PYTEST_CURRENT_TEST"))
+
+
 try:
     SESSION = UnitOfWorkSession(start())
     log.info("[PostgreSQL] Connection successful, session started.")
 except Exception as e:
-    log.exception(f"[PostgreSQL] Failed to connect due to {e}")
-    if "unittest" in sys.modules or os.environ.get("PYTEST_CURRENT_TEST") or not DB_URI:
+    log.error("[PostgreSQL] Cannot reach the database: %s", e)
+    # The engine is left behind by start() when create_all fails. Clearing it
+    # keeps the schema migrations from inspecting a dead engine further down.
+    ENGINE = None
+    if _running_tests() or not DB_URI:
         SESSION = None
     else:
+        log.error("[PostgreSQL] Set DATABASE_URL to a reachable PostgreSQL instance.")
         sys.exit(1)
 
 
@@ -283,6 +298,24 @@ def unit_of_work_guard(func):
                 SESSION.end_unit_of_work(force=True)
 
     return wrapper
+
+
+def run_migration(migration) -> None:
+    """Run a schema migration, tolerating a database that cannot be reached.
+
+    The migrations run at import time, so an unreachable database used to
+    raise out of the plugin import and kill the process with a traceback
+    instead of one clear line.
+    """
+    if ENGINE is None:
+        return
+    try:
+        migration()
+    except Exception:
+        log.warning(
+            "[PostgreSQL] Schema migration %s skipped: the database is unreachable",
+            getattr(migration, "__name__", migration),
+        )
 
 
 def create_all_tables() -> None:
