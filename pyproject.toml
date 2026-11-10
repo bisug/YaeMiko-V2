@@ -37,6 +37,7 @@ package = false
 dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
+    "ruff>=0.17.0",
 ]
 
 [tool.pytest.ini_options]
@@ -44,6 +45,34 @@ pythonpath = ["."]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 88
+target-version = "py315"
+extend-exclude = ["Extra"]
+
+[tool.ruff.lint]
+# The default set of ruff 0.17 flags more than the code here can absorb:
+# every logging call in this repository formats lazily with %s, and the
+# handlers deliberately catch broad exceptions and log them. The rules
+# below are the ones that catch real defects, and the per-file ignores
+# below name the exceptions.
+select = ["E4", "E7", "E9", "F", "I", "B", "SIM", "C4"]
+ignore = [
+    # A bare except that only logs and continues is the house style for
+    # cleanup paths.
+    "SIM105",
+    # The handler bodies here are long and branchy by nature.
+    "SIM102",
+    "SIM108",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# These modules import their dependencies for the side effect of
+# registering the tables, so the names are unused by name.
+"Database/sql/__init__.py" = ["F401"]
+# The startup module pulls the help strings in as a star import.
+"Mikobot/__main__.py" = ["F403", "F405"]
 
 [tool.ty.src]
 include = ["Mikobot", "Database"]

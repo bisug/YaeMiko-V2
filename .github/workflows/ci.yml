@@ -106,6 +106,12 @@ jobs:
       - name: Run tests
         run: pytest -v
 
+      - name: Lint
+        run: ruff check .
+
+      - name: Check formatting
+        run: ruff format --check .
+
       - name: Check whitespace
         run: git diff --check
 
