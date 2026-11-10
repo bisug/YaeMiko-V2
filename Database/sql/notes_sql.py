@@ -36,7 +36,7 @@ from sqlalchemy import (
     select,
 )
 
-from Database.sql import BASE, ENGINE, SESSION, ensure_index, unit_of_work_guard
+from Database.sql import BASE, SESSION, ensure_index, unit_of_work_guard
 from Mikobot.plugins.helper_funcs.msg_types import Types
 
 
@@ -76,7 +76,6 @@ class Buttons(BASE):
         self.name = name
         self.url = url
         self.same_line = same_line
-
 
 
 # get_note and rm_note compare lower(name), which the (chat_id, name) primary

@@ -91,8 +91,6 @@ class LogChannelSettings(BASE):
         return self.log_action
 
 
-
-
 def _ensure_chat_id_type() -> None:
     """Widen a chat_id column an older build declared as an integer.
 

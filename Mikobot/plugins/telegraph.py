@@ -196,10 +196,14 @@ async def upload_choice(query: CallbackQuery):
             upload_path = png_path
 
         fallback_used = False
+        catbox_error = None
         try:
             link = await _upload(upload_path, host)
         except Exception as error:
             if host == "catbox":
+                # Python unbinds the exception name when the except block
+                # ends, so the reason is kept for the note below.
+                catbox_error = error
                 LOGGER.warning(
                     "Upload to catbox failed: %s: %s; attempting fallback to litterbox",
                     type(error).__name__,
@@ -236,7 +240,7 @@ async def upload_choice(query: CallbackQuery):
     elapsed = time.perf_counter() - started
     if fallback_used:
         note = (
-            f"➼ **Catbox upload failed ({error}); saved to Litterbox instead in {elapsed:.2f} seconds.**\n\n"
+            f"➼ **Catbox upload failed ({catbox_error}); saved to Litterbox instead in {elapsed:.2f} seconds.**\n\n"
             f"➼ **Link:** `{link}`\n\n"
             f"➼ This link expires after {LITTERBOX_HOURS}."
         )

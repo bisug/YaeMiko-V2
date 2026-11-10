@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import Column, String, UnicodeText, distinct, func, select
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, unit_of_work_guard
 
 
 class Disable(BASE):

@@ -227,7 +227,9 @@ async def reset_warns(message: Message, command: CommandObject) -> str:
         await message.answer("Warns have been reset!")
         try:
             warned_member = await bot.get_chat_member(chat.id, user_id)
-            user_target_text = mention_html(warned_member.user.id, warned_member.user.first_name)
+            user_target_text = mention_html(
+                warned_member.user.id, warned_member.user.first_name
+            )
         except TelegramAPIError:
             user_target_text = f"<code>{user_id}</code>"
         admin_text = mention_html(user.id, user.first_name) if user else "Admin"
@@ -485,7 +487,7 @@ def __stats__():
 
 async def __import_data__(chat_id, data, message):
     for user_id, count in data.get("warns", {}).items():
-        for x in range(int(count)):
+        for _x in range(int(count)):
             sql.warn_user(user_id, chat_id)
 
 

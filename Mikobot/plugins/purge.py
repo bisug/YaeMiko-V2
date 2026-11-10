@@ -23,9 +23,9 @@ async def purge(c: app, m: Message):
     if m.reply_to_message:
         message_ids = list(range(m.reply_to_message.id, m.id))
 
-        def divide_chunks(l: list, n: int = 100):
-            for i in range(0, len(l), n):
-                yield l[i : i + n]
+        def divide_chunks(items: list, n: int = 100):
+            for i in range(0, len(items), n):
+                yield items[i : i + n]
 
         # Dielete messages in chunks of 100 messages
         m_list = list(divide_chunks(message_ids))
@@ -70,9 +70,9 @@ async def spurge(c: app, m: Message):
     if m.reply_to_message:
         message_ids = list(range(m.reply_to_message.id, m.id))
 
-        def divide_chunks(l: list, n: int = 100):
-            for i in range(0, len(l), n):
-                yield l[i : i + n]
+        def divide_chunks(items: list, n: int = 100):
+            for i in range(0, len(items), n):
+                yield items[i : i + n]
 
         # Dielete messages in chunks of 100 messages
         m_list = list(divide_chunks(message_ids))

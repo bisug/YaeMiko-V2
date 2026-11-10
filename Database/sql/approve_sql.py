@@ -29,7 +29,7 @@ from cachetools import TTLCache
 from sqlalchemy import BigInteger, Column, String, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, unit_of_work_guard
 
 
 class Approvals(BASE):
@@ -43,7 +43,6 @@ class Approvals(BASE):
 
     def __repr__(self):
         return "<ᴀᴘᴘʀᴏᴠᴇ %s>" % self.user_id
-
 
 
 APPROVE_INSERTION_LOCK = threading.RLock()

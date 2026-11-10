@@ -547,7 +547,6 @@ async def silent_actions(message: Message, command: CommandObject):
     if conn:
         chat = await bot.get_chat(conn)
         chat_id = conn
-        chat_name = chat.title
     else:
         if message.chat.type == ChatType.PRIVATE:
             await send_message(
@@ -556,7 +555,6 @@ async def silent_actions(message: Message, command: CommandObject):
             return ""
         chat = message.chat
         chat_id = message.chat.id
-        chat_name = message.chat.title
 
     if not args:
         enabled = sql.get_silent_enabled(chat_id)
@@ -652,7 +650,6 @@ async def blocklist_delete(message: Message, command: CommandObject):
     if conn:
         chat = await bot.get_chat(conn)
         chat_id = conn
-        chat_name = chat.title
     else:
         if message.chat.type == ChatType.PRIVATE:
             await send_message(
@@ -661,7 +658,6 @@ async def blocklist_delete(message: Message, command: CommandObject):
             return ""
         chat = message.chat
         chat_id = message.chat.id
-        chat_name = message.chat.title
 
     if not args:
         await send_message(

@@ -13,7 +13,7 @@ import threading
 
 from sqlalchemy import BigInteger, Column, UnicodeText
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, unit_of_work_guard
 from Database.sql.toggle_sql import is_toggle_on, set_toggle
 
 SANGMATA = "sangmata"
@@ -32,7 +32,6 @@ class SangmataUser(BASE):
         self.username = username
         self.first_name = first_name
         self.last_name = last_name
-
 
 
 INSERTION_LOCK = threading.RLock()

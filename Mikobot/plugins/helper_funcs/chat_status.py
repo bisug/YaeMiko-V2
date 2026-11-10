@@ -2,9 +2,8 @@
 from threading import RLock
 from time import perf_counter
 
-from cachetools import TTLCache
-
 from aiogram.exceptions import TelegramAPIError
+from cachetools import TTLCache
 
 from Mikobot import DEL_CMDS, DEV_USERS, DRAGONS, SUPPORT_CHAT, bot
 from Mikobot.utils.gate import requirement

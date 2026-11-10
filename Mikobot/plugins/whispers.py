@@ -18,9 +18,8 @@ from aiogram.types import (
     InputTextMessageContent,
 )
 
-from Mikobot import BOT_USERNAME, bot, dp
-
 from Database.sql.whispers_sql import add_whisper, del_whisper, get_whisper
+from Mikobot import BOT_USERNAME, bot, dp
 from Mikobot.utils.gate import chain
 
 
@@ -105,16 +104,17 @@ async def showWhisper(callback_query: CallbackQuery):
     from_user_id = callback_query.from_user.id
 
     is_sender = from_user_id == whisper["user"]
-    if is_sender:
-        await callback_query.answer(whisper["message"], show_alert=True)
-    elif (
-        userType == "username"
-        and callback_query.from_user.username
-        and callback_query.from_user.username.lower()
-        == whisper["withuser"].replace("@", "").lower()
+    if (
+        is_sender
+        or (
+            userType == "username"
+            and callback_query.from_user.username
+            and callback_query.from_user.username.lower()
+            == whisper["withuser"].replace("@", "").lower()
+        )
+        or userType == "id"
+        and str(from_user_id) == str(whisper["withuser"])
     ):
-        await callback_query.answer(whisper["message"], show_alert=True)
-    elif userType == "id" and str(from_user_id) == str(whisper["withuser"]):
         await callback_query.answer(whisper["message"], show_alert=True)
     else:
         await callback_query.answer("Not your Whisper!", show_alert=True)

@@ -12,8 +12,8 @@ from cachetools import TTLCache
 from pyrogram import Client
 from pyrogram import filters as fil
 
-import Database.sql.users_sql as sql
 import Database.sql.locale_sql as locale_sql
+import Database.sql.users_sql as sql
 from Database.sql.users_sql import get_all_users
 from Mikobot import DEV_USERS, LOGGER, OWNER_ID, app, bot, dp
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
@@ -276,7 +276,7 @@ async def chats(message: Message):
     P = 1
     for chat in all_chats:
         try:
-            curr_chat = await bot.get_chat(chat.chat_id)
+            await bot.get_chat(chat.chat_id)
             chat_members = await bot.get_chat_member_count(chat.chat_id)
             chatfile += "{}. {} | {} | {}\n".format(
                 P,

@@ -28,7 +28,7 @@ import time
 from sqlalchemy import Column, Integer, String, UnicodeText, func, select
 from sqlalchemy.sql.sqltypes import BigInteger
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, unit_of_work_guard
 from Mikobot import LOGGER
 
 

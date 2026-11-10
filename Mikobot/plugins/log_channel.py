@@ -15,10 +15,8 @@ FILENAME = __name__.rsplit(".", 1)[-1]
 if is_module_loaded(FILENAME):
     import html
 
-    from Mikobot import bot
-
     from Database.sql import log_channel_sql as sql
-    from Mikobot import EVENT_LOGS, LOGGER
+    from Mikobot import EVENT_LOGS, LOGGER, bot
     from Mikobot.plugins.helper_funcs.chat_status import check_admin
     from Mikobot.utils.gate import chain
     from Mikobot.utils.parser import escape_markdown

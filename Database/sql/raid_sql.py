@@ -58,8 +58,6 @@ class RaidChats(BASE):
         return "<ʀᴀɪᴅ sᴇᴛᴛɪɴɢs ғᴏʀ %s>" % self.chat_id
 
 
-
-
 def _ensure_columns() -> None:
     """Add the settings columns to a raid_chats table created by an older build.
 

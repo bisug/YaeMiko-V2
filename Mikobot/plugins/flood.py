@@ -196,22 +196,22 @@ async def set_flood(message: Message, command: CommandObject):
         if val in ["off", "no", "0"]:
             sql.set_flood(chat_id, 0)
             if conn:
-                text = await message.answer(
+                await message.answer(
                     "Antiflood has been disabled in {}.".format(chat_name),
                 )
             else:
-                text = await message.answer("Antiflood has been disabled.")
+                await message.answer("Antiflood has been disabled.")
 
         elif val.isdigit():
             amount = int(val)
             if amount <= 0:
                 sql.set_flood(chat_id, 0)
                 if conn:
-                    text = await message.answer(
+                    await message.answer(
                         "Antiflood has been disabled in {}.".format(chat_name),
                     )
                 else:
-                    text = await message.answer("Antiflood has been disabled.")
+                    await message.answer("Antiflood has been disabled.")
                 return (
                     "<b>{}:</b>"
                     "\n#SETFLOOD"
@@ -232,14 +232,14 @@ async def set_flood(message: Message, command: CommandObject):
             else:
                 sql.set_flood(chat_id, amount)
                 if conn:
-                    text = await message.answer(
+                    await message.answer(
                         "Antiflood limit has been set to {} in chat: {}".format(
                             amount,
                             chat_name,
                         ),
                     )
                 else:
-                    text = await message.answer(
+                    await message.answer(
                         "Successfully updated antiflood limit to {}!".format(amount),
                     )
                 return (
@@ -290,21 +290,21 @@ async def flood(message: Message, command: CommandObject):
     limit = sql.get_flood_limit(chat_id)
     if limit == 0:
         if conn:
-            text = await msg.answer(
+            await msg.answer(
                 "I'm not enforcing any flood control in {}!".format(chat_name),
             )
         else:
-            text = await msg.answer("I'm not enforcing any flood control here!")
+            await msg.answer("I'm not enforcing any flood control here!")
     else:
         if conn:
-            text = await msg.answer(
+            await msg.answer(
                 "I'm currently restricting members after {} consecutive messages in {}.".format(
                     limit,
                     chat_name,
                 ),
             )
         else:
-            text = await msg.answer(
+            await msg.answer(
                 "I'm currently restricting members after {} consecutive messages.".format(
                     limit,
                 ),
@@ -368,14 +368,14 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
             )
             return
         if conn:
-            text = await msg.answer(
+            await msg.answer(
                 "Exceeding consecutive flood limit will result in {} in {}!".format(
                     settypeflood,
                     chat_name,
                 ),
             )
         else:
-            text = await msg.answer(
+            await msg.answer(
                 "Exceeding consecutive flood limit will result in {}!".format(
                     settypeflood,
                 ),
@@ -402,14 +402,14 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
         elif getmode == 5:
             settypeflood = "tmute for {}".format(getvalue)
         if conn:
-            text = await msg.answer(
+            await msg.answer(
                 "Sending more messages than flood limit will result in {} in {}.".format(
                     settypeflood,
                     chat_name,
                 ),
             )
         else:
-            text = await msg.answer(
+            await msg.answer(
                 "Sending more messages than flood limit will result in {}.".format(
                     settypeflood,
                 ),
@@ -435,7 +435,6 @@ async def _flood_target(message, user):
 @check_admin(is_user=True)
 async def set_flood_timer(message: Message, command: CommandObject):
     """Act on N messages sent within a window, rather than N in a row."""
-    chat = message.chat
     user = message.from_user
     msg = message
     args = command.args.split() if command.args else []
@@ -503,7 +502,6 @@ async def set_flood_timer(message: Message, command: CommandObject):
 @check_admin(is_user=True)
 async def clearflood(message: Message, command: CommandObject):
     """Toggle deleting the whole flooding burst instead of only the excess."""
-    chat = message.chat
     user = message.from_user
     msg = message
     args = command.args.split() if command.args else []

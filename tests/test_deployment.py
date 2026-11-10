@@ -46,7 +46,9 @@ def test_app_json():
     data = json.loads(path.read_text(encoding="utf-8"))
     addons = data.get("addons", [])
     postgres = [
-        addon for addon in addons if addon.get("plan", "").startswith("heroku-postgresql")
+        addon
+        for addon in addons
+        if addon.get("plan", "").startswith("heroku-postgresql")
     ]
     assert postgres, "app.json must declare heroku-postgresql addon"
     version = postgres[0].get("options", {}).get("version")

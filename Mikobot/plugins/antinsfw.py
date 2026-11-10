@@ -24,11 +24,12 @@ async def _scan(file_path: str):
     if classifier is None:
         try:
             from opennsfw_onnx import NSFWClassifier
+
             classifier = NSFWClassifier()
-        except ImportError:
+        except ImportError as error:
             raise RuntimeError(
                 "NSFW scanning is unavailable (requires opennsfw-onnx and onnxruntime)."
-            )
+            ) from error
     return await asyncio.to_thread(classifier.classify, file_path)
 
 

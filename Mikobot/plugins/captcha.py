@@ -19,8 +19,6 @@ import random
 import string
 import time
 
-from cachetools import TTLCache
-
 from aiogram import F
 from aiogram.enums import ChatType, ParseMode
 from aiogram.exceptions import TelegramAPIError

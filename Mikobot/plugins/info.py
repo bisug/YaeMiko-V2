@@ -8,7 +8,12 @@ from random import choice
 from aiogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import (
+    FSInputFile,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 from Database.sql.approve_sql import is_approved
 from Infamous.karma import START_IMG
@@ -60,7 +65,10 @@ async def info(message: Message, command: CommandObject):
         if message.reply_to_message.sender_chat:
             userid = message.reply_to_message.sender_chat.id
         elif message.reply_to_message.from_user:
-            if message.reply_to_message.from_user.id == ChatID.FAKE_CHANNEL and message.reply_to_message.sender_chat:
+            if (
+                message.reply_to_message.from_user.id == ChatID.FAKE_CHANNEL
+                and message.reply_to_message.sender_chat
+            ):
                 userid = message.reply_to_message.sender_chat.id
             elif message.reply_to_message.from_user.id == ChatID.FAKE_CHANNEL:
                 userid = message.reply_to_message.chat.id
@@ -85,15 +93,15 @@ async def info(message: Message, command: CommandObject):
 
     try:
         chat_obj = await bot.get_chat(userid)
-    except (TelegramAPIError, Exception):
+    except TelegramAPIError, Exception:
         await reply_with_text("I can't get information about this user/channel/group.")
         return
 
     if chat_obj.type == ChatType.PRIVATE:
         if chat_obj.username:
-            head = f"⇨【 <b>USER INFORMATION</b> 】⇦\n\n"
+            head = "⇨【 <b>USER INFORMATION</b> 】⇦\n\n"
             if chat_obj.username.endswith("bot"):
-                head = f"⇨【 <b>BOT INFORMATION</b> 】⇦\n\n"
+                head = "⇨【 <b>BOT INFORMATION</b> 】⇦\n\n"
 
         head += f"➲ <b>ID:</b> <code>{chat_obj.id}</code>"
         head += f"\n➲ <b>First Name:</b> {chat_obj.first_name}"
@@ -118,7 +126,7 @@ async def info(message: Message, command: CommandObject):
             head += f"\n➲ <b>Presence:</b> {chat_member.status}"
 
         if is_approved(chat.id, chat_obj.id):
-            head += f"\n➲ <b>Approved:</b> This user is approved in this chat."
+            head += "\n➲ <b>Approved:</b> This user is approved in this chat."
 
         from Mikobot.__main__ import USER_INFO
 
@@ -145,7 +153,7 @@ async def info(message: Message, command: CommandObject):
             head += "\n\n" + mod_info if mod_info else ""
 
     if chat_obj.type == ChatType.SENDER:
-        head = f"📨 Sender Chat Information:\n"
+        head = "📨 Sender Chat Information:\n"
         await reply_with_text("Found sender chat, getting information...")
         head += f"<b>ID:</b> <code>{chat_obj.id}</code>"
         if chat_obj.title:
@@ -157,7 +165,7 @@ async def info(message: Message, command: CommandObject):
             head += f"\n📝 <b>Description:</b> {chat_obj.description}"
 
     elif chat_obj.type == ChatType.CHANNEL:
-        head = f"Channel Information:\n"
+        head = "Channel Information:\n"
         await reply_with_text("Found channel, getting information...")
         head += f"<b>ID:</b> <code>{chat_obj.id}</code>"
         if chat_obj.title:
@@ -171,7 +179,7 @@ async def info(message: Message, command: CommandObject):
             head += f"\n<b>Linked Chat ID:</b> <code>{chat_obj.linked_chat_id}</code>"
 
     elif chat_obj.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
-        head = f"Group Information:\n"
+        head = "Group Information:\n"
         await reply_with_text("Found group, getting information...")
         head += f"<b>ID:</b> <code>{chat_obj.id}</code>"
         if chat_obj.title:
@@ -198,7 +206,7 @@ async def info(message: Message, command: CommandObject):
                     await reply.delete()
             else:
                 await reply_with_text(head)
-        except (TelegramAPIError, OSError, Exception):
+        except TelegramAPIError, OSError, Exception:
             # The photo path can fail on download, on the caption's HTML, or on
             # the temp file. Falling back to the text form still answers.
             try:

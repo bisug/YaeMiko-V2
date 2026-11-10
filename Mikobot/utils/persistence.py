@@ -10,7 +10,6 @@ import os
 import pickle
 import time
 
-
 # chat_data holds one entry per pending anonymous-admin confirmation, keyed by a
 # random token. Entries are only removed when the button is clicked, so an admin
 # who issues the command and walks away leaks one forever, and the whole store is
@@ -82,7 +81,7 @@ class DataStore:
         try:
             with open(self.filepath, "rb") as handle:
                 loaded = pickle.load(handle)
-        except (OSError, EOFError, pickle.UnpicklingError):
+        except OSError, EOFError, pickle.UnpicklingError:
             loaded = {}
         self.data = loaded if isinstance(loaded, dict) else {}
         for section in ("chat_data", "user_data"):

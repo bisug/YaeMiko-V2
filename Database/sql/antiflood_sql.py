@@ -87,8 +87,6 @@ class FloodSettings(BASE):
         return "<{} ᴡɪʟʟ ᴇxᴇᴄᴜᴛɪɴɢ {} ғᴏʀ ғʟᴏᴏᴅ.>".format(self.chat_id, self.flood_type)
 
 
-
-
 def _ensure_columns() -> None:
     """Add the new antiflood columns to a table made by an older build.
 
@@ -300,10 +298,7 @@ def _prune_expired_flood_windows(now: float) -> None:
     """Evict expired windows and stale tracked messages to bound memory."""
     if len(FLOOD_WINDOWS) > 5000:
         cutoff = now - 3600
-        expired = [
-            k for k, dq in FLOOD_WINDOWS.items()
-            if not dq or dq[-1] < cutoff
-        ]
+        expired = [k for k, dq in FLOOD_WINDOWS.items() if not dq or dq[-1] < cutoff]
         for k in expired:
             FLOOD_WINDOWS.pop(k, None)
             FLOOD_MESSAGES.pop(k, None)

@@ -19,7 +19,7 @@ import threading
 
 from sqlalchemy import Boolean, Column, String
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, unit_of_work_guard
 
 MODE_OFF = "off"
 MODE_ADMIN = "admin"

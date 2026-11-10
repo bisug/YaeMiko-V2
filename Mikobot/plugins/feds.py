@@ -95,7 +95,7 @@ async def new_fed(message: Message, command: CommandObject):
         )
         return
     fednam = command.args.strip()
-    if not fednam == "":
+    if fednam != "":
         fed_id = str(uuid.uuid4())
         fed_name = fednam
         LOGGER.info(fed_id)
@@ -207,9 +207,7 @@ async def rename_fed(message: Message, command: CommandObject):
 
 
 async def fed_chat(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
     chat = message.chat
-    user = message.from_user
     fed_id = sql.get_fed_id(chat.id)
 
     user_id = message.from_user.id
@@ -223,7 +221,6 @@ async def fed_chat(message: Message, command: CommandObject):
         await message.answer("This group is not in any federation!")
         return
 
-    user = message.from_user
     chat = message.chat
     info = sql.get_fed_info(fed_id)
 
@@ -299,7 +296,6 @@ async def join_fed(message: Message, command: CommandObject):
 
 
 async def leave_fed(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
 
@@ -489,7 +485,7 @@ async def fed_info(message: Message, command: CommandObject):
     owner = await bot.get_chat(info["owner"])
     try:
         owner_name = owner.first_name + " " + owner.last_name
-    except (AttributeError, TypeError):
+    except AttributeError, TypeError:
         owner_name = owner.first_name
     FEDADMIN = sql.all_fed_users(fed_id)
     TotalAdminFed = len(FEDADMIN)
@@ -514,7 +510,6 @@ async def fed_info(message: Message, command: CommandObject):
 
 
 async def fed_admin(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
 
@@ -544,7 +539,7 @@ async def fed_admin(message: Message, command: CommandObject):
     owner = await bot.get_chat(info["owner"])
     try:
         owner_name = owner.first_name + " " + owner.last_name
-    except (AttributeError, TypeError):
+    except AttributeError, TypeError:
         owner_name = owner.first_name
     text += " • {}\n".format(mention_html(owner.id, owner_name))
 
@@ -981,16 +976,12 @@ async def unfban(message: Message, command: CommandObject):
     fban_user_id = int(user_id)
     user_info = get_user_info(fban_user_id) or {}
     fban_user_name = user_info.get("name") or f"user({fban_user_id})"
-    fban_user_lname = None
-    fban_user_uname = user_info.get("username") or None
     user_target = mention_html(fban_user_id, fban_user_name)
 
     fban, fbanreason, fbantime = sql.get_fban_user(fed_id, fban_user_id)
     if fban is False:
         await message.answer("This user is not fbanned!")
         return
-
-    banner = message.from_user
 
     chat_list = sql.all_fed_chats(fed_id)
     # Will send to current chat
@@ -1203,7 +1194,6 @@ async def set_frules(message: Message, command: CommandObject):
 
 
 async def get_frules(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
     chat = message.chat
 
     if chat.type == "private":
@@ -1512,7 +1502,6 @@ async def fed_notif(message: Message, command: CommandObject):
 
 
 async def fed_chats(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
 
@@ -1590,7 +1579,6 @@ async def fed_import_bans(message: Message, command: CommandObject):
         return
 
     fed_id = sql.get_fed_id(chat.id)
-    info = sql.get_fed_info(fed_id)
     getfed = sql.get_fed_info(fed_id)
 
     if not fed_id:
@@ -1657,7 +1645,7 @@ async def fed_import_bans(message: Message, command: CommandObject):
                         continue
                     try:
                         data = json.loads(x)
-                    except json.decoder.JSONDecodeError as err:
+                    except json.decoder.JSONDecodeError:
                         failed += 1
                         continue
                     try:
@@ -1925,7 +1913,6 @@ async def set_fed_log(message: Message, command: CommandObject):
     args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
-    msg = message
 
     if chat.type == "private":
         await send_message(
@@ -1967,7 +1954,6 @@ async def unset_fed_log(message: Message, command: CommandObject):
     args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
-    msg = message
 
     if chat.type == "private":
         await send_message(
@@ -2009,7 +1995,6 @@ async def subs_feds(message: Message, command: CommandObject):
     args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
-    msg = message
 
     if chat.type == "private":
         await send_message(
@@ -2081,7 +2066,6 @@ async def unsubs_feds(message: Message, command: CommandObject):
     args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
-    msg = message
 
     if chat.type == "private":
         await send_message(
@@ -2150,10 +2134,8 @@ async def unsubs_feds(message: Message, command: CommandObject):
 
 
 async def get_myfedsubs(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
-    msg = message
 
     if chat.type == "private":
         await send_message(
@@ -2201,9 +2183,7 @@ async def get_myfedsubs(message: Message, command: CommandObject):
 
 
 async def get_myfeds_list(message: Message, command: CommandObject):
-    chat = message.chat
     user = message.from_user
-    msg = message
 
     fedowner = sql.get_user_owner_fed_full(user.id)
     if fedowner:
@@ -2219,10 +2199,7 @@ def is_user_fed_admin(fed_id, user_id):
     fed_admins = sql.all_fed_users(fed_id)
     if fed_admins is False:
         return False
-    if int(user_id) in fed_admins or int(user_id) == OWNER_ID:
-        return True
-    else:
-        return False
+    return bool(int(user_id) in fed_admins or int(user_id) == OWNER_ID)
 
 
 def is_user_fed_owner(fed_id, user_id):
@@ -2233,17 +2210,13 @@ def is_user_fed_owner(fed_id, user_id):
     if getfedowner is None or getfedowner is False:
         return False
     getfedowner = getfedowner["owner"]
-    if str(user_id) == getfedowner or int(user_id) == OWNER_ID:
-        return True
-    else:
-        return False
+    return bool(str(user_id) == getfedowner or int(user_id) == OWNER_ID)
 
 
 # There's no handler for this yet, but updating for v12 in case its used
 
 
 async def welcome_fed(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
     chat = message.chat
     user = message.from_user
     fed_id = sql.get_fed_id(chat.id)

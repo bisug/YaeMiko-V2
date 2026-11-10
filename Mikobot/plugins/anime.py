@@ -14,9 +14,9 @@ from traceback import format_exc as err
 from urllib.parse import quote
 from uuid import uuid4
 
-from cachetools import TTLCache
 import requests
 from bs4 import BeautifulSoup
+from cachetools import TTLCache
 from pyrogram import Client, filters
 from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType
 from pyrogram.errors import (
@@ -576,7 +576,7 @@ async def media_to_image(client: app, message: Message, x: Message, replied: Mes
     if replied.sticker and replied.sticker.file_name.endswith(".tgs"):
         png_file = os.path.join(DOWN_PATH, f"{rand_key()}.png")
         cmd = (
-            f"lottie_convert.py --frame 0 -if lottie " + f"-of png {dls_loc} {png_file}"
+            "lottie_convert.py --frame 0 -if lottie " + f"-of png {dls_loc} {png_file}"
         )
         stdout, stderr = (await runcmd(cmd))[:2]
         os.remove(dls_loc)
@@ -1108,13 +1108,9 @@ class google_translator:
         return freq
 
     def translate(self, text, lang_tgt="auto", lang_src="auto", pronounce=False):
-        try:
-            lang = LANGUAGES[lang_src]
-        except Exception:
+        if lang_src not in LANGUAGES:
             lang_src = "auto"
-        try:
-            lang = LANGUAGES[lang_tgt]
-        except Exception:
+        if lang_tgt not in LANGUAGES:
             lang_tgt = "auto"
         text = str(text)
         if len(text) >= 5000:
@@ -1136,7 +1132,7 @@ class google_translator:
             headers=headers,
         )
         try:
-            if self.proxies is None or type(self.proxies) != dict:
+            if self.proxies is None or not isinstance(self.proxies, dict):
                 self.proxies = {}
             with requests.Session() as s:
                 s.proxies = self.proxies
@@ -1160,7 +1156,7 @@ class google_translator:
                                 sentences = response[0][0]
                                 if pronounce is False:
                                     return sentences
-                                elif pronounce == True:
+                                elif pronounce:
                                     return [sentences, None, None]
                             translate_text = ""
                             for sentence in sentences:
@@ -1169,7 +1165,7 @@ class google_translator:
                             translate_text = translate_text
                             if pronounce is False:
                                 return translate_text
-                            elif pronounce == True:
+                            elif pronounce:
                                 pronounce_src = response_[0][0]
                                 pronounce_tgt = response_[1][0][0][1]
                                 return [translate_text, pronounce_src, pronounce_tgt]
@@ -1179,7 +1175,7 @@ class google_translator:
                                 sentences.append(i[0])
                             if pronounce is False:
                                 return sentences
-                            elif pronounce == True:
+                            elif pronounce:
                                 pronounce_src = response_[0][0]
                                 pronounce_tgt = response_[1][0][0][1]
                                 return [sentences, pronounce_src, pronounce_tgt]
@@ -1188,12 +1184,12 @@ class google_translator:
             r.raise_for_status()
         except requests.exceptions.ConnectTimeout as e:
             raise e
-        except requests.exceptions.HTTPError as e:
+        except requests.exceptions.HTTPError as error:
             # Request successful, bad response
-            raise google_new_transError(tts=self, response=r)
-        except requests.exceptions.RequestException as e:
+            raise google_new_transError(tts=self, response=r) from error
+        except requests.exceptions.RequestException as error:
             # Request failed
-            raise google_new_transError(tts=self)
+            raise google_new_transError(tts=self) from error
 
     def detect(self, text):
         text = str(text)
@@ -1213,7 +1209,7 @@ class google_translator:
             method="POST", url=self.url, data=freq, headers=headers
         )
         try:
-            if self.proxies is None or type(self.proxies) != dict:
+            if self.proxies is None or not isinstance(self.proxies, dict):
                 self.proxies = {}
             with requests.Session() as s:
                 s.proxies = self.proxies
@@ -1247,11 +1243,11 @@ class google_translator:
         except requests.exceptions.HTTPError as e:
             # Request successful, bad response
             log.debug(str(e))
-            raise google_new_transError(tts=self, response=r)
+            raise google_new_transError(tts=self, response=r) from e
         except requests.exceptions.RequestException as e:
             # Request failed
             log.debug(str(e))
-            raise google_new_transError(tts=self)
+            raise google_new_transError(tts=self) from e
 
 
 async def uidata(id_):
@@ -2236,7 +2232,7 @@ async def get_top_animes(gnr: str, page, user):
     if gnr == "None":
         query = ALLTOP_QUERY
         vars_ = {"page": int(page)}
-        msg = f"Top animes:\n\n"
+        msg = "Top animes:\n\n"
     nsfw = False
     result = await return_json_senpai(query, vars_, auth=False, user=user)
     if len(result["data"]["Page"]["media"]) == 0:
@@ -2244,9 +2240,9 @@ async def get_top_animes(gnr: str, page, user):
         msg = f"Top animes for tag `{gnr.capitalize()}`:\n\n"
         result = await return_json_senpai(query, vars_, auth=False, user=user)
         if len(result["data"]["Page"]["media"]) == 0:
-            return [f"No results Found"]
+            return ["No results Found"]
         nsls = await get_all_tags("nsfw")
-        nsfw = True if gnr.lower() in nsls.lower() else False
+        nsfw = gnr.lower() in nsls.lower()
     data = result["data"]["Page"]
     for i in data["media"]:
         msg += f"⚬ `{i['title']['romaji']}`\n"
@@ -2582,7 +2578,7 @@ async def get_anilist(qdb, page, auth: bool = False, user: int = None, cid: int 
     result = await return_json_senpai(PAGE_QUERY, vars_, auth=auth, user=user)
 
     if len(result["data"]["Page"]["media"]) == 0:
-        return [f"No results Found"]
+        return ["No results Found"]
 
     data = result["data"]["Page"]["media"][0]
     # Data of all fields in returned json
@@ -2686,7 +2682,7 @@ async def get_character(query, page, auth: bool = False, user: int = None):
     var = {"search": CHAR_DB[query], "page": int(page)}
     result = await return_json_senpai(CHARACTER_QUERY, var, auth=auth, user=user)
     if len(result["data"]["Page"]["characters"]) == 0:
-        return [f"No results Found"]
+        return ["No results Found"]
     data = result["data"]["Page"]["characters"][0]
     # Character Data
     id_ = data["id"]
@@ -2741,7 +2737,7 @@ async def get_manga(qdb, page, auth: bool = False, user: int = None, cid: int = 
     vars_ = {"search": MANGA_DB[qdb], "asHtml": True, "page": page}
     result = await return_json_senpai(MANGA_QUERY, vars_, auth=auth, user=user)
     if len(result["data"]["Page"]["media"]) == 0:
-        return [f"No results Found"]
+        return ["No results Found"]
     data = result["data"]["Page"]["media"][0]
 
     # Data of all fields in returned json
@@ -2755,7 +2751,7 @@ async def get_manga(qdb, page, auth: bool = False, user: int = None, cid: int = 
     description = synopsis[:500]
     description_s = ""
     if len(synopsis) > 500:
-        description += f"..."
+        description += "..."
         description_s = (
             f"[Click for more info](https://t.me/{BOT_USERNAME}"
             + f"/?astart=des_ANI_{idm}_desc)"
@@ -2882,7 +2878,9 @@ async def toggle_favourites(id_: int, media: str, user: int):
     )
     k = await return_json_senpai(query=query, vars_=vars_, auth=True, user=int(user))
     try:
-        kek = k["data"]["ToggleFavourite"]
+        # The toggle reports its result under this key; a missing key means
+        # the request did not take.
+        k["data"]["ToggleFavourite"]
         return "ok"
     except KeyError:
         return "failed"
@@ -2891,7 +2889,7 @@ async def toggle_favourites(id_: int, media: str, user: int):
 async def get_user(vars_, req, user, display_user=None):
     query = USER_QRY if "user" in req else VIEWER_QRY
     k = await return_json_senpai(
-        query=query, vars_=vars_, auth=False if "user" in req else True, user=int(user)
+        query=query, vars_=vars_, auth="user" not in req, user=int(user)
     )
     error = k.get("errors")
     if error:
@@ -3219,7 +3217,7 @@ example: /anime Sword Art Online"""
         return
     try:
         await client.send_photo(gid, title_img, caption=finals_, reply_markup=buttons)
-    except (WebpageMediaEmpty, WebpageCurlFailed):
+    except WebpageMediaEmpty, WebpageCurlFailed:
         await clog("Mikobot", title_img, "LINK", msg=message)
         await client.send_photo(gid, failed_pic, caption=finals_, reply_markup=buttons)
 
@@ -3288,7 +3286,7 @@ example: /manga Sword Art Online"""
         return
     try:
         await client.send_photo(gid, pic, caption=finals_, reply_markup=buttons)
-    except (WebpageMediaEmpty, WebpageCurlFailed):
+    except WebpageMediaEmpty, WebpageCurlFailed:
         await clog("Mikobot", pic, "LINK", msg=message)
         await client.send_photo(gid, failed_pic, caption=finals_, reply_markup=buttons)
 
@@ -3337,7 +3335,7 @@ async def character_cmd(client: Client, message: Message, mdata: dict):
     )
     try:
         await client.send_photo(gid, img, caption=cap_text, reply_markup=buttons)
-    except (WebpageMediaEmpty, WebpageCurlFailed):
+    except WebpageMediaEmpty, WebpageCurlFailed:
         await clog("Mikobot", img, "LINK", msg=message)
         await client.send_photo(gid, failed_pic, caption=cap_text, reply_markup=buttons)
 
@@ -3403,7 +3401,7 @@ async def anilist_cmd(client: Client, message: Message, mdata: dict):
         return
     try:
         await client.send_photo(gid, pic, caption=msg, reply_markup=buttons)
-    except (WebpageMediaEmpty, WebpageCurlFailed):
+    except WebpageMediaEmpty, WebpageCurlFailed:
         await clog("Mikobot", pic, "LINK", msg=message)
         await client.send_photo(gid, failed_pic, caption=msg, reply_markup=buttons)
 
@@ -3536,7 +3534,7 @@ example: /airing Sword Art Online"""
         return
     try:
         await client.send_photo(gid, coverImg, caption=out, reply_markup=btn)
-    except (WebpageMediaEmpty, WebpageCurlFailed):
+    except WebpageMediaEmpty, WebpageCurlFailed:
         await clog("Mikobot", coverImg, "LINK", msg=message)
         await client.send_photo(gid, failed_pic, caption=out, reply_markup=btn)
 
@@ -3784,7 +3782,7 @@ This material is marked 18+ and not allowed in this group""",
         await cq.edit_message_media(
             InputMediaPhoto(pic, caption=msg), reply_markup=button
         )
-    except (WebpageMediaEmpty, WebpageCurlFailed):
+    except WebpageMediaEmpty, WebpageCurlFailed:
         await clog("Mikobot", pic, "LINK", msg=cq)
         await cq.edit_message_media(
             InputMediaPhoto(failed_pic, caption=msg), reply_markup=button
@@ -3851,7 +3849,7 @@ async def anime_btn(client: Client, cq: CallbackQuery, cdata: dict):
         await cq.edit_message_media(
             InputMediaPhoto(pic, caption=msg), reply_markup=btns
         )
-    except (WebpageMediaEmpty, WebpageCurlFailed):
+    except WebpageMediaEmpty, WebpageCurlFailed:
         await clog("Mikobot", pic, "LINK", msg=cq)
         await cq.edit_message_media(
             InputMediaPhoto(failed_pic, caption=msg), reply_markup=btns
@@ -3987,7 +3985,7 @@ async def flex_btn(client: Client, cq: CallbackQuery, cdata: dict):
         await cq.edit_message_media(
             InputMediaPhoto(pic, caption=msg), reply_markup=btns
         )
-    except (WebpageMediaEmpty, WebpageCurlFailed):
+    except WebpageMediaEmpty, WebpageCurlFailed:
         await clog("Mikobot", pic, "LINK", msg=cq)
         await cq.edit_message_media(
             InputMediaPhoto(failed_pic, caption=msg), reply_markup=btns
@@ -4046,7 +4044,7 @@ async def list_favourites_btn(client: Client, cq: CallbackQuery, cdata: dict):
             ),
             reply_markup=InlineKeyboardMarkup(inline_keyboard=btn),
         )
-    except (WebpageMediaEmpty, WebpageCurlFailed):
+    except WebpageMediaEmpty, WebpageCurlFailed:
         await clog(
             "Mikobot",
             f"https://img.anili.st/user/{q[1]}?a={time.time()}",
@@ -4075,7 +4073,7 @@ async def favourites_btn(client: Client, cq: CallbackQuery, cdata: dict):
         await cq.edit_message_media(
             InputMediaPhoto(pic, caption=msg), reply_markup=btns
         )
-    except (WebpageMediaEmpty, WebpageCurlFailed):
+    except WebpageMediaEmpty, WebpageCurlFailed:
         await clog("Mikobot", pic, "LINK", msg=cq)
         await cq.edit_message_media(
             InputMediaPhoto(failed_pic, caption=msg), reply_markup=btns
@@ -4097,7 +4095,7 @@ async def get_user_back_btn(client: Client, cq: CallbackQuery, cdata: dict):
         await cq.edit_message_media(
             InputMediaPhoto(pic, caption=msg), reply_markup=btns
         )
-    except (WebpageMediaEmpty, WebpageCurlFailed):
+    except WebpageMediaEmpty, WebpageCurlFailed:
         await clog("Mikobot", pic, "LINK", msg=cq)
         await cq.edit_message_media(
             InputMediaPhoto(failed_pic, caption=msg), reply_markup=btns
@@ -4218,7 +4216,7 @@ async def toggle_favourites_btn(client: Client, cq: CallbackQuery, cdata: dict):
         await cq.edit_message_media(
             InputMediaPhoto(pic, caption=msg), reply_markup=btns
         )
-    except (WebpageMediaEmpty, WebpageCurlFailed):
+    except WebpageMediaEmpty, WebpageCurlFailed:
         await clog("Mikobot", pic, "LINK", msg=cq)
         await cq.edit_message_media(
             InputMediaPhoto(failed_pic, caption=msg), reply_markup=btns
@@ -4444,7 +4442,7 @@ async def update_anilist_btn(client: Client, cq: CallbackQuery, cdata: dict):
         await cq.edit_message_media(
             InputMediaPhoto(pic, caption=msg), reply_markup=btns
         )
-    except (WebpageMediaEmpty, WebpageCurlFailed):
+    except WebpageMediaEmpty, WebpageCurlFailed:
         await clog("Mikobot", pic, "LINK", msg=cq)
         await cq.edit_message_media(
             InputMediaPhoto(failed_pic, caption=msg), reply_markup=btns
@@ -4559,7 +4557,7 @@ async def additional_info_btn(client: Client, cq: CallbackQuery, cdata: dict):
             InputMediaPhoto(pic, caption=msg),
             reply_markup=InlineKeyboardMarkup(inline_keyboard=button),
         )
-    except (WebpageMediaEmpty, WebpageCurlFailed):
+    except WebpageMediaEmpty, WebpageCurlFailed:
         await clog("Mikobot", pic, "LINK", msg=cq)
         await cq.edit_message_media(
             InputMediaPhoto(failed_pic, caption=msg),
@@ -4619,7 +4617,7 @@ async def featured_in_btn(client: Client, cq: CallbackQuery, cdata: dict):
             InputMediaPhoto(pic, caption=msg),
             reply_markup=InlineKeyboardMarkup(inline_keyboard=button),
         )
-    except (WebpageMediaEmpty, WebpageCurlFailed):
+    except WebpageMediaEmpty, WebpageCurlFailed:
         await clog("Mikobot", pic, "LINK", msg=cq)
         await cq.edit_message_media(
             InputMediaPhoto(failed_pic, caption=msg),
@@ -4697,7 +4695,7 @@ async def featured_in_switch_btn(client: Client, cq: CallbackQuery, cdata: dict)
             InputMediaPhoto(pic, caption=msg),
             reply_markup=InlineKeyboardMarkup(inline_keyboard=button),
         )
-    except (WebpageMediaEmpty, WebpageCurlFailed):
+    except WebpageMediaEmpty, WebpageCurlFailed:
         await clog("Mikobot", pic, "LINK", msg=cq)
         await cq.edit_message_media(
             InputMediaPhoto(failed_pic, caption=msg),
@@ -4902,7 +4900,7 @@ async def auto_unpin(client: Client, cq: CallbackQuery):
     btn = []
     row = []
     count = 0
-    for i in TIMES.keys():
+    for i in TIMES:
         count = count + 1
         row.append(
             InlineKeyboardButton(
@@ -5343,12 +5341,14 @@ async def filler_btn(client: app, cq: CallbackQuery, cdata: dict):
 
 @app.on_message(filters.command("animequotes"))
 async def animequotes(client, message):
-    if message.reply_to_message and message.reply_to_message.from_user:
-        name = message.reply_to_message.from_user.first_name
-    elif message.from_user:
-        name = message.from_user.first_name
+    if (
+        message.reply_to_message
+        and message.reply_to_message.from_user
+        or message.from_user
+    ):
+        pass
     else:
-        name = "Anon"
+        pass
     keyboard = [
         [
             InlineKeyboardButton(

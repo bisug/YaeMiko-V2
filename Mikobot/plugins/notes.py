@@ -165,9 +165,7 @@ async def get(
                     else first_name
                 )
                 chatname = (
-                    message.chat.title
-                    if message.chat.type != "private"
-                    else first_name
+                    message.chat.title if message.chat.type != "private" else first_name
                 )
                 user_id = (
                     from_user.id
@@ -431,7 +429,7 @@ async def list_notes(message: Message):
     note_list = sql.get_all_chat_notes(chat_id)
     notes = len(note_list) + 1
     msg = "Get note by `/notenumber` or `#notename` \n\n  *ID*    *Note* \n"
-    for note_id, note in zip(range(1, notes), note_list):
+    for note_id, note in zip(range(1, notes), note_list, strict=False):
         if note_id < 10:
             note_name = f"`{note_id:2}.`  `#{(note.name.lower())}`\n"
         else:

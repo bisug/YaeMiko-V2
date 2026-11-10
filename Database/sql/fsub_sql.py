@@ -8,7 +8,7 @@ TTL cache is kept: this is read on every group message.
 from cachetools import TTLCache
 from sqlalchemy import Column, String
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, unit_of_work_guard
 
 _settings_cache = TTLCache(maxsize=10_000, ttl=30)
 
@@ -22,8 +22,6 @@ class ForceSub(BASE):
     def __init__(self, chat_id, channel):
         self.chat_id = str(chat_id)
         self.channel = channel
-
-
 
 
 @unit_of_work_guard

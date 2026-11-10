@@ -11,8 +11,7 @@ from sqlalchemy import (
     select,
 )
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
-from Mikobot.plugins.helper_funcs.msg_types import Types
+from Database.sql import BASE, SESSION, unit_of_work_guard
 
 
 class CustomFilters(BASE):
@@ -97,7 +96,6 @@ class Buttons(BASE):
         self.name = name
         self.url = url
         self.same_line = same_line
-
 
 
 CUST_FILT_LOCK = threading.RLock()

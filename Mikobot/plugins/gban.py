@@ -164,7 +164,7 @@ async def gban(message: Message, command: CommandObject):
             log = await bot.send_message(
                 EVENT_LOGS, log_message, parse_mode=ParseMode.HTML
             )
-        except TelegramAPIError as excp:
+        except TelegramAPIError:
             log = await bot.send_message(
                 EVENT_LOGS,
                 log_message
@@ -209,8 +209,6 @@ async def gban(message: Message, command: CommandObject):
                     )
                 sql.ungban_user(user_id)
                 return
-        except TelegramAPIError:
-            pass
 
     if EVENT_LOGS:
         await log.edit_text(
@@ -297,7 +295,7 @@ async def ungban(message: Message, command: CommandObject):
             log = await bot.send_message(
                 EVENT_LOGS, log_message, parse_mode=ParseMode.HTML
             )
-        except TelegramAPIError as excp:
+        except TelegramAPIError:
             log = await bot.send_message(
                 EVENT_LOGS,
                 log_message
@@ -339,8 +337,6 @@ async def ungban(message: Message, command: CommandObject):
                         f"Could not un-gban due to: {excp.message}",
                     )
                 return
-        except TelegramAPIError:
-            pass
 
     sql.ungban_user(user_id)
 
@@ -505,7 +501,7 @@ def __chat_settings__(chat_id, user_id):
 # <=================================================== HELP ====================================================>
 
 
-__help__ = f"""
+__help__ = """
 ➠ *Admins only:*
 
 » /antispam <on/off/yes/no>: Will toggle our antispam tech or return your current settings.

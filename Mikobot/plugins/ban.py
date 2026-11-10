@@ -56,9 +56,9 @@ async def ban(message: Message, command: CommandObject) -> str:
         return await message.answer("That looks like an invalid User ID to me.")
 
     member = await bot.get_chat_member(chat.id, user.id)
-    SILENT = bool(True if message.text.startswith("/s") else False)
+    SILENT = bool(bool(message.text.startswith("/s")))
     # /dban is the delete-then-act shortcut: the offending message goes too.
-    DELETE_MESSAGE = bool(True if message.text.startswith("/d") else False)
+    DELETE_MESSAGE = bool(bool(message.text.startswith("/d")))
     if DELETE_MESSAGE and not message.reply_to_message:
         await message.answer("Reply to the message you want deleted with that.")
         return ""
@@ -156,7 +156,7 @@ async def ban(message: Message, command: CommandObject) -> str:
         f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
     )
 
-    reply = f"<code>❕</code><b>Ban Event</b>\n"
+    reply = "<code>❕</code><b>Ban Event</b>\n"
 
     if CHAT_SENDER:
         log += f"<b>Channel:</b> {mention_username(chat_sender.username, html.escape(chat_sender.title))}"
@@ -321,7 +321,7 @@ async def kick(message: Message, command: CommandObject) -> str:
     user = message.from_user
     log_message = ""
     args = command.args.split() if command.args else []
-    DELETE_MESSAGE = bool(True if message.text.startswith("/d") else False)
+    DELETE_MESSAGE = bool(bool(message.text.startswith("/d")))
     if DELETE_MESSAGE and not message.reply_to_message:
         await message.answer("Reply to the message you want deleted with that.")
         return ""
@@ -466,9 +466,7 @@ async def unban(message: Message, command: CommandObject) -> str:
     if user_id is not None and user_id < 0:
         CHAT_SENDER = True
         chat_sender = (
-            message.reply_to_message.sender_chat
-            if message.reply_to_message
-            else None
+            message.reply_to_message.sender_chat if message.reply_to_message else None
         )
     else:
         CHAT_SENDER = False
@@ -490,11 +488,7 @@ async def unban(message: Message, command: CommandObject) -> str:
             return log_message
 
     admin_text = mention_html(user.id, user.first_name) if user else "Admin"
-    log = (
-        f"<b>{html.escape(chat.title)}:</b>\n"
-        f"#UNBANNED\n"
-        f"<b>Admin:</b> {admin_text}\n"
-    )
+    log = f"<b>{html.escape(chat.title)}:</b>\n#UNBANNED\n<b>Admin:</b> {admin_text}\n"
 
     if CHAT_SENDER:
         target_name = (
@@ -529,7 +523,7 @@ async def selfunban(message: Message, command: CommandObject) -> str:
 
     try:
         chat_id = int(args[0])
-    except (TelegramAPIError, IndexError, ValueError, TypeError):
+    except TelegramAPIError, IndexError, ValueError, TypeError:
         await message.answer("Give a valid chat ID.")
         return
 
@@ -656,7 +650,7 @@ async def bans_callback(query: CallbackQuery):
             f"<b>Admin:</b> {mention_html(admin_user.id, admin_user.first_name)}\n"
         )
 
-        reply = f"<code>❕</code><b>Ban Event</b>\n"
+        reply = "<code>❕</code><b>Ban Event</b>\n"
 
         if CHAT_SENDER:
             log += f"<b>Channel:</b> {html.escape(chat_name)}"
@@ -691,7 +685,7 @@ async def bans_callback(query: CallbackQuery):
                 parse_mode=ParseMode.HTML,
                 message_thread_id=message.message_thread_id if chat.is_forum else None,
             )
-            await query.answer(f"Done Banned User.")
+            await query.answer("Done Banned User.")
             return log
 
         except TelegramAPIError as excp:

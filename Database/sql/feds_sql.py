@@ -2,6 +2,7 @@ import ast
 import asyncio
 import threading
 
+from aiogram.exceptions import TelegramAPIError
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -14,7 +15,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from aiogram.exceptions import TelegramAPIError
 
 from Database.sql import BASE, ENGINE, SESSION, ensure_index, unit_of_work_guard
 from Mikobot import LOGGER, OWNER_ID, bot
@@ -137,7 +137,7 @@ def _fed_members(raw):
     """
     try:
         members = ast.literal_eval(ast.literal_eval(raw)["members"])
-    except (ValueError, SyntaxError, KeyError, TypeError):
+    except ValueError, SyntaxError, KeyError, TypeError:
         LOGGER.warning("Unreadable federation member list, treating it as empty")
         return []
     return members if isinstance(members, list) else []
@@ -147,7 +147,7 @@ def _fed_owner(raw, default=None):
     """The owner id from a federation's stored fusers blob, or default."""
     try:
         return ast.literal_eval(ast.literal_eval(raw)["owner"])
-    except (ValueError, SyntaxError, KeyError, TypeError):
+    except ValueError, SyntaxError, KeyError, TypeError:
         LOGGER.warning("Unreadable federation owner field")
         return default
 

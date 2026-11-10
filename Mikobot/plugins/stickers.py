@@ -9,6 +9,7 @@ from pathlib import Path
 import emoji
 from PIL import Image, ImageDraw, ImageFont
 from pyrogram import Client, enums, filters
+from pyrogram.enums import ButtonStyle
 from pyrogram.errors import BadRequest, PeerIdInvalid, StickersetInvalid
 from pyrogram.file_id import FileId
 from pyrogram.raw.functions.messages import GetStickerSet, SendMedia
@@ -24,17 +25,14 @@ from pyrogram.raw.types import (
     InputStickerSetItem,
     InputStickerSetShortName,
 )
-from pyrogram.types import InlineKeyboardButton
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from pyrogram.types import InlineKeyboardButton as IKB
-from pyrogram.types import InlineKeyboardMarkup
 from pyrogram.types import InlineKeyboardMarkup as IKM
-from pyrogram.types import Message
 
 from Mikobot import LOGGER, MESSAGE_DUMP, app
 from Mikobot.state import state
 from Mikobot.utils.cmdprefix import PREFIX_HANDLER
 from Mikobot.utils.localization import use_chat_lang
-from pyrogram.enums import ButtonStyle
 
 
 def get_emoji_regex():
@@ -621,10 +619,7 @@ async def draw_text(image_path, text, output_path=None):
 
 @app.on_message(filters.command(["stickerinfo", "stinfo"]), group=888)
 async def give_st_info(c: app, m: Message):
-    if not m.reply_to_message:
-        await m.reply("Reply to a sticker")
-        return
-    elif not m.reply_to_message.sticker:
+    if not m.reply_to_message or not m.reply_to_message.sticker:
         await m.reply("Reply to a sticker")
         return
     st_in = m.reply_to_message.sticker

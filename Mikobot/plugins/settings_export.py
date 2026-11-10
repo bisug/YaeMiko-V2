@@ -23,8 +23,8 @@ from aiogram.types import (
     Message,
 )
 
-import Database.sql.blsticker_sql as blsticker_sql
 import Database.sql.blacklist_sql as blacklist_sql
+import Database.sql.blsticker_sql as blsticker_sql
 import Database.sql.cust_filters_sql as filters_sql
 import Database.sql.locks_sql as locks_sql
 import Database.sql.notes_sql as notes_sql

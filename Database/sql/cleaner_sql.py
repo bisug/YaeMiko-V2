@@ -26,7 +26,7 @@ import threading
 
 from sqlalchemy import Boolean, Column, UnicodeText, select
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, unit_of_work_guard
 
 
 class CleanerBlueTextChatSettings(BASE):
@@ -58,7 +58,6 @@ class CleanerBlueTextGlobal(BASE):
 
     def __init__(self, command):
         self.command = command
-
 
 
 CLEANER_CHAT_SETTINGS = threading.RLock()
@@ -174,12 +173,10 @@ def is_command_ignored(chat_id, command):
     if command.lower() in GLOBAL_IGNORE_COMMANDS:
         return True
 
-    if str(chat_id) in CLEANER_CHATS and command.lower() in CLEANER_CHATS.get(
-        str(chat_id)
-    ).get("commands"):
-        return True
-
-    return False
+    return bool(
+        str(chat_id) in CLEANER_CHATS
+        and command.lower() in CLEANER_CHATS.get(str(chat_id)).get("commands")
+    )
 
 
 def is_enabled(chat_id):

@@ -129,7 +129,7 @@ async def approved(message: Message):
             *(bot.get_chat_member(chat.id, int(i.user_id)) for i in approved_users),
             return_exceptions=True,
         )
-        for i, member in zip(approved_users, members):
+        for i, member in zip(approved_users, members, strict=False):
             if isinstance(member, BaseException):
                 continue
             msg += f"- `{i.user_id}`: {escape_markdown(member.user.first_name)}\n"

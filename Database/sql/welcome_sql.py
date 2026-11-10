@@ -168,8 +168,6 @@ class RaidMode(BASE):
         # self.permanent = permanent
 
 
-
-
 def _ensure_clean_service_columns() -> None:
     """Add service_types to a clean_service table made by an older build."""
     if ENGINE is None:

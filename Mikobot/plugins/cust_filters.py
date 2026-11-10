@@ -25,7 +25,7 @@ from Mikobot.plugins.helper_funcs.alternate import send_message, typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.plugins.helper_funcs.extraction import extract_text
 from Mikobot.plugins.helper_funcs.misc import build_keyboard_parser
-from Mikobot.plugins.helper_funcs.msg_types import Types, get_filter_type
+from Mikobot.plugins.helper_funcs.msg_types import get_filter_type
 from Mikobot.plugins.helper_funcs.string_handling import (
     button_markdown_parser,
     entities_map,
@@ -85,7 +85,7 @@ async def list_handlers(message: Message):
     user = message.from_user
 
     conn = await connected(bot, message, chat, user.id, need_admin=False)
-    if not conn is False:
+    if conn is not False:
         chat_id = conn
         chat_obj = await bot.get_chat(conn)
         chat_name = chat_obj.title
@@ -142,7 +142,7 @@ async def filters(message: Message):
 
     buttons = None
     conn = await connected(bot, message, chat, user.id)
-    if not conn is False:
+    if conn is not False:
         chat_id = conn
         chat_obj = await bot.get_chat(conn)
         chat_name = chat_obj.title
@@ -294,7 +294,7 @@ async def stop_filter(message: Message):
     args = (message.text or message.caption or "").split(None, 1)
 
     conn = await connected(bot, message, chat, user.id)
-    if not conn is False:
+    if conn is not False:
         chat_id = conn
         chat_obj = await bot.get_chat(conn)
         chat_name = chat_obj.title

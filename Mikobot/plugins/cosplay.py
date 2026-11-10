@@ -1,12 +1,11 @@
-import httpx
 from urllib.parse import urlparse
 
+import httpx
 
 # SOURCE https://github.com/Team-ProjectCodeX
 # CREATED BY https://t.me/O_okarma
 # API BY https://www.github.com/SOME-1HING
 # PROVIDED BY https://t.me/ProjectCodeX
-
 # <============================================== IMPORTS =========================================================>
 from aiogram.filters import Command
 from aiogram.types import Message
@@ -44,7 +43,7 @@ async def cosplay(message: Message):
     try:
         photo_url = await get_cosplay_data()
         await message.answer_photo(photo=photo_url)
-    except (httpx.HTTPError, ValueError, KeyError, TypeError):
+    except httpx.HTTPError, ValueError, KeyError, TypeError:
         await status.edit_text(
             "Unable to fetch a cosplay photo right now. Please try again later."
         )

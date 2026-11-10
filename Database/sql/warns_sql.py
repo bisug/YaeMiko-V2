@@ -36,7 +36,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects import postgresql
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, unit_of_work_guard
 
 
 class Warns(BASE):
@@ -97,7 +97,6 @@ class WarnSettings(BASE):
 
     def __repr__(self):
         return "<{} ʜᴀs {} ᴘᴏssɪʙʟᴇ ᴡᴀʀɴs.>".format(self.chat_id, self.warn_limit)
-
 
 
 WARN_INSERTION_LOCK = threading.RLock()

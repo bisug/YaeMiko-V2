@@ -45,9 +45,9 @@ def test_no_hardcoded_bot_tokens():
         for line_num, line in enumerate(content.splitlines(), start=1):
             if "CIPLACEHOLDERNOTAREALTOKEN" in line:
                 continue
-            assert not TOKEN_PATTERN.search(
-                line
-            ), f"Potential hardcoded Telegram bot token in {rel_path}:{line_num}"
+            assert not TOKEN_PATTERN.search(line), (
+                f"Potential hardcoded Telegram bot token in {rel_path}:{line_num}"
+            )
 
 
 def test_elevated_users_json():
@@ -58,9 +58,9 @@ def test_elevated_users_json():
         assert tier in data
         assert isinstance(data[tier], list)
         for user_id in data[tier]:
-            assert isinstance(
-                user_id, int
-            ), f"User ID {user_id} in {tier} is not integer"
+            assert isinstance(user_id, int), (
+                f"User ID {user_id} in {tier} is not integer"
+            )
 
 
 @pytest.mark.asyncio

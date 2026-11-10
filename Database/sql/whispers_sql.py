@@ -9,7 +9,7 @@ from datetime import datetime
 from sqlalchemy import Column, DateTime, String
 from sqlalchemy.dialects.postgresql import JSONB
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, unit_of_work_guard
 
 
 class Whisper(BASE):
@@ -27,8 +27,6 @@ class Whisper(BASE):
         self.id = whisper_id
         self.data = data
         self.created = datetime.now()
-
-
 
 
 @unit_of_work_guard

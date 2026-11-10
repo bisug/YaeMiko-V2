@@ -278,8 +278,6 @@ async def connect_chat(message: Message, command: CommandObject):
                     )
                 except TelegramAPIError:
                     pass
-                except TelegramAPIError:
-                    pass
             else:
                 await send_message(message, "ᴄᴏɴɴᴇᴄᴛɪᴏɴ ғᴀɪʟᴇᴅ!")
         else:

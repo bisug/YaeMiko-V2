@@ -35,7 +35,7 @@ from sqlalchemy import (
     select,
 )
 
-from Database.sql import BASE, ENGINE, SESSION, ensure_index, unit_of_work_guard
+from Database.sql import BASE, SESSION, ensure_index, unit_of_work_guard
 
 
 class Users(BASE):

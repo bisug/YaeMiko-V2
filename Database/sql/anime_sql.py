@@ -32,7 +32,7 @@ import threading
 
 from sqlalchemy import BigInteger, Column, Integer, String, UnicodeText, select
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, unit_of_work_guard
 from Database.sql.disable_sql import is_command_disabled
 
 INSERTION_LOCK = threading.RLock()
@@ -73,8 +73,6 @@ class AnimeToken(BASE):
     def __init__(self, user_id, token):
         self.user_id = user_id
         self.token = token
-
-
 
 
 @unit_of_work_guard

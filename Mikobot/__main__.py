@@ -13,6 +13,7 @@ from random import choice
 
 # Configure Python 3.15+ lazy imports
 if hasattr(sys, "set_lazy_imports"):
+
     def _lazy_imports_filter(importing_mod, imported_mod, fromlist=None):
         for mod in (importing_mod, imported_mod):
             if mod and mod.startswith(("sqlalchemy", "Database.sql")):

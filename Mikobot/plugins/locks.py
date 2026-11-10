@@ -187,9 +187,12 @@ def _is_allowlisted(message, lockable: str) -> bool:
                 if message.text
                 else None
             )
-        elif lockable == "sticker" and getattr(message, "sticker", None):
-            candidate = message.sticker.set_name or ""
-        elif lockable == "emojicustom" and getattr(message, "sticker", None):
+        elif (
+            lockable == "sticker"
+            and getattr(message, "sticker", None)
+            or lockable == "emojicustom"
+            and getattr(message, "sticker", None)
+        ):
             candidate = message.sticker.set_name or ""
         elif lockable == "forward":
             origin = message.forward_from_chat or message.forward_from_user
@@ -293,9 +296,11 @@ async def restr_members(
     previews=False,
 ):
     for mem in members:
-        if mem.user in DRAGONS:
-            continue
-        elif mem.user == ChatID.SERVICE_CHAT or mem.user == ChatID.ANONYMOUS_ADMIN:
+        if (
+            mem.user in DRAGONS
+            or mem.user == ChatID.SERVICE_CHAT
+            or mem.user == ChatID.ANONYMOUS_ADMIN
+        ):
             continue
         try:
             await bot.restrict_chat_member(
@@ -422,11 +427,7 @@ async def lock(message: Message, command: CommandObject) -> str:
 
             chat_obj = await bot.get_chat(chat_id)
             current_permission = chat_obj.permissions
-            current_dict = (
-                current_permission.model_dump()
-                if current_permission
-                else {}
-            )
+            current_dict = current_permission.model_dump() if current_permission else {}
             await bot.set_chat_permissions(
                 chat_id=chat_id,
                 permissions=get_permission_list(
@@ -576,11 +577,7 @@ async def unlock(message: Message, command: CommandObject) -> str:
 
             chat_obj = await bot.get_chat(chat_id)
             current_permission = chat_obj.permissions
-            current_dict = (
-                current_permission.model_dump()
-                if current_permission
-                else {}
-            )
+            current_dict = current_permission.model_dump() if current_permission else {}
             await bot.set_chat_permissions(
                 chat_id=chat_id,
                 permissions=get_permission_list(
@@ -617,9 +614,7 @@ def _message_matches_lock(lockable, filter, locks, message) -> bool:
     if lockable == "rtl":
         if message.caption and _has_arabic_script(message.caption):
             return True
-        if message.text and _has_arabic_script(message.text):
-            return True
-        return False
+        return bool(message.text and _has_arabic_script(message.text))
     if lockable == "button":
         return bool(message.reply_markup and message.reply_markup.inline_keyboard)
     if lockable == "inline":
@@ -627,13 +622,14 @@ def _message_matches_lock(lockable, filter, locks, message) -> bool:
             return not _is_allowlisted(message, "inline")
         return False
     if lockable == "forwardchannel":
-        if message.forward_from_chat and getattr(message.forward_from_chat, "type", None) == "channel":
-            return True
-        return False
+        return bool(
+            message.forward_from_chat
+            and getattr(message.forward_from_chat, "type", None) == "channel"
+        )
     if lockable == "forwardbot":
-        if message.forward_from and getattr(message.forward_from, "is_bot", False):
-            return True
-        return False
+        return bool(
+            message.forward_from and getattr(message.forward_from, "is_bot", False)
+        )
     if lockable == "anonchannel":
         return bool(
             (message.from_user and message.from_user.id == ChatID.FAKE_CHANNEL)
@@ -644,9 +640,7 @@ def _message_matches_lock(lockable, filter, locks, message) -> bool:
             )
         )
     if callable(filter) and filter(message):
-        if lockable != "bots" and _is_allowlisted(message, lockable):
-            return False
-        return True
+        return not (lockable != "bots" and _is_allowlisted(message, lockable))
     return False
 
 
@@ -781,12 +775,11 @@ async def del_lockables(message: Message):
         if lockable == "anonchannel":
             if getattr(locks, lockable, False):
                 is_anon_channel = (
-                    (message.from_user and message.from_user.id == ChatID.FAKE_CHANNEL)
-                    or (
-                        not message.from_user
-                        and message.sender_chat
-                        and message.sender_chat.id != message.chat.id
-                    )
+                    message.from_user and message.from_user.id == ChatID.FAKE_CHANNEL
+                ) or (
+                    not message.from_user
+                    and message.sender_chat
+                    and message.sender_chat.id != message.chat.id
                 )
                 if is_anon_channel:
                     try:

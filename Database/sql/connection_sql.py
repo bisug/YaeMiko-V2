@@ -27,7 +27,7 @@ import time
 
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, select
 
-from Database.sql import BASE, ENGINE, SESSION, ensure_index, unit_of_work_guard
+from Database.sql import BASE, SESSION, ensure_index, unit_of_work_guard
 
 
 class ChatAccessConnectionSettings(BASE):
@@ -71,7 +71,6 @@ class ConnectionHistory(BASE):
 
     def __repr__(self):
         return "<ᴄᴏɴɴᴇᴄᴛɪᴏɴ ᴜsᴇʀ {} ʜɪsᴛᴏʀʏ {}>".format(self.user_id, self.chat_id)
-
 
 
 # curr_connection filters on chat_id, and the primary key is the user, so the

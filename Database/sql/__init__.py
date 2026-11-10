@@ -17,9 +17,8 @@ from functools import wraps
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import DeclarativeBase, scoped_session, sessionmaker
 
-from Mikobot import DB_URI
+from Mikobot import DB_URI, env_bool, env_int
 from Mikobot import LOGGER as log
-from Mikobot import env_bool, env_int
 
 if DB_URI and DB_URI.startswith(("postgres://", "postgresql://")):
     DB_URI = DB_URI.replace("postgres://", "postgresql+psycopg://", 1).replace(

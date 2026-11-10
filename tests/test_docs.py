@@ -49,9 +49,9 @@ def test_relative_targets():
         for target in targets:
             if not target or target.startswith(EXTERNAL) or target.startswith("#"):
                 continue
-            assert (
-                path.parent / target
-            ).exists(), f"{relative}: target {target!r} does not exist"
+            assert (path.parent / target).exists(), (
+                f"{relative}: target {target!r} does not exist"
+            )
 
 
 def test_anchors():
@@ -77,9 +77,9 @@ def test_svg_assets():
     for svg in svgs:
         doc = xml.dom.minidom.parse(str(svg))
         root_el = doc.documentElement
-        assert (
-            root_el.tagName == "svg"
-        ), f"{svg.name} root element is not <svg>: {root_el.tagName}"
+        assert root_el.tagName == "svg", (
+            f"{svg.name} root element is not <svg>: {root_el.tagName}"
+        )
         assert root_el.getAttribute("viewBox"), f"{svg.name} lacks viewBox"
 
 
@@ -92,9 +92,9 @@ def test_repository_tree_is_documented():
 def test_fork_attribution():
     for path in (ROOT / "README.md", ROOT / "Mikobot" / "__main__.py"):
         text = path.read_text(encoding="utf-8")
-        assert (
-            "Team-ProjectCodeX" in text
-        ), f"{path.name} must preserve upstream Team-ProjectCodeX attribution"
+        assert "Team-ProjectCodeX" in text, (
+            f"{path.name} must preserve upstream Team-ProjectCodeX attribution"
+        )
 
 
 def test_no_dead_assets():
@@ -111,9 +111,9 @@ def test_no_dead_assets():
     if assets_dir.exists():
         for asset in assets_dir.iterdir():
             if asset.is_file():
-                assert (
-                    asset.name in referenced
-                ), f"Dead asset {asset.name} not referenced in docs"
+                assert asset.name in referenced, (
+                    f"Dead asset {asset.name} not referenced in docs"
+                )
 
 
 def test_no_duplicate_helper_modules():

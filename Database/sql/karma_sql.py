@@ -13,7 +13,7 @@ import threading
 
 from sqlalchemy import BigInteger, Column, Integer, String, select
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, unit_of_work_guard
 
 
 class Karma(BASE):
@@ -44,7 +44,6 @@ class Couple(BASE):
         self.date = date
         self.c1_id = c1_id
         self.c2_id = c2_id
-
 
 
 INSERTION_LOCK = threading.RLock()

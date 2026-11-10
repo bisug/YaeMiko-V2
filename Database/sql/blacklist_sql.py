@@ -88,8 +88,6 @@ class BlacklistSettings(BASE):
         )
 
 
-
-
 def _ensure_columns() -> None:
     """Add the delete/silent columns to a table made by an older build."""
     if ENGINE is None:

@@ -404,9 +404,7 @@ class GateMiddleware(BaseMiddleware):
         if spec["is_bot"] and not status.is_admin(bot_member):
             return ("I'm not admin here.", False)
         if spec["is_user"] and not (
-            is_anon_admin
-            or status.is_admin(user_member)
-            or user_id in status.DRAGONS
+            is_anon_admin or status.is_admin(user_member) or user_id in status.DRAGONS
         ):
             return ("You are not admin here.", False)
         return None

@@ -1,5 +1,5 @@
 from pyrogram import filters
-from pyrogram.types import Message
+from pyrogram.types import Message, ReplyParameters
 
 from Database.sql.sangmata_sql import (
     add_userdata,
@@ -9,8 +9,6 @@ from Database.sql.sangmata_sql import (
     sangmata_off,
     sangmata_on,
 )
-from pyrogram.types import ReplyParameters
-
 from Mikobot import app
 from Mikobot.utils.can_restrict import can_restrict
 from Mikobot.utils.cmdprefix import PREFIX_HANDLER

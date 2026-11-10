@@ -15,6 +15,7 @@ from random import choice
 
 # Configure Python 3.15+ lazy imports for fast boot times and reduced memory usage
 if hasattr(sys, "set_lazy_imports"):
+
     def _lazy_imports_filter(importing_mod, imported_mod, fromlist=None):
         for mod in (importing_mod, imported_mod):
             if mod and mod.startswith(("sqlalchemy", "Database.sql")):
@@ -83,7 +84,7 @@ def env_int(name, default=None, message=None):
     except ValueError:
         raise SystemExit(
             message or f"Your {name} environment variable is not a valid integer."
-        )
+        ) from None
 
 
 _load_local_env()
@@ -94,7 +95,7 @@ def _load_elevated_users():
     try:
         with open(path, encoding="utf-8") as file:
             return json.load(file)
-    except (OSError, ValueError):
+    except OSError, ValueError:
         LOGGER.exception("Unable to load elevated users from %s", path)
         return {}
 
@@ -206,30 +207,40 @@ if ENV:
     )
 
     try:
-        BL_CHATS = set(int(x) for x in os.environ.get("BL_CHATS", "").split())
+        BL_CHATS = {int(x) for x in os.environ.get("BL_CHATS", "").split()}
     except ValueError:
-        raise Exception("Your blacklisted chats list does not contain valid integers.")
+        raise Exception(
+            "Your blacklisted chats list does not contain valid integers."
+        ) from None
 
     try:
-        DRAGONS = set(int(x) for x in os.environ.get("DRAGONS", "").split())
-        DEV_USERS = set(int(x) for x in os.environ.get("DEV_USERS", "").split())
+        DRAGONS = {int(x) for x in os.environ.get("DRAGONS", "").split()}
+        DEV_USERS = {int(x) for x in os.environ.get("DEV_USERS", "").split()}
     except ValueError:
-        raise Exception("Your sudo or dev users list does not contain valid integers.")
+        raise Exception(
+            "Your sudo or dev users list does not contain valid integers."
+        ) from None
 
     try:
-        DEMONS = set(int(x) for x in os.environ.get("DEMONS", "").split())
+        DEMONS = {int(x) for x in os.environ.get("DEMONS", "").split()}
     except ValueError:
-        raise Exception("Your support users list does not contain valid integers.")
+        raise Exception(
+            "Your support users list does not contain valid integers."
+        ) from None
 
     try:
-        TIGERS = set(int(x) for x in os.environ.get("TIGERS", "").split())
+        TIGERS = {int(x) for x in os.environ.get("TIGERS", "").split()}
     except ValueError:
-        raise Exception("Your tiger users list does not contain valid integers.")
+        raise Exception(
+            "Your tiger users list does not contain valid integers."
+        ) from None
 
     try:
-        WOLVES = set(int(x) for x in os.environ.get("WOLVES", "").split())
+        WOLVES = {int(x) for x in os.environ.get("WOLVES", "").split()}
     except ValueError:
-        raise Exception("Your whitelisted users list does not contain valid integers.")
+        raise Exception(
+            "Your whitelisted users list does not contain valid integers."
+        ) from None
 else:
     # Use configuration from a separate file (e.g., variables.py)
     from variables import Development as Config
@@ -257,33 +268,43 @@ else:
     try:
         OWNER_ID = int(Config.OWNER_ID)
     except ValueError:
-        raise Exception("Your OWNER_ID variable is not a valid integer.")
+        raise Exception("Your OWNER_ID variable is not a valid integer.") from None
 
     try:
-        BL_CHATS = set(int(x) for x in Config.BL_CHATS or [])
+        BL_CHATS = {int(x) for x in Config.BL_CHATS or []}
     except ValueError:
-        raise Exception("Your blacklisted chats list does not contain valid integers.")
+        raise Exception(
+            "Your blacklisted chats list does not contain valid integers."
+        ) from None
 
     try:
-        DRAGONS = set(int(x) for x in Config.DRAGONS or [])
-        DEV_USERS = set(int(x) for x in Config.DEV_USERS or [])
+        DRAGONS = {int(x) for x in Config.DRAGONS or []}
+        DEV_USERS = {int(x) for x in Config.DEV_USERS or []}
     except ValueError:
-        raise Exception("Your sudo or dev users list does not contain valid integers.")
+        raise Exception(
+            "Your sudo or dev users list does not contain valid integers."
+        ) from None
 
     try:
-        DEMONS = set(int(x) for x in Config.DEMONS or [])
+        DEMONS = {int(x) for x in Config.DEMONS or []}
     except ValueError:
-        raise Exception("Your support users list does not contain valid integers.")
+        raise Exception(
+            "Your support users list does not contain valid integers."
+        ) from None
 
     try:
-        TIGERS = set(int(x) for x in Config.TIGERS or [])
+        TIGERS = {int(x) for x in Config.TIGERS or []}
     except ValueError:
-        raise Exception("Your tiger users list does not contain valid integers.")
+        raise Exception(
+            "Your tiger users list does not contain valid integers."
+        ) from None
 
     try:
-        WOLVES = set(int(x) for x in Config.WOLVES or [])
+        WOLVES = {int(x) for x in Config.WOLVES or []}
     except ValueError:
-        raise Exception("Your whitelisted users list does not contain valid integers.")
+        raise Exception(
+            "Your whitelisted users list does not contain valid integers."
+        ) from None
 
 # <======================================================================================================>
 

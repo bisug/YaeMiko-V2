@@ -13,7 +13,7 @@ import threading
 
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, select
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, unit_of_work_guard
 
 MODE_BUTTON = "button"
 MODE_TEXT = "text"
@@ -67,7 +67,6 @@ class CaptchaSolved(BASE):
 
     def __repr__(self):
         return "<ᴄᴀᴘᴛᴄʜᴀ ѕᴏʟᴠᴇᴅ %s in %s>" % (self.user_id, self.chat_id)
-
 
 
 SETTINGS_LOCK = threading.RLock()

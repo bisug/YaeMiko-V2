@@ -21,7 +21,6 @@ from Mikobot.utils.parser import mention_html, mention_markdown
 
 
 async def blackliststicker(message: Message, command: CommandObject):
-    msg = message
     chat = message.chat
     user = message.from_user
     args = command.args.split() if command.args else []
@@ -99,7 +98,7 @@ async def add_blackliststicker(message: Message, command: CommandObject):
         added = 0
         for trigger in to_blacklist:
             try:
-                get = await bot.get_sticker_set(trigger)
+                await bot.get_sticker_set(trigger)
                 sql.add_to_stickers(chat_id, trigger.lower())
                 added += 1
             except TelegramAPIError:
@@ -140,7 +139,7 @@ async def add_blackliststicker(message: Message, command: CommandObject):
             )
             return
         try:
-            get = await bot.get_sticker_set(trigger)
+            await bot.get_sticker_set(trigger)
             sql.add_to_stickers(chat_id, trigger.lower())
             added += 1
         except TelegramAPIError:
@@ -276,7 +275,6 @@ async def unblackliststicker(message: Message, command: CommandObject):
 async def blacklist_mode(message: Message, command: CommandObject):
     chat = message.chat
     user = message.from_user
-    msg = message
     args = command.args.split() if command.args else []
     conn = await connected(bot, message, chat, user.id, need_admin=True)
     if conn:

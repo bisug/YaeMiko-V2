@@ -3,10 +3,10 @@ from uuid import uuid4
 
 import pyrogram
 from pyrogram import filters
+from pyrogram.enums import ButtonStyle
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from Mikobot import app
-from pyrogram.enums import ButtonStyle
 
 # <=======================================================================================================>
 
@@ -32,7 +32,9 @@ async def _packkang(app, message):
         or message.reply_to_message.sticker.is_video
     ):
         return await txt.edit("Reply to a non-animated sticker")
-    bot_username = getattr(app.me, "username", "bot") if getattr(app, "me", None) else "bot"
+    bot_username = (
+        getattr(app.me, "username", "bot") if getattr(app, "me", None) else "bot"
+    )
     if len(message.command) < 2:
         pack_name = f"{message.from_user.first_name}_sticker_pack_by_@{bot_username}"
     else:
@@ -61,9 +63,7 @@ async def _packkang(app, message):
         )
 
     try:
-        short_name = (
-            f"stikcer_pack_{str(uuid4()).replace('-', '')}_by_{bot_username}"
-        )
+        short_name = f"stikcer_pack_{str(uuid4()).replace('-', '')}_by_{bot_username}"
         user_id = await app.resolve_peer(message.from_user.id)
         await app.invoke(
             pyrogram.raw.functions.stickers.CreateStickerSet(

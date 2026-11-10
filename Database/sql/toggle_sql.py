@@ -12,7 +12,7 @@ import threading
 
 from sqlalchemy import Boolean, Column, String, select
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, unit_of_work_guard
 
 WELCOME = "welcome"
 NSFW = "nsfw"
@@ -41,7 +41,6 @@ class ChatToggle(BASE):
         self.chat_id = str(chat_id)
         self.feature = feature
         self.enabled = enabled
-
 
 
 INSERTION_LOCK = threading.RLock()

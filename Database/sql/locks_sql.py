@@ -28,7 +28,7 @@ from dataclasses import dataclass
 
 from sqlalchemy import Boolean, Column, String, select
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, unit_of_work_guard
 
 
 class Permissions(BASE):

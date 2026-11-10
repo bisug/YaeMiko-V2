@@ -277,7 +277,7 @@ async def demote(message: Message, command: CommandObject):
         await message.answer("This person created the chat, How could i demote him?")
         return
 
-    if not user_member.status == ChatMemberStatus.ADMINISTRATOR:
+    if user_member.status != ChatMemberStatus.ADMINISTRATOR:
         await message.answer("Can't demote who isn't promoted!")
         return
 
@@ -501,7 +501,7 @@ async def unpin(message: Message, command: CommandObject):
                     [
                         InlineKeyboardButton(
                             text="Click to prove Admin.",
-                            callback_data=f"admin_=unpin",
+                            callback_data="admin_=unpin",
                             style=ButtonStyle.DANGER,
                         ),
                     ],
@@ -543,7 +543,7 @@ async def unpinall(message: Message, command: CommandObject):
                     [
                         InlineKeyboardButton(
                             text="Click to prove admin.",
-                            callback_data=f"admin_=unpinall",
+                            callback_data="admin_=unpinall",
                             style=ButtonStyle.DANGER,
                         ),
                     ],
@@ -605,15 +605,11 @@ async def invite(message: Message, command: CommandObject):
 
 @connection_status
 async def adminlist(message: Message, command: CommandObject):
-    chat = message.chat  # type: Optional[Chat]
     user = message.from_user  # type: Optional[User]
-    args = command.args.split() if command.args else []
     if message.chat.type == "private":
         await send_message(message, "This command only works in Groups.")
         return
-    chat = message.chat
     chat_id = message.chat.id
-    chat_name = message.chat.title
     try:
         msg = await message.answer(
             "Fetching group admins...", parse_mode=ParseMode.HTML
@@ -852,7 +848,7 @@ async def admin_callback(query: CallbackQuery):
             )
             return
 
-        if not user_member.status == ChatMemberStatus.ADMINISTRATOR:
+        if user_member.status != ChatMemberStatus.ADMINISTRATOR:
             await message.edit_text("Can't demote what wasn't promoted!")
             return
 
@@ -1071,7 +1067,7 @@ async def admin_callback(query: CallbackQuery):
         admin_member = await chat.get_member(admin_user.id)
 
         if (
-            not admin_member.status == ChatMemberStatus.OWNER
+            admin_member.status != ChatMemberStatus.OWNER
             and admin_user.id not in DRAGONS
         ):
             await query.answer("Only chat OWNER can unpin all messages.")

@@ -10,7 +10,7 @@ import threading
 
 from sqlalchemy import BigInteger, Column, String
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, unit_of_work_guard
 
 # The General topic has no real id; Telegram treats an omitted thread as it.
 GENERAL_TOPIC = None

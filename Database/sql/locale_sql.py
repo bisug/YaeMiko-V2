@@ -11,7 +11,7 @@ the live chat.type instead). Rows come from the backfill only.
 
 from sqlalchemy import Column, String
 
-from Database.sql import BASE, ENGINE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, unit_of_work_guard
 
 
 class ChatLocale(BASE):
@@ -19,8 +19,6 @@ class ChatLocale(BASE):
 
     chat_id = Column(String(14), primary_key=True)
     lang = Column(String(8))
-
-
 
 
 @unit_of_work_guard
