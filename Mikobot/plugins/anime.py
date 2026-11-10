@@ -18,9 +18,8 @@ from cachetools import TTLCache
 import requests
 from bs4 import BeautifulSoup
 from pyrogram import Client, filters
-from pyrogram.enums import ChatMemberStatus, ChatType
+from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType
 from pyrogram.errors import (
-    FloodWait,
     MessageNotModified,
     UserNotParticipant,
     WebpageCurlFailed,
@@ -38,7 +37,7 @@ from Database.sql import anime_sql as db
 from Mikobot import BOT_USERNAME, MESSAGE_DUMP, OWNER_ID, app
 from Mikobot.state import state
 from Mikobot.utils.cmdprefix import PREFIX_HANDLER
-from pyrogram.enums import ButtonStyle
+from Mikobot.utils.errors import FLOOD_WAIT_ERRORS, flood_wait_seconds
 
 # <=======================================================================================================>
 
@@ -450,8 +449,8 @@ def control_user(func):
             USER_JSON[user] = nut
         try:
             await func(_, message, msg)
-        except FloodWait as e:
-            await asyncio.sleep(e.x + 5)
+        except FLOOD_WAIT_ERRORS as e:
+            await asyncio.sleep(flood_wait_seconds(e) + 5)
         except MessageNotModified:
             pass
         except Exception:
@@ -500,8 +499,8 @@ def check_user(func):
                 USER_JSON[user] = nt
             try:
                 await func(_, c_q, cq)
-            except FloodWait as e:
-                await asyncio.sleep(e.x + 5)
+            except FLOOD_WAIT_ERRORS as e:
+                await asyncio.sleep(flood_wait_seconds(e) + 5)
             except MessageNotModified:
                 pass
             except Exception:
@@ -524,8 +523,8 @@ def check_user(func):
                 if user_valid:
                     try:
                         await func(_, c_q, cq)
-                    except FloodWait as e:
-                        await asyncio.sleep(e.x + 5)
+                    except FLOOD_WAIT_ERRORS as e:
+                        await asyncio.sleep(flood_wait_seconds(e) + 5)
                     except MessageNotModified:
                         pass
                     except Exception:

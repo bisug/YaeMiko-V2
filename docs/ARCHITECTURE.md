@@ -123,7 +123,7 @@ Every inline button call must pass a `style` keyword:
 | `ButtonStyle.SUCCESS` | Confirming and positive actions | confirm, apply, refresh |
 | `ButtonStyle.DANGER` | Destructive actions | delete, ban, purge all |
 
-`tests/test_regressions.py` walks the AST of every Python file and fails when an `InlineKeyboardButton`
+`tests/test_plugins.py` walks the AST of every Python file and fails when an `InlineKeyboardButton`
 or `EqInlineKeyboardButton` call has no `style` keyword, so the contract cannot regress silently.
 
 Note on subclassing: the style is a constructor argument, not a class argument. Declaring

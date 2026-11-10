@@ -1,6 +1,7 @@
 # <============================================== IMPORTS =========================================================>
 from functools import wraps
 
+from pyrogram.errors import FloodSkipFailedWait, FloodWait
 from pyrogram.errors.exceptions.forbidden_403 import ChatWriteForbidden
 
 from Mikobot import LOGGER
@@ -8,7 +9,36 @@ from Mikobot import LOGGER
 # <=======================================================================================================>
 
 
+# <================================================ CONSTANTS =====================================================>
+# Every 420 Telegram raises is a Flood, but not every Flood names a wait:
+# FloodWait and FloodPremiumWait carry the seconds, while
+# FloodSkipFailedWait (new in kurigram 2.2.27) says only that a short wait is
+# required. Callers that sleep on the error therefore need one place that
+# knows which of the two shapes arrived.
+FLOOD_WAIT_ERRORS = (FloodWait, FloodSkipFailedWait)
+
+# <=======================================================================================================>
+
+
 # <================================================ FUNCTION =======================================================>
+def flood_wait_seconds(error, default: int = 5) -> int:
+    """How long to sleep for a 420 error, in seconds.
+
+    kurigram exposes the wait as ``value`` (and ``seconds`` on FloodWait), but
+    FloodSkipFailedWait carries no number at all: its message is "A short wait
+    is required before repeating the request." Only FloodWait-style errors
+    name a duration, so the rest fall back to ``default``.
+
+    kurigram 2.2.27 also dropped the old ``error.x`` attribute these handlers
+    used to read. Reading it raised AttributeError inside the ``except``
+    block, which replaced the rate-limit handling with a crash.
+    """
+    value = getattr(error, "value", None)
+    if isinstance(value, int) and value > 0:
+        return value
+    return default
+
+
 def capture_err(func):
     """Log and re-raise whatever a handler raises.
 

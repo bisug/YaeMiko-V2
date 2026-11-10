@@ -61,7 +61,7 @@ jobs:
       # against an install nobody had asked for.
       - name: Install the dependencies under test
         run: |
-          uv sync --frozen --no-dev
+          uv sync --frozen
           echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
 
       # Guards the install above rather than the pin itself: a requirements.txt
@@ -100,17 +100,11 @@ jobs:
           python -m json.tool app.json >/dev/null
           python -m json.tool railway.json >/dev/null
 
-      - name: Validate deployment manifests
-        run: python tests/validate_deployment.py
-
-      - name: Validate documentation
-        run: python tests/validate_docs.py
-
       - name: Compile application
         run: python -m compileall -q .
 
       - name: Run tests
-        run: python -m unittest discover -s tests -v
+        run: pytest -v
 
       - name: Check whitespace
         run: git diff --check

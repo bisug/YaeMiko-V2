@@ -11,7 +11,6 @@ from aiogram.types import BufferedInputFile, LinkPreviewOptions, Message
 from cachetools import TTLCache
 from pyrogram import Client
 from pyrogram import filters as fil
-from pyrogram.errors import FloodWait
 
 import Database.sql.users_sql as sql
 import Database.sql.locale_sql as locale_sql
@@ -20,6 +19,7 @@ from Mikobot import DEV_USERS, LOGGER, OWNER_ID, app, bot, dp
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.plugins.helper_funcs.string_handling import escape_markdown_v2
 from Mikobot.utils.consts import ChatID
+from Mikobot.utils.errors import FLOOD_WAIT_ERRORS, flood_wait_seconds
 from Mikobot.utils.filters import GROUPS
 from Mikobot.utils.gate import chain
 
@@ -110,11 +110,11 @@ async def broadcast_cmd(client: Client, message):  # kurigram handler
                     await send_one(target_id)
                     sent += 1
                     break
-                except FloodWait as error:
+                except FLOOD_WAIT_ERRORS as error:
                     if attempt == 2:
                         failed += 1
                         break
-                    await asyncio.sleep(error.value)
+                    await asyncio.sleep(flood_wait_seconds(error))
                 except Exception:
                     LOGGER.exception("Failed to broadcast to %s", target_id)
                     failed += 1

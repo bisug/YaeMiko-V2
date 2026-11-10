@@ -4,11 +4,12 @@ from pyrogram.enums import ChatType
 
 
 from pyrogram.enums import ChatMemberStatus, ChatMembersFilter
-from pyrogram.errors import FloodWait, UserNotParticipant
+from pyrogram.errors import UserNotParticipant
 from pyrogram.types import ChatPermissions
 
 from Mikobot import LOGGER, app
 from Mikobot.events import register
+from Mikobot.utils.errors import FLOOD_WAIT_ERRORS, flood_wait_seconds
 
 
 async def is_admin(chat_id, user_id):
@@ -51,8 +52,8 @@ async def bulk_moderation(message):
                     ChatPermissions(can_send_messages=True),
                 )
             count += 1
-        except FloodWait as error:
-            await sleep(error.value)
+        except FLOOD_WAIT_ERRORS as error:
+            await sleep(flood_wait_seconds(error))
         except Exception:
             LOGGER.exception("Bulk moderation failed for chat %s", message.chat.id)
     await status.edit(f"Successfully updated {count} users.")

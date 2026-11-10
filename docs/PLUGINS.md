@@ -170,4 +170,4 @@ Rules to follow:
    confirming actions, `DANGER` for destructive actions.
 5. Store state in `Database/sql`. It is the only database; there is no MongoDB layer.
 6. Use the shared `state` httpx client from `Mikobot.state` for outbound HTTP.
-7. Add a check to `tests/test_regressions.py` if the module fixes a regression.
+7. Add a test in `tests/` if the module fixes a regression.

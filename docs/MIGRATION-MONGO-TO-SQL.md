@@ -153,7 +153,7 @@ writes `str(...)`. Skipping the cast produces a table that looks populated and
 matches nothing.
 
 **Every data helper is wrapped** in `@unit_of_work_guard` and closes its
-session in a `finally`. `tests/test_regressions.py` enforces this, private
+session in a `finally`. `tests/test_database.py` enforces this, private
 helpers included, so an unwrapped `_read` fails the suite.
 
 **Tables are created explicitly** with

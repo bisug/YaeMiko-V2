@@ -208,7 +208,7 @@ execution. Persistence, reply construction and error handling surround that spin
 | GitHub Actions CI | Compile, unit tests, JSON validation, whitespace, Docker build | [ci.yml](.github/workflows/ci.yml) |
 | CodeQL | Weekly and push security scanning | [codeql.yml](.github/workflows/codeql.yml) |
 | Dependabot | Weekly pip and Actions updates | [dependabot.yml](.github/dependabot.yml) |
-| unittest | Dependency free regression suite | [tests/test_regressions.py](tests/test_regressions.py) |
+| pytest | Modular test suite | [tests/](tests/) |
 
 ---
 
@@ -512,34 +512,29 @@ uv run python -m Mikobot
 `validate` job, which the `docker` job depends on, executes:
 
 ```bash
-uv sync --frozen --no-dev                      # sync pinned dependencies
+uv sync --frozen                               # sync pinned dependencies and dev tools
 python -m json.tool app.json >/dev/null        # manifest is valid JSON
 python -m json.tool railway.json >/dev/null    # Railway config is valid JSON
-python tests/validate_deployment.py            # blueprints agree with the entry point
-python tests/validate_docs.py                  # links, anchors, SVG, dead assets, no secrets
 python -m compileall -q .                     # every module compiles
-python -m unittest discover -s tests -v       # regression suite
+pytest -v                                     # modular test suite
 git diff --check                              # no whitespace damage
 ```
 
 The `docker` job then builds the worker image with Buildx, loads it into the local image
 store, and asserts its `CMD` is `python -m Mikobot`.
 
-The suite in [`tests/test_regressions.py`](tests/test_regressions.py) mostly uses AST extraction
-rather than importing the bot, so it stays fast. One test genuinely needs `aiogram` installed,
-because it asserts the field names of the pinned 3.31 release against the real package. CI installs
-the dependencies via `uv sync` and fails if any pin differs.
+The test suite in [`tests/`](tests/) uses modular `pytest` and `pytest-asyncio` suites. It verifies
+deployment manifests, documentation links, core utilities, database operations, security policies,
+and plugin configurations.
 
 Reproduce the full gate locally:
 
 ```bash
-uv sync --frozen --no-dev
-uv run python tests/validate_deployment.py
-uv run python tests/validate_docs.py
+uv sync --frozen
 uv run python -m json.tool app.json >/dev/null
 uv run python -m json.tool railway.json >/dev/null
 uv run python -m compileall -q .
-uv run python -m unittest discover -s tests -v
+uv run pytest -v
 git diff --check
 ```
 
