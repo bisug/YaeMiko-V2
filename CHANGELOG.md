@@ -10,8 +10,8 @@ All notable changes to YaeMiko are recorded here. The format follows
 
 - **Kurigram 2.2.27 & kuricrypt integration** — migrated fast cryptography backend from `tgcrypto-c` to
   `kuricrypt==0.1.1` (Rust/PyO3) and updated Kurigram to `2.2.27`.
-- **Python 3.15.2 upgrade** — bumped `.python-version`, `pyproject.toml` (`requires-python = ">=3.15"`),
-  `Dockerfile` (`python:3.15.2-slim`), and CI workflow (`python-version: "3.15.2"`).
+- **Python 3.14.10 pin** — `.python-version`, `pyproject.toml` (`requires-python = ">=3.14"`),
+  `Dockerfile` (`python:3.14.10-slim`), and CI workflow (`python-version: "3.14.10"`).
 - **Native lazy imports** (`sys.set_lazy_imports('all')`) enabled in `Mikobot/__init__.py` and
   `Mikobot/__main__.py`, with a filter that excludes `sqlalchemy.*` and `Database.sql.*` to keep
   SQLAlchemy ORM class-body execution correct. Reduces cold-start import time to near zero for all
@@ -31,8 +31,11 @@ All notable changes to YaeMiko are recorded here. The format follows
 
 ### Changed
 
-- **Python runtime upgraded to 3.15.2** across `.python-version`, `Dockerfile`, CI workflows, and all
-  documentation. Previous pin was 3.14.10.
+- **Python runtime pinned to 3.14.10** across `.python-version`, `pyproject.toml`
+  (`requires-python = ">=3.14"`, ruff `target-version = "py314"`), `Dockerfile`, CI workflows, and all
+  documentation. Previous pin was 3.15.2.
+- `onnxruntime` and `opennsfw-onnx` keep the `python_version < "3.15"` marker, so on the pinned 3.14 the
+  anti-NSFW wheels install and the check works out of the box.
 - `onnxruntime` and `opennsfw-onnx` now conditioned on `python_version < "3.15"` in both
   `pyproject.toml` and `requirements.txt` (no cp315 wheels available yet). The NSFW check in
   `antinsfw.py` raises a clear `RuntimeError` on Python 3.15+.
