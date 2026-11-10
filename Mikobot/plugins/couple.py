@@ -81,8 +81,8 @@ async def nibba_nibbi(_, message):
             if len(list_of_users) < 2:
                 return await message.reply("Not enough users in the group.")
             c1_id, c2_id = random.sample(list_of_users, 2)
-            c1_mention = (await _.get_users(c1_id)).mention
-            c2_mention = (await _.get_users(c2_id)).mention
+            users = await _.get_users([c1_id, c2_id])
+            c1_mention, c2_mention = users[0].mention, users[1].mention
             await _.send_photo(
                 message.chat.id,
                 photo=COUPLES_PIC,
@@ -92,8 +92,7 @@ async def nibba_nibbi(_, message):
         else:
             c1_id = int(is_selected["c1_id"])
             c2_id = int(is_selected["c2_id"])
-            c1 = await _.get_users(c1_id)
-            c2 = await _.get_users(c2_id)
+            c1, c2 = await _.get_users([c1_id, c2_id])
             couple_selection_message = CAP2.format(
                 c1.first_name or "User", c1_id, c2.first_name or "User", c2_id, tomorrow
             )

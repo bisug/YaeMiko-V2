@@ -20,9 +20,15 @@ from Mikobot import BOT_NAME, app
 # <================================================ FUNCTION =======================================================>
 @app.on_message(filters.command("alive"))
 async def alive(_, message: Message):
+    from pyrogram.crypto import aes
+
+    crypto_backend = getattr(aes, "_crypto_backend", None)
+    backend_name = crypto_backend.__name__ if crypto_backend else "pyaes"
+
     library_versions = {
         "AIOGRAM": aiogram.__version__,
         "KURIGRAM": pyrogram.__version__,
+        "CRYPTO": backend_name,
     }
 
     library_versions_text = "\n".join(

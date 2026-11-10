@@ -17,7 +17,9 @@ async def is_administrator(user_id, message):
 async def has_ban_rights(message, user_id=None):
     target = user_id or (await app.get_me()).id
     member = await app.get_chat_member(message.chat.id, target)
-    return bool(getattr(member.privileges, "can_restrict_members", False))
+    return member.status == ChatMemberStatus.OWNER or bool(
+        getattr(member.privileges, "can_restrict_members", False)
+    )
 
 
 async def _count_deleted(message):

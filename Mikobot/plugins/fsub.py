@@ -34,6 +34,8 @@ async def participant_check(channel, user_id):
 async def force_subscribe(message):
     if message.chat.type == ChatType.PRIVATE:
         return
+    if not message.from_user:
+        return await message.reply("Only users can configure force subscribe.")
     if message.chat.type in {ChatType.GROUP, ChatType.SUPERGROUP}:
         member = await app.get_chat_member(message.chat.id, message.from_user.id)
         if member.status not in {
@@ -99,8 +101,9 @@ async def force_subscribe_new_message(_, message):
     try:
         if message.chat.id not in BOT_PRIVILEGE_CACHE:
             bot = await app.get_chat_member(message.chat.id, BOT_ID)
-            BOT_PRIVILEGE_CACHE[message.chat.id] = bool(
-                getattr(bot.privileges, "can_restrict_members", False)
+            BOT_PRIVILEGE_CACHE[message.chat.id] = (
+                bot.status == ChatMemberStatus.OWNER
+                or bool(getattr(bot.privileges, "can_restrict_members", False))
             )
         if not BOT_PRIVILEGE_CACHE[message.chat.id]:
             return

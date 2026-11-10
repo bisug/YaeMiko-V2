@@ -52,7 +52,7 @@ async def wallpaper(_, event):
                 "The neko service is unavailable. Please try again later."
             )
             return
-        await event.reply(file=img_url)
+        await event.reply_photo(img_url)
 
 
 @app.on_message(filters.regex(r"^/nekomode on(?:@\S+)?$"), group=1)

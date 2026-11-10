@@ -60,6 +60,9 @@ class Quotly:
         MessageEntityType.SPOILER: "spoiler",
         MessageEntityType.CUSTOM_EMOJI: "custom_emoji",
         MessageEntityType.BLOCKQUOTE: "blockquote",
+        MessageEntityType.BANK_CARD: "bank_card",
+        MessageEntityType.DATE_TIME: "date_time",
+        MessageEntityType.TON_ADDRESS: "ton_address",
     }
 
     async def _format_quote(self, event, reply=None, sender=None, type_="private"):

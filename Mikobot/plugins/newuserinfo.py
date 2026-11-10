@@ -82,6 +82,8 @@ async def userinfopic(
 @app.on_message(filters.command("uinfo"))
 async def userinfo_command(client, message):
     user = message.from_user
+    if not user:
+        return await message.reply("Only users can check userinfo.")
     user_x, user_y = 1035, 2885
     user_id_x, user_id_y = 1035, 2755
 

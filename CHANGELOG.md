@@ -12,6 +12,11 @@ All notable changes to YaeMiko are recorded here. The format follows
   `kuricrypt==0.1.1` (Rust/PyO3) and updated Kurigram to `2.2.27`.
 - **Forum sidebar support** — updated forum topic validation in `Mikobot/plugins/topics.py` to recognize
   `has_forum_sidebar` on chats with sidebar topics enabled.
+- **Quotely entity expansion** — added support for `TON_ADDRESS`, `BANK_CARD`, and `DATE_TIME` entity types.
+- **Kurigram chat owner permission handling** — updated `unbanall`, `zombies`, and `fsub` to treat
+  `ChatMemberStatus.OWNER` as authorized even when `.privileges` is unset by Kurigram.
+- **Batched peer resolution in couple plugin** — optimized `get_users` to fetch couple candidates in a
+  single batched call using Kurigram's peer resolution cache.
 
 - **Python 3.15.2 upgrade** — bumped `.python-version`, `pyproject.toml` (`requires-python = ">=3.15"`),
   `Dockerfile` (`python:3.15.2-slim`), and CI workflow (`python-version: "3.15.2"`).
