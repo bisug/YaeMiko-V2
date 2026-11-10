@@ -10,14 +10,6 @@ All notable changes to YaeMiko are recorded here. The format follows
 
 - **Kurigram 2.2.27 & kuricrypt integration** — migrated fast cryptography backend from `tgcrypto-c` to
   `kuricrypt==0.1.1` (Rust/PyO3) and updated Kurigram to `2.2.27`.
-- **Forum sidebar support** — updated forum topic validation in `Mikobot/plugins/topics.py` to recognize
-  `has_forum_sidebar` on chats with sidebar topics enabled.
-- **Quotely entity expansion** — added support for `TON_ADDRESS`, `BANK_CARD`, and `DATE_TIME` entity types.
-- **Kurigram chat owner permission handling** — updated `unbanall`, `zombies`, and `fsub` to treat
-  `ChatMemberStatus.OWNER` as authorized even when `.privileges` is unset by Kurigram.
-- **Batched peer resolution in couple plugin** — optimized `get_users` to fetch couple candidates in a
-  single batched call using Kurigram's peer resolution cache.
-
 - **Python 3.15.2 upgrade** — bumped `.python-version`, `pyproject.toml` (`requires-python = ">=3.15"`),
   `Dockerfile` (`python:3.15.2-slim`), and CI workflow (`python-version: "3.15.2"`).
 - **Native lazy imports** (`sys.set_lazy_imports('all')`) enabled in `Mikobot/__init__.py` and
@@ -52,6 +44,22 @@ All notable changes to YaeMiko are recorded here. The format follows
 - `Mikobot/utils/can_restrict.py` keeps the wrapped handler's `__name__` and `__doc__` through `functools.wraps`, matching every other decorator here. Its refusal message also closes the code span it opened.
 - `Mikobot/plugins/tr.py` imports `google_translator` from `Mikobot/plugins/anime.py` instead of keeping a near-verbatim second copy of the class, dropping redundant imports.
 - The language-fallback and undefined-name guards now check `anime.py`, where the translator class is defined, rather than the `tr.py` copy.
+- `Mikobot/utils/can_restrict.py` gained a shared `has_restrict_rights(member)` helper, and `unbanall`,
+  `zombies` and `fsub` now use it instead of each reading `.privileges` on its own.
+- `Mikobot/plugins/topics.py` reads the forum layout from the Kurigram chat, which is the layer that
+  carries `has_forum_sidebar`; the Bot API exposes no such flag.
+- `Mikobot/plugins/alive.py` reports the crypto backend by probing for `kuricrypt` and `tgcrypto`
+  rather than reading Kurigram's private `_crypto_backend` attribute.
+- `Mikobot/plugins/quotely.py` derives an unmapped entity type from the enum member name and forwards
+  the `unix_time` and `date_time_format` fields of a `date_time` entity.
+- `Mikobot/plugins/couple.py` resolves both couple members in one batched `get_users` call and
+  reports the unresolvable case instead of raising on a missing member.
+- Ruff is now configured in `pyproject.toml` and runs in CI. The rule set covers the defects worth
+  catching here (unused names, undefined names, unsorted imports, bugbear and simplification
+  rules) and leaves the house style alone: lazy `%s` logging and the deliberate broad `except`
+  that logs and continues are not flagged.
+- The repository is formatted with `ruff format`, and the unused imports, unused locals and dead
+  code the linter found were removed across the plugins and the data layer.
 
 ### Performance
 
@@ -82,6 +90,22 @@ All notable changes to YaeMiko are recorded here. The format follows
 - `/tr` no longer raises `UnboundLocalError` for single-dash source languages or messages without text or caption.
 - The AFK mention handler answers `text_mention` entities correctly and guards against reply messages with no `from_user`.
 - Help and settings paginators no longer raise `ZeroDivisionError` on a chat with no modules to list.
+- `unbanall`, `zombies` and `fsub` treat a chat owner as authorized again. Kurigram leaves
+  `ChatMember.privileges` unset for an owner, so the rights check denied the owner and reported a
+  missing permission on a command the owner may run.
+- The forum topic commands accept a chat whose topics live in a sidebar. The flag exists only on the
+  Kurigram chat, so the check reads it there instead of asking the Bot API for a field it never sends.
+- Quotely no longer sends an entity type of `"<class 'pyrogram.raw.types....'>"` for an entity the
+  quote API does not know; the type comes from the enum member name.
+- The couple plugin no longer raises `AttributeError` when one of the two members cannot be resolved.
+- `/wallpaper` no longer lets a failed send escape the handler as a traceback.
+- The Catbox upload fallback no longer raises `NameError`. The reason for the failed Catbox upload was
+  read after its `except` block had ended, and Python unbinds the exception name there, so the
+  fallback note could not be built.
+- The `except TelegramAPIError` clause that followed a broader `except TelegramAPIError` was
+  unreachable in `gban` and duplicated in `connection`; both are gone.
+- Configuration errors raised while reading the environment now chain the underlying `ValueError`
+  with `from None`, so the operator sees the intended message rather than the raw conversion error.
 
 ### Removed
 

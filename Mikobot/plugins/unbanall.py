@@ -1,14 +1,13 @@
 import os
 from asyncio import sleep
-from pyrogram.enums import ChatType
 
-
-from pyrogram.enums import ChatMemberStatus, ChatMembersFilter
+from pyrogram.enums import ChatMembersFilter, ChatMemberStatus, ChatType
 from pyrogram.errors import UserNotParticipant
 from pyrogram.types import ChatPermissions
 
 from Mikobot import LOGGER, app
 from Mikobot.events import register
+from Mikobot.utils.can_restrict import has_restrict_rights
 from Mikobot.utils.errors import FLOOD_WAIT_ERRORS, flood_wait_seconds
 
 
@@ -27,12 +26,12 @@ async def bulk_moderation(message):
             "This command can be used in groups and supergroups only."
         )
     command = message.command[0].lower() if message.command else ""
-    if not message.from_user or not await is_admin(message.chat.id, message.from_user.id):
+    if not message.from_user or not await is_admin(
+        message.chat.id, message.from_user.id
+    ):
         return await message.reply("Only admins can use this command.")
     bot_member = await app.get_chat_member(message.chat.id, (await app.get_me()).id)
-    if bot_member.status != ChatMemberStatus.OWNER and not getattr(
-        bot_member.privileges, "can_restrict_members", False
-    ):
+    if not has_restrict_rights(bot_member):
         return await message.reply("I need permission to restrict members.")
     member_filter = (
         ChatMembersFilter.BANNED
@@ -63,7 +62,9 @@ async def bulk_moderation(message):
 async def get_users(message):
     if message.chat.type not in {ChatType.GROUP, ChatType.SUPERGROUP}:
         return
-    if not message.from_user or not await is_admin(message.chat.id, message.from_user.id):
+    if not message.from_user or not await is_admin(
+        message.chat.id, message.from_user.id
+    ):
         return
     chat = await app.get_chat(message.chat.id)
     lines = [f"Users in {chat.title or 'this chat'}:"]

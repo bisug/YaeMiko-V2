@@ -1,10 +1,10 @@
 from pyrogram import filters
-from pyrogram.enums import ChatMemberStatus, ChatType
+from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType
 from pyrogram.errors import ChatAdminRequired, UserAdminInvalid
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from Mikobot import SUPPORT_STAFF, app
-from pyrogram.enums import ButtonStyle
+from Mikobot.utils.can_restrict import has_restrict_rights
 
 
 async def is_administrator(user_id, message):
@@ -17,9 +17,7 @@ async def is_administrator(user_id, message):
 async def has_ban_rights(message, user_id=None):
     target = user_id or (await app.get_me()).id
     member = await app.get_chat_member(message.chat.id, target)
-    return member.status == ChatMemberStatus.OWNER or bool(
-        getattr(member.privileges, "can_restrict_members", False)
-    )
+    return has_restrict_rights(member)
 
 
 async def _count_deleted(message):
@@ -102,7 +100,9 @@ async def zombies(_, message):
                 ]
             ),
         )
-    if not message.from_user or not await is_administrator(message.from_user.id, message):
+    if not message.from_user or not await is_administrator(
+        message.from_user.id, message
+    ):
         return await message.reply(
             "You need to be an admin to remove deleted accounts."
         )

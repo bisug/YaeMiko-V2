@@ -12,6 +12,33 @@ from Mikobot import DEV_USERS, app
 
 
 # <================================================ FUNCTION =======================================================>
+def has_restrict_rights(member) -> bool:
+    """Whether a chat member may restrict other members.
+
+    kurigram leaves ``ChatMember.privileges`` unset for a chat owner and
+    for the admins of a basic group, so reading through it raised
+    AttributeError. The owner outranks an administrator and holds every
+    right, and a basic group has no per-right granularity at all: every
+    admin there may ban. Only a supergroup admin carries an explicit
+    rights object, and only its own flag decides.
+    """
+    if member is None:
+        return False
+
+    status = getattr(member, "status", None)
+    if status == ChatMemberStatus.OWNER:
+        return True
+
+    if status != ChatMemberStatus.ADMINISTRATOR:
+        return False
+
+    privileges = getattr(member, "privileges", None)
+    if privileges is None:
+        return True
+
+    return bool(privileges.can_restrict_members)
+
+
 def can_restrict(func: Callable) -> Callable:
     @wraps(func)
     async def non_admin(_, message: Message):
@@ -36,16 +63,7 @@ def can_restrict(func: Callable) -> Callable:
                 "» You're not an admin, Please stay in your limits."
             )
 
-        # kurigram leaves .privileges unset for a chat owner
-        # (chat_member.py builds ChatMember(status=OWNER) with no rights), so
-        # reading through it raised AttributeError and turned every owner-run
-        # restricted command into a traceback. The owner outranks an
-        # administrator, so the rights check applies to admins alone.
-        if check.status == ChatMemberStatus.OWNER:
-            return await func(_, message)
-
-        admin = check.privileges
-        if admin is not None and admin.can_restrict_members:
+        if has_restrict_rights(check):
             return await func(_, message)
 
         return await message.reply(

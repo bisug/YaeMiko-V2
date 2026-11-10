@@ -16,7 +16,7 @@ from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
 import Database.sql.topics_sql as sql
-from Mikobot import bot, dp
+from Mikobot import app, bot, dp
 from Mikobot.plugins.helper_funcs.alternate import typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.utils.filters import GROUPS
@@ -24,14 +24,30 @@ from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 
+async def _has_forum_sidebar(chat_id: int) -> bool:
+    """Whether the chat shows its topics in a sidebar.
+
+    The Bot API exposes no forum layout flag, so the layout is read from
+    the MTProto chat, which carries forum_sidebar. Only consulted for a
+    chat the Bot API already reported as a non-forum, so the common path
+    costs nothing.
+    """
+    try:
+        mtproto_chat = await app.get_chat(chat_id)
+    except Exception:
+        return False
+    return bool(getattr(mtproto_chat, "has_forum_sidebar", False))
+
+
 async def _forum_or_reply(message: Message):
     """Return the forum chat, or None after explaining why it cannot be used."""
     chat = message.chat
-    if not chat.is_forum:  # noqa: SIM102
-        if not getattr(chat, "has_forum_sidebar", False):
-            await message.reply("That only works in a forum with topics enabled.")
-            return None
-    return chat
+    if chat.is_forum:
+        return chat
+    if await _has_forum_sidebar(chat.id):
+        return chat
+    await message.reply("That only works in a forum with topics enabled.")
+    return None
 
 
 @check_admin(permission="can_manage_topics", is_both=True)
@@ -197,7 +213,7 @@ async def delete_topic_button(message, query) -> str:
         from aiogram.enums import ChatMemberStatus
 
         member = await bot.get_chat_member(int(chat_id), query.from_user.id)
-        if not member.status == ChatMemberStatus.CREATOR and not getattr(
+        if member.status != ChatMemberStatus.CREATOR and not getattr(
             member, "can_manage_topics", False
         ):
             await query.answer("You cannot manage topics here.", show_alert=True)
@@ -236,7 +252,7 @@ async def action_topic(message: Message, command: CommandObject):
         current = await asyncio.to_thread(sql.get_action_topic, chat.id)
         await message.reply(
             "Automated messages go to "
-            f"<code>{'General' if not current else current}</code>."
+            f"<code>{current if current else 'General'}</code>."
             + (
                 "\nReply in a topic and use `/setactiontopic` to send them there."
                 if not current

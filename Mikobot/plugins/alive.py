@@ -18,17 +18,31 @@ from Mikobot import BOT_NAME, app
 
 
 # <================================================ FUNCTION =======================================================>
+def _crypto_backend_name() -> str:
+    """The MTProto crypto backend in use.
+
+    Kurigram picks the first importable of kuricrypt and tgcrypto and
+    falls back to pyaes, so the same order is probed here. The backend
+    is named rather than versioned because kuricrypt exposes no version
+    attribute.
+    """
+    from importlib.util import find_spec
+
+    for module_name in ("kuricrypt", "tgcrypto"):
+        try:
+            if find_spec(module_name) is not None:
+                return module_name
+        except ImportError, ValueError:
+            continue
+    return "pyaes"
+
+
 @app.on_message(filters.command("alive"))
 async def alive(_, message: Message):
-    from pyrogram.crypto import aes
-
-    crypto_backend = getattr(aes, "_crypto_backend", None)
-    backend_name = crypto_backend.__name__ if crypto_backend else "pyaes"
-
     library_versions = {
         "AIOGRAM": aiogram.__version__,
         "KURIGRAM": pyrogram.__version__,
-        "CRYPTO": backend_name,
+        "CRYPTO": _crypto_backend_name(),
     }
 
     library_versions_text = "\n".join(

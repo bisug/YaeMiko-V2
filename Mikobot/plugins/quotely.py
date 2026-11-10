@@ -10,6 +10,13 @@ import httpx
 from PIL import Image
 from pyrogram.enums import MessageEntityType
 
+from Mikobot import DEV_USERS, LOGGER, app
+from Mikobot.events import register
+from Mikobot.plugins.telegraph import _upload
+from Mikobot.state import state
+
+# <=======================================================================================================>
+
 
 def get_display_name(user):
     if user is None:
@@ -17,12 +24,17 @@ def get_display_name(user):
     return " ".join(part for part in (user.first_name, user.last_name) if part) or None
 
 
-from Mikobot import DEV_USERS, LOGGER, app
-from Mikobot.events import register
-from Mikobot.plugins.telegraph import _upload
-from Mikobot.state import state
+def _entity_type_name(entity_type) -> str:
+    """The quote API's name for an entity type.
 
-# <=======================================================================================================>
+    MessageEntityType is an AutoName enum whose value is the raw Telegram
+    class, not a string, so str() of it yields a class repr. The enum
+    member name is the identifier the API expects.
+    """
+    name = getattr(entity_type, "name", None)
+    if isinstance(name, str) and name:
+        return name.lower()
+    return str(entity_type).lower()
 
 
 # <================================================ CLASS & FUNCTION =======================================================>
@@ -155,21 +167,22 @@ class Quotly:
                 or getattr(forward_origin, "author_signature", None)
                 or "Unknown"
             )
-            last_name = (
-                getattr(sender_user, "last_name", None) if sender_user else None
-            )
+            last_name = getattr(sender_user, "last_name", None) if sender_user else None
             username = (
                 getattr(sender_user, "username", None)
                 if sender_user
                 else getattr(forward_chat, "username", None)
             )
 
-        raw_entities = getattr(event, "entities", None) or getattr(event, "caption_entities", None) or []
+        raw_entities = (
+            getattr(event, "entities", None)
+            or getattr(event, "caption_entities", None)
+            or []
+        )
         entities = []
         for entity in raw_entities:
             entity_type = self._entities.get(
-                entity.type,
-                str(getattr(entity.type, "value", entity.type)).lower(),
+                entity.type, _entity_type_name(entity.type)
             )
             ent = {
                 "type": entity_type,
@@ -190,6 +203,10 @@ class Quotly:
                 ent["language"] = entity.language
             if getattr(entity, "custom_emoji_id", None):
                 ent["custom_emoji_id"] = entity.custom_emoji_id
+            if getattr(entity, "unix_time", None) is not None:
+                ent["unix_time"] = entity.unix_time
+            if getattr(entity, "date_time_format", None) is not None:
+                ent["date_time_format"] = entity.date_time_format
             entities.append(ent)
 
         text_content = event.text or event.caption or ""
@@ -214,15 +231,16 @@ class Quotly:
 
         media_file = None
         try:
-            if getattr(event, "photo", None):
+            if getattr(event, "photo", None) or getattr(event, "sticker", None):
                 media_file = await event.download_media()
-            elif getattr(event, "sticker", None):
-                media_file = await event.download_media()
-            elif getattr(event, "document", None) and getattr(event.document, "thumbs", None):
-                media_file = await event.download_media(thumb=-1)
-            elif getattr(event, "video", None) and getattr(event.video, "thumbs", None):
-                media_file = await event.download_media(thumb=-1)
-            elif getattr(event, "animation", None) and getattr(event.animation, "thumbs", None):
+            elif (
+                getattr(event, "document", None)
+                and getattr(event.document, "thumbs", None)
+                or getattr(event, "video", None)
+                and getattr(event.video, "thumbs", None)
+                or getattr(event, "animation", None)
+                and getattr(event.animation, "thumbs", None)
+            ):
                 media_file = await event.download_media(thumb=-1)
         except Exception as err:
             LOGGER.warning("Failed to download quote media: %s", err)
@@ -281,7 +299,11 @@ class Quotly:
             with open(webp_file, "wb") as wf:
                 wf.write(image_data)
             return file_name
-        error_msg = request.get("error", {}).get("message", str(request)) if isinstance(request, dict) else str(request)
+        error_msg = (
+            request.get("error", {}).get("message", str(request))
+            if isinstance(request, dict)
+            else str(request)
+        )
         raise RuntimeError(f"Quote API error: {error_msg}")
 
 
@@ -353,7 +375,9 @@ async def quott_(event):
         ):
             if spli_[0].isdigit():
                 count = int(spli_[0])
-                msg_ids = [mid for mid in range(reply.id - count + 1, reply.id + 1) if mid > 0]
+                msg_ids = [
+                    mid for mid in range(reply.id - count + 1, reply.id + 1) if mid > 0
+                ]
                 msgs = await app.get_messages(
                     event.chat.id,
                     message_ids=msg_ids,

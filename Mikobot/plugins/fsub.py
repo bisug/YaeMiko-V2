@@ -2,14 +2,15 @@ from time import perf_counter
 
 from cachetools import TTLCache
 from pyrogram import filters
-from pyrogram.enums import ChatMemberStatus, ChatType
+from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType
 from pyrogram.errors import ChatAdminRequired, UserNotParticipant
 from pyrogram.types import ChatPermissions, InlineKeyboardButton, InlineKeyboardMarkup
 
 from Database.sql import fsub_sql as db
-from Mikobot import BOT_ID, DRAGONS as DEVS, LOGGER, OWNER_ID, app
+from Mikobot import BOT_ID, LOGGER, OWNER_ID, app
+from Mikobot import DRAGONS as DEVS
 from Mikobot.events import register
-from pyrogram.enums import ButtonStyle
+from Mikobot.utils.can_restrict import has_restrict_rights
 
 F_SUBSCRIBE_COMMAND = r"/(fsub|Fsub|forcesubscribe|Forcesub|forcesub|Forcesubscribe)"
 FORCESUBSCRIBE_ON = {"on", "yes", "y"}
@@ -21,7 +22,7 @@ async def participant_check(channel, user_id):
     try:
         await app.get_chat_member(channel, int(user_id))
         return True
-    except (UserNotParticipant, ChatAdminRequired):
+    except UserNotParticipant, ChatAdminRequired:
         return False
     except Exception:
         LOGGER.exception(
@@ -101,10 +102,7 @@ async def force_subscribe_new_message(_, message):
     try:
         if message.chat.id not in BOT_PRIVILEGE_CACHE:
             bot = await app.get_chat_member(message.chat.id, BOT_ID)
-            BOT_PRIVILEGE_CACHE[message.chat.id] = (
-                bot.status == ChatMemberStatus.OWNER
-                or bool(getattr(bot.privileges, "can_restrict_members", False))
-            )
+            BOT_PRIVILEGE_CACHE[message.chat.id] = has_restrict_rights(bot)
         if not BOT_PRIVILEGE_CACHE[message.chat.id]:
             return
     except Exception:
