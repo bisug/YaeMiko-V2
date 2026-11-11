@@ -112,19 +112,24 @@ def _count_statement(conn, cursor, statement, parameters, context, executemany):
 
 def start() -> scoped_session:
     global ENGINE
-    # The default pool is 5 plus 10 overflow, so 15 connections at most.
     # asyncio.to_thread runs each helper on a worker and can spawn up to
-    # min(32, cpu + 4) of them, so a busy chat reaches the ceiling and every
-    # further caller then blocks for the full 30s pool timeout and raises
-    # TimeoutError. That is the "the database is really slow" report: it is
-    # queueing, not the queries.
+    # min(32, cpu + 4) of them, so a busy chat asks for a connection per
+    # worker. The pool has to be big enough for that and small enough to
+    # stay inside the server's own limit.
     #
-    # pool_size is sized to the worker count and max_overflow is left generous
-    # but finite, so a burst costs a wait rather than exhausting the server's
-    # own connection limit. Both are overridable from the environment for
-    # hosts that need different numbers.
-    pool_size = env_int("DB_POOL_SIZE", min(20, (os.cpu_count() or 4) * 2 + 4))
-    max_overflow = env_int("DB_MAX_OVERFLOW", 20)
+    # Aiven's plan for this database allows 20 connections, and the
+    # background workers of the server take a few of them, so 15 are
+    # available to a role. The pool was sized for 20 plus 20 overflow, which
+    # is 32: the pool then asked for a connection the server refuses with
+    # "sorry, too many clients already", and the checkout stalled on the
+    # socket instead of failing. Eight plus four keeps the bot at twelve
+    # connections and leaves room for the other application that shares the
+    # database.
+    #
+    # Both numbers are overridable from the environment for hosts with a
+    # different limit.
+    pool_size = env_int("DB_POOL_SIZE", min(8, (os.cpu_count() or 4) * 2 + 4))
+    max_overflow = env_int("DB_MAX_OVERFLOW", 4)
     pool_timeout = env_int("DB_POOL_TIMEOUT", 30)
 
     # A handler waiting on a query holds a pooled connection for as long as it
@@ -134,6 +139,12 @@ def start() -> scoped_session:
     statement_timeout = env_int("DB_STATEMENT_TIMEOUT_MS", 5000)
     lock_timeout = env_int("DB_LOCK_TIMEOUT_MS", 2000)
     idle_in_transaction = env_int("DB_IDLE_IN_TRANSACTION_MS", 30000)
+
+    # A connect that hangs is worse than one that fails. Without a timeout the
+    # socket waits for the operating system to give up, which can be minutes,
+    # and the start up blocks on it with no log line. Ten seconds is enough
+    # for a healthy handshake and short enough to fail and report.
+    connect_timeout = env_int("DB_CONNECT_TIMEOUT", 10)
 
     engine = create_engine(
         DB_URI,
@@ -151,6 +162,16 @@ def start() -> scoped_session:
         # stalled event loop.
         pool_timeout=pool_timeout,
         connect_args={
+            "connect_timeout": connect_timeout,
+            # A peer that disappears without a close leaves the socket
+            # waiting for the operating system to give up, which is minutes.
+            # The keepalive probes turn that into an error after about a
+            # minute, so a broken connection fails instead of stalling the
+            # worker that holds it.
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 3,
             # Without it every session shows up as an anonymous client in
             # pg_stat_activity, which is the wrong place to look when a query
             # is holding a lock.

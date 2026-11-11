@@ -145,6 +145,34 @@ def test_welcome_mute_mode_is_text():
     assert column.default.arg == "off"
 
 
+def test_pool_fits_the_server_limit():
+    """The pool must stay under the connection limit of the database.
+
+    The Aiven plan for this database allows 20 connections and the
+    background workers of the server take a few of them, so 15 are left
+    for a role. A pool that asks for more gets "sorry, too many clients
+    already", and the checkout then waits on the socket instead of
+    failing.
+    """
+    source = SQL_INIT.read_text(encoding="utf-8")
+    assert 'env_int("DB_POOL_SIZE", min(8,' in source
+    assert 'env_int("DB_MAX_OVERFLOW", 4)' in source
+
+
+def test_a_stalled_connection_fails_instead_of_hanging():
+    """A connect and a dead peer both have to end on their own.
+
+    Without a connect timeout the socket waits for the operating system
+    to give up, which can be minutes, and the worker that holds it waits
+    with no log line.
+    """
+    source = SQL_INIT.read_text(encoding="utf-8")
+    assert 'env_int("DB_CONNECT_TIMEOUT", 10)' in source
+    assert '"connect_timeout": connect_timeout' in source
+    assert '"keepalives": 1' in source
+    assert '"keepalives_count": 3' in source
+
+
 def test_dead_columns_are_gone():
     """Columns nothing wrote are not declared any more."""
     from Database.sql.antiflood_sql import FloodControl

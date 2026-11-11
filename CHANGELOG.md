@@ -44,6 +44,10 @@ All notable changes to YaeMiko are recorded here. The format follows
     start.
   - `couple.c1_id` and `couple.c2_id` are widened to `BIGINT`. The table was created with an
     integer column, which caps a Telegram user id at 2\*\*31-1.
+  - `feds.owner_id` and `bans_feds.user_id` are widened to `BIGINT` too. Both were text columns
+    while every other user key in the package is a `BIGINT`, and the code compared them with
+    `int()`. The migration checks that every row holds a number first and leaves the column
+    alone with a warning if one does not.
   - `cust_filters` gained the missing column migration, so a deployment whose table predates
     `reply_text`, `file_type` and `file_id` keeps the old shape no longer, and the legacy
     `has_markdown` column is dropped because the model no longer declares it.
@@ -53,6 +57,15 @@ All notable changes to YaeMiko are recorded here. The format follows
   - `raid_mode.time` and `raid_mode.acttime` are `BIGINT`, like the raid columns they sit next to.
   - `scripts/db_cleanup.sql` holds the tables from the MongoDB era that no model declares and the
     columns that no model declares any more. Nothing in it runs by itself.
+- **The connection pool now fits the server.** The Aiven plan for this database allows 20
+  connections and the background workers of the server take a few of them, so 15 are left for a
+  role. The pool asked for 20 plus 20 overflow, and the server answered the extra checkout with
+  "sorry, too many clients already", which left the checkout waiting on the socket instead of
+  failing. The pool is now 8 plus 4, and both numbers stay overridable.
+- **A stalled connection fails instead of hanging.** `connect_timeout` (10 seconds,
+  `DB_CONNECT_TIMEOUT`) bounds a connect that stalls, and keepalive probes end a connection whose
+  peer disappeared. Without them the socket waits for the operating system to give up, which can
+  be minutes, and the worker that holds it waits with no log line.
 - **Python runtime pinned to 3.14.10** across `.python-version`, `pyproject.toml`
   (`requires-python = ">=3.14"`, ruff `target-version = "py314"`), `Dockerfile`, CI workflows, and all
   documentation. Previous pin was 3.15.2.

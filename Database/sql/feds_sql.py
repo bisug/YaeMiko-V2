@@ -11,18 +11,27 @@ from sqlalchemy import (
     String,
     UnicodeText,
     delete,
+    inspect,
     select,
+    text,
 )
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from Database.sql import BASE, ENGINE, SESSION, ensure_index, unit_of_work_guard
+from Database.sql import (
+    BASE,
+    ENGINE,
+    SESSION,
+    ensure_index,
+    run_migration,
+    unit_of_work_guard,
+)
 from Mikobot import LOGGER, OWNER_ID, bot
 
 
 class Federations(BASE):
     __tablename__ = "feds"
-    owner_id = Column(String(14))
+    owner_id = Column(BigInteger)
     fed_name = Column(UnicodeText)
     fed_id = Column(UnicodeText, primary_key=True)
     fed_rules = Column(UnicodeText)
@@ -53,7 +62,7 @@ class ChatF(BASE):
 class BansF(BASE):
     __tablename__ = "bans_feds"
     fed_id = Column(UnicodeText, primary_key=True)
-    user_id = Column(String(14), primary_key=True)
+    user_id = Column(BigInteger, primary_key=True)
     first_name = Column(UnicodeText, nullable=False)
     last_name = Column(UnicodeText)
     user_name = Column(UnicodeText)
@@ -117,6 +126,65 @@ ensure_index("feds_owner_uc", "feds", "owner_id", unique=True)
 # del_fed deletes the subscriptions of a federation by subscriber, and the
 # primary key starts with the federation id.
 ensure_index("feds_subs_sub_idx", "feds_subs", "fed_subs")
+
+
+def _widen_user_id_column(table: str, column: str) -> None:
+    """Turn a text user id column into a BIGINT one.
+
+    The owner of a federation and a banned user were stored as text, while
+    every other user key in this package is a BIGINT. A user id above
+    2**31-1 does not fit, and the column was compared with int() in three
+    places.
+
+    The column is only widened when every value in it is a number. A row that
+    holds something else is left alone and reported.
+    """
+    if ENGINE is None:
+        return
+    inspector = inspect(ENGINE)
+    if table not in inspector.get_table_names():
+        return
+    columns = {c["name"]: c for c in inspector.get_columns(table)}
+    current = columns.get(column)
+    if current is None:
+        return
+    # str() of a VARCHAR column is "VARCHAR(14)", length included, so the
+    # check is on the prefix and not on the whole string.
+    if (
+        not str(current["type"])
+        .upper()
+        .startswith(("VARCHAR", "CHARACTER VARYING", "TEXT"))
+    ):
+        return
+    with ENGINE.begin() as connection:
+        odd = connection.execute(
+            text(
+                f'SELECT count(*) FROM "{table}" WHERE "{column}" IS NOT NULL'
+                f" AND \"{column}\" !~ '^[0-9]+$'"
+            )
+        ).scalar()
+        if odd:
+            LOGGER.warning(
+                "Not widening %s.%s: %d rows hold something that is not a number",
+                table,
+                column,
+                odd,
+            )
+            return
+        connection.execute(
+            text(
+                f'ALTER TABLE "{table}" ALTER COLUMN "{column}" TYPE BIGINT'
+                f' USING "{column}"::bigint'
+            )
+        )
+
+
+def _ensure_user_id_types() -> None:
+    _widen_user_id_column("feds", "owner_id")
+    _widen_user_id_column("bans_feds", "user_id")
+
+
+run_migration(_ensure_user_id_types)
 
 FEDS_LOCK = threading.RLock()
 CHAT_FEDS_LOCK = threading.RLock()
@@ -188,6 +256,8 @@ def get_fed_name(chat_id):
 
 
 def get_user_fban(fed_id, user_id):
+    fed_id = str(fed_id)
+    user_id = str(user_id)
     if not FEDERATION_BANNED_FULL.get(fed_id):
         return False, False, False
     user_info = FEDERATION_BANNED_FULL[fed_id].get(user_id)
@@ -247,7 +317,7 @@ def new_fed(owner_id, fed_name, fed_id):
     with FEDS_LOCK:
         global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME
         fed = Federations(
-            str(owner_id),
+            int(owner_id),
             fed_name,
             str(fed_id),
             "Rules is not set in this federation.",
@@ -434,7 +504,7 @@ def user_demote_fed(fed_id, user_id):
         members = [member for member in members if int(member) != int(user_id)]
         fed_users = str({"owner": str(owner_id), "members": str(members)})
         fed = Federations(
-            str(owner_id),
+            int(owner_id),
             fed_name,
             str(fed_id),
             fed_rules,
@@ -467,7 +537,7 @@ def user_join_fed(fed_id, user_id):
             members.append(int(user_id))
         fed_users = str({"owner": str(owner_id), "members": str(members)})
         fed = Federations(
-            str(owner_id),
+            int(owner_id),
             fed_name,
             str(fed_id),
             fed_rules,
@@ -546,7 +616,7 @@ def set_frules(fed_id, rules):
         fed_rules = str(rules)
         fed_log = getfed["flog"]
         fed = Federations(
-            str(owner_id),
+            int(owner_id),
             fed_name,
             str(fed_id),
             fed_rules,
@@ -571,11 +641,11 @@ def get_frules(fed_id):
 def fban_user(fed_id, user_id, first_name, last_name, user_name, reason, time):
     with FEDS_LOCK:
         try:
-            ban = SESSION.get(BansF, (str(fed_id), str(user_id)))
+            ban = SESSION.get(BansF, (str(fed_id), int(user_id)))
             if ban is None:
                 ban = BansF(
                     str(fed_id),
-                    str(user_id),
+                    int(user_id),
                     first_name,
                     last_name,
                     user_name,
@@ -601,6 +671,11 @@ def fban_user(fed_id, user_id, first_name, last_name, user_name, reason, time):
             user_ids.add(int(user_id))
         elif int(user_id) not in user_ids:
             user_ids.append(int(user_id))
+        FEDERATION_BANNED_FULL.setdefault(str(fed_id), {})[str(user_id)] = {
+            "first_name": first_name,
+            "reason": reason,
+            "time": time,
+        }
         return ban
 
 
@@ -619,11 +694,11 @@ def multi_fban_user(
             for index in range(len(multi_fed_id)):
                 fed_id = multi_fed_id[index]
                 user_id = multi_user_id[index]
-                ban = SESSION.get(BansF, (str(fed_id), str(user_id)))
+                ban = SESSION.get(BansF, (str(fed_id), int(user_id)))
                 if ban is None:
                     ban = BansF(
                         str(fed_id),
-                        str(user_id),
+                        int(user_id),
                         multi_first_name[index],
                         multi_last_name[index],
                         multi_user_name[index],
@@ -647,6 +722,11 @@ def multi_fban_user(
                     user_ids.add(int(user_id))
                 elif int(user_id) not in user_ids:
                     user_ids.append(int(user_id))
+                FEDERATION_BANNED_FULL.setdefault(fed_id, {})[user_id] = {
+                    "first_name": multi_first_name[index],
+                    "reason": multi_reason[index],
+                    "time": 0,
+                }
         except SQLAlchemyError:
             SESSION.rollback()
             LOGGER.exception("Unable to persist %d federation bans", len(multi_fed_id))
@@ -658,7 +738,7 @@ def multi_fban_user(
 def un_fban_user(fed_id, user_id):
     with FEDS_LOCK:
         try:
-            ban = SESSION.get(BansF, (str(fed_id), str(user_id)))
+            ban = SESSION.get(BansF, (str(fed_id), int(user_id)))
             if ban is None:
                 return None
             SESSION.delete(ban)
@@ -692,7 +772,7 @@ def get_fban_user(fed_id, user_id):
         return False, None, None
 
     try:
-        ban = SESSION.get(BansF, (fed_id, user_id))
+        ban = SESSION.get(BansF, (fed_id, int(user_id)))
         if ban is None:
             return False, None, None
         return True, ban.reason, ban.time
@@ -716,7 +796,7 @@ def get_all_fban_users_target(fed_id, user_id):
     if cached is not None:
         return cached
     try:
-        ban = SESSION.get(BansF, (fed_id, user_id))
+        ban = SESSION.get(BansF, (fed_id, int(user_id)))
         if ban is None:
             return False
         return {
@@ -802,7 +882,7 @@ def set_fed_log(fed_id, chat_id):
         fed_rules = getfed["frules"]
         fed_log = None if chat_id is None else str(chat_id)
         fed = Federations(
-            str(owner_id),
+            int(owner_id),
             fed_name,
             str(fed_id),
             fed_rules,
@@ -876,10 +956,11 @@ def __load_all_feds():
     try:
         feds = SESSION.scalars(select(Federations)).all()
         for x in feds:  # remove tuple by ( ,)
-            # Fed by Owner
-            check = FEDERATION_BYOWNER.get(x.owner_id)
+            # Fed by Owner. The cache is keyed by the owner as a string, so
+            # the owner id read out of the row has to be turned into one.
+            check = FEDERATION_BYOWNER.get(str(x.owner_id))
             if check is None:
-                FEDERATION_BYOWNER[x.owner_id] = []
+                FEDERATION_BYOWNER[str(x.owner_id)] = []
             FEDERATION_BYOWNER[str(x.owner_id)] = {
                 "fid": str(x.fed_id),
                 "fname": x.fed_name,
@@ -951,6 +1032,13 @@ def __load_all_feds_banned():
         for x in qall:
             user_ids = FEDERATION_BANNED_USERID.setdefault(str(x.fed_id), set())
             user_ids.add(int(x.user_id))
+            # The full cache holds the details of a ban. It was never filled,
+            # so every lookup of a ban came back empty.
+            FEDERATION_BANNED_FULL.setdefault(str(x.fed_id), {})[str(x.user_id)] = {
+                "first_name": x.first_name,
+                "reason": x.reason,
+                "time": x.time,
+            }
     except Exception:
         pass
     finally:

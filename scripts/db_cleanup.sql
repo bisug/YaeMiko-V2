@@ -100,7 +100,27 @@ alter table antiflood drop column if exists count;
 alter table raid_chats drop column if exists notified;
 
 -- ---------------------------------------------------------------------------
--- 4. Check
+-- 4. The user id columns the models declare as BIGINT
+--
+-- The bot widens these itself at start up, through the migrations in the
+-- modules that own the table. They are written out here so the change can
+-- be applied and checked on its own. A row that holds something that is
+-- not a number stops the bot from widening the column, so check that
+-- first.
+-- ---------------------------------------------------------------------------
+
+-- couple.c1_id and couple.c2_id were created as integer, which caps a
+-- Telegram user id at 2**31-1.
+alter table couple alter column c1_id type bigint using c1_id::bigint;
+alter table couple alter column c2_id type bigint using c2_id::bigint;
+
+-- feds.owner_id and bans_feds.user_id were text, while every other user
+-- key in the package is a BIGINT.
+alter table feds alter column owner_id type bigint using owner_id::bigint;
+alter table bans_feds alter column user_id type bigint using user_id::bigint;
+
+-- ---------------------------------------------------------------------------
+-- 5. Check
 -- ---------------------------------------------------------------------------
 
 -- Every table the bot owns must be there. The row count must match the

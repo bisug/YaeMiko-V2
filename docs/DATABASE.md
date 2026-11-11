@@ -57,8 +57,8 @@ flowchart TD
 | --- | --- | --- |
 | Connection URL | `DATABASE_URL` through `DB_URI` | required |
 | Driver | `postgres://` and `postgresql://` rewritten to `postgresql+psycopg://` in `Database/sql/__init__.py` | psycopg 3 |
-| `pool_size` | `DB_POOL_SIZE` | `min(20, cpu * 2 + 4)` |
-| `max_overflow` | `DB_MAX_OVERFLOW` | `20` |
+| `pool_size` | `DB_POOL_SIZE` | `min(8, cpu * 2 + 4)` |
+| `max_overflow` | `DB_MAX_OVERFLOW` | `4` |
 | `pool_timeout` | `DB_POOL_TIMEOUT` | `30` seconds |
 | `pool_pre_ping` | `DB_PRE_PING` | `True` |
 | `pool_recycle` | hard coded | `1800` seconds |
@@ -66,6 +66,8 @@ flowchart TD
 | `statement_timeout` | `DB_STATEMENT_TIMEOUT_MS` | `5000` ms |
 | `lock_timeout` | `DB_LOCK_TIMEOUT_MS` | `2000` ms |
 | `idle_in_transaction_session_timeout` | `DB_IDLE_IN_TRANSACTION_MS` | `30000` ms |
+| `connect_timeout` | `DB_CONNECT_TIMEOUT` | `10` seconds |
+| `keepalives` | hard coded | on, 30s idle, 10s interval, 3 probes |
 | `application_name` | hard coded | `yaemiko` |
 
 `pool_pre_ping` costs a round trip on every checkout and the message handlers check
@@ -78,6 +80,19 @@ The pool is sized from the worker count because helpers run on `asyncio.to_threa
 which there can be up to `min(32, cpu + 4)`. The SQLAlchemy default of 5 plus 10 overflow was
 reached by one busy chat, after which every further caller waited out `pool_timeout` and raised
 `TimeoutError`, which reads as a slow database and is really queueing.
+
+The pool also has to stay under the server's own limit. The Aiven plan for this database allows
+20 connections, and the background workers of the server take a few of them, so 15 are left for a
+role. The pool asked for 20 plus 20 overflow, and the server answered the extra checkout with
+"sorry, too many clients already", which left the checkout waiting on the socket instead of
+failing. Eight plus four keeps the bot at twelve connections and leaves room for the other
+application that shares the database.
+
+`connect_timeout` bounds a connect that stalls. Without it the socket waits for the operating
+system to give up, which can be minutes, and the start up blocks on it with no log line. The
+keepalive probes cover the same case for a connection that dies while it is idle: the peer is
+probed every 30 seconds and three missed probes end the connection, so a broken socket fails the
+query that used it instead of stalling the worker that holds it.
 
 Every statement is counted by shape and the mix is logged every `DB_STATEMENT_LOG_EVERY`
 statements. Round trips are what a message path costs, so the query count is the number worth
@@ -359,7 +374,7 @@ erDiagram
         TEXT fed_name
         TEXT fed_rules
         TEXT fed_users
-        VARCHAR owner_id "varchar(14)"
+        BIGINT owner_id
     }
     chat_feds {
         VARCHAR chat_id PK "varchar(14)"
@@ -368,7 +383,7 @@ erDiagram
     }
     bans_feds {
         TEXT fed_id PK
-        VARCHAR user_id PK "varchar(14)"
+        BIGINT user_id PK
         TEXT first_name
         TEXT last_name
         TEXT reason
@@ -698,6 +713,11 @@ list first so the pass is idempotent:
 `karma_sql.py` widens the two user id columns of `couple` to `BIGINT`, which the model has
 always declared. The table was created with an integer column, which caps a Telegram user id
 at 2\*\*31-1, and the ids above that exist.
+
+`feds_sql.py` widens `feds.owner_id` and `bans_feds.user_id` the same way. Both were text
+columns while every other user key in the package is a `BIGINT`, and the code compared them
+with `int()` in three places. The migration checks that every row holds a number before it
+widens the column, and leaves the column alone with a warning if one does not.
 
 The first three also write the column default into the rows that were there before, so an
 upgraded row reads as the new default instead of NULL.
