@@ -26,14 +26,10 @@ if hasattr(sys, "set_lazy_imports"):
     if hasattr(sys, "set_lazy_imports_filter"):
         sys.set_lazy_imports_filter(_lazy_imports_filter)
 
-from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-from aiogram.fsm.storage.memory import MemoryStorage
 from pyrogram import Client
+from pyrogram.enums import ParseMode
 
 from Mikobot.utils.persistence import open_store
-from Mikobot.utils.throttle import ThrottledSession
 
 # <=======================================================================================================>
 
@@ -329,32 +325,9 @@ CONFIG_TIGERS = set(TIGERS)
 # <=======================================================================================================>
 
 # <============================================== INITIALIZE APPLICATION =========================================================>
-# Initialize the bot and dispatcher, then add handlers
-bot = Bot(
-    token=TOKEN,
-    default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-    session=ThrottledSession(),
-)
-dp = Dispatcher(storage=MemoryStorage())
-
-
-def _install_gates():
-    """Enforce @check_admin and friends; they tag handlers, this applies them."""
-    from Mikobot.plugins.helper_funcs import chat_status
-    from Mikobot.utils.gate import GateMiddleware
-
-    middleware = GateMiddleware(chat_status)
-    for observer in (
-        dp.message,
-        dp.edited_message,
-        dp.callback_query,
-        dp.inline_query,
-        dp.chat_member,
-    ):
-        observer.middleware(middleware)
-
-
-_install_gates()
+# The kurigram client is the only Telegram client: it speaks MTProto, so the
+# bot no longer depends on the Bot API or on an HTTP session of its own.
+# Handlers are registered on it through Mikobot.events.
 
 store = open_store(
     os.path.join(os.path.dirname(__file__), "..", "ptb_persistence.pickle")
@@ -379,7 +352,7 @@ ALIVE_IMG = [
 # <==================================================== BOOT FUNCTION ===================================================>
 async def send_booting_message():
     try:
-        await bot.send_photo(
+        await app.send_photo(
             chat_id=SUPPORT_ID,
             photo=str(choice(ALIVE_IMG)),
             caption=alive_msg(),
@@ -407,25 +380,23 @@ _BOT_INFO = None
 
 
 def fetch_bot_info():
-    """Resolve the bot's identity, retrying until the API answers.
+    """Resolve the bot's identity from the running client.
 
-    Placeholders are returned when the API cannot be reached, but they are
+    kurigram learns who it is while it starts, so there is no API call to
+    make here: the client carries the identity, and it is only there once the
+    client has started. Placeholders are returned before that, and they are
     deliberately not cached: BOT_ID=0 makes the admin check pass for nobody
-    and writes a junk row for user 0, so a transient timeout must not lock
-    the bot into a bogus identity for the rest of the process.
+    and writes a junk row for user 0, so a bot that has not started yet must
+    not lock the process into a bogus identity.
     """
     global _BOT_INFO
     if _BOT_INFO is not None:
         return _BOT_INFO
-    LOGGER.info("Getting bot information")
-    try:
-        info = loop.run_until_complete(bot.me())
-        _BOT_INFO = (info.id, info.first_name, info.username)
-        if _BOT_INFO[2]:
-            app.name = _BOT_INFO[2]
-    except Exception:
-        LOGGER.warning("Unable to reach the Telegram API for bot info", exc_info=True)
+    me = getattr(app, "me", None)
+    if me is None:
         return (0, "Bot", "")
+    LOGGER.info("Getting bot information")
+    _BOT_INFO = (me.id, me.first_name, me.username)
     return _BOT_INFO
 
 

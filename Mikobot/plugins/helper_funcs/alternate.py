@@ -1,5 +1,5 @@
 # <============================================== IMPORTS =========================================================>
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.errors import RPCError
 
 from Mikobot.utils.gate import requirement
 
@@ -8,17 +8,17 @@ from Mikobot.utils.gate import requirement
 
 # <================================================ FUNCTION =======================================================>
 async def send_message(message, text, *args, **kwargs):
-    """answer(), retried once when the Telegram API errors.
+    """reply_text(), retried once when Telegram errors.
 
-    The original second attempt dropped PTB's do_quote kwarg, which aiogram
-    does not have, so the retry became a verbatim repeat of the first call and
+    The original second attempt dropped PTB's do_quote kwarg, which neither
+    framework has, so the retry became a verbatim repeat of the first call and
     did nothing for a rejected quote. It is kept as a single retry because a
-    TelegramNetworkError is transient and the repeat is what recovers from it.
+    network error is transient and the repeat is what recovers from it.
     """
     try:
-        return await message.answer(text, *args, **kwargs)
-    except TelegramAPIError:
-        return await message.answer(text, *args, **kwargs)
+        return await message.reply_text(text, *args, **kwargs)
+    except RPCError:
+        return await message.reply_text(text, *args, **kwargs)
 
 
 def typing_action(func):

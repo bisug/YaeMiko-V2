@@ -2,14 +2,15 @@
 from threading import RLock
 from time import perf_counter
 
-from aiogram.exceptions import TelegramAPIError
 from cachetools import TTLCache
+from pyrogram.enums import ChatMemberStatus, ChatMembersFilter
+from pyrogram.errors import RPCError
 
-from Mikobot import DEL_CMDS, DEV_USERS, DRAGONS, SUPPORT_CHAT, bot
+from Mikobot import DEL_CMDS, DEV_USERS, DRAGONS, SUPPORT_CHAT, app
 from Mikobot.utils.gate import requirement
 
 # DEV_USERS, DRAGONS, DEL_CMDS and SUPPORT_CHAT are read off this module by
-# GateMiddleware at request time, so they are re-exported rather than unused.
+# the gate at request time, so they are re-exported rather than unused.
 __all__ = [
     "ADMIN_CACHE",
     "DEL_CMDS",
@@ -42,7 +43,7 @@ __all__ = [
 ADMIN_CACHE = TTLCache(maxsize=10_000, ttl=60 * 10, timer=perf_counter)
 THREAD_LOCK = RLock()
 
-ADMIN_STATUSES = ("administrator", "creator")
+ADMIN_STATUSES = (ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR)
 
 
 def is_admin(member) -> bool:
@@ -50,11 +51,24 @@ def is_admin(member) -> bool:
 
 
 def is_owner(member) -> bool:
-    return getattr(member, "status", None) == "creator"
+    return getattr(member, "status", None) == ChatMemberStatus.OWNER
 
 
 def granted(member, permission: str) -> bool:
-    return bool(getattr(member, permission, False))
+    """Whether a chat member holds an administrator right.
+
+    kurigram keeps the administrator rights in a separate ``privileges`` object
+    rather than flattening them onto the member, and it leaves that object
+    unset for the chat owner, who holds every right anyway.
+    """
+    if member is None:
+        return False
+    if getattr(member, "status", None) == ChatMemberStatus.OWNER:
+        return True
+    privileges = getattr(member, "privileges", None)
+    if privileges is None:
+        return False
+    return bool(getattr(privileges, permission, False))
 
 
 # <================================================ FUNCTION =======================================================>
@@ -68,7 +82,7 @@ def check_admin(
     only_dev: bool = False,
     no_reply: object = False,
 ) -> object:
-    """Gate a handler on chat permissions, enforced by GateMiddleware.
+    """Gate a handler on chat permissions, enforced by the gate in utils/gate.py.
 
     Args:
         permission (str, optional): permission type to check. Defaults to None.
@@ -118,13 +132,18 @@ async def is_user_admin(chat, user_id: int, member=None) -> bool:
                 return user_id in ADMIN_CACHE[chat.id]
             except KeyError:
                 # keyerror happend means cache is deleted,
-                # so query bot api again and return user status
+                # so query telegram again and return user status
                 # while saving it in cache for future usage...
                 try:
-                    chat_admins = await bot.get_chat_administrators(chat.id)
-                except TelegramAPIError:
+                    chat_admins = await app.get_chat_members(
+                        chat.id, filter=ChatMembersFilter.ADMINISTRATORS
+                    )
+                except RPCError:
                     return False
-                admin_list = [x.user.id for x in chat_admins]
+                admin_list = []
+                async for admin in chat_admins:
+                    if admin.user is not None:
+                        admin_list.append(admin.user.id)
                 ADMIN_CACHE[chat.id] = admin_list
 
                 return user_id in admin_list
@@ -136,14 +155,14 @@ async def is_bot_admin(chat, bot_id: int, bot_member=None) -> bool:
         return True
 
     if not bot_member:
-        bot_member = await bot.get_chat_member(chat.id, bot_id)
+        bot_member = await app.get_chat_member(chat.id, bot_id)
 
     return is_admin(bot_member)
 
 
 async def can_delete(chat, bot_id: int) -> bool:
-    chat_member = await bot.get_chat_member(chat.id, bot_id)
-    return bool(getattr(chat_member, "can_delete_messages", False))
+    chat_member = await app.get_chat_member(chat.id, bot_id)
+    return granted(chat_member, "can_delete_messages")
 
 
 async def is_user_ban_protected(chat, user_id: int, member=None) -> bool:
@@ -156,18 +175,18 @@ async def is_user_ban_protected(chat, user_id: int, member=None) -> bool:
         return True
 
     if not member:
-        member = await bot.get_chat_member(chat.id, user_id)
+        member = await app.get_chat_member(chat.id, user_id)
 
     return is_admin(member)
 
 
 async def is_user_in_chat(chat, user_id: int) -> bool:
-    member = await bot.get_chat_member(chat.id, user_id)
+    member = await app.get_chat_member(chat.id, user_id)
     return getattr(member, "status", None) in (
-        "member",
-        "administrator",
-        "creator",
-        "restricted",
+        ChatMemberStatus.MEMBER,
+        ChatMemberStatus.ADMINISTRATOR,
+        ChatMemberStatus.OWNER,
+        ChatMemberStatus.RESTRICTED,
     )
 
 

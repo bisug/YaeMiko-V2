@@ -3,10 +3,9 @@ from html import escape
 from math import ceil
 from uuid import uuid4
 
-from aiogram import Bot
-from aiogram.enums import ButtonStyle, ParseMode
-from aiogram.exceptions import TelegramAPIError
-from aiogram.types import (
+from pyrogram.enums import ButtonStyle, ParseMode
+from pyrogram.errors import RPCError
+from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     InlineQueryResultArticle,
@@ -150,19 +149,19 @@ def article(
 
 
 async def send_to_list(
-    bot: Bot, send_to: list, message: str, markdown=False, html=False
+    client, send_to: list, message: str, markdown=False, html=False
 ) -> None:
     if html and markdown:
         raise Exception("Can only send with either markdown or HTML!")
     for user_id in set(send_to):
         try:
             if markdown:
-                await bot.send_message(user_id, message, parse_mode=ParseMode.MARKDOWN)
+                await client.send_message(user_id, message, parse_mode=ParseMode.MARKDOWN)
             elif html:
-                await bot.send_message(user_id, message, parse_mode=ParseMode.HTML)
+                await client.send_message(user_id, message, parse_mode=ParseMode.HTML)
             else:
-                await bot.send_message(user_id, message)
-        except TelegramAPIError:
+                await client.send_message(user_id, message)
+        except RPCError:
             pass  # ignore users who fail
 
 

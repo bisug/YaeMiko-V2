@@ -24,31 +24,21 @@ if hasattr(sys, "set_lazy_imports"):
     if hasattr(sys, "set_lazy_imports_filter"):
         sys.set_lazy_imports_filter(_lazy_imports_filter)
 
-import aiogram
 import psutil
 import pyrogram
-from aiogram import F
-from aiogram.dispatcher.event.bases import SkipHandler
-from aiogram.enums import ButtonStyle, ChatType, ParseMode
-from aiogram.exceptions import (
-    TelegramAPIError,
-    TelegramForbiddenError,
-    TelegramMigrateToChat,
-    TelegramNetworkError,
-    TelegramRetryAfter,
-    TelegramServerError,
-)
-from aiogram.filters import Command, CommandObject
-from aiogram.types import (
+from pyrogram import filters
+from pyrogram.enums import ButtonStyle, ChatType, ParseMode
+from pyrogram.errors import FloodWait, RPCError
+from pyrogram.handlers import ErrorHandler, RawUpdateHandler
+from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     LinkPreviewOptions,
     Message,
-    Update,
 )
-from pyrogram.handlers import RawUpdateHandler
 
+import Mikobot
 from Infamous.karma import *
 from Mikobot import (
     ACTIVITY_LOG,
@@ -59,11 +49,11 @@ from Mikobot import (
     SUPPORT_CHAT,
     StartTime,
     app,
-    bot,
-    dp,
     loop,
     send_booting_message,
 )
+from Mikobot import events
+from Mikobot.events import add_callback, add_message
 from Mikobot.plugins import ALL_MODULES
 from Mikobot.plugins.helper_funcs.chat_status import is_user_admin, sudo_plus
 from Mikobot.plugins.helper_funcs.misc import paginate_modules
@@ -74,7 +64,6 @@ from Mikobot.utils.parser import escape_markdown
 # <=======================================================================================================>
 
 PYTHON_VERSION = python_version()
-AIOGRAM_VERSION = aiogram.__version__
 KURIGRAM_VERSION = pyrogram.__version__
 
 
@@ -85,18 +74,10 @@ def _activity_summary(event) -> str:
     chat_id = chat.id if chat else None
     if isinstance(event, CallbackQuery):
         return f"callback user={user_id} chat={chat_id}"
-    if isinstance(event, Update):
-        text = getattr(event.event, "text", None)
-        command = text.split(maxsplit=1)[0] if text else "event"
-        return f"message user={user_id} chat={chat_id} command={command[:32]}"
-    return "event"
+    return f"message user={user_id} chat={chat_id}"
 
 
-async def log_activity(event):
-    LOGGER.info("Activity: %s", _activity_summary(event))
-
-
-async def log_kurigram_activity(_, update, users, chats):
+async def log_kurigram_activity(client, update, users, chats):
     LOGGER.info("Kurigram activity: update=%s", type(update).__name__)
 
 
@@ -110,40 +91,48 @@ DATA_EXPORT = []
 CHAT_SETTINGS = {}
 USER_SETTINGS = {}
 
-for module_name in ALL_MODULES:
-    imported_module = importlib.import_module("Mikobot.plugins." + module_name)
-    if not hasattr(imported_module, "__mod_name__"):
-        imported_module.__mod_name__ = imported_module.__name__
 
-    if imported_module.__mod_name__.lower() not in IMPORTED:
-        IMPORTED[imported_module.__mod_name__.lower()] = imported_module
-    else:
-        raise Exception("Can't have two modules with the same name! Please change one")
+def load_plugins():
+    """Import every plugin and collect the parts the bot needs from them.
 
-    if hasattr(imported_module, "__help__") and imported_module.__help__:
-        HELPABLE[imported_module.__mod_name__.lower()] = imported_module
+    The plugins are imported after the client has started, because they read
+    the bot's identity while they import, and kurigram only learns that while
+    it connects.
+    """
+    for module_name in ALL_MODULES:
+        imported_module = importlib.import_module("Mikobot.plugins." + module_name)
+        if not hasattr(imported_module, "__mod_name__"):
+            imported_module.__mod_name__ = imported_module.__name__
 
-    # Chats to migrate on chat_migrated events
-    if hasattr(imported_module, "__migrate__"):
-        MIGRATEABLE.append(imported_module)
+        if imported_module.__mod_name__.lower() not in IMPORTED:
+            IMPORTED[imported_module.__mod_name__.lower()] = imported_module
+        else:
+            raise Exception("Can't have two modules with the same name! Please change one")
 
-    if hasattr(imported_module, "__stats__"):
-        STATS.append(imported_module)
+        if hasattr(imported_module, "__help__") and imported_module.__help__:
+            HELPABLE[imported_module.__mod_name__.lower()] = imported_module
 
-    if hasattr(imported_module, "__user_info__"):
-        USER_INFO.append(imported_module)
+        # Chats to migrate on chat_migrated events
+        if hasattr(imported_module, "__migrate__"):
+            MIGRATEABLE.append(imported_module)
 
-    if hasattr(imported_module, "__import_data__"):
-        DATA_IMPORT.append(imported_module)
+        if hasattr(imported_module, "__stats__"):
+            STATS.append(imported_module)
 
-    if hasattr(imported_module, "__export_data__"):
-        DATA_EXPORT.append(imported_module)
+        if hasattr(imported_module, "__user_info__"):
+            USER_INFO.append(imported_module)
 
-    if hasattr(imported_module, "__chat_settings__"):
-        CHAT_SETTINGS[imported_module.__mod_name__.lower()] = imported_module
+        if hasattr(imported_module, "__import_data__"):
+            DATA_IMPORT.append(imported_module)
 
-    if hasattr(imported_module, "__user_settings__"):
-        USER_SETTINGS[imported_module.__mod_name__.lower()] = imported_module
+        if hasattr(imported_module, "__export_data__"):
+            DATA_EXPORT.append(imported_module)
+
+        if hasattr(imported_module, "__chat_settings__"):
+            CHAT_SETTINGS[imported_module.__mod_name__.lower()] = imported_module
+
+        if hasattr(imported_module, "__user_settings__"):
+            USER_SETTINGS[imported_module.__mod_name__.lower()] = imported_module
 
 
 # do not async
@@ -152,7 +141,7 @@ async def send_help(chat_id, text, keyboard=None):
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=paginate_modules(0, HELPABLE, "help")
         )
-    await bot.send_message(
+    await app.send_message(
         chat_id=chat_id,
         text=text,
         parse_mode=ParseMode.MARKDOWN,
@@ -161,10 +150,10 @@ async def send_help(chat_id, text, keyboard=None):
     )
 
 
-async def start(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+async def start(client, message: Message):
+    args = message.command[1:] if message.command else []
     uptime = get_readable_time((time.time() - StartTime))
-    if message.chat.type == "private":
+    if message.chat.type == ChatType.PRIVATE:
         if len(args) >= 1:
             if args[0].lower() == "help":
                 await send_help(message.chat.id, HELP_STRINGS)
@@ -190,7 +179,7 @@ async def start(message: Message, command: CommandObject):
 
             elif args[0].lower().startswith("stngs_"):
                 match = re.match("stngs_(.*)", args[0].lower())
-                chat = await bot.get_chat(match.group(1))
+                chat = await client.get_chat(match.group(1))
 
                 if await is_user_admin(chat, message.from_user.id):
                     await send_settings(match.group(1), message.from_user.id, False)
@@ -208,10 +197,10 @@ async def start(message: Message, command: CommandObject):
                 parse_mode=ParseMode.MARKDOWN,
             )
             await asyncio.sleep(0.2)
-            guu = await message.answer("🐾")
+            guu = await message.reply_text("🐾")
             await asyncio.sleep(1.8)
             await guu.delete()  # Await this line
-            await message.answer(
+            await message.reply_text(
                 PM_START_TEXT,
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=START_BTN),
                 parse_mode=ParseMode.MARKDOWN,
@@ -221,15 +210,14 @@ async def start(message: Message, command: CommandObject):
         await message.reply_photo(
             photo=str(choice(START_IMG)),
             reply_markup=InlineKeyboardMarkup(inline_keyboard=GROUP_START_BTN),
-            caption="<b>I am Alive!</b>\n\n<b>Since​:</b> <code>{}</code>".format(
+            caption="<b>I am Alive!</b>\n\n<b>Since:</b> <code>{}</code>".format(
                 uptime
             ),
             parse_mode=ParseMode.HTML,
         )
 
 
-async def extra_command_handlered(message: Message, command: CommandObject):
-
+async def extra_command_handlered(client, message: Message):
     keyboard = [
         [
             InlineKeyboardButton(
@@ -257,18 +245,18 @@ async def extra_command_handlered(message: Message, command: CommandObject):
 
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-    await message.answer(
-        "𝙎𝙚𝙡𝙚𝙘𝙩 𝙩𝙝𝙚 [𝙨𝙚𝙘𝙩𝙞𝙤𝙣](https://telegra.ph/file/8c092f4e9d303f9497c83.jpg) 𝙩𝙝𝙖𝙩 𝙮𝙤𝙪 𝙬𝙖𝙣𝙩 𝙩𝙤 𝙤𝙥𝙚𝙣",
+    await message.reply_text(
+        "𝙎𝙡𝙲𝙤𝙩 𝙝𝙚 [𝙨𝙡𝙤𝙤𝙥𝙞𝙤𝙣](https://telegra.ph/file/8c092f4e9d303f9497c83.jpg) 𝙝𝙚 𝙘𝙥𝙣𝙚 𝙤𝙥𝙣𝙚",
         reply_markup=reply_markup,
         parse_mode=ParseMode.MARKDOWN,
     )
 
 
-async def extra_command_callback(query: CallbackQuery):
+async def extra_command_callback(client, query: CallbackQuery):
     if query.data == "extra_command_handler":
         await query.answer()  # Use 'await' for asynchronous calls
         await query.message.edit_text(
-            "𝙎𝙚𝙡𝙚𝙘𝙩 𝙩𝙝𝙚 [𝙨𝙚𝙘𝙩𝙞𝙤𝙣](https://telegra.ph/file/8c092f4e9d303f9497c83.jpg) 𝙩𝙝𝙖𝙩 𝙮𝙤𝙪 𝙬𝙖𝙣𝙩 𝙩𝙤 𝙤𝙥𝙚𝙣",
+            "𝙎𝙡𝙲𝙤𝙩 𝙝𝙚 [𝙨𝙡𝙤𝙤𝙥𝙞𝙤𝙣](https://telegra.ph/file/8c092f4e9d303f9497c83.jpg) 𝙝𝙚 𝙘𝙥𝙣𝙚 𝙤𝙥𝙣𝙚",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
@@ -303,16 +291,16 @@ async def extra_command_callback(query: CallbackQuery):
         )
 
 
-async def anime_command_callback(query: CallbackQuery):
+async def anime_command_callback(client, query: CallbackQuery):
     if query.data == "anime_command_handler":
         await query.answer()
         await query.message.edit_text(
-            "⛩[𝗔𝗻𝗶𝗺𝗲 𝗨𝗽𝗱𝗮𝘁𝗲𝘀](https://telegra.ph//file/59d93fede8bf12fec1a51.jpg) :\n\n"
+            "⛩[𝗔𝗻𝗶𝗺𝗲 𝗨𝗽𝗱𝗮𝘽𝗲](https://telegra.ph//file/59d93fede8bf12fec1a51.jpg) :\n\n"
             "**╔ /anime: **fetches info on single anime (includes buttons to look up for prequels and sequels)\n"
             "**╠ /character: **fetches info on multiple possible characters related to query\n"
             "**╠ /manga: **fetches info on multiple possible mangas related to query\n"
             "**╠ /airing: **fetches info on airing data for anime\n"
-            "**╠ /studio: **fetches info on multiple possible studios related to query\n"
+            "**╠ /studio: **fetches info on studios\n"
             "**╠ /schedule: **fetches scheduled animes\n"
             "**╠ /browse: **get popular, trending or upcoming animes\n"
             "**╠ /top: **to retrieve top animes for a genre or tag\n"
@@ -352,19 +340,19 @@ async def anime_command_callback(query: CallbackQuery):
         )
 
 
-async def genshin_command_callback(query: CallbackQuery):
+async def genshin_command_callback(client, query: CallbackQuery):
     if query.data == "genshin_command_handler":
         await query.answer()
         await query.message.edit_text(
-            "⛩ [𝗚𝗲𝗻𝘀𝗵𝗶𝗻 𝗜𝗺𝗽𝗮𝗰𝘁](https://telegra.ph/file/cd03348a4a357624e70db.jpg) ⛩\n\n"
+            "⛩ [𝗦𝗲𝘀𝘀𝗵𝗶𝗻 𝗜𝗺𝗽𝗮𝘀𝗲](https://telegra.ph/file/cd03348a4a357624e70db.jpg) ⛩\n\n"
             "**╔ /gchar: **vision, talents, constellations and lore\n"
-            "**╠ /gweapon: **type, base ATK, substat and passive\n"
+            "**╠ /gweapon: **type, main ATK, substat and passive\n"
             "**╠ /gartifact: **artifact set bonuses\n"
-            "**╠ /gconsumable: **food and potions\n"
-            "**╠ /gmaterial: **ascension materials and who uses them\n"
+            "**╠ /gconsumable: **crafting materials and food\n"
+            "**╠ /gmaterial: **ascension materials and who needs them\n"
             "**╠ /genemy: **family, faction and drops\n"
-            "**╠ /gdomain: **type, location and rewards\n"
-            "**╠ /gnation: **archon and ruling body\n"
+            "**╠ /gdomain: **domain rewards and drops\n"
+            "**╠ /gnation: **enemy and nation lore\n"
             "**╠ /gelement: **reactions and what triggers them\n"
             "**╚**\n\n"
             "Append **-fr** for French, e.g. `/gchar albedo-fr`.\n"
@@ -391,183 +379,13 @@ async def genshin_command_callback(query: CallbackQuery):
         )
 
 
-async def error_callback(event: Update):
-    # aiogram hands the error handler an ErrorEvent, which carries .update and
-    # .exception -- there is no .event, so reaching for one masked the real
-    # traceback behind an AttributeError of its own.
-    error = event.exception
-    summary = _activity_summary(event.update)
-    message = f"Update error [{summary}]: {error}"
-
-    if isinstance(error, TelegramMigrateToChat):
-        LOGGER.info(message)
-    elif isinstance(
-        error,
-        (
-            TelegramForbiddenError,
-            TelegramServerError,
-            TelegramNetworkError,
-            TelegramRetryAfter,
-            TelegramAPIError,
-        ),
-    ):
-        LOGGER.warning(message)
-    else:
-        LOGGER.error("Unhandled update error [%s]", summary, exc_info=error)
-
-    failed = event.update
-    if isinstance(failed, CallbackQuery):
-        try:
-            await failed.answer(
-                "The action failed. Please try again later.", show_alert=True
-            )
-        except TelegramAPIError:
-            LOGGER.debug(
-                "Unable to answer failed callback %s in chat %s",
-                failed.id,
-                failed.message.chat.id if failed.message else None,
-                exc_info=True,
-            )
-
-
-async def help_button(query: CallbackQuery):
-    mod_match = re.match(r"help_module\((.+?)\)", query.data)
-    prev_match = re.match(r"help_prev\((.+?)\)", query.data)
-    next_match = re.match(r"help_next\((.+?)\)", query.data)
-    back_match = re.match(r"help_back", query.data)
-
-    LOGGER.debug("Help callback received in chat %s", query.message.chat.id)
-
-    try:
-        if mod_match:
-            module = mod_match.group(1)
-            text = (
-                "➲ *HELP SECTION OF* *{}* :\n".format(HELPABLE[module].__mod_name__)
-                + HELPABLE[module].__help__
-            )
-            await query.message.edit_text(
-                text=text,
-                parse_mode=ParseMode.MARKDOWN,
-                link_preview_options=LinkPreviewOptions(is_disabled=True),
-                reply_markup=InlineKeyboardMarkup(
-                    inline_keyboard=[
-                        [
-                            InlineKeyboardButton(
-                                text="◁",
-                                callback_data="help_back",
-                                style=ButtonStyle.PRIMARY,
-                            )
-                        ]
-                    ]
-                ),
-            )
-
-        elif prev_match:
-            curr_page = int(prev_match.group(1))
-            await query.message.edit_text(
-                text=HELP_STRINGS,
-                parse_mode=ParseMode.MARKDOWN,
-                reply_markup=InlineKeyboardMarkup(
-                    inline_keyboard=paginate_modules(curr_page - 1, HELPABLE, "help")
-                ),
-            )
-
-        elif next_match:
-            next_page = int(next_match.group(1))
-            await query.message.edit_text(
-                text=HELP_STRINGS,
-                parse_mode=ParseMode.MARKDOWN,
-                reply_markup=InlineKeyboardMarkup(
-                    inline_keyboard=paginate_modules(next_page + 1, HELPABLE, "help")
-                ),
-            )
-
-        elif back_match:
-            await query.message.edit_text(
-                text=HELP_STRINGS,
-                parse_mode=ParseMode.MARKDOWN,
-                reply_markup=InlineKeyboardMarkup(
-                    inline_keyboard=paginate_modules(0, HELPABLE, "help")
-                ),
-            )
-
-        await query.answer()
-
-    except TelegramAPIError:
-        pass
-
-
-@sudo_plus
-async def stats_back(query: CallbackQuery):
-    if query.data == "insider_":
-        uptime = get_readable_time((time.time() - StartTime))
-        # interval is a blocking sample; the loop must not stall every other
-        # chat while it waits.
-        cpu = await asyncio.to_thread(psutil.cpu_percent, 0.5)
-        mem = psutil.virtual_memory().percent
-        disk = psutil.disk_usage("/").percent
-        text = f"""
-𝙎𝙮𝙨𝙩𝙚𝙢 𝙨𝙩𝙖𝙩𝙨@𝙔𝙖𝙚𝙈𝙞𝙠𝙤_𝙍𝙤𝙭𝙗𝙤𝙩
-➖➖➖➖➖➖
-UPTIME ➼ {uptime}
-CPU ➼ {cpu}%
-RAM ➼ {mem}%
-DISK ➼ {disk}%
-
-PYTHON ➼ {PYTHON_VERSION}
-
-aiogram ➼ {AIOGRAM_VERSION}
-KURIGRAM ➼ {KURIGRAM_VERSION}
-"""
-        await query.answer(text=text, show_alert=True)
-
-
-async def gitsource_callback(query: CallbackQuery):
-    await query.answer()
-
-    if query.data == "git_source":
-        source_link = "https://github.com/bisug/YaeMiko-V2"
-        message_text = (
-            f"*Here is the link for the public source repo*:\n\n{source_link}"
-        )
-
-        # Adding the inline button
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    text="◁", callback_data="Miko_back", style=ButtonStyle.PRIMARY
-                )
-            ]
-        ]
-        reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-
-        await query.message.edit_text(
-            message_text,
-            parse_mode=ParseMode.MARKDOWN,
-            link_preview_options=LinkPreviewOptions(is_disabled=False),
-            reply_markup=reply_markup,
-        )
-
-
-async def repo(message: Message, command: CommandObject):
-    source_link = "https://github.com/bisug/YaeMiko-V2"
-    message_text = f"*Here is the link for the public source repo*:\n\n{source_link}"
-
-    await bot.send_message(
-        chat_id=message.chat.id,
-        text=message_text,
-        parse_mode=ParseMode.MARKDOWN,
-        link_preview_options=LinkPreviewOptions(is_disabled=False),
-    )
-
-
-async def Miko_about_callback(query: CallbackQuery):
+async def Miko_about_callback(client, query: CallbackQuery):
     await query.answer()
     if query.data == "Miko_":
         message_text = (
             f"➲ <b>Ai integration.</b>"
             f"\n➲ <b>Advance management capability.</b>"
-            f"\n➲ <b>Anime bot functionality.</b>"
+            f"➲ <b>Anime bot functionality.</b>"
             f"\n\n<b>Click on the buttons below for getting help and info about</b> {BOT_NAME}."
         )
         await query.message.edit_text(
@@ -645,7 +463,7 @@ async def Miko_about_callback(query: CallbackQuery):
         )
 
 
-async def get_help(message: Message, command: CommandObject):
+async def get_help(client, message: Message):
     chat = message.chat
     args = (message.text or "").split(None, 1)
 
@@ -653,7 +471,7 @@ async def get_help(message: Message, command: CommandObject):
     if chat.type != ChatType.PRIVATE:
         if len(args) >= 2 and any(args[1].lower() == x for x in HELPABLE):
             module = args[1].lower()
-            await message.answer(
+            await message.reply_text(
                 f"Contact me in PM to get help of {module.capitalize()}",
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
@@ -670,7 +488,7 @@ async def get_help(message: Message, command: CommandObject):
                 ),
             )
             return
-        await message.answer(
+        await message.reply_text(
             "» *Choose an option for getting* [𝗵𝗲𝗹𝗽](https://telegra.ph/file/cce9038f6a9b88eb409b5.jpg)",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
@@ -729,23 +547,23 @@ async def send_settings(chat_id, user_id, user=False):
                 "*{}*:\n{}".format(mod.__mod_name__, mod.__user_settings__(user_id))
                 for mod in USER_SETTINGS.values()
             )
-            await bot.send_message(
+            await app.send_message(
                 user_id,
                 "These are your current settings:" + "\n\n" + settings,
                 parse_mode=ParseMode.MARKDOWN,
             )
 
         else:
-            await bot.send_message(
+            await app.send_message(
                 user_id,
                 "Seems like there aren't any user specific settings available :'(",
                 parse_mode=ParseMode.MARKDOWN,
             )
     else:
         if CHAT_SETTINGS:
-            chat = await bot.get_chat(chat_id)
+            chat = await app.get_chat(chat_id)
             chat_name = chat.title
-            await bot.send_message(
+            await app.send_message(
                 user_id,
                 text="Which module would you like to check {}'s settings for?".format(
                     chat_name
@@ -757,7 +575,7 @@ async def send_settings(chat_id, user_id, user=False):
                 ),
             )
         else:
-            await bot.send_message(
+            await app.send_message(
                 user_id,
                 "Seems like there aren't any chat settings available :'(\nSend this "
                 "in a group chat you're admin in to find its current settings!",
@@ -765,7 +583,7 @@ async def send_settings(chat_id, user_id, user=False):
             )
 
 
-async def settings_button(query: CallbackQuery):
+async def settings_button(client, query: CallbackQuery):
     user = query.from_user
     mod_match = re.match(r"stngs_module\((.+?),(.+?)\)", query.data)
     prev_match = re.match(r"stngs_prev\((.+?),(.+?)\)", query.data)
@@ -782,7 +600,7 @@ async def settings_button(query: CallbackQuery):
     if chat_id is None:
         return
     try:
-        chat = await bot.get_chat(chat_id)
+        chat = await client.get_chat(chat_id)
         if not await is_user_admin(chat, user.id):
             await query.answer(
                 "You are no longer an administrator of this chat.", show_alert=True
@@ -791,11 +609,11 @@ async def settings_button(query: CallbackQuery):
         if mod_match:
             chat_id = mod_match.group(1)
             module = mod_match.group(2)
-            chat = await bot.get_chat(chat_id)
+            chat = await client.get_chat(chat_id)
             text = "*{}* has the following settings for the *{}* module:\n\n".format(
                 escape_markdown(chat.title), CHAT_SETTINGS[module].__mod_name__
             ) + CHAT_SETTINGS[module].__chat_settings__(chat_id, user.id)
-            await query.message.reply(
+            await query.message.reply_text(
                 text=text,
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=InlineKeyboardMarkup(
@@ -814,8 +632,8 @@ async def settings_button(query: CallbackQuery):
         elif prev_match:
             chat_id = prev_match.group(1)
             curr_page = int(prev_match.group(2))
-            chat = await bot.get_chat(chat_id)
-            await query.message.reply(
+            chat = await client.get_chat(chat_id)
+            await query.message.reply_text(
                 "Hi there! There are quite a few settings for {} - go ahead and pick what "
                 "you're interested in.".format(chat.title),
                 reply_markup=InlineKeyboardMarkup(
@@ -828,8 +646,8 @@ async def settings_button(query: CallbackQuery):
         elif next_match:
             chat_id = next_match.group(1)
             next_page = int(next_match.group(2))
-            chat = await bot.get_chat(chat_id)
-            await query.message.reply(
+            chat = await client.get_chat(chat_id)
+            await query.message.reply_text(
                 "Hi there! There are quite a few settings for {} - go ahead and pick what "
                 "you're interested in.".format(chat.title),
                 reply_markup=InlineKeyboardMarkup(
@@ -841,11 +659,10 @@ async def settings_button(query: CallbackQuery):
 
         elif back_match:
             chat_id = back_match.group(1)
-            chat = await bot.get_chat(chat_id)
-            await query.message.reply(
+            chat = await client.get_chat(chat_id)
+            await query.message.reply_text(
                 text="Hi there! There are quite a few settings for {} - go ahead and pick what "
                 "you're interested in.".format(escape_markdown(chat.title)),
-                parse_mode=ParseMode.MARKDOWN,
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=paginate_modules(
                         0, CHAT_SETTINGS, "stngs", chat=chat_id
@@ -856,8 +673,8 @@ async def settings_button(query: CallbackQuery):
         # ensure no spinny white circle
         await query.answer()
         await query.message.delete()
-    except TelegramAPIError as excp:
-        if excp.message not in [
+    except RPCError as excp:
+        if str(excp) not in [
             "Message is not modified",
             "Query_id_invalid",
             "Message can't be deleted",
@@ -865,7 +682,7 @@ async def settings_button(query: CallbackQuery):
             LOGGER.exception("Exception in settings buttons. %s", str(query.data))
 
 
-async def get_settings(message: Message, command: CommandObject):
+async def get_settings(client, message: Message):
     chat = message.chat
     user = message.from_user
     msg = message
@@ -874,7 +691,7 @@ async def get_settings(message: Message, command: CommandObject):
     if chat.type != ChatType.PRIVATE:
         if await is_user_admin(chat, user.id):
             text = "Click here to get this chat's settings, as well as yours."
-            await msg.reply(
+            await msg.reply_text(
                 text,
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
@@ -891,13 +708,13 @@ async def get_settings(message: Message, command: CommandObject):
                 ),
             )
         else:
-            await msg.reply("Contact me in PM to get your current settings.")
+            await msg.reply_text("Contact me in PM to get your current settings.")
 
     else:
         await send_settings(chat.id, user.id, True)
 
 
-async def migrate_chats(message: Message, command: CommandObject):
+async def migrate_chats(client, message: Message):
     msg = message  # type: Optional[Message]
     if msg.migrate_to_chat_id:
         old_chat = message.chat.id
@@ -914,43 +731,212 @@ async def migrate_chats(message: Message, command: CommandObject):
             mod.__migrate__(old_chat, new_chat)
 
     LOGGER.info("Successfully Migrated!")
-    raise SkipHandler()
+
+
+async def help_button(client, query: CallbackQuery):
+    mod_match = re.match(r"help_module\((.+?)\)", query.data)
+    prev_match = re.match(r"help_prev\((.+?)\)", query.data)
+    next_match = re.match(r"help_next\((.+?)\)", query.data)
+    back_match = re.match(r"help_back", query.data)
+
+    LOGGER.debug("Help callback received in chat %s", query.message.chat.id)
+
+    try:
+        if mod_match:
+            module = mod_match.group(1)
+            text = (
+                "➲ *HELP SECTION OF* *{}* :\n".format(HELPABLE[module].__mod_name__)
+                + HELPABLE[module].__help__
+            )
+            await query.message.edit_text(
+                text=text,
+                parse_mode=ParseMode.MARKDOWN,
+                link_preview_options=LinkPreviewOptions(is_disabled=True),
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [
+                            InlineKeyboardButton(
+                                text="◁",
+                                callback_data="help_back",
+                                style=ButtonStyle.PRIMARY,
+                            )
+                        ]
+                    ]
+                ),
+            )
+
+        elif prev_match:
+            curr_page = int(prev_match.group(1))
+            await query.message.edit_text(
+                text=HELP_STRINGS,
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=paginate_modules(curr_page - 1, HELPABLE, "help")
+                ),
+            )
+
+        elif next_match:
+            next_page = int(next_match.group(1))
+            await query.message.edit_text(
+                text=HELP_STRINGS,
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=paginate_modules(next_page + 1, HELPABLE, "help")
+                ),
+            )
+
+        elif back_match:
+            await query.message.edit_text(
+                text=HELP_STRINGS,
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=paginate_modules(0, HELPABLE, "help")
+                ),
+            )
+
+        await query.answer()
+
+    except RPCError:
+        pass
+
+
+@sudo_plus
+async def stats_back(client, query: CallbackQuery):
+    if query.data == "insider_":
+        uptime = get_readable_time((time.time() - StartTime))
+        # interval is a blocking sample; the loop must not stall every other
+        # chat while it waits.
+        cpu = await asyncio.to_thread(psutil.cpu_percent, 0.5)
+        mem = psutil.virtual_memory().percent
+        disk = psutil.disk_usage("/").percent
+        text = f"""
+𝙎𝙮𝙨𝙩𝙴𝙢 𝙨𝙩𝙖𝙩𝙨@𝙔𝙖𝙈𝙞𝙠𝙤_𝙍𝙤𝙭𝙗𝙤𝙩
+➖➖➖➖➖➖
+UPTIME ➼ {uptime}
+CPU ➼ {cpu}%
+RAM ➼ {mem}%
+DISK ➼ {disk}%
+
+PYTHON ➼ {PYTHON_VERSION}
+
+KURIGRAM ➼ {KURIGRAM_VERSION}
+"""
+        await query.answer(text=text, show_alert=True)
+
+
+async def gitsource_callback(client, query: CallbackQuery):
+    await query.answer()
+
+    if query.data == "git_source":
+        source_link = "https://github.com/bisug/YaeMiko-V2"
+        message_text = f"*Here is the link for the public source repo*:\n\n{source_link}"
+
+        # Adding the inline button
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    text="◁", callback_data="Miko_back", style=ButtonStyle.PRIMARY
+                )
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+        await query.message.edit_text(
+            message_text,
+            parse_mode=ParseMode.MARKDOWN,
+            link_preview_options=LinkPreviewOptions(is_disabled=False),
+            reply_markup=reply_markup,
+        )
+
+
+async def repo(client, message: Message):
+    source_link = "https://github.com/bisug/YaeMiko-V2"
+    message_text = f"*Here is the link for the public source repo*:\n\n{source_link}"
+
+    await client.send_message(
+        chat_id=message.chat.id,
+        text=message_text,
+        parse_mode=ParseMode.MARKDOWN,
+        link_preview_options=LinkPreviewOptions(is_disabled=False),
+    )
 
 
 # <=======================================================================================================>
 
 
 # <=================================================== MAIN ====================================================>
-def main():
-    dp.message.register(chain(start), Command("start"))
-    dp.message.register(chain(extra_command_handlered), Command("help"))
-    dp.message.register(chain(get_settings), Command("settings"))
-    dp.message.register(chain(repo), Command("repo"))
-    dp.message.register(chain(migrate_chats), F.update.migrate)
+async def error_callback(client, exception, handler, update, users, chats):
+    """kurigram hands the error handler the exception and what it came from."""
+    summary = _activity_summary(update)
+    message = f"Update error [{summary}]: {exception}"
 
-    for _prefix, _callback in (
-        ("help_", help_button),
-        ("stngs_", settings_button),
-        ("Miko_", Miko_about_callback),
-        ("git_source", gitsource_callback),
-        ("insider_", stats_back),
-        ("anime_command_handler", anime_command_callback),
-        ("extra_command_handler", extra_command_callback),
-        ("genshin_command_handler", genshin_command_callback),
-    ):
-        dp.callback_query.register(chain(_callback), F.data.startswith(_prefix))
+    if isinstance(exception, (FloodWait, RPCError)):
+        LOGGER.warning(message)
+    else:
+        LOGGER.error("Unhandled update error [%s]", summary, exc_info=exception)
 
-    dp.errors.register(error_callback)
+    if isinstance(update, CallbackQuery):
+        try:
+            await update.answer(
+                "The action failed. Please try again later.", show_alert=True
+            )
+        except RPCError:
+            LOGGER.debug(
+                "Unable to answer failed callback in chat %s",
+                update.message.chat.id if update.message else None,
+                exc_info=True,
+            )
+
+
+def register_core_handlers():
+    """Register the bot's own commands and buttons.
+
+    The plugins are imported first, so their handlers sit ahead of these in
+    the registry: the lock and flood checks run before the command they
+    guard, the way they did under aiogram.
+    """
+    load_plugins()
+
+    add_message(chain(start), filters.command("start"))
+    add_message(chain(extra_command_handlered), filters.command("help"))
+    add_message(chain(get_help), filters.command("help"))
+    add_message(chain(get_settings), filters.command("settings"))
+    add_message(chain(repo), filters.command("repo"))
+    add_message(
+        chain(migrate_chats), filters.migrate_to_chat_id | filters.migrate_from_chat_id
+    )
+
+    add_callback(help_button, filters.regex(r"^help_"))
+    add_callback(settings_button, filters.regex(r"^stngs_"))
+    add_callback(Miko_about_callback, filters.regex(r"^Miko_"))
+    add_callback(gitsource_callback, filters.regex(r"^git_source$"))
+    add_callback(stats_back, filters.regex(r"^insider_"))
+    add_callback(anime_command_callback, filters.regex(r"^anime_command_handler$"))
+    add_callback(extra_command_callback, filters.regex(r"^extra_command_handler$"))
+    add_callback(genshin_command_callback, filters.regex(r"^genshin_command_handler$"))
+
+
+async def _idle() -> None:
+    """Block until the process is stopped."""
+    while True:
+        await asyncio.sleep(3600)
+
+
+async def main():
+    await app.start()
+
+    # The plugins read the bot's identity while they import, so it is resolved
+    # here, after kurigram has connected and learned who it is.
+    me = app.me
+    Mikobot._BOT_INFO = (me.id, me.first_name, me.username)
+
+    register_core_handlers()
+
+    events.install()
+
+    app.add_handler(ErrorHandler(error_callback))
+
     if ACTIVITY_LOG:
-        # PTB ran this in group -100, first, so activity is recorded before
-        # any handler can respond. aiogram passes every handler to this
-        # middleware, so it must return the handler's result: a middleware
-        # that returns anything else silently drops every update.
-        async def _activity(handler, event, data):
-            await log_activity(event)
-            return await handler(event, data)
-
-        dp.update.outer_middleware.register(_activity)
         app.add_handler(RawUpdateHandler(log_kurigram_activity))
 
     try:
@@ -960,18 +946,15 @@ def main():
     except Exception:
         LOGGER.exception("Failed to record bot identity in database")
 
-    loop.run_until_complete(send_booting_message())
+    await send_booting_message()
 
-    LOGGER.info("Mikobot is starting >> Using long polling.")
-    return dp.start_polling(bot, drop_pending_updates=False, handle_signals=False)
+    LOGGER.info("Mikobot is starting >> Using MTProto long polling.")
+    await _idle()
 
 
 if __name__ == "__main__":
     try:
         LOGGER.info("Successfully loaded modules: " + str(ALL_MODULES))
-        # app.start() is pyrogram's sync wrapper around its coroutine;
-        # only aiogram's polling loop has to be driven from ours.
-        app.start()
         loop.run_until_complete(main())
     except KeyboardInterrupt:
         pass
@@ -980,7 +963,7 @@ if __name__ == "__main__":
         raise
     finally:
         try:
-            app.stop()
+            loop.run_until_complete(app.stop())
         except Exception:
             LOGGER.exception("Failed to stop Kurigram client")
         try:
@@ -994,7 +977,5 @@ if __name__ == "__main__":
                 loop.stop()
         finally:
             loop.close()
-        LOGGER.info(
-            "------------------------ Stopped Services ------------------------"
-        )
+        LOGGER.info("------------------------ Stopped Services ------------------------")
 # <==================================================== END ===================================================>
