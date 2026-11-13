@@ -107,7 +107,9 @@ async def telegraph_upload(client: Client, message: Message):
 
     if getattr(replied.media, "file_size", 0) > MAX_UPLOAD_BYTES:
         size = MAX_UPLOAD_BYTES // (1024 * 1024)
-        await message.reply_text(f"That media is too large to upload ({size} MB maximum).")
+        await message.reply_text(
+            f"That media is too large to upload ({size} MB maximum)."
+        )
         return
 
     # The file is deliberately not held here. The TemporaryDirectory this used

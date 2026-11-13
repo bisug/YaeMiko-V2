@@ -156,7 +156,9 @@ async def send_to_list(
     for user_id in set(send_to):
         try:
             if markdown:
-                await client.send_message(user_id, message, parse_mode=ParseMode.MARKDOWN)
+                await client.send_message(
+                    user_id, message, parse_mode=ParseMode.MARKDOWN
+                )
             elif html:
                 await client.send_message(user_id, message, parse_mode=ParseMode.HTML)
             else:

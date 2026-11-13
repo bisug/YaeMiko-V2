@@ -22,6 +22,7 @@ called the kurigram way, `handler(client, update)`.
 from pyrogram import filters
 from Mikobot.events import on_message
 
+
 @on_message(filters.command("ping"))
 async def ping(client, message):
     await message.reply_text("pong")
@@ -31,8 +32,7 @@ A handler that must let the next matching handler run as well is chained:
 
 ```python
 @on_message(filters.command("locks"), chained=True)
-async def locks(client, message):
-    ...
+async def locks(client, message): ...
 ```
 
 `chained=True` is what the old `chain(handler)` wrapper did. It is not a
@@ -44,10 +44,10 @@ The permission decorators are unchanged and still tag the handler:
 ```python
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 
+
 @check_admin(only_dev=True)
 @on_message(filters.command("ping"))
-async def ping(client, message):
-    ...
+async def ping(client, message): ...
 ```
 
 ## Filters

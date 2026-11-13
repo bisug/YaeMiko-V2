@@ -39,6 +39,14 @@ from pyrogram.types import (
 )
 
 import Mikobot
+from Infamous.karma import (
+    FIRST_PART_TEXT,
+    GROUP_START_BTN,
+    HELP_STRINGS,
+    PM_START_TEXT,
+    START_BTN,
+    START_IMG,
+)
 from Mikobot import (
     ACTIVITY_LOG,
     BOT_NAME,
@@ -48,10 +56,10 @@ from Mikobot import (
     SUPPORT_CHAT,
     StartTime,
     app,
+    events,
     loop,
     send_booting_message,
 )
-from Mikobot import events
 from Mikobot.events import add_callback, add_message
 from Mikobot.plugins import ALL_MODULES
 from Mikobot.plugins.helper_funcs.chat_status import is_user_admin, sudo_plus
@@ -106,7 +114,9 @@ def load_plugins():
         if imported_module.__mod_name__.lower() not in IMPORTED:
             IMPORTED[imported_module.__mod_name__.lower()] = imported_module
         else:
-            raise Exception("Can't have two modules with the same name! Please change one")
+            raise Exception(
+                "Can't have two modules with the same name! Please change one"
+            )
 
         if hasattr(imported_module, "__help__") and imported_module.__help__:
             HELPABLE[imported_module.__mod_name__.lower()] = imported_module
@@ -828,7 +838,9 @@ async def gitsource_callback(client, query: CallbackQuery):
 
     if query.data == "git_source":
         source_link = "https://github.com/bisug/YaeMiko-V2"
-        message_text = f"*Here is the link for the public source repo*:\n\n{source_link}"
+        message_text = (
+            f"*Here is the link for the public source repo*:\n\n{source_link}"
+        )
 
         # Adding the inline button
         keyboard = [
@@ -984,5 +996,7 @@ if __name__ == "__main__":
                 loop.stop()
         finally:
             loop.close()
-        LOGGER.info("------------------------ Stopped Services ------------------------")
+        LOGGER.info(
+            "------------------------ Stopped Services ------------------------"
+        )
 # <==================================================== END ===================================================>

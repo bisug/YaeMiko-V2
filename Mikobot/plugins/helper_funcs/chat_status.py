@@ -3,7 +3,7 @@ from threading import RLock
 from time import perf_counter
 
 from cachetools import TTLCache
-from pyrogram.enums import ChatMemberStatus, ChatMembersFilter, ChatType
+from pyrogram.enums import ChatMembersFilter, ChatMemberStatus, ChatType
 from pyrogram.errors import RPCError
 
 from Mikobot import DEL_CMDS, DEV_USERS, DRAGONS, SUPPORT_CHAT, app

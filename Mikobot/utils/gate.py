@@ -61,6 +61,8 @@ def chain(func):
     """
     func.chained = True
     return func
+
+
 # <=======================================================================================================>
 
 
@@ -164,6 +166,8 @@ def _event_parts(event):
     chat = getattr(event, "chat", None) or getattr(message, "chat", None)
     user = getattr(event, "from_user", None) or getattr(message, "from_user", None)
     return chat, user
+
+
 # <=======================================================================================================>
 
 
@@ -236,6 +240,8 @@ async def enforce(client, event, handler) -> bool:
                 return False
 
     return True
+
+
 # <=======================================================================================================>
 
 
@@ -261,9 +267,7 @@ async def _bot_sender_allowed(client, event) -> bool:
     if chat_id is None:
         return True
     try:
-        mode, _skip, allowed = await asyncio.to_thread(
-            bot2bot_sql.get_setting, chat_id
-        )
+        mode, _skip, allowed = await asyncio.to_thread(bot2bot_sql.get_setting, chat_id)
     except Exception:
         # Fail closed: if the setting cannot be read, a bot gets no access.
         LOGGER.exception("Could not read the bot2bot setting for %s", chat_id)
@@ -312,6 +316,8 @@ async def _bot_command_reviewed(client, event) -> bool:
         return True
 
     return await bot2bot.request_review(user, _event_parts(event)[0], event)
+
+
 # <=======================================================================================================>
 
 
@@ -436,4 +442,6 @@ async def _member(client, chat, user_id):
         return await client.get_chat_member(chat.id, user_id)
     except RPCError:
         return None
+
+
 # <=======================================================================================================>

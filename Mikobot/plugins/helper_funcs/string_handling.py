@@ -4,9 +4,9 @@ import html
 import re
 import time
 
+from emoji import unicode_codes
 from pyrogram.types import Message as AiogramMessage
 from pyrogram.types import MessageEntity
-from emoji import unicode_codes
 
 
 def escape_markdown(text: str, version: int = 1, entity_type: str = None) -> str:

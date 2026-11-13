@@ -50,7 +50,7 @@ async def _forum_or_reply(message: Message):
         return chat
     if await _has_forum_sidebar(chat.id):
         return chat
-    await message.reply_text("That only works in a forum with topics enabled.")
+    await message.reply("That only works in a forum with topics enabled.")
     return None
 
 
