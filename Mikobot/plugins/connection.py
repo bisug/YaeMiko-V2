@@ -1,13 +1,11 @@
-import asyncio
-
 # <============================================== IMPORTS =========================================================>
+import asyncio
 import re
 import time
 
-from aiogram import Bot, F
-from pyrogram.enums import ButtonStyle, ChatType, ParseMode
+from pyrogram import filters
+from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -16,10 +14,10 @@ from pyrogram.types import (
 )
 
 import Database.sql.connection_sql as sql
-from Mikobot import DEV_USERS, DRAGONS, bot, dp
+from Mikobot import DEV_USERS, DRAGONS
+from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.helper_funcs import chat_status
 from Mikobot.plugins.helper_funcs.alternate import send_message, typing_action
-from Mikobot.utils.gate import chain
 
 # <=======================================================================================================>
 
@@ -27,11 +25,12 @@ check_admin = chat_status.check_admin
 
 
 # <================================================ FUNCTION =======================================================>
+@on_message(filters.command("allowconnect"), chained=True)
 @check_admin(is_user=True)
 @typing_action
-async def allow_connections(message: Message, command: CommandObject):
+async def allow_connections(client, message: Message):
     chat = message.chat
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
 
     if chat.type != ChatType.PRIVATE:
         if len(args) >= 1:
@@ -75,51 +74,51 @@ async def allow_connections(message: Message, command: CommandObject):
         )
 
 
+@on_message(filters.command("connection"), chained=True)
 @typing_action
-async def connection_chat(message: Message, command: CommandObject):
+async def connection_chat(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    conn = await connected(bot, message, chat, user.id, need_admin=True)
+    conn = await connected(client, message, chat, user.id, need_admin=True)
 
     if conn:
-        chat = await client.get_chat(conn)
         chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
         if message.chat.type != ChatType.PRIVATE:
             return
-        chat = message.chat
         chat_name = message.chat.title
 
     if conn:
-        message = "You are currently connected to {}.\n".format(chat_name)
+        text = "You are currently connected to {}.\n".format(chat_name)
     else:
-        message = "You are currently not connected in any group.\n"
-    await send_message(message, message, parse_mode=ParseMode.MARKDOWN)
+        text = "You are currently not connected in any group.\n"
+    await send_message(message, text, parse_mode=ParseMode.MARKDOWN)
 
 
+@on_message(filters.command("connect"), chained=True)
 @typing_action
-async def connect_chat(message: Message, command: CommandObject):
+async def connect_chat(client, message: Message):
     chat = message.chat
     user = message.from_user
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
 
     if message.chat.type == ChatType.PRIVATE:
         if args and len(args) >= 1:
             try:
-                connect_chat = int(args[0])
+                target_chat = int(args[0])
                 getstatusadmin = await client.get_chat_member(
-                    connect_chat,
+                    target_chat,
                     message.from_user.id,
                 )
             except ValueError:
                 try:
-                    connect_chat = str(args[0])
-                    get_chat = await client.get_chat(connect_chat)
-                    connect_chat = get_chat.id
+                    target_chat = str(args[0])
+                    get_chat = await client.get_chat(target_chat)
+                    target_chat = get_chat.id
                     getstatusadmin = await client.get_chat_member(
-                        connect_chat,
+                        target_chat,
                         message.from_user.id,
                     )
                 except RPCError:
@@ -129,19 +128,22 @@ async def connect_chat(message: Message, command: CommandObject):
                 await send_message(message, "Invalid Chat ID!")
                 return
 
-            isadmin = getstatusadmin.status in ("administrator", "creator")
-            ismember = getstatusadmin.status in ("member")
-            isallow = await asyncio.to_thread(sql.allow_connect_to_chat, connect_chat)
+            isadmin = getstatusadmin.status in (
+                ChatMemberStatus.ADMINISTRATOR,
+                ChatMemberStatus.OWNER,
+            )
+            ismember = getstatusadmin.status == ChatMemberStatus.MEMBER
+            isallow = await asyncio.to_thread(sql.allow_connect_to_chat, target_chat)
 
             if (isadmin) or (isallow and ismember) or (user.id in DRAGONS):
                 connection_status = await asyncio.to_thread(
                     sql.connect,
                     message.from_user.id,
-                    connect_chat,
+                    target_chat,
                 )
                 if connection_status:
                     conn = await connected(
-                        bot, message, chat, user.id, need_admin=False
+                        client, message, chat, user.id, need_admin=False
                     )
                     conn_chat = await client.get_chat(conn)
                     chat_name = conn_chat.title
@@ -179,7 +181,7 @@ async def connect_chat(message: Message, command: CommandObject):
                 ]
             else:
                 buttons = []
-            conn = await connected(bot, message, chat, user.id, need_admin=False)
+            conn = await connected(client, message, chat, user.id, need_admin=False)
             if conn:
                 connectedchat = await client.get_chat(conn)
                 text = "You are currently connected to *{}* (`{}`)".format(
@@ -250,8 +252,11 @@ async def connect_chat(message: Message, command: CommandObject):
             chat.id,
             message.from_user.id,
         )
-        isadmin = getstatusadmin.status in ("administrator", "creator")
-        ismember = getstatusadmin.status in ("member")
+        isadmin = getstatusadmin.status in (
+            ChatMemberStatus.ADMINISTRATOR,
+            ChatMemberStatus.OWNER,
+        )
+        ismember = getstatusadmin.status == ChatMemberStatus.MEMBER
         isallow = await asyncio.to_thread(sql.allow_connect_to_chat, chat.id)
         if (isadmin) or (isallow and ismember) or (user.id in DRAGONS):
             connection_status = await asyncio.to_thread(
@@ -287,7 +292,8 @@ async def connect_chat(message: Message, command: CommandObject):
             )
 
 
-async def disconnect_chat(message: Message, command: CommandObject):
+@on_message(filters.command("disconnect"), chained=True)
+async def disconnect_chat(client, message: Message):
     if message.chat.type == ChatType.PRIVATE:
         disconnection_status = await asyncio.to_thread(
             sql.disconnect, message.from_user.id
@@ -303,7 +309,7 @@ async def disconnect_chat(message: Message, command: CommandObject):
         await send_message(message, "This command is only available in PM.")
 
 
-async def connected(bot: Bot, message: Message, chat, user_id, need_admin=True):
+async def connected(client_obj, message: Message, chat, user_id, need_admin=True):
     """Resolve the caller's linked chat, replying and disconnecting when not allowed."""
     user = message.from_user
 
@@ -313,12 +319,15 @@ async def connected(bot: Bot, message: Message, chat, user_id, need_admin=True):
     connection = await asyncio.to_thread(sql.get_connected_chat, user_id)
     if connection:
         conn_id = connection.chat_id
-        getstatusadmin = await client.get_chat_member(
+        getstatusadmin = await client_obj.get_chat_member(
             conn_id,
-            message.from_user.id,
+            user.id,
         )
-        isadmin = getstatusadmin.status in ("administrator", "creator")
-        ismember = getstatusadmin.status in ("member")
+        isadmin = getstatusadmin.status in (
+            ChatMemberStatus.ADMINISTRATOR,
+            ChatMemberStatus.OWNER,
+        )
+        ismember = getstatusadmin.status == ChatMemberStatus.MEMBER
         isallow = await asyncio.to_thread(sql.allow_connect_to_chat, conn_id)
 
         if (
@@ -328,11 +337,7 @@ async def connected(bot: Bot, message: Message, chat, user_id, need_admin=True):
             or (user.id in DEV_USERS)
         ):
             if need_admin is True:
-                if (
-                    getstatusadmin.status in ("administrator", "creator")
-                    or user_id in DRAGONS
-                    or user.id in DEV_USERS
-                ):
+                if isadmin or user_id in DRAGONS or user.id in DEV_USERS:
                     return conn_id
                 else:
                     await send_message(
@@ -364,7 +369,8 @@ Actions are available with connected groups:
  """
 
 
-async def help_connect_chat(message: Message, command: CommandObject):
+@on_message(filters.command("helpconnect"), chained=True)
+async def help_connect_chat(client, message: Message):
     if message.chat.type != ChatType.PRIVATE:
         await send_message(message, "PM me with that command to get help.")
         return
@@ -372,7 +378,11 @@ async def help_connect_chat(message: Message, command: CommandObject):
         await send_message(message, CONN_HELP, parse_mode=ParseMode.MARKDOWN)
 
 
-async def connect_button(query: CallbackQuery):
+@on_callback(
+    filters.regex(r"^(?:connect\(-?\d+\)|connect_(?:disconnect|clear|close))$"),
+    chained=True,
+)
+async def connect_button(client, query: CallbackQuery):
     chat = query.message.chat
     user = query.from_user
 
@@ -382,10 +392,13 @@ async def connect_button(query: CallbackQuery):
     connect_close = query.data == "connect_close"
 
     if connect_match:
-        target_chat = connect_match.group(1)
+        target_chat = int(connect_match.group(1))
         getstatusadmin = await client.get_chat_member(target_chat, query.from_user.id)
-        isadmin = getstatusadmin.status in ("administrator", "creator")
-        ismember = getstatusadmin.status in ("member")
+        isadmin = getstatusadmin.status in (
+            ChatMemberStatus.ADMINISTRATOR,
+            ChatMemberStatus.OWNER,
+        )
+        ismember = getstatusadmin.status == ChatMemberStatus.MEMBER
         isallow = await asyncio.to_thread(sql.allow_connect_to_chat, target_chat)
 
         if (isadmin) or (isallow and ismember) or (user.id in DRAGONS):
@@ -395,7 +408,7 @@ async def connect_button(query: CallbackQuery):
 
             if connection_status:
                 conn = await connected(
-                    bot, query.message, chat, user.id, need_admin=False
+                    client, query.message, chat, user.id, need_admin=False
                 )
                 conn_chat = await client.get_chat(conn)
                 chat_name = conn_chat.title
@@ -413,8 +426,7 @@ async def connect_button(query: CallbackQuery):
                 await query.message.edit_text("Connection failed!")
                 await query.answer("Connection failed.", show_alert=True)
         else:
-            await client.answer_callback_query(
-                query.id,
+            await query.answer(
                 "Connection to this chat is not allowed!",
                 show_alert=True,
             )
@@ -428,8 +440,7 @@ async def connect_button(query: CallbackQuery):
             )
             await query.answer()
         else:
-            await client.answer_callback_query(
-                query.id,
+            await query.answer(
                 "You're not connected!",
                 show_alert=True,
             )
@@ -441,9 +452,7 @@ async def connect_button(query: CallbackQuery):
         await query.message.edit_text("Closed. To open again, type /connect")
         await query.answer()
     else:
-        await client.answer_callback_query(
-            query.id, "Invalid callback data.", show_alert=True
-        )
+        await query.answer("Invalid callback data.", show_alert=True)
 
 
 # <=================================================== HELP ====================================================>
@@ -464,17 +473,6 @@ __help__ = """
 
 » /allowconnect <yes/no>: Allow a user to connect to a chat
 """
-
-# <================================================ HANDLER =======================================================>
-dp.message.register(chain(connect_chat), Command("connect"))
-dp.message.register(chain(connection_chat), Command("connection"))
-dp.message.register(chain(disconnect_chat), Command("disconnect"))
-dp.message.register(chain(allow_connections), Command("allowconnect"))
-dp.message.register(chain(help_connect_chat), Command("helpconnect"))
-dp.callback_query.register(
-    chain(connect_button),
-    F.data.regexp(r"^(?:connect\(-?\d+\)|connect_(?:disconnect|clear|close))$"),
-)
 
 
 def __migrate__(old_chat_id, new_chat_id):

@@ -1,10 +1,9 @@
 import asyncio
 import html
 
-from aiogram import F
+from pyrogram import filters
 from pyrogram.enums import ButtonStyle, ChatMemberStatus, ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import CommandObject
 from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -13,24 +12,24 @@ from pyrogram.types import (
 )
 
 import Database.sql.approve_sql as sql
-from Mikobot import DRAGONS, bot, dp
+from Mikobot import DRAGONS
+from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.plugins.helper_funcs.extraction import extract_user
 from Mikobot.plugins.log_channel import loggable
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import escape_markdown, mention_html
 
-ADMIN_OR_OWNER = (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR)
+ADMIN_OR_OWNER = (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER)
 
 
+@on_message(*disableable("approve"), chained=True)
 @loggable
 @check_admin(is_user=True)
-async def approve(message: Message, command: CommandObject):
-    message = message
+async def approve(client, message: Message):
     chat_title = message.chat.title
     chat = message.chat
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
     user = message.from_user
     user_id = await extract_user(message, args)
     if not user_id:
@@ -39,7 +38,7 @@ async def approve(message: Message, command: CommandObject):
         )
         return ""
     try:
-        member = await client.get_chat_member(chat.chat_id, user_id)
+        member = await client.get_chat_member(chat.id, user_id)
     except RPCError:
         return ""
     if member.status in ADMIN_OR_OWNER:
@@ -47,13 +46,13 @@ async def approve(message: Message, command: CommandObject):
             "User is already admin - locks, blocklists, and antiflood already don't apply to them.",
         )
         return ""
-    if sql.is_approved(message.chat_id, user_id):
+    if sql.is_approved(message.chat.id, user_id):
         await message.reply_text(
             f"[{escape_markdown(member.user.first_name)}](tg://user?id={member.user.id}) is already approved in {escape_markdown(chat_title)}",
             parse_mode=ParseMode.MARKDOWN,
         )
         return ""
-    sql.approve(message.chat_id, user_id)
+    sql.approve(message.chat.id, user_id)
     await message.reply_text(
         f"[{escape_markdown(member.user.first_name)}](tg://user?id={member.user.id}) has been approved in {escape_markdown(chat_title)}! They will now be ignored by automated admin actions like locks, blocklists, and antiflood.",
         parse_mode=ParseMode.MARKDOWN,
@@ -68,13 +67,13 @@ async def approve(message: Message, command: CommandObject):
     return log_message
 
 
+@on_message(*disableable("unapprove"), chained=True)
 @loggable
 @check_admin(is_user=True)
-async def disapprove(message: Message, command: CommandObject):
-    message = message
+async def disapprove(client, message: Message):
     chat_title = message.chat.title
     chat = message.chat
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
     user = message.from_user
     user_id = await extract_user(message, args)
     if not user_id:
@@ -83,18 +82,18 @@ async def disapprove(message: Message, command: CommandObject):
         )
         return ""
     try:
-        member = await client.get_chat_member(chat.chat_id, user_id)
+        member = await client.get_chat_member(chat.id, user_id)
     except RPCError:
         return ""
     if member.status in ADMIN_OR_OWNER:
         await message.reply_text("This user is an admin, they can't be unapproved.")
         return ""
-    if not sql.is_approved(message.chat_id, user_id):
+    if not sql.is_approved(message.chat.id, user_id):
         await message.reply_text(
             f"{html.escape(member.user.first_name)} isn't approved yet!"
         )
         return ""
-    sql.disapprove(message.chat_id, user_id)
+    sql.disapprove(message.chat.id, user_id)
     await message.reply_text(
         f"{html.escape(member.user.first_name)} is no longer approved in {html.escape(chat_title)}.",
     )
@@ -108,39 +107,38 @@ async def disapprove(message: Message, command: CommandObject):
     return log_message
 
 
+@on_message(*disableable("approved"), chained=True)
 @check_admin(is_user=True)
-async def approved(message: Message):
-    message = message
+async def approved(client, message: Message):
     chat_title = message.chat.title
     chat = message.chat
     msg = "The following users are approved.\n"
-    approved_users = sql.list_approved(message.chat_id)
+    approved_users = sql.list_approved(message.chat.id)
 
     if not approved_users:
         await message.reply_text(f"No users are approved in {chat_title}.")
         return ""
 
-    else:
-        # One round trip per approved user, issued together: a chat with a
-        # hundred of them otherwise pays a hundred sequential latencies, and the
-        # session's own leaky bucket paces the batch. A user who left is dropped
-        # rather than failing the whole list, matching the lookups above.
-        members = await asyncio.gather(
-            *(client.get_chat_member(chat.id, int(i.user_id)) for i in approved_users),
-            return_exceptions=True,
-        )
-        for i, member in zip(approved_users, members, strict=False):
-            if isinstance(member, BaseException):
-                continue
-            msg += f"- `{i.user_id}`: {escape_markdown(member.user.first_name)}\n"
+    # One round trip per approved user, issued together: a chat with a
+    # hundred of them otherwise pays a hundred sequential latencies, and the
+    # session's own leaky bucket paces the batch.
+    members = await asyncio.gather(
+        *(client.get_chat_member(chat.id, int(i.user_id)) for i in approved_users),
+        return_exceptions=True,
+    )
+    for i, member in zip(approved_users, members, strict=False):
+        if isinstance(member, BaseException):
+            continue
+        msg += f"- `{i.user_id}`: {escape_markdown(member.user.first_name)}\n"
 
-        await message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+    await message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
 
 
+@on_message(*disableable("approval"), chained=True)
 @check_admin(is_user=True)
-async def approval(message: Message, command: CommandObject):
+async def approval(client, message: Message):
     chat = message.chat
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
     user_id = await extract_user(message, args)
 
     if not user_id:
@@ -149,7 +147,7 @@ async def approval(message: Message, command: CommandObject):
         )
         return ""
     member = await client.get_chat_member(chat.id, int(user_id))
-    if sql.is_approved(message.chat_id, user_id):
+    if sql.is_approved(message.chat.id, user_id):
         await message.reply_text(
             f"{html.escape(member.user.first_name)} is an approved user. Locks, antiflood, and blocklists won't apply to them.",
         )
@@ -159,7 +157,8 @@ async def approval(message: Message, command: CommandObject):
         )
 
 
-async def unapproveall(message: Message):
+@on_message(*disableable("unapproveall"), chained=True)
+async def unapproveall(client, message: Message):
     chat = message.chat
     user = message.from_user
     member = await client.get_chat_member(chat.id, user.id)
@@ -169,7 +168,7 @@ async def unapproveall(message: Message):
         await message.reply_text(f"No users are approved in {html.escape(chat.title)}.")
         return
 
-    if member.status != ChatMemberStatus.CREATOR and user.id not in DRAGONS:
+    if member.status != ChatMemberStatus.OWNER and user.id not in DRAGONS:
         await message.reply_text(
             "Only the chat owner can unapprove all users at once.",
         )
@@ -199,12 +198,13 @@ async def unapproveall(message: Message):
         )
 
 
-async def unapproveall_btn(query: CallbackQuery):
+@on_callback(filters.regex(r"^unapproveall_.*"), chained=True)
+async def unapproveall_btn(client, query: CallbackQuery):
     chat = query.message.chat
     message = query.message
     member = await client.get_chat_member(chat.id, query.from_user.id)
     if query.data == "unapproveall_user":
-        if member.status == ChatMemberStatus.CREATOR or query.from_user.id in DRAGONS:
+        if member.status == ChatMemberStatus.OWNER or query.from_user.id in DRAGONS:
             approved_users = sql.list_approved(chat.id)
             users = [int(i.user_id) for i in approved_users]
             for user_id in users:
@@ -219,7 +219,7 @@ async def unapproveall_btn(query: CallbackQuery):
         if member.status == ChatMemberStatus.MEMBER:
             await query.answer("You need to be admin to do this.")
     elif query.data == "unapproveall_cancel":
-        if member.status == ChatMemberStatus.CREATOR or query.from_user.id in DRAGONS:
+        if member.status == ChatMemberStatus.OWNER or query.from_user.id in DRAGONS:
             await message.edit_text(
                 "Removing of all approved users has been cancelled."
             )
@@ -249,13 +249,6 @@ Maybe not enough to make them admin, but you might be ok with locks, blacklists,
 
 » /unapproveall: Unapprove *ALL* users in a chat. This cannot be undone.
 """
-
-dp.message.register(chain(approve), *disableable("approve"))
-dp.message.register(chain(disapprove), *disableable("unapprove"))
-dp.message.register(chain(approved), *disableable("approved"))
-dp.message.register(chain(approval), *disableable("approval"))
-dp.message.register(chain(unapproveall), *disableable("unapproveall"))
-dp.callback_query.register(chain(unapproveall_btn), F.data.regexp(r"^unapproveall_.*"))
 
 __mod_name__ = "APPROVALS"
 __command_list__ = ["approve", "unapprove", "approved", "approval"]

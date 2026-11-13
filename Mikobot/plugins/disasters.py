@@ -4,16 +4,15 @@ import json
 import os
 import tempfile
 
+from pyrogram import filters
 from pyrogram.enums import ChatType
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import Message
 
 import Mikobot
-from Mikobot import bot, dp
+from Mikobot.events import on_message
 from Mikobot.plugins.helper_funcs.chat_status import dev_plus, sudo_plus
 from Mikobot.plugins.helper_funcs.extraction import extract_user
 from Mikobot.plugins.log_channel import gloggable
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 # Resolve relative to this file, not the process working directory, so the bot
@@ -89,18 +88,17 @@ def apply_elevated_users(data):
     )
 
 
-async def add_disaster_level(
-    message: Message, level: str, command: CommandObject
-) -> str:
+async def add_disaster_level(client, message: Message, level: str) -> str:
     user = message.from_user
     chat = message.chat
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
     user_id = await extract_user(message, args)
     reply = await check_user_id(user_id)
     if reply:
         await message.reply_text(reply)
         return ""
-    if user_id == int(client.id):
+    my_id = client.me.id if getattr(client, "me", None) else (await client.get_me()).id
+    if user_id == int(my_id):
         return ""
     target_name = str(user_id)
     rt = ""
@@ -137,37 +135,35 @@ async def add_disaster_level(
         log_message = f"<b>{html.escape(chat.title)}:</b>\n" + log_message
 
     await message.reply_text(log_message)
+    return log_message
 
 
+@on_message(filters.command("addsudo"), chained=True)
 @dev_plus
 @gloggable
-async def addsudo(message: Message, command: CommandObject) -> str:
-    await add_disaster_level(message, "Dragon", command)
+async def addsudo(client, message: Message) -> str:
+    return await add_disaster_level(client, message, "Dragon")
 
 
+@on_message(filters.command(["addsupport", "adddemon"]), chained=True)
 @sudo_plus
 @gloggable
-async def addsupport(message: Message, command: CommandObject) -> str:
-    await add_disaster_level(message, "Demon", command)
+async def addsupport(client, message: Message) -> str:
+    return await add_disaster_level(client, message, "Demon")
 
 
+@on_message(filters.command(["addwhitelist", "addwolf"]), chained=True)
 @sudo_plus
 @gloggable
-async def addwhitelist(message: Message, command: CommandObject) -> str:
-    await add_disaster_level(message, "Wolf", command)
+async def addwhitelist(client, message: Message) -> str:
+    return await add_disaster_level(client, message, "Wolf")
 
 
+@on_message(filters.command("addtiger"), chained=True)
 @sudo_plus
 @gloggable
-async def addtiger(message: Message, command: CommandObject) -> str:
-    await add_disaster_level(message, "Tiger", command)
+async def addtiger(client, message: Message) -> str:
+    return await add_disaster_level(client, message, "Tiger")
 
-
-# Other functions can be refactored similarly...
-
-dp.message.register(chain(addsudo), Command("addsudo"))
-dp.message.register(chain(addsupport), Command(commands=("addsupport", "adddemon")))
-dp.message.register(chain(addtiger), Command("addtiger"))
-dp.message.register(chain(addwhitelist), Command(commands=("addwhitelist", "addwolf")))
 
 __mod_name__ = "Devs"

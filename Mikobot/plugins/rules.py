@@ -1,7 +1,7 @@
 # <============================================== IMPORTS =========================================================>
+from pyrogram import filters
 from pyrogram.enums import ButtonStyle, ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import Command
 from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -10,7 +10,8 @@ from pyrogram.types import (
 )
 
 import Database.sql.rules_sql as sql
-from Mikobot import BOT_USERNAME, bot, dp
+from Mikobot import BOT_USERNAME
+from Mikobot.events import on_message
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.plugins.helper_funcs.string_handling import (
     markdown_parser,
@@ -23,11 +24,7 @@ from Mikobot.utils.parser import escape_markdown
 
 
 # <================================================ FUNCTION =======================================================>
-async def get_rules(message: Message):
-    await send_rules(message, message.chat.id)
-
-
-async def send_rules(message, chat_id, from_pm=False):
+async def send_rules(client, message, chat_id, from_pm=False):
     user = message.from_user
     reply_msg = message.reply_to_message
     try:
@@ -62,7 +59,7 @@ async def send_rules(message, chat_id, from_pm=False):
             "This probably doesn't mean it's lawless though...!",
         )
     elif rules and reply_msg and not reply_msg.forum_topic_created:
-        await reply_msg.reply(
+        await reply_msg.reply_text(
             "Please click the button below to see the rules.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
@@ -98,8 +95,14 @@ async def send_rules(message, chat_id, from_pm=False):
         )
 
 
+@on_message(GROUPS & filters.command("rules"), chained=True)
+async def get_rules(client, message: Message):
+    await send_rules(client, message, message.chat.id)
+
+
+@on_message(GROUPS & filters.command("setrules"), chained=True)
 @check_admin(is_user=True)
-async def set_rules(message: Message):
+async def set_rules(client, message: Message):
     chat_id = message.chat.id
     raw_text = message.text
     args = raw_text.split(None, 1)  # use python's maxsplit to separate cmd and args
@@ -112,8 +115,9 @@ async def set_rules(message: Message):
         await message.reply_text("Successfully set rules for this group.")
 
 
+@on_message(GROUPS & filters.command("clearrules"), chained=True)
 @check_admin(is_user=True)
-async def clear_rules(message: Message):
+async def clear_rules(client, message: Message):
     sql.set_rules(message.chat.id, "")
     await message.reply_text("Successfully cleared rules!")
 
@@ -150,9 +154,4 @@ __help__ = """
 """
 
 __mod_name__ = "RULES"
-
-# <================================================ HANDLER =======================================================>
-dp.message.register(get_rules, GROUPS, Command("rules"))
-dp.message.register(set_rules, GROUPS, Command("setrules"))
-dp.message.register(clear_rules, GROUPS, Command("clearrules"))
 # <================================================== END =====================================================>
