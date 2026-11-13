@@ -3,7 +3,7 @@ from threading import RLock
 from time import perf_counter
 
 from cachetools import TTLCache
-from pyrogram.enums import ChatMemberStatus, ChatMembersFilter
+from pyrogram.enums import ChatMemberStatus, ChatMembersFilter, ChatType
 from pyrogram.errors import RPCError
 
 from Mikobot import DEL_CMDS, DEV_USERS, DRAGONS, SUPPORT_CHAT, app
@@ -119,7 +119,7 @@ is_whitelist_plus = is_support_plus = is_sudo_plus = _is_elevated
 
 async def is_user_admin(chat, user_id: int, member=None) -> bool:
     if (
-        getattr(chat, "type", None) == "private"
+        getattr(chat, "type", None) in (ChatType.PRIVATE, ChatType.BOT)
         or user_id in DRAGONS
         or user_id in DEV_USERS
         or user_id in [777000, 1087968824]
@@ -167,7 +167,7 @@ async def can_delete(chat, bot_id: int) -> bool:
 
 async def is_user_ban_protected(chat, user_id: int, member=None) -> bool:
     if (
-        getattr(chat, "type", None) == "private"
+        getattr(chat, "type", None) in (ChatType.PRIVATE, ChatType.BOT)
         or user_id in DRAGONS
         or user_id in DEV_USERS
         or user_id in [777000, 1087968824]

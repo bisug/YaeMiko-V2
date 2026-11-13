@@ -39,7 +39,6 @@ from pyrogram.types import (
 )
 
 import Mikobot
-from Infamous.karma import *
 from Mikobot import (
     ACTIVITY_LOG,
     BOT_NAME,
@@ -929,6 +928,14 @@ async def main():
     # here, after kurigram has connected and learned who it is.
     me = app.me
     Mikobot._BOT_INFO = (me.id, me.first_name, me.username)
+
+    # The start texts carry the bot's name, so they are read after the
+    # identity is known.
+    from Infamous import karma
+
+    globals().update(
+        {name: value for name, value in vars(karma).items() if not name.startswith("_")}
+    )
 
     register_core_handlers()
 

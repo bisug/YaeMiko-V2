@@ -67,6 +67,10 @@ def chain(func):
 # <================================================== HELPERS ===================================================>
 async def _action_reply(event, text):
     """Reply through whatever event we were handed, matching the old behaviour."""
+    # A message replies with text, a callback query answers.
+    reply_text = getattr(event, "reply_text", None)
+    if reply_text is not None:
+        return await reply_text(text)
     answer = getattr(event, "answer", None)
     if answer is not None:
         return await answer(text)
@@ -150,7 +154,8 @@ def _is_private(event):
     chat = getattr(event, "chat", None) or getattr(
         getattr(event, "message", None), "chat", None
     )
-    return getattr(chat, "type", None) == ChatType.PRIVATE
+    # A private chat with a bot is its own type in kurigram.
+    return getattr(chat, "type", None) in (ChatType.PRIVATE, ChatType.BOT)
 
 
 @staticmethod

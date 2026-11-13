@@ -16,6 +16,7 @@ Handlers are called the kurigram way, ``handler(client, update)``.
 
 import logging
 
+from pyrogram import filters
 from pyrogram.handlers import (
     CallbackQueryHandler,
     ChatJoinRequestHandler,
@@ -156,6 +157,42 @@ def add_message(handler, *filters, chained: bool = False) -> None:
 def add_callback(handler, *filters, chained: bool = False) -> None:
     """Register a callback query handler without a decorator."""
     registry.add(registry.callbacks, filters, handler, chained)
+
+
+def register(**args):
+    """Legacy decorator: a message handler matched by a regex pattern.
+
+    The handler takes the event only, the way the kurigram-era plugins were
+    written. New code uses ``on_message``.
+    """
+    pattern = args.get("pattern")
+
+    def decorator(func):
+        handler_filter = filters.regex(pattern) if pattern else filters.all
+
+        async def wrapper(client, event):
+            return await func(event)
+
+        registry.add(registry.messages, (handler_filter,), wrapper, False)
+        return func
+
+    return decorator
+
+
+def callbackquery(**args):
+    """Legacy decorator: a callback query handler matched by a regex pattern."""
+    pattern = args.get("pattern")
+
+    def decorator(func):
+        handler_filter = filters.regex(pattern) if pattern else filters.all
+
+        async def wrapper(client, event):
+            return await func(event)
+
+        registry.add(registry.callbacks, (handler_filter,), wrapper, False)
+        return func
+
+    return decorator
 
 
 # <=======================================================================================================>

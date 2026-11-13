@@ -5,7 +5,6 @@ description = "A powerful Telegram group management bot"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "aiogram==3.31.0",
     "apscheduler==3.11.3",
     "beautifulsoup4==4.15.0",
     "cachetools==8.0.0",

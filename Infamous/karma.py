@@ -5,8 +5,6 @@
 # <============================================== IMPORTS =========================================================>
 from pyrogram.enums import ButtonStyle
 from pyrogram.types import InlineKeyboardButton
-from pyrogram.enums import ButtonStyle as PyrogramButtonStyle
-from pyrogram.types import InlineKeyboardButton as ib
 
 from Mikobot import BOT_NAME, BOT_USERNAME, OWNER_ID, SUPPORT_CHAT
 from Mikobot.utils.parser import escape_markdown
@@ -91,22 +89,22 @@ GROUP_START_BTN = [
 
 ALIVE_BTN = [
     [
-        ib(
+        InlineKeyboardButton(
             text="UPDATES",
             url="https://t.me/Hydra_Updates",
-            style=PyrogramButtonStyle.PRIMARY,
+            style=ButtonStyle.PRIMARY,
         ),
-        ib(
+        InlineKeyboardButton(
             text="SUPPORT",
             url="https://t.me/hydraXsupport",
-            style=PyrogramButtonStyle.PRIMARY,
+            style=ButtonStyle.PRIMARY,
         ),
     ],
     [
-        ib(
+        InlineKeyboardButton(
             text="⇦ ADD ME ⇨",
             url=f"https://t.me/{BOT_USERNAME}?startgroup=true",
-            style=PyrogramButtonStyle.PRIMARY,
+            style=ButtonStyle.PRIMARY,
         ),
     ],
 ]
