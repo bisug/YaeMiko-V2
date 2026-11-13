@@ -4,11 +4,12 @@
 
 # <============================================== IMPORTS =========================================================>
 
+from pyrogram import filters
 from pyrogram.enums import ParseMode
-from aiogram.filters import Command
 from pyrogram.types import Message
 
-from Mikobot import DEMONS, DEV_USERS, DRAGONS, LOGGER, OWNER_ID, WOLVES, dp
+from Mikobot import DEMONS, DEV_USERS, DRAGONS, LOGGER, OWNER_ID, WOLVES
+from Mikobot.events import on_message
 from Mikobot.plugins.helper_funcs.chat_status import support_plus
 from Mikobot.utils.parser import mention_html
 
@@ -32,7 +33,8 @@ async def get_users_list(user_ids):
 
 
 @support_plus
-async def botstaff(message: Message):
+@on_message(filters.command("botadmins"), chained=True)
+async def botstaff(client, message: Message):
     owner_info = mention_html(OWNER_ID, "Owner")
     reply = f"✪ <b>OWNER :</b> {owner_info} (<code>{OWNER_ID}</code>)\n"
 
@@ -56,8 +58,6 @@ async def botstaff(message: Message):
     LOGGER.info(f"{message.from_user.id} fetched botstaff in {message.chat.id}")
 
 
-# <================================================ HANDLER =======================================================>
-dp.message.register(botstaff, Command("botadmins"))
 # <================================================ END =======================================================>
 
 

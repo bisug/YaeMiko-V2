@@ -2,12 +2,12 @@
 from datetime import datetime, timezone
 from functools import wraps
 
+from pyrogram import filters
 from pyrogram.enums import ChatType, ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import Command
-from pyrogram.types import LinkPreviewOptions, Message
+from pyrogram.types import Message
 
-from Mikobot import dp
+from Mikobot.events import on_message
 from Mikobot.plugins.helper_funcs.misc import is_module_loaded
 
 FILENAME = __name__.rsplit(".", 1)[-1]
@@ -16,22 +16,15 @@ if is_module_loaded(FILENAME):
     import html
 
     from Database.sql import log_channel_sql as sql
-    from Mikobot import EVENT_LOGS, LOGGER, bot
+    from Mikobot import EVENT_LOGS, LOGGER
+    from Mikobot import app as client
     from Mikobot.plugins.helper_funcs.chat_status import check_admin
-    from Mikobot.utils.gate import chain
     from Mikobot.utils.parser import escape_markdown
 
     # <=======================================================================================================>
     # <================================================ FUNCTION =======================================================>
     def _event_message(args, kwargs):
-        """Find the Message in a handler's arguments.
-
-        The wrappers take *args/**kwargs rather than a named `message`, so
-        that aiogram's per-argument injection is forwarded untouched: with a
-        named parameter the event collided with the injected `message`
-        keyword, and anything the handler also declared (e.g. `command`)
-        was dropped.
-        """
+        """Find the Message in a handler's arguments."""
         message = kwargs.get("message")
         if message is None:
             message = next((a for a in args if isinstance(a, Message)), None)
@@ -54,12 +47,10 @@ if is_module_loaded(FILENAME):
                 result += f"\nEvent stamp: {datetime.now(timezone.utc).strftime(datetime_fmt)}"
 
                 if chat.is_forum and chat.username:
-                    result += f"\nLink: https://t.me/{chat.username}/{message.message_thread_id}/{message.message_id}"
+                    result += f"\nLink: https://t.me/{chat.username}/{message.message_thread_id}/{message.id}"
 
                 if chat.type == ChatType.SUPERGROUP and chat.username:
-                    result += (
-                        f"\nLink: https://t.me/{chat.username}/{message.message_id}"
-                    )
+                    result += f"\nLink: https://t.me/{chat.username}/{message.id}"
                 log_chat = sql.get_chat_log_channel(chat.id)
                 if log_chat:
                     try:
@@ -90,11 +81,9 @@ if is_module_loaded(FILENAME):
                 datetime_fmt = "%H:%M - %d-%m-%Y"
                 result += f"\nEvent stamp: {datetime.now(timezone.utc).strftime(datetime_fmt)}"
                 if chat.is_forum and chat.username:
-                    result += f"\nLink: https://t.me/{chat.username}/{message.message_thread_id}/{message.message_id}"
+                    result += f"\nLink: https://t.me/{chat.username}/{message.message_thread_id}/{message.id}"
                 elif chat.type == ChatType.SUPERGROUP and chat.username:
-                    result += (
-                        f"\nLink: https://t.me/{chat.username}/{message.message_id}"
-                    )
+                    result += f"\nLink: https://t.me/{chat.username}/{message.id}"
                 if EVENT_LOGS:
                     try:
                         await send_log(EVENT_LOGS, chat.id, result)
@@ -116,7 +105,7 @@ if is_module_loaded(FILENAME):
                 log_chat_id,
                 result,
                 parse_mode=ParseMode.HTML,
-                link_preview_options=LinkPreviewOptions(is_disabled=True),
+                disable_web_page_preview=True,
             )
         except RPCError as excp:
             if "chat not found" in str(excp.message or excp).lower():
@@ -157,8 +146,9 @@ if is_module_loaded(FILENAME):
                         exc_info=True,
                     )
 
+    @on_message(filters.command("logchannel"), chained=True)
     @check_admin(is_user=True)
-    async def logging(message: Message):
+    async def logging(client, message: Message):
         log_channel = sql.get_chat_log_channel(message.chat.id)
         if log_channel:
             log_channel_info = await client.get_chat(log_channel)
@@ -170,8 +160,9 @@ if is_module_loaded(FILENAME):
         else:
             await message.reply_text("No log channel has been set for this group!")
 
+    @on_message(filters.command("setlog"), chained=True)
     @check_admin(is_user=True)
-    async def setlog(message: Message):
+    async def setlog(client, message: Message):
         chat = message.chat
         if chat.type == ChatType.CHANNEL:
             await client.send_message(
@@ -207,8 +198,9 @@ if is_module_loaded(FILENAME):
                 " - Forward the /setlog to the group\n",
             )
 
+    @on_message(filters.command("unsetlog"), chained=True)
     @check_admin(is_user=True)
-    async def unsetlog(message: Message):
+    async def unsetlog(client, message: Message):
         chat = message.chat
 
         log_channel = sql.stop_chat_logging(chat.id)
@@ -254,11 +246,6 @@ if is_module_loaded(FILENAME):
 """
 
     __mod_name__ = "LOG-SET"
-
-    # <================================================ HANDLER =======================================================>
-    dp.message.register(chain(logging), Command("logchannel"))
-    dp.message.register(chain(setlog), Command("setlog"))
-    dp.message.register(chain(unsetlog), Command("unsetlog"))
 
 else:
     # run anyway if module not loaded

@@ -2,30 +2,36 @@
 import html
 from uuid import uuid4
 
-from aiogram import F
-from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
+from pyrogram import filters
+from pyrogram.enums import (
+    ButtonStyle,
+    ChatMembersFilter,
+    ChatMemberStatus,
+    ChatType,
+    ParseMode,
+)
 from pyrogram.errors import RPCError
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import (
     CallbackQuery,
-    ChatMemberAdministrator,
+    ChatPrivileges,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
 )
 
-from Mikobot import DRAGONS, LOGGER, bot, chat_data, dp
+from Mikobot import DRAGONS, LOGGER, chat_data
+from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.alternate import send_message
 from Mikobot.plugins.helper_funcs.chat_status import (
     ADMIN_CACHE,
     check_admin,
     connection_status,
+    granted,
 )
 from Mikobot.plugins.helper_funcs.extraction import extract_user, extract_user_and_text
 from Mikobot.plugins.log_channel import loggable
 from Mikobot.utils.consts import ChatID
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 # <=======================================================================================================>
@@ -35,8 +41,9 @@ from Mikobot.utils.parser import mention_html
 @connection_status
 @loggable
 @check_admin(permission="can_promote_members", is_both=True)
-async def promote(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(*disableable("promote"), chained=True)
+async def promote(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
 
     chat = message.chat
     user = message.from_user
@@ -68,7 +75,7 @@ async def promote(message: Message, command: CommandObject):
         return
 
     try:
-        user_member = await chat.get_member(user_id)
+        user_member = await client.get_chat_member(chat.id, user_id)
     except RPCError as exc:
         LOGGER.warning(
             "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
@@ -83,32 +90,39 @@ async def promote(message: Message, command: CommandObject):
         await message.reply_text("How can I promote someone who is already an admin?")
         return
 
-    if user_id == client.id:
-        await message.reply_text("I can't promote myself! Get an admin to do it for me.")
+    if user_id == client.me.id:
+        await message.reply_text(
+            "I can't promote myself! Get an admin to do it for me."
+        )
         return
 
     # Set the same permissions as the bot - the bot can't assign higher permissions than itself!
-    bot_member = await chat.get_member(client.id)
+    bot_member = await client.get_chat_member(chat.id, client.me.id)
 
-    if isinstance(bot_member, ChatMemberAdministrator):
+    if bot_member.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER):
         try:
+            privs = ChatPrivileges(
+                can_change_info=granted(bot_member, "can_change_info"),
+                can_post_messages=granted(bot_member, "can_post_messages"),
+                can_edit_messages=granted(bot_member, "can_edit_messages"),
+                can_delete_messages=granted(bot_member, "can_delete_messages"),
+                can_invite_users=granted(bot_member, "can_invite_users"),
+                can_restrict_members=granted(bot_member, "can_restrict_members"),
+                can_pin_messages=granted(bot_member, "can_pin_messages"),
+                can_manage_chat=granted(bot_member, "can_manage_chat"),
+                can_manage_video_chats=granted(bot_member, "can_manage_video_chats"),
+                can_manage_topics=granted(bot_member, "can_manage_topics"),
+            )
             await client.promote_chat_member(
                 chat.id,
                 user_id,
-                can_change_info=bot_member.can_change_info,
-                can_post_messages=bot_member.can_post_messages,
-                can_edit_messages=bot_member.can_edit_messages,
-                can_delete_messages=bot_member.can_delete_messages,
-                can_invite_users=bot_member.can_invite_users,
-                can_restrict_members=bot_member.can_restrict_members,
-                can_pin_messages=bot_member.can_pin_messages,
-                can_manage_chat=bot_member.can_manage_chat,
-                can_manage_video_chats=bot_member.can_manage_video_chats,
-                can_manage_topics=bot_member.can_manage_topics,
+                privileges=privs,
             )
         except RPCError as err:
             if err.message == "User_not_mutual_contact":
-                await message.reply_text("I can't promote someone who isn't in the group.")
+                await message.reply_text(
+                    "I can't promote someone who isn't in the group."
+                )
             else:
                 await message.reply_text("An error occurred while promoting.")
             return
@@ -133,8 +147,9 @@ async def promote(message: Message, command: CommandObject):
 @connection_status
 @loggable
 @check_admin(permission="can_promote_members", is_both=True)
-async def fullpromote(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(*disableable("fullpromote"), chained=True)
+async def fullpromote(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
 
     chat = message.chat
     user = message.from_user
@@ -166,7 +181,7 @@ async def fullpromote(message: Message, command: CommandObject):
         return
 
     try:
-        user_member = await chat.get_member(user_id)
+        user_member = await client.get_chat_member(chat.id, user_id)
     except RPCError as exc:
         LOGGER.warning(
             "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
@@ -181,33 +196,40 @@ async def fullpromote(message: Message, command: CommandObject):
         await message.reply_text("How can I promote someone who is already an admin?")
         return
 
-    if user_id == client.id:
-        await message.reply_text("I can't promote myself! Get an admin to do it for me.")
+    if user_id == client.me.id:
+        await message.reply_text(
+            "I can't promote myself! Get an admin to do it for me."
+        )
         return
 
     # Set the same permissions as the bot - the bot can't assign higher perms than itself!
-    bot_member = await chat.get_member(client.id)
+    bot_member = await client.get_chat_member(chat.id, client.me.id)
 
-    if isinstance(bot_member, ChatMemberAdministrator):
+    if bot_member.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER):
         try:
+            privs = ChatPrivileges(
+                can_change_info=granted(bot_member, "can_change_info"),
+                can_post_messages=granted(bot_member, "can_post_messages"),
+                can_edit_messages=granted(bot_member, "can_edit_messages"),
+                can_delete_messages=granted(bot_member, "can_delete_messages"),
+                can_invite_users=granted(bot_member, "can_invite_users"),
+                can_promote_members=granted(bot_member, "can_promote_members"),
+                can_restrict_members=granted(bot_member, "can_restrict_members"),
+                can_pin_messages=granted(bot_member, "can_pin_messages"),
+                can_manage_chat=granted(bot_member, "can_manage_chat"),
+                can_manage_video_chats=granted(bot_member, "can_manage_video_chats"),
+                can_manage_topics=granted(bot_member, "can_manage_topics"),
+            )
             await client.promote_chat_member(
                 chat.id,
                 user_id,
-                can_change_info=bot_member.can_change_info,
-                can_post_messages=bot_member.can_post_messages,
-                can_edit_messages=bot_member.can_edit_messages,
-                can_delete_messages=bot_member.can_delete_messages,
-                can_invite_users=bot_member.can_invite_users,
-                can_promote_members=bot_member.can_promote_members,
-                can_restrict_members=bot_member.can_restrict_members,
-                can_pin_messages=bot_member.can_pin_messages,
-                can_manage_chat=bot_member.can_manage_chat,
-                can_manage_video_chats=bot_member.can_manage_video_chats,
-                can_manage_topics=bot_member.can_manage_topics,
+                privileges=privs,
             )
         except RPCError as err:
             if err.message == "User_not_mutual_contact":
-                await message.reply_text("I can't promote someone who isn't in the group.")
+                await message.reply_text(
+                    "I can't promote someone who isn't in the group."
+                )
             else:
                 await message.reply_text("An error occurred while promoting.")
             return
@@ -232,8 +254,9 @@ async def fullpromote(message: Message, command: CommandObject):
 @connection_status
 @loggable
 @check_admin(permission="can_promote_members", is_both=True)
-async def demote(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(*disableable("demote"), chained=True)
+async def demote(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
 
     chat = message.chat
     user = message.from_user
@@ -265,7 +288,7 @@ async def demote(message: Message, command: CommandObject):
         return
 
     try:
-        user_member = await chat.get_member(user_id)
+        user_member = await client.get_chat_member(chat.id, user_id)
     except RPCError as exc:
         LOGGER.warning(
             "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
@@ -274,14 +297,16 @@ async def demote(message: Message, command: CommandObject):
         return
 
     if user_member.status == ChatMemberStatus.OWNER:
-        await message.reply_text("This person created the chat, How could i demote him?")
+        await message.reply_text(
+            "This person created the chat, How could i demote him?"
+        )
         return
 
     if user_member.status != ChatMemberStatus.ADMINISTRATOR:
         await message.reply_text("Can't demote who isn't promoted!")
         return
 
-    if user_id == client.id:
+    if user_id == client.me.id:
         await message.reply_text("I can't demote myself!.")
         return
 
@@ -289,17 +314,19 @@ async def demote(message: Message, command: CommandObject):
         await client.promote_chat_member(
             chat.id,
             user_id,
-            can_change_info=False,
-            can_post_messages=False,
-            can_edit_messages=False,
-            can_delete_messages=False,
-            can_invite_users=False,
-            can_restrict_members=False,
-            can_pin_messages=False,
-            can_promote_members=False,
-            can_manage_chat=False,
-            can_manage_video_chats=False,
-            can_manage_topics=False,
+            privileges=ChatPrivileges(
+                can_manage_chat=False,
+                can_change_info=False,
+                can_post_messages=False,
+                can_edit_messages=False,
+                can_delete_messages=False,
+                can_invite_users=False,
+                can_restrict_members=False,
+                can_pin_messages=False,
+                can_promote_members=False,
+                can_manage_video_chats=False,
+                can_manage_topics=False,
+            ),
         )
 
         await client.send_message(
@@ -326,7 +353,8 @@ async def demote(message: Message, command: CommandObject):
 
 
 @check_admin(is_user=True)
-async def refresh_admin(message: Message):
+@on_message(filters.command("admincache"), filters.group, chained=True)
+async def refresh_admin(client, message: Message):
     try:
         ADMIN_CACHE.pop(message.chat.id)
     except KeyError:
@@ -337,8 +365,9 @@ async def refresh_admin(message: Message):
 
 @connection_status
 @check_admin(permission="can_promote_members", is_both=True)
-async def set_title(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("title"), chained=True)
+async def set_title(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
 
     chat = message.chat
 
@@ -375,7 +404,7 @@ async def set_title(message: Message, command: CommandObject):
         return
 
     try:
-        user_member = await chat.get_member(user_id)
+        user_member = await client.get_chat_member(chat.id, user_id)
     except RPCError as exc:
         LOGGER.warning(
             "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
@@ -395,7 +424,7 @@ async def set_title(message: Message, command: CommandObject):
         )
         return
 
-    if user_id == client.id:
+    if user_id == client.me.id:
         await message.reply_text(
             "I can't set my own title myself! Get the one who made me admin to do it for me.",
         )
@@ -429,13 +458,14 @@ async def set_title(message: Message, command: CommandObject):
 
 @loggable
 @check_admin(permission="can_pin_messages", is_both=True)
-async def pin(message: Message, command: CommandObject) -> None:
-    args = command.args.split() if command.args else []
+@on_message(filters.command("pin"), filters.group, chained=True)
+async def pin(client, message: Message) -> None:
+    args = message.command[1:] if len(message.command) > 1 else []
 
     user = message.from_user
     chat = message.chat
 
-    is_group = chat.type != "private" and chat.type != "channel"
+    is_group = chat.type in (ChatType.GROUP, ChatType.SUPERGROUP)
     prev_message = message.reply_to_message
 
     is_silent = True
@@ -489,7 +519,8 @@ async def pin(message: Message, command: CommandObject) -> None:
 
 @loggable
 @check_admin(permission="can_pin_messages", is_both=True)
-async def unpin(message: Message, command: CommandObject):
+@on_message(filters.command("unpin"), filters.group, chained=True)
+async def unpin(client, message: Message):
     chat = message.chat
     user = message.from_user
 
@@ -531,7 +562,8 @@ async def unpin(message: Message, command: CommandObject):
 
 @loggable
 @check_admin(permission="can_pin_messages", is_both=True)
-async def unpinall(message: Message, command: CommandObject):
+@on_message(filters.command("unpinall"), filters.group, chained=True)
+async def unpinall(client, message: Message):
     chat = message.chat
     user = message.from_user
 
@@ -552,7 +584,7 @@ async def unpinall(message: Message, command: CommandObject):
         )
         return
 
-    admin_member = await chat.get_member(user.id) if user else None
+    admin_member = await client.get_chat_member(chat.id, user.id) if user else None
     if not (admin_member and admin_member.status == ChatMemberStatus.OWNER) and not (
         user and user.id in DRAGONS
     ):
@@ -561,7 +593,9 @@ async def unpinall(message: Message, command: CommandObject):
 
     try:
         if chat.is_forum:
-            await client.unpin_all_forum_topic_messages(chat.id, message.message_thread_id)
+            await client.unpin_all_forum_topic_messages(
+                chat.id, message.message_thread_id
+            )
         else:
             await client.unpin_all_chat_messages(chat.id)
     except RPCError as excp:
@@ -579,18 +613,15 @@ async def unpinall(message: Message, command: CommandObject):
 
 @connection_status
 @check_admin(permission="can_invite_users", is_bot=True)
-async def invite(message: Message, command: CommandObject):
+@on_message(*disableable("invitelink"), chained=True)
+async def invite(client, message: Message):
     chat = message.chat
 
     if chat.username:
         await message.reply_text(f"https://t.me/{chat.username}")
     elif chat.type in [ChatType.SUPERGROUP, ChatType.CHANNEL]:
-        bot_member = await chat.get_member(client.id)
-        if (
-            bot_member.can_invite_users
-            if isinstance(bot_member, ChatMemberAdministrator)
-            else None
-        ):
+        bot_member = await client.get_chat_member(chat.id, client.me.id)
+        if granted(bot_member, "can_invite_users"):
             invitelink = await client.export_chat_invite_link(chat.id)
             await message.reply_text(invitelink)
         else:
@@ -604,9 +635,10 @@ async def invite(message: Message, command: CommandObject):
 
 
 @connection_status
-async def adminlist(message: Message, command: CommandObject):
+@on_message(*disableable(["adminlist", "admins"]), chained=True)
+async def adminlist(client, message: Message):
     user = message.from_user  # type: Optional[User]
-    if message.chat.type == "private":
+    if message.chat.type == ChatType.PRIVATE:
         await send_message(message, "This command only works in Groups.")
         return
     chat_id = message.chat.id
@@ -618,8 +650,11 @@ async def adminlist(message: Message, command: CommandObject):
         msg = await message.reply_text(
             "Fetching group admins...", parse_mode=ParseMode.HTML
         )
-    administrators = await client.get_chat_administrators(chat_id)
-    administrators_list = list(administrators)  # Convert to a list
+    administrators_list = []
+    async for member in client.get_chat_members(
+        chat_id, filter=ChatMembersFilter.ADMINISTRATORS
+    ):
+        administrators_list.append(member)
     text = "「 𝗔𝗗𝗠𝗜𝗡𝗦 𝗜𝗡 <b>{}</b>:".format(html.escape(message.chat.title))
     bot_admin_list = []
     for admin in administrators_list:
@@ -636,7 +671,7 @@ async def adminlist(message: Message, command: CommandObject):
             bot_admin_list.append(name)
             administrators_list.remove(admin)
             continue
-        if status == "creator":
+        if status == ChatMemberStatus.OWNER:
             text += "\n\n 👑 <b>Creator:</b>"
             text += "\n<code> ╰─➽ </code>{}\n".format(name)
             if custom_title:
@@ -654,7 +689,7 @@ async def adminlist(message: Message, command: CommandObject):
             name = "{}".format(
                 mention_html(user.id, user.first_name + " " + (user.last_name or ""))
             )
-        if status == "administrator":
+        if status == ChatMemberStatus.ADMINISTRATOR:
             if custom_title:
                 try:
                     custom_admin_list[custom_title].append(name)
@@ -686,7 +721,11 @@ async def adminlist(message: Message, command: CommandObject):
 
 
 @loggable
-async def admin_callback(query: CallbackQuery):
+@on_callback(
+    filters.regex(r"^admin_=(?:promote|demote|title|pin|unpin|unpinall)(?:=.*)?$"),
+    chained=True,
+)
+async def admin_callback(client, query: CallbackQuery):
     # PTB's update.effective_message on a callback query is the message the
     # query is attached to; aiogram exposes it on the query itself.
     message = query.message
@@ -736,13 +775,12 @@ async def admin_callback(query: CallbackQuery):
         pending_title = None
 
     if action == "promote":
-        promoter = await chat.get_member(admin_user.id)
+        promoter = await client.get_chat_member(chat.id, admin_user.id)
 
         if (
             not (
-                promoter.can_promote_members
-                if isinstance(promoter, ChatMemberAdministrator)
-                else None or promoter.status == ChatMemberStatus.OWNER
+                granted(promoter, "can_promote_members")
+                or promoter.status == ChatMemberStatus.OWNER
             )
             and admin_user.id not in DRAGONS
         ):
@@ -754,7 +792,7 @@ async def admin_callback(query: CallbackQuery):
         user_id = payload
 
         try:
-            user_member = await chat.get_member(user_id)
+            user_member = await client.get_chat_member(chat.id, user_id)
         except RPCError as exc:
             LOGGER.warning(
                 "Unable to look up user %s in chat %s: %s",
@@ -774,22 +812,30 @@ async def admin_callback(query: CallbackQuery):
             )
             return
 
-        bot_member = await chat.get_member(client.id)
+        bot_member = await client.get_chat_member(chat.id, client.me.id)
 
-        if isinstance(bot_member, ChatMemberAdministrator):
+        if bot_member.status in (
+            ChatMemberStatus.ADMINISTRATOR,
+            ChatMemberStatus.OWNER,
+        ):
             try:
+                privs = ChatPrivileges(
+                    can_change_info=granted(bot_member, "can_change_info"),
+                    can_post_messages=granted(bot_member, "can_post_messages"),
+                    can_edit_messages=granted(bot_member, "can_edit_messages"),
+                    can_delete_messages=granted(bot_member, "can_delete_messages"),
+                    can_invite_users=granted(bot_member, "can_invite_users"),
+                    can_restrict_members=granted(bot_member, "can_restrict_members"),
+                    can_pin_messages=granted(bot_member, "can_pin_messages"),
+                    can_manage_chat=granted(bot_member, "can_manage_chat"),
+                    can_manage_video_chats=granted(
+                        bot_member, "can_manage_video_chats"
+                    ),
+                )
                 await client.promote_chat_member(
                     chat.id,
                     user_id,
-                    can_change_info=bot_member.can_change_info,
-                    can_post_messages=bot_member.can_post_messages,
-                    can_edit_messages=bot_member.can_edit_messages,
-                    can_delete_messages=bot_member.can_delete_messages,
-                    can_invite_users=bot_member.can_invite_users,
-                    can_restrict_members=bot_member.can_restrict_members,
-                    can_pin_messages=bot_member.can_pin_messages,
-                    can_manage_chat=bot_member.can_manage_chat,
-                    can_manage_video_chats=bot_member.can_manage_video_chats,
+                    privileges=privs,
                 )
             except RPCError as err:
                 if err.message == "User_not_mutual_contact":
@@ -816,12 +862,14 @@ async def admin_callback(query: CallbackQuery):
         return log_message
 
     elif action == "demote":
-        demoter = await chat.get_member(admin_user.id)
+        demoter = await client.get_chat_member(chat.id, admin_user.id)
 
-        if not (
-            demoter.can_promote_members
-            if isinstance(demoter, ChatMemberAdministrator)
-            else None or demoter.status == ChatMemberStatus.OWNER
+        if (
+            not (
+                granted(demoter, "can_promote_members")
+                or demoter.status == ChatMemberStatus.OWNER
+            )
+            and admin_user.id not in DRAGONS
         ):
             await query.answer(
                 "You don't have the necessary rights to do that!", show_alert=True
@@ -831,7 +879,7 @@ async def admin_callback(query: CallbackQuery):
         user_id = payload
 
         try:
-            user_member = await chat.get_member(user_id)
+            user_member = await client.get_chat_member(chat.id, user_id)
         except RPCError as exc:
             LOGGER.warning(
                 "Unable to look up user %s in chat %s: %s",
@@ -852,7 +900,7 @@ async def admin_callback(query: CallbackQuery):
             await message.edit_text("Can't demote what wasn't promoted!")
             return
 
-        if user_id == client.id:
+        if user_id == client.me.id:
             await message.edit_text(
                 "I can't demote myself!, get an admin to do it for me."
             )
@@ -862,16 +910,18 @@ async def admin_callback(query: CallbackQuery):
             await client.promote_chat_member(
                 chat.id,
                 user_id,
-                can_change_info=False,
-                can_post_messages=False,
-                can_edit_messages=False,
-                can_delete_messages=False,
-                can_invite_users=False,
-                can_restrict_members=False,
-                can_pin_messages=False,
-                can_promote_members=False,
-                can_manage_chat=False,
-                can_manage_video_chats=False,
+                privileges=ChatPrivileges(
+                    can_manage_chat=False,
+                    can_change_info=False,
+                    can_post_messages=False,
+                    can_edit_messages=False,
+                    can_delete_messages=False,
+                    can_invite_users=False,
+                    can_restrict_members=False,
+                    can_pin_messages=False,
+                    can_promote_members=False,
+                    can_manage_video_chats=False,
+                ),
             )
 
             await message.edit_text(
@@ -899,15 +949,11 @@ async def admin_callback(query: CallbackQuery):
         chat_data.pop(f"anon_admin_{pending_token}", None)
         title = pending_title
 
-        admin_member = await chat.get_member(admin_user.id)
+        admin_member = await client.get_chat_member(chat.id, admin_user.id)
 
         if (
             not (
-                (
-                    admin_member.can_promote_members
-                    if isinstance(admin_member, ChatMemberAdministrator)
-                    else None
-                )
+                granted(admin_member, "can_promote_members")
                 or admin_member.status == ChatMemberStatus.OWNER
             )
             and admin_user.id not in DRAGONS
@@ -918,7 +964,7 @@ async def admin_callback(query: CallbackQuery):
         user_id = payload
 
         try:
-            user_member = await chat.get_member(user_id)
+            user_member = await client.get_chat_member(chat.id, user_id)
         except RPCError as exc:
             LOGGER.warning(
                 "Unable to look up user %s in chat %s: %s",
@@ -941,7 +987,7 @@ async def admin_callback(query: CallbackQuery):
             )
             return
 
-        if user_id == client.id:
+        if user_id == client.me.id:
             await message.edit_text(
                 "I can't set my own title myself! Get the one who made me admin to do it for me.",
             )
@@ -972,15 +1018,11 @@ async def admin_callback(query: CallbackQuery):
         await query.answer("Done")
 
     elif action == "pin":
-        admin_member = await chat.get_member(admin_user.id)
+        admin_member = await client.get_chat_member(chat.id, admin_user.id)
 
         if (
             not (
-                (
-                    admin_member.can_pin_messages
-                    if isinstance(admin_member, ChatMemberAdministrator)
-                    else None
-                )
+                granted(admin_member, "can_pin_messages")
                 or admin_member.status == ChatMemberStatus.OWNER
             )
             and admin_user.id not in DRAGONS
@@ -997,7 +1039,7 @@ async def admin_callback(query: CallbackQuery):
             return
 
         is_silent = parts[3] == "1"
-        is_group = chat.type != "private" and chat.type != "channel"
+        is_group = chat.type in (ChatType.GROUP, ChatType.SUPERGROUP)
 
         if is_group:
             try:
@@ -1024,15 +1066,11 @@ async def admin_callback(query: CallbackQuery):
             return log_message
 
     elif action == "unpin":
-        admin_member = await chat.get_member(admin_user.id)
+        admin_member = await client.get_chat_member(chat.id, admin_user.id)
 
         if (
             not (
-                (
-                    admin_member.can_pin_messages
-                    if isinstance(admin_member, ChatMemberAdministrator)
-                    else None
-                )
+                granted(admin_member, "can_pin_messages")
                 or admin_member.status == ChatMemberStatus.OWNER
             )
             and admin_user.id not in DRAGONS
@@ -1064,7 +1102,7 @@ async def admin_callback(query: CallbackQuery):
         return log_message
 
     elif action == "unpinall":
-        admin_member = await chat.get_member(admin_user.id)
+        admin_member = await client.get_chat_member(chat.id, admin_user.id)
 
         if (
             admin_member.status != ChatMemberStatus.OWNER
@@ -1124,34 +1162,7 @@ __help__ = """
 » /admincache: Force refresh the admins list.
 """
 
-# <================================================ HANDLER =======================================================>
-dp.message.register(chain(adminlist), *disableable("adminlist"))
-
-# pin/unpin/unpinall/admincache were group-only in PTB via
-# filters.ChatType.GROUPS; ChatType.SUPERGROUP is the aiogram equivalent.
-for _name, _handler in (
-    ("pin", pin),
-    ("unpin", unpin),
-    ("unpinall", unpinall),
-    ("admincache", refresh_admin),
-):
-    dp.message.register(
-        chain(_handler),
-        Command(_name),
-        F.chat.type.in_({ChatType.GROUP, ChatType.SUPERGROUP}),
-    )
-
-dp.message.register(chain(invite), *disableable("invitelink"))
-
-dp.message.register(chain(promote), *disableable("promote"))
-dp.message.register(chain(fullpromote), *disableable("fullpromote"))
-dp.message.register(chain(demote), *disableable("demote"))
-
-dp.message.register(chain(set_title), Command("title"))
-dp.callback_query.register(
-    chain(admin_callback),
-    F.data.regexp(r"^admin_=(?:promote|demote|title|pin|unpin|unpinall)(?:=.*)?$"),
-)
+# <================================================ END =======================================================>
 
 __mod_name__ = "ADMIN"
 __command_list__ = [

@@ -1,9 +1,9 @@
 import html
 from datetime import datetime, timezone
 
-from pyrogram.enums import ChatType, ParseMode
-from pyrogram.errors import RPCError, RPCError
-from aiogram.filters import Command, CommandObject
+from pyrogram import filters, raw
+from pyrogram.enums import ChatMembersFilter, ChatType, ParseMode
+from pyrogram.errors import RPCError
 from pyrogram.types import (
     MenuButtonCommands,
     MenuButtonDefault,
@@ -12,9 +12,8 @@ from pyrogram.types import (
     WebAppInfo,
 )
 
-from Mikobot import bot, dp
+from Mikobot.events import on_message
 from Mikobot.plugins.helper_funcs.chat_status import check_admin, connection_status
-from Mikobot.utils.gate import chain
 
 
 def _group_only(message: Message) -> bool:
@@ -44,17 +43,19 @@ def _expiry(value: str | None) -> int | None:
 async def _reply_error(message: Message, error: Exception) -> None:
     if isinstance(error, RPCError):
         await message.reply_text(f"Telegram rejected this request: {error.message}")
-    elif isinstance(error, RPCError):
-        await message.reply_text("Telegram could not complete this request.")
     else:
         await message.reply_text(f"Unable to complete the request: {error}")
 
 
 @connection_status
-async def chatinfo(message: Message, command: CommandObject) -> None:
+async def chatinfo(client, message: Message) -> None:
     chat = await client.get_chat(message.chat.id)
     count = await client.get_chat_members_count(chat.id)
-    admins = await client.get_chat_administrators(chat.id)
+    admins = []
+    async for a in client.get_chat_members(
+        chat.id, filter=ChatMembersFilter.ADMINISTRATORS
+    ):
+        admins.append(a)
     description = html.escape(getattr(chat, "description", None) or "None")
     text = (
         f"<b>{html.escape(chat.title or chat.type.title())}</b>\n"
@@ -67,7 +68,7 @@ async def chatinfo(message: Message, command: CommandObject) -> None:
 
 
 @connection_status
-async def members(message: Message, command: CommandObject) -> None:
+async def members(client, message: Message) -> None:
     count = await client.get_chat_members_count(message.chat.id)
     await message.reply_text(
         f"This chat has <code>{count}</code> members.", parse_mode=ParseMode.HTML
@@ -76,10 +77,11 @@ async def members(message: Message, command: CommandObject) -> None:
 
 @connection_status
 @check_admin(permission="can_invite_users", is_both=True)
-async def invite_manage(message: Message, command: CommandObject) -> None:
+async def invite_manage(client, message: Message) -> None:
     if not _group_only(message):
         return await message.reply_text("Use this command in a group or supergroup.")
-    chat_id, args = message.chat.id, command.args.split() if command.args else []
+    chat_id = message.chat.id
+    args = message.command[1:] if len(message.command) > 1 else []
     if not args or args[0].lower() == "export":
         await message.reply_text(await client.export_chat_invite_link(chat_id))
         return
@@ -112,8 +114,8 @@ async def invite_manage(message: Message, command: CommandObject) -> None:
 
 @connection_status
 @check_admin(permission="can_invite_users", is_both=True)
-async def join_requests(message: Message, command: CommandObject) -> None:
-    args = command.args.split() if command.args else []
+async def join_requests(client, message: Message) -> None:
+    args = message.command[1:] if len(message.command) > 1 else []
     if len(args) != 2 or args[0].lower() not in {"approve", "decline"}:
         return await message.reply_text("Usage: /joins approve|decline <user_id>")
     try:
@@ -131,8 +133,8 @@ async def join_requests(message: Message, command: CommandObject) -> None:
 
 @connection_status
 @check_admin(permission="can_change_info", is_both=True)
-async def set_chat_metadata(message: Message, command: CommandObject) -> None:
-    args = command.args.split() if command.args else []
+async def set_chat_metadata(client, message: Message) -> None:
+    args = message.command[1:] if len(message.command) > 1 else []
     if not args:
         return await message.reply_text(
             "Usage: /setchat <title|description|description-> [text]"
@@ -157,26 +159,27 @@ async def set_chat_metadata(message: Message, command: CommandObject) -> None:
 
 @connection_status
 @check_admin(permission="can_change_info", is_both=True)
-async def set_chat_photo(message: Message, command: CommandObject) -> None:
+async def set_chat_photo(client, message: Message) -> None:
     if not message.reply_to_message or not message.reply_to_message.photo:
         return await message.reply_text("Reply to a photo to set it as the chat photo.")
     await client.set_chat_photo(
-        message.chat.id, message.reply_to_message.photo[-1].file_id
+        message.chat.id, photo=message.reply_to_message.photo.file_id
     )
     await message.reply_text("Chat photo updated.")
 
 
 @connection_status
 @check_admin(permission="can_change_info", is_both=True)
-async def delete_chat_photo(message: Message, command: CommandObject) -> None:
+async def delete_chat_photo(client, message: Message) -> None:
     await client.delete_chat_photo(message.chat.id)
     await message.reply_text("Chat photo deleted.")
 
 
 @connection_status
 @check_admin(permission="can_manage_topics", is_both=True)
-async def topics(message: Message, command: CommandObject) -> None:
-    chat, args = message.chat, command.args.split() if command.args else []
+async def topics(client, message: Message) -> None:
+    chat = message.chat
+    args = message.command[1:] if len(message.command) > 1 else []
     if not chat.is_forum:
         return await message.reply_text("This chat is not a forum.")
     if not args:
@@ -192,7 +195,7 @@ async def topics(message: Message, command: CommandObject) -> None:
             await client.edit_forum_topic(chat.id, int(args[1]), " ".join(args[2:]))
             result = "Topic updated."
         elif action in {"close", "reopen", "delete"} and len(args) > 1:
-            await getattr(bot, f"{action}_forum_topic")(chat.id, int(args[1]))
+            await getattr(client, f"{action}_forum_topic")(chat.id, int(args[1]))
             result = f"Topic {action}d."
         elif (
             action == "general"
@@ -203,7 +206,7 @@ async def topics(message: Message, command: CommandObject) -> None:
             if action_name == "unpinall":
                 await client.unpin_all_general_forum_topic_messages(chat.id)
             else:
-                await getattr(bot, f"{action_name}_general_forum_topic")(chat.id)
+                await getattr(client, f"{action_name}_general_forum_topic")(chat.id)
             result = f"General topic {action_name} completed."
         else:
             await message.reply_text(
@@ -216,14 +219,12 @@ async def topics(message: Message, command: CommandObject) -> None:
 
 
 @connection_status
-async def menu_button(message: Message, command: CommandObject) -> None:
+async def menu_button(client, message: Message) -> None:
     chat_id = message.chat.id
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
     if not args:
         button = await client.get_chat_menu_button(chat_id)
-        await message.reply_text(
-            f"Menu button: {button.model_dump() if button else 'None'}"
-        )
+        await message.reply_text(f"Menu button: {button}")
         return
     action = args[0].lower()
     if action == "commands":
@@ -233,8 +234,6 @@ async def menu_button(message: Message, command: CommandObject) -> None:
     elif action == "webapp" and len(args) > 1:
         await client.set_chat_menu_button(
             chat_id,
-            # aiogram requires text on MenuButtonWebApp; PTB defaulted it to
-            # the URL, so keep that rather than inventing a label.
             MenuButtonWebApp(
                 text=args[1],
                 web_app=WebAppInfo(url=args[1]),
@@ -248,27 +247,60 @@ async def menu_button(message: Message, command: CommandObject) -> None:
 
 @connection_status
 @check_admin(permission="can_manage_topics", is_both=True)
-async def sticker_set(message: Message, command: CommandObject) -> None:
-    args = command.args.split() if command.args else []
+async def sticker_set(client, message: Message) -> None:
+    args = message.command[1:] if len(message.command) > 1 else []
     if len(args) == 2 and args[0].lower() == "set":
-        await client.set_chat_sticker_set(message.chat.id, args[1])
-        await message.reply_text("Sticker set updated.")
+        try:
+            peer = await client.resolve_peer(message.chat.id)
+            await client.invoke(
+                raw.functions.channels.SetStickers(
+                    channel=peer,
+                    stickerset=raw.types.InputStickerSetShortName(short_name=args[1]),
+                )
+            )
+            await message.reply_text("Sticker set updated.")
+        except RPCError as error:
+            await _reply_error(message, error)
     elif args and args[0].lower() == "delete":
-        await client.delete_chat_sticker_set(message.chat.id)
-        await message.reply_text("Sticker set deleted.")
+        try:
+            peer = await client.resolve_peer(message.chat.id)
+            await client.invoke(
+                raw.functions.channels.SetStickers(
+                    channel=peer,
+                    stickerset=raw.types.InputStickerSetEmpty(),
+                )
+            )
+            await message.reply_text("Sticker set deleted.")
+        except RPCError as error:
+            await _reply_error(message, error)
     else:
         await message.reply_text("Usage: /stickerset set <name> | /stickerset delete")
 
 
 @connection_status
 @check_admin(permission="can_delete_messages", is_both=True)
-async def clear_reactions(message: Message, command: CommandObject) -> None:
+async def clear_reactions(client, message: Message) -> None:
     if not message.reply_to_message:
         return await message.reply_text("Reply to a message to clear all reactions.")
     try:
-        await client.delete_all_message_reactions(
-            message.chat.id, message.reply_to_message.message_id
+        peer = await client.resolve_peer(message.chat.id)
+        res = await client.invoke(
+            raw.functions.messages.GetMessageReactionsList(
+                peer=peer,
+                id=message.reply_to_message.id,
+                limit=100,
+            )
         )
+        if hasattr(res, "reactions"):
+            for r in res.reactions:
+                p = await client.resolve_peer(r.peer_id)
+                await client.invoke(
+                    raw.functions.messages.DeleteParticipantReaction(
+                        peer=peer,
+                        msg_id=message.reply_to_message.id,
+                        participant=p,
+                    )
+                )
     except RPCError as error:
         await _reply_error(message, error)
         return
@@ -277,12 +309,12 @@ async def clear_reactions(message: Message, command: CommandObject) -> None:
 
 @connection_status
 @check_admin(permission="can_delete_messages", is_both=True)
-async def delete_reaction(message: Message, command: CommandObject) -> None:
+async def delete_reaction(client, message: Message) -> None:
     if not message.reply_to_message:
         return await message.reply_text(
             "Reply to a message and optionally provide a user ID to remove their reaction."
         )
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
     if len(args) > 1:
         return await message.reply_text("Usage: /deletereaction [user_id]")
     user_id = None
@@ -292,10 +324,12 @@ async def delete_reaction(message: Message, command: CommandObject) -> None:
         except ValueError as error:
             await _reply_error(message, error)
             return
+    elif message.reply_to_message.from_user:
+        user_id = message.reply_to_message.from_user.id
     try:
         await client.delete_message_reaction(
             message.chat.id,
-            message.reply_to_message.message_id,
+            message.reply_to_message.id,
             user_id=user_id,
         )
     except RPCError as error:
@@ -307,8 +341,8 @@ async def delete_reaction(message: Message, command: CommandObject) -> None:
 
 @connection_status
 @check_admin(permission="can_manage_topics", is_both=True)
-async def member_tag(message: Message, command: CommandObject) -> None:
-    args = command.args.split() if command.args else []
+async def member_tag(client, message: Message) -> None:
+    args = message.command[1:] if len(message.command) > 1 else []
     if len(args) not in {1, 2}:
         return await message.reply_text("Usage: /membertag <user_id> [tag|remove]")
     try:
@@ -337,7 +371,7 @@ COMMANDS = {
     "deletereaction": delete_reaction,
 }
 for command_name, callback in COMMANDS.items():
-    dp.message.register(chain(callback), Command(command_name))
+    on_message(filters.command(command_name), chained=True)(callback)
 
 __help__ = """
 ➠ <b>Chat management:</b>
