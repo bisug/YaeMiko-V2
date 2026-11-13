@@ -1,8 +1,8 @@
-"""Telegram constants PTB exposed that aiogram does not.
+"""Telegram constants the frameworks do not expose.
 
-``MessageLimit`` and ``ChatID.FAKE_CHANNEL`` have no aiogram counterpart, and
+``MessageLimit`` and ``ChatID.FAKE_CHANNEL`` have no framework counterpart, and
 both are used for length checks and for spotting messages relayed by the
-channel bot. The values are the Bot API's, so they are just stated here.
+channel bot. The values are Telegram's, so they are just stated here.
 """
 
 from enum import IntEnum

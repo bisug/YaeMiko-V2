@@ -15,16 +15,16 @@ because a fan-out past a few hundred chats hits the rate limit by design.
 
 import asyncio
 
+from pyrogram import filters
 from pyrogram.enums import ParseMode
-from pyrogram.errors import RPCError, FloodWait
-from aiogram.filters import Command, CommandObject
+from pyrogram.errors import FloodWait, RPCError
 from pyrogram.types import Message
 
 import Database.sql.users_sql as users_sql
-from Mikobot import DEV_USERS, LOGGER, OWNER_ID, bot, dp
-from Mikobot.utils.gate import chain
+from Mikobot import DEV_USERS, LOGGER, OWNER_ID
+from Mikobot.events import on_message
 
-# Flood protection: the Bot API rejects bursts, and a broadcast to many chats
+# Flood protection: Telegram rejects bursts, and a broadcast to many chats
 # is exactly that. Sending must never outrun the account's rate limit.
 BROADCAST_DELAY = 0.3
 
@@ -33,13 +33,13 @@ def _is_bot_staff(user_id: int) -> bool:
     return user_id == OWNER_ID or user_id in DEV_USERS
 
 
-async def _send_echo(message: Message, command: CommandObject) -> None:
+async def _send_echo(client, message: Message) -> None:
     if not message.from_user or not _is_bot_staff(message.from_user.id):
         await message.reply_text("Only the bot owners can do that.")
         return
 
     replied = message.reply_to_message
-    text = command.args
+    text = " ".join(message.command[1:])
     if not text and replied is None:
         await message.reply_text("Give me something to say, or reply to a message.")
         return
@@ -47,7 +47,7 @@ async def _send_echo(message: Message, command: CommandObject) -> None:
     try:
         if replied is not None:
             # Copying keeps the original entities, so markup and links survive.
-            await replied.copy_to(message.chat.id)
+            await replied.copy(message.chat.id)
         else:
             await message.reply_text(text, parse_mode=ParseMode.HTML)
     except RPCError as exc:
@@ -62,13 +62,13 @@ async def _send_echo(message: Message, command: CommandObject) -> None:
         pass
 
 
-async def _broadcast(message: Message, command: CommandObject) -> None:
+async def _broadcast(client, message: Message) -> None:
     if not message.from_user or not _is_bot_staff(message.from_user.id):
         await message.reply_text("Only the bot owners can do that.")
         return
 
     replied = message.reply_to_message
-    text = command.args
+    text = " ".join(message.command[1:])
     if not text and replied is None:
         await message.reply_text("Give me something to broadcast, or reply to one.")
         return
@@ -87,7 +87,7 @@ async def _broadcast(message: Message, command: CommandObject) -> None:
         for attempt in (1, 2):
             try:
                 if replied is not None:
-                    await replied.copy_to(chat.chat_id)
+                    await replied.copy(chat.chat_id)
                 else:
                     await client.send_message(
                         chat.chat_id, text, parse_mode=ParseMode.HTML
@@ -132,5 +132,12 @@ its formatting intact.
 formatting instead.
 """
 
-dp.message.register(chain(_send_echo), Command(commands=["echo", "say"]))
-dp.message.register(chain(_broadcast), Command("broadcast"))
+
+@on_message(filters.command(["echo", "say"]), chained=True)
+async def echo(client, message: Message):
+    await _send_echo(client, message)
+
+
+@on_message(filters.command("broadcast"), chained=True)
+async def broadcast(client, message: Message):
+    await _broadcast(client, message)

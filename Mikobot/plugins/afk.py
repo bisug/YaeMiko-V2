@@ -4,26 +4,29 @@ import random
 from datetime import datetime
 
 import humanize
-from aiogram import F
-from pyrogram.enums import ParseMode
+from pyrogram import filters
+from pyrogram.enums import MessageEntityType, ParseMode
 from pyrogram.errors import RPCError
 from pyrogram.types import Message
 
 from Database.sql import afk_sql as sql
-from Mikobot import dp
+from Mikobot.events import on_message
 from Mikobot.plugins.disable import disableable, disableable_friendly
-from Mikobot.plugins.helper_funcs.string_handling import entities_map
 from Mikobot.plugins.users import get_user_id
 from Mikobot.utils.filters import GROUPS
-from Mikobot.utils.gate import chain
 
 # <=======================================================================================================>
 
-MENTION_ENTITIES = ["text_mention", "mention"]
+# kurigram keeps the entity type in an enum, and the mention entities are
+# the only ones that point at a user.
+MENTION_ENTITIES = (MessageEntityType.TEXT_MENTION, MessageEntityType.MENTION)
 
 
 # <================================================ FUNCTION =======================================================>
-async def afk(message: Message):
+# Every one of these matched a message in PTB and all of them ran, so each is
+# chained; otherwise the first match would swallow the rest.
+@on_message(*disableable("afk"), chained=True)
+async def afk(client, message: Message):
     if not message.text:
         return
     args = message.text.split(None, 1)
@@ -55,7 +58,18 @@ async def afk(message: Message):
         pass
 
 
-async def no_longer_afk(message: Message):
+@on_message(
+    disableable_friendly("afk"),
+    filters.regex(r"^(?i:(brb|!afk))( .*)?$"),
+    chained=True,
+)
+async def afk_friendly(client, message: Message):
+    """The same thing as /afk, but typed as a word rather than a command."""
+    await afk(client, message)
+
+
+@on_message(GROUPS, chained=True)
+async def no_longer_afk(client, message: Message):
     user = message.from_user
 
     if not user:  # ignore channels
@@ -91,17 +105,25 @@ async def no_longer_afk(message: Message):
             return
 
 
-async def reply_afk(message: Message):
+@on_message(GROUPS, chained=True)
+async def reply_afk(client, message: Message):
     userc = message.from_user
     userc_id = userc.id
     chk_users = []
 
-    mention_map = entities_map(message, MENTION_ENTITIES)
-    if message.entities and mention_map:
-        ent = next(iter(mention_map))
-        if ent.type == "text_mention":
-            user_id = ent.user.id
-            fst_name = ent.user.first_name
+    # The mention entities are read off the message itself: kurigram keeps
+    # the entity type in an enum and the mentioned user on the entity.
+    mention = next(
+        (ent for ent in (message.entities or []) if ent.type in MENTION_ENTITIES),
+        None,
+    )
+    if mention is not None:
+        if mention.type == MessageEntityType.TEXT_MENTION:
+            mentioned = mention.user
+            if mentioned is None:
+                return
+            user_id = mentioned.id
+            fst_name = mentioned.first_name
 
             if user_id in chk_users:
                 return
@@ -110,12 +132,11 @@ async def reply_afk(message: Message):
             # without answering, so a mention of someone without a @username
             # resolved the user and then reported nothing.
             await check_afk(message, user_id, fst_name, userc_id)
-        elif ent.type != "mention":
-            return
         else:
-            user_id = await get_user_id(
-                message.text[ent.offset : ent.offset + ent.length],
-            )
+            text = (message.text or "")[
+                mention.offset : mention.offset + mention.length
+            ]
+            user_id = await get_user_id(text)
             if not user_id:
                 return
 
@@ -123,7 +144,7 @@ async def reply_afk(message: Message):
                 return
             chk_users.append(user_id)
 
-            fst_name = message.text[ent.offset : ent.offset + ent.length].lstrip("@")
+            fst_name = text.lstrip("@")
             await check_afk(message, user_id, fst_name, userc_id)
 
     elif message.reply_to_message:
@@ -184,18 +205,6 @@ __help__ = """
 
 ➠ *When marked as AFK, any mentions will be replied to with a message to say you're not available!*
 """
-
-# <================================================ HANDLER =======================================================>
-# Every one of these matched a message in PTB and all of them ran, so each is
-# chained; otherwise the first match would swallow the rest.
-dp.message.register(chain(afk), *disableable("afk"))
-dp.message.register(
-    chain(afk),
-    disableable_friendly("afk"),
-    F.text.regexp(r"^(?i:(brb|!afk))( .*)?$"),
-)
-dp.message.register(chain(no_longer_afk), GROUPS)
-dp.message.register(chain(reply_afk), GROUPS)
 
 __mod_name__ = "AFK"
 __command_list__ = ["afk"]

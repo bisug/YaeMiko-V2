@@ -1,9 +1,9 @@
 """Per-chat and per-user scratch storage.
 
 PTB's ``PicklePersistence`` exposed ``context.chat_data`` and
-``context.user_data`` and wrote them to ``ptb_persistence.pickle``. aiogram's
-Dispatcher has no equivalent dict (its storage is FSM-only), so the federation
-keeps its own copy in the same file and plugins read it from here.
+``context.user_data`` and wrote them to ``ptb_persistence.pickle``. Neither
+aiogram nor kurigram has an equivalent dict, so the federation keeps its own
+copy in the same file and plugins read it from here.
 """
 
 import os

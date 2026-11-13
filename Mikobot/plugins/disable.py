@@ -2,12 +2,12 @@
 import importlib
 import re
 
+from pyrogram import filters
 from pyrogram.enums import ParseMode
-from aiogram.filters import BaseFilter, Command, CommandObject
 from pyrogram.types import Message
 
 import Database.sql.toggle_sql as toggle_sql
-from Mikobot import dp
+from Mikobot.events import on_message
 from Mikobot.plugins.helper_funcs.chat_status import (
     ADMIN_CACHE,
     check_admin,
@@ -31,23 +31,22 @@ if is_module_loaded(FILENAME):
     from Database.sql import disable_sql as sql
 
     # <================================================ CLASS =======================================================>
-    class NotDisabled(BaseFilter):
+    class NotDisabled:
         """Swallow a command the chat turned off. Admins still get through.
 
-        Replaces DisableAbleCommandHandler. aiogram has no handler classes to
-        subclass, so this runs after Command(...) has injected the parsed
-        command and answers with False to stop propagation.
+        Replaces DisableAbleCommandHandler. kurigram has no handler classes to
+        subclass, so this reads the parsed command off the message and answers
+        False to stop propagation.
         """
 
         def __init__(self, admin_ok: bool = False):
             self.admin_ok = admin_ok
 
-        async def __call__(
-            self, message: Message, command: CommandObject | None = None
-        ) -> bool:
-            if command is None:
+        async def __call__(self, client, message: Message) -> bool:
+            command = getattr(message, "command", None)
+            if not command:
                 return True
-            name = command.command.lower()
+            name = command[0].lower()
             if not sql.is_command_disabled(message.chat.id, name):
                 return True
             if self.admin_ok and message.from_user:
@@ -55,13 +54,13 @@ if is_module_loaded(FILENAME):
                     return True
             return False
 
-    class NotDisabledFriendly(BaseFilter):
+    class NotDisabledFriendly:
         """Replaces DisableAbleMessageHandler for non-command handlers."""
 
         def __init__(self, friendly: str):
             self.friendly = friendly
 
-        async def __call__(self, message: Message) -> bool:
+        async def __call__(self, client, message: Message) -> bool:
             return not sql.is_command_disabled(message.chat.id, self.friendly)
 
     def disableable(commands: str | list, admin_ok: bool = False) -> tuple:
@@ -75,10 +74,10 @@ if is_module_loaded(FILENAME):
         if admin_ok:
             ADMIN_CMDS.extend(names)
 
-        # aiogram takes one prefix string and treats each char as a
-        # separate command prefix, so CMD_STARTERS packs into it.
-        return Command(commands=names, prefix="".join(CMD_STARTERS)), NotDisabled(
-            admin_ok
+        # kurigram takes a list of prefixes, so CMD_STARTERS is passed as is.
+        return (
+            filters.command(names, prefixes=list(CMD_STARTERS)),
+            NotDisabled(admin_ok),
         )
 
     def disableable_friendly(friendly: str) -> NotDisabledFriendly:
@@ -90,8 +89,9 @@ if is_module_loaded(FILENAME):
     # <================================================ FUNCTION =======================================================>
     @connection_status
     @check_admin(is_user=True)
-    async def disable(message: Message, command: CommandObject):
-        args = command.args.split() if command.args else []
+    @on_message(*disableable("disable"))
+    async def disable(client, message: Message):
+        args = message.command[1:] if message.command else []
         if len(args) >= 1:
             disable_cmd = args[0]
             if disable_cmd.startswith(CMD_STARTERS):
@@ -111,8 +111,9 @@ if is_module_loaded(FILENAME):
 
     @connection_status
     @check_admin(is_user=True)
-    async def disable_module(message: Message, command: CommandObject) -> None:
-        args = command.args.split() if command.args else []
+    @on_message(*disableable("disablemodule"))
+    async def disable_module(client, message: Message) -> None:
+        args = message.command[1:] if message.command else []
         if len(args) >= 1:
             module_path = "Mikobot.plugins." + args[0].rsplit(".", 1)[0]
 
@@ -160,8 +161,9 @@ if is_module_loaded(FILENAME):
 
     @connection_status
     @check_admin(is_user=True)
-    async def enable(message: Message, command: CommandObject):
-        args = command.args.split() if command.args else []
+    @on_message(*disableable("enable"))
+    async def enable(client, message: Message):
+        args = message.command[1:] if message.command else []
         if len(args) >= 1:
             enable_cmd = args[0]
             if enable_cmd.startswith(CMD_STARTERS):
@@ -180,8 +182,9 @@ if is_module_loaded(FILENAME):
 
     @connection_status
     @check_admin(is_user=True)
-    async def enable_module(message: Message, command: CommandObject):
-        args = command.args.split() if command.args else []
+    @on_message(*disableable("enablemodule"))
+    async def enable_module(client, message: Message):
+        args = message.command[1:] if message.command else []
 
         if len(args) >= 1:
             module_path = "Mikobot.plugins." + args[0].rsplit(".", 1)[0]
@@ -227,20 +230,6 @@ if is_module_loaded(FILENAME):
         else:
             await message.reply_text("What sould I enable?")
 
-    @connection_status
-    @check_admin(is_user=True)
-    async def list_cmds(message: Message):
-        if DISABLE_CMDS + DISABLE_OTHER:
-            result = ""
-            for cmd in set(DISABLE_CMDS + DISABLE_OTHER):
-                result += f" - `{escape_markdown(cmd)}`\n"
-            await message.reply_text(
-                f"The following commands are toggleable:\n{result}",
-                parse_mode=ParseMode.MARKDOWN,
-            )
-        else:
-            await message.reply_text("No commands can be disabled.")
-
     def build_curr_disabled(chat_id: str | int) -> str:
         disabled = sql.get_all_disabled(chat_id)
         if not disabled:
@@ -252,11 +241,27 @@ if is_module_loaded(FILENAME):
         return "The following commands are currently restricted:\n{}".format(result)
 
     @connection_status
-    async def commands(message: Message):
+    @on_message(*disableable(["cmds", "disabled"]))
+    async def commands(client, message: Message):
         await message.reply_text(
             build_curr_disabled(message.chat.id),
             parse_mode=ParseMode.MARKDOWN,
         )
+
+    @connection_status
+    @check_admin(is_user=True)
+    @on_message(*disableable("listcmds"))
+    async def list_cmds(client, message: Message):
+        if DISABLE_CMDS + DISABLE_OTHER:
+            result = ""
+            for cmd in set(DISABLE_CMDS + DISABLE_OTHER):
+                result += f" - `{escape_markdown(cmd)}`\n"
+            await message.reply_text(
+                f"The following commands are toggleable:\n{result}",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+        else:
+            await message.reply_text("No commands can be disabled.")
 
     def __stats__():
         return f"• {sql.num_disabled()} disabled items, across {sql.num_chats()} chats."
@@ -268,15 +273,6 @@ if is_module_loaded(FILENAME):
 
     def __chat_settings__(chat_id, user_id):
         return build_curr_disabled(chat_id)
-
-    # <=================================================== HANDLER ====================================================>
-
-    dp.message.register(disable, *disableable("disable"))
-    dp.message.register(disable_module, *disableable("disablemodule"))
-    dp.message.register(enable, *disableable("enable"))
-    dp.message.register(enable_module, *disableable("enablemodule"))
-    dp.message.register(commands, *disableable(["cmds", "disabled"]))
-    dp.message.register(list_cmds, *disableable("listcmds"))
 
     # <=================================================== HELP ====================================================>
     __help__ = """

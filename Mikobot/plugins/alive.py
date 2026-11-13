@@ -6,13 +6,13 @@
 import random
 from sys import version_info
 
-import aiogram
 import pyrogram
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardMarkup, Message
 
 from Infamous.karma import ALIVE_ANIMATION, ALIVE_BTN
-from Mikobot import BOT_NAME, app
+from Mikobot import BOT_NAME
+from Mikobot.events import on_message
 
 # <=======================================================================================================>
 
@@ -37,10 +37,9 @@ def _crypto_backend_name() -> str:
     return "pyaes"
 
 
-@app.on_message(filters.command("alive"))
-async def alive(_, message: Message):
+@on_message(filters.command("alive"))
+async def alive(client, message: Message):
     library_versions = {
-        "AIOGRAM": aiogram.__version__,
         "KURIGRAM": pyrogram.__version__,
         "CRYPTO": _crypto_backend_name(),
     }

@@ -2,20 +2,18 @@ import html
 import math
 from urllib.parse import quote
 
-from aiogram import F
+from httpx import HTTPError
+from pyrogram import filters
 from pyrogram.enums import ButtonStyle, ParseMode
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
 )
-from httpx import HTTPError
 
-from Mikobot import dp
+from Mikobot.events import on_callback, on_message
 from Mikobot.state import state
-from Mikobot.utils.gate import chain
 
 POKEAPI = "https://pokeapi.co/api/v2"
 MOVES_PER_PAGE = 20
@@ -216,13 +214,15 @@ async def _render(
     return text, _keyboard(pokemon["id"], view, page, pages)
 
 
-async def pokedex(message: Message, command: CommandObject) -> None:
-    if not command.args:
+@on_message(filters.command("pokedex"), chained=True)
+async def pokedex(client, message: Message) -> None:
+    query_text = " ".join(message.command[1:]) if len(message.command) > 1 else ""
+    if not query_text:
         await message.reply_text("Usage: <code>/pokedex &lt;name or ID&gt;</code>")
         return
     try:
         # Joined back into one string: the name may be several words.
-        pokemon = await get_pokemon(command.args)
+        pokemon = await get_pokemon(query_text)
         species, _ = await get_pokemon_details(pokemon)
         text, image = _overview(pokemon, species)
         if image:
@@ -249,7 +249,11 @@ async def pokedex(message: Message, command: CommandObject) -> None:
         )
 
 
-async def callback_query_handler(query: CallbackQuery) -> None:
+@on_callback(
+    filters.regex(rf"^{CALLBACK_PREFIX}:[0-9]+:(info|stats|moves|evolution):[0-9]+$"),
+    chained=True,
+)
+async def callback_query_handler(client, query: CallbackQuery) -> None:
     if not query.data.startswith(f"{CALLBACK_PREFIX}:"):
         return
     try:
@@ -274,15 +278,7 @@ async def callback_query_handler(query: CallbackQuery) -> None:
         await query.answer("PokéAPI returned incomplete data.", show_alert=True)
 
 
-# <================================================ HANDLER =======================================================>
-# Add the command and callback query handlers to the dispatcher
-dp.message.register(chain(pokedex), Command("pokedex"))
-dp.callback_query.register(
-    chain(callback_query_handler),
-    F.data.regexp(rf"^{CALLBACK_PREFIX}:[0-9]+:(info|stats|moves|evolution):[0-9]+$"),
-)
-
-# <================================================ HANDLER =======================================================>
+# <================================================ HELP =======================================================>
 __help__ = """
 
 🍥 <b>POKÉDEX</b>

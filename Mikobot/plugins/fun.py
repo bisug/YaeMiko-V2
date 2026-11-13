@@ -2,14 +2,12 @@
 import random
 
 from pyrogram.enums import ParseMode
-from aiogram.filters import CommandObject
 from pyrogram.types import Message
 
 import Mikobot.utils.fun_strings as fun_strings
-from Mikobot import dp
+from Mikobot.events import on_message
 from Mikobot.plugins.disable import disableable
 from Mikobot.state import state
-from Mikobot.utils.gate import chain
 
 # <=======================================================================================================>
 
@@ -25,7 +23,7 @@ async def make_request(url: str) -> str:
     return question.strip()[:1000]
 
 
-async def truth(message: Message):
+async def truth(client, message: Message):
     try:
         question = await make_request("https://api.truthordarebot.xyz/v1/truth")
     except Exception:
@@ -33,7 +31,7 @@ async def truth(message: Message):
     await message.reply_text(question)
 
 
-async def dare(message: Message):
+async def dare(client, message: Message):
     try:
         question = await make_request("https://api.truthordarebot.xyz/v1/dare")
     except Exception:
@@ -41,39 +39,38 @@ async def dare(message: Message):
     await message.reply_text(question)
 
 
-async def joke(message: Message):
+async def joke(client, message: Message):
     from pyjokes import get_joke
 
     await message.reply_text(get_joke())
 
 
-async def roll(message: Message):
-    await message.reply_text(random.choice(range(1, 7)))
+async def roll(client, message: Message):
+    await message.reply_text(str(random.choice(range(1, 7))))
 
 
-async def flirt(message: Message):
+async def flirt(client, message: Message):
     await message.reply_text(random.choice(fun_strings.FLIRT))
 
 
-async def toss(message: Message):
+async def toss(client, message: Message):
     await message.reply_text(random.choice(fun_strings.TOSS))
 
 
-async def shrug(message: Message):
-    msg = message
-    reply_text = msg.reply_to_message.answer if msg.reply_to_message else msg.answer
-    await reply_text(r"¯\_(ツ)_/¯")
+async def shrug(client, message: Message):
+    # A reply to a message answers that message, otherwise this one.
+    target = message.reply_to_message or message
+    await target.reply_text(r"¯\_(ツ)_/¯")
 
 
-async def bluetext(message: Message):
-    msg = message
-    reply_text = msg.reply_to_message.answer if msg.reply_to_message else msg.answer
-    await reply_text(
+async def bluetext(client, message: Message):
+    target = message.reply_to_message or message
+    await target.reply_text(
         "/BLUE /TEXT\n/MUST /CLICK\n/I /AM /A /STUPID /ANIMAL /THAT /IS /ATTRACTED /TO /COLORS"
     )
 
 
-async def rlg(message: Message):
+async def rlg(client, message: Message):
     eyes = random.choice(fun_strings.EYES)
     mouth = random.choice(fun_strings.MOUTHS)
     ears = random.choice(fun_strings.EARS)
@@ -83,11 +80,9 @@ async def rlg(message: Message):
     await message.reply_text(repl)
 
 
-async def decide(message: Message):
-    reply_text = (
-        message.reply_to_message.answer if message.reply_to_message else message.answer
-    )
-    await reply_text(random.choice(fun_strings.DECIDE))
+async def decide(client, message: Message):
+    target = message.reply_to_message or message
+    await target.reply_text(random.choice(fun_strings.DECIDE))
 
 
 normiefont = [
@@ -149,8 +144,8 @@ weebyfont = [
 ]
 
 
-async def webify(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+async def webify(client, message: Message):
+    args = message.command[1:]
     string = ""
 
     if message.reply_to_message:
@@ -175,7 +170,7 @@ async def webify(message: Message, command: CommandObject):
             string = string.replace(normiecharacter, weebycharacter)
 
     if message.reply_to_message:
-        await message.reply_to_message.reply(string)
+        await message.reply_to_message.reply_text(string)
     else:
         await message.reply_text(string)
 
@@ -223,6 +218,6 @@ for _name, _callback in (
     ("dare", dare),
     ("joke", joke),
 ):
-    dp.message.register(chain(_callback), *disableable(_name))
+    on_message(*disableable(_name), chained=True)(_callback)
 
 # <================================================ END =======================================================>

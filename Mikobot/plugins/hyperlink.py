@@ -6,19 +6,20 @@
 import random
 import re
 
+from pyrogram import filters
 from pyrogram.enums import ParseMode
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import LinkPreviewOptions, Message
 
-from Mikobot import dp
+from Mikobot.events import on_message
 
 # <=======================================================================================================>
 
 
 # <================================================ FUNCTION =======================================================>
 # Define the command handler for the "/pickwinner" command
-async def pick_winner(message: Message, command: CommandObject):
-    participants = command.args.split() if command.args else []
+@on_message(filters.command("pickwinner"))
+async def pick_winner(client, message: Message):
+    participants = message.command[1:]
 
     if participants:
         # Select a random winner
@@ -32,8 +33,9 @@ async def pick_winner(message: Message, command: CommandObject):
 
 
 # Define the command handler for the "/hyperlink" command
-async def hyperlink_command(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("hyperlink"))
+async def hyperlink_command(client, message: Message):
+    args = message.command[1:]
     if len(args) >= 2:
         text = " ".join(args[:-1])
         link = args[-1]
@@ -60,7 +62,4 @@ async def hyperlink_command(message: Message, command: CommandObject):
             )
 
 
-# <================================================ HANDLER =======================================================>
-dp.message.register(pick_winner, Command("pickwinner"))
-dp.message.register(hyperlink_command, Command("hyperlink"))
 # <================================================ END =======================================================>

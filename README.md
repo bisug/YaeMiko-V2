@@ -161,12 +161,9 @@ execution. Persistence, reply construction and error handling surround that spin
 
 | Component | Version | Link |
 | --- | --- | --- |
-| aiogram | 3.31 | [PyPI](https://pypi.org/project/aiogram/) |
 | Kurigram | 2.2.27 | [PyPI](https://pypi.org/project/Kurigram/) |
 | kuricrypt | 0.1.1 | [PyPI](https://pypi.org/project/kuricrypt/) |
-| ThrottledSession | [`Mikobot/utils/throttle.py`](Mikobot/utils/throttle.py) | aiogram session subclass applying rate limits |
 | DataStore | [`Mikobot/utils/persistence.py`](Mikobot/utils/persistence.py) | Pickle backed store for chat and user context |
-| ButtonStyle | from aiogram | [docs](https://docs.aiogram.dev/en/latest/api/enums/aiogram.enums.ButtonStyle.html) |
 
 ### Data stores
 

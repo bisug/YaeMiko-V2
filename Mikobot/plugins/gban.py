@@ -5,15 +5,16 @@ import time
 from datetime import datetime, timezone
 from io import BytesIO
 
+from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus, ChatType, ParseMode
-from pyrogram.errors import RPCError, RPCError
-from aiogram.filters import Command, CommandObject
-from pyrogram.types import BufferedInputFile, Message
+from pyrogram.errors import RPCError
+from pyrogram.types import Message
 
 import Database.sql.global_bans_sql as sql
 from Database.sql.userinfo_sql import get_user_info
 from Database.sql.users_sql import get_user_com_chats
 from Mikobot import (
+    BOT_ID,
     DEV_USERS,
     DRAGONS,
     EVENT_LOGS,
@@ -21,11 +22,11 @@ from Mikobot import (
     OWNER_ID,
     STRICT_GBAN,
     SUPPORT_CHAT,
-    bot,
-    dp,
 )
+from Mikobot.events import on_message
 from Mikobot.plugins.helper_funcs.chat_status import (
     check_admin,
+    granted,
     is_user_admin,
     support_plus,
 )
@@ -33,7 +34,6 @@ from Mikobot.plugins.helper_funcs.extraction import extract_user, extract_user_a
 from Mikobot.plugins.helper_funcs.misc import send_to_list
 from Mikobot.utils.consts import ChatID
 from Mikobot.utils.filters import GROUPS
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 # <=======================================================================================================>
@@ -68,9 +68,77 @@ UNGBAN_ERRORS = {
 
 
 # <================================================ FUNCTION =======================================================>
+async def check_and_ban(client, message: Message, user_id, should_message=True):
+    if sql.is_user_gbanned(user_id):
+        await client.ban_chat_member(message.chat.id, user_id)
+        if should_message:
+            text = (
+                f"<b>Alert</b>: this user is globally banned.\n"
+                f"<code>*bans them from here*</code>.\n"
+                f"<b>Appeal chat</b>: @{SUPPORT_CHAT}\n"
+                f"<b>User ID</b>: <code>{user_id}</code>"
+            )
+            user = await asyncio.to_thread(sql.get_gbanned_user, user_id)
+            if user.reason:
+                text += f"\n<b>Ban Reason:</b> <code>{html.escape(user.reason)}</code>"
+            await message.reply_text(text, parse_mode=ParseMode.HTML)
+
+
+@on_message(GROUPS, chained=True)
+async def enforce_gban(client, message: Message):
+    chat = message.chat
+    if not sql.does_chat_gban(chat.id):
+        return
+
+    user = message.from_user
+    new_members = message.new_chat_members or []
+    reply_user = (
+        message.reply_to_message.from_user if message.reply_to_message else None
+    )
+
+    # Fast path: check in-memory GBANNED_LIST before making any Telegram API calls.
+    has_gbanned = (
+        (user and sql.is_user_gbanned(user.id))
+        or any(sql.is_user_gbanned(mem.id) for mem in new_members)
+        or (reply_user and sql.is_user_gbanned(reply_user.id))
+    )
+    if not has_gbanned:
+        return
+
+    try:
+        get_member = await client.get_chat_member(chat.id, client.me.id)
+    except RPCError:
+        return
+    # kurigram keeps the administrator rights in member.privileges.
+    if get_member.status != ChatMemberStatus.ADMINISTRATOR or not granted(
+        get_member, "can_restrict_members"
+    ):
+        return
+
+    if user and sql.is_user_gbanned(user.id):
+        if not await is_user_admin(chat, user.id):
+            await check_and_ban(client, message, user.id)
+            return
+
+    for mem in new_members:
+        if sql.is_user_gbanned(mem.id):
+            await check_and_ban(client, message, mem.id)
+
+    if reply_user and sql.is_user_gbanned(reply_user.id):
+        if not await is_user_admin(chat, reply_user.id):
+            await check_and_ban(client, message, reply_user.id, should_message=False)
+
+
+# The enforcer watches every group message, so it registers ahead of the
+# commands, matching PTB's group 6.
+if STRICT_GBAN:  # enforce GBANS if this is set
+    on_message(GROUPS, chained=True)(enforce_gban)
+
+
 @support_plus
-async def gban(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("gban"), chained=True)
+async def gban(client, message: Message):
+    args = message.command[1:] if message.command else []
     user = message.from_user
     chat = message.chat
     log_message = ""
@@ -95,7 +163,7 @@ async def gban(message: Message, command: CommandObject):
         )
         return
 
-    if user_id == client.id:
+    if user_id == client.me.id:
         await message.reply_text("You uhh...want me to kick myself?")
         return
 
@@ -139,7 +207,7 @@ async def gban(message: Message, command: CommandObject):
     datetime_fmt = "%Y-%m-%dT%H:%M"
     current_time = datetime.now(timezone.utc).strftime(datetime_fmt)
 
-    if chat.type != "private":
+    if chat.type != ChatType.PRIVATE:
         chat_origin = "<b>{} ({})</b>\n".format(html.escape(chat.title), chat.id)
     else:
         chat_origin = "<b>{}</b>\n".format(chat.id)
@@ -172,7 +240,7 @@ async def gban(message: Message, command: CommandObject):
             )
 
     else:
-        await send_to_list(bot, DRAGONS, log_message, html=True)
+        await send_to_list(client, DRAGONS, log_message, html=True)
 
     sql.gban_user(user_id, user_username or user_name, reason)
 
@@ -203,7 +271,7 @@ async def gban(message: Message, command: CommandObject):
                     )
                 else:
                     await send_to_list(
-                        bot,
+                        client,
                         DRAGONS,
                         f"Could not gban due to: {excp.message}",
                     )
@@ -217,7 +285,7 @@ async def gban(message: Message, command: CommandObject):
         )
     else:
         await send_to_list(
-            bot,
+            client,
             DRAGONS,
             f"Gban complete! (User banned in <code>{gbanned_chats}</code> chats)",
             html=True,
@@ -248,8 +316,9 @@ async def gban(message: Message, command: CommandObject):
 
 
 @support_plus
-async def ungban(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("ungban"), chained=True)
+async def ungban(client, message: Message):
+    args = message.command[1:] if message.command else []
     user = message.from_user
     chat = message.chat
     log_message = ""
@@ -276,7 +345,7 @@ async def ungban(message: Message, command: CommandObject):
     datetime_fmt = "%Y-%m-%dT%H:%M"
     current_time = datetime.now(timezone.utc).strftime(datetime_fmt)
 
-    if chat.type != "private":
+    if chat.type != ChatType.PRIVATE:
         chat_origin = f"<b>{html.escape(chat.title)} ({chat.id})</b>\n"
     else:
         chat_origin = f"<b>{chat.id}</b>\n"
@@ -302,7 +371,7 @@ async def ungban(message: Message, command: CommandObject):
                 + "\n\nFormatting has been disabled due to an unexpected error.",
             )
     else:
-        await send_to_list(bot, DRAGONS, log_message, html=True)
+        await send_to_list(client, DRAGONS, log_message, html=True)
 
     chats = get_user_com_chats(user_id)
     ungbanned_chats = 0
@@ -316,7 +385,7 @@ async def ungban(message: Message, command: CommandObject):
 
         try:
             member = await client.get_chat_member(chat_id, user_id)
-            if member.status == "kicked":
+            if member.status == ChatMemberStatus.BANNED:
                 await client.unban_chat_member(chat_id, user_id)
                 ungbanned_chats += 1
 
@@ -346,7 +415,7 @@ async def ungban(message: Message, command: CommandObject):
             parse_mode=ParseMode.HTML,
         )
     else:
-        await send_to_list(bot, DRAGONS, "un-gban complete!")
+        await send_to_list(client, DRAGONS, "un-gban complete!")
 
     end_time = time.time()
     ungban_time = round((end_time - start_time), 2)
@@ -359,7 +428,8 @@ async def ungban(message: Message, command: CommandObject):
 
 
 @support_plus
-async def gbanlist(message: Message):
+@on_message(filters.command("gbanlist"), chained=True)
+async def gbanlist(client, message: Message):
     banned_users = sql.get_gban_list()
 
     if not banned_users:
@@ -377,73 +447,15 @@ async def gbanlist(message: Message):
     with BytesIO(str.encode(banfile)) as output:
         output.name = "gbanlist.txt"
         await message.reply_document(
-            document=BufferedInputFile(output.read(), filename="gbanlist.txt"),
+            document=output,
             caption="Here is the list of currently gbanned users.",
         )
 
 
-async def check_and_ban(message: Message, user_id, should_message=True):
-    if sql.is_user_gbanned(user_id):
-        await client.ban_chat_member(message.chat.id, user_id)
-        if should_message:
-            text = (
-                f"<b>Alert</b>: this user is globally banned.\n"
-                f"<code>*bans them from here*</code>.\n"
-                f"<b>Appeal chat</b>: @{SUPPORT_CHAT}\n"
-                f"<b>User ID</b>: <code>{user_id}</code>"
-            )
-            user = await asyncio.to_thread(sql.get_gbanned_user, user_id)
-            if user.reason:
-                text += f"\n<b>Ban Reason:</b> <code>{html.escape(user.reason)}</code>"
-            await message.reply_text(text, parse_mode=ParseMode.HTML)
-
-
-async def enforce_gban(msg: Message):
-    # Not using @restrict handler to avoid spamming - just ignore if cant gban.
-    chat = msg.chat
-    if not sql.does_chat_gban(chat.id):
-        return
-
-    user = msg.from_user
-    new_members = msg.new_chat_members or []
-    reply_user = msg.reply_to_message.from_user if msg.reply_to_message else None
-
-    # Fast path: check in-memory GBANNED_LIST before making any Telegram API calls.
-    has_gbanned = (
-        (user and sql.is_user_gbanned(user.id))
-        or any(sql.is_user_gbanned(mem.id) for mem in new_members)
-        or (reply_user and sql.is_user_gbanned(reply_user.id))
-    )
-    if not has_gbanned:
-        return
-
-    try:
-        get_member = await client.get_chat_member(chat.id, client.id)
-    except RPCError:
-        return
-    if (
-        get_member.status != ChatMemberStatus.ADMINISTRATOR
-        or not get_member.can_restrict_members
-    ):
-        return
-
-    if user and sql.is_user_gbanned(user.id):
-        if not await is_user_admin(chat, user.id):
-            await check_and_ban(msg, user.id)
-            return
-
-    for mem in new_members:
-        if sql.is_user_gbanned(mem.id):
-            await check_and_ban(msg, mem.id)
-
-    if reply_user and sql.is_user_gbanned(reply_user.id):
-        if not await is_user_admin(chat, reply_user.id):
-            await check_and_ban(msg, reply_user.id, should_message=False)
-
-
 @check_admin(is_user=True)
-async def gbanstat(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(GROUPS, filters.command("antispam"), chained=True)
+async def gbanstat(client, message: Message):
+    args = message.command[1:] if message.command else []
     if len(args) > 0:
         if args[0].lower() in ["on", "yes"]:
             sql.enable_gbans(message.chat.id)
@@ -475,7 +487,7 @@ def __user_info__(user_id):
     text = "Malicious: <b>{}</b>"
     if user_id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN):
         return ""
-    if user_id == client.id:
+    if user_id == BOT_ID:
         return ""
     if int(user_id) in DRAGONS:
         return ""
@@ -511,16 +523,7 @@ you and your groups by removing spam flooders as quickly as possible.
 ➠ *Note:* Users can appeal gbans or report spammers at @hydraX2support
 """
 
-# <================================================ HANDLER =======================================================>
-# The enforcer watches every group message, so it registers ahead of the
-# commands, matching PTB's group 6.
-if STRICT_GBAN:  # enforce GBANS if this is set
-    dp.message.register(chain(enforce_gban), GROUPS)
-
-dp.message.register(chain(gban), Command("gban"))
-dp.message.register(chain(ungban), Command("ungban"))
-dp.message.register(chain(gbanlist), Command("gbanlist"))
-dp.message.register(chain(gbanstat), GROUPS, Command("antispam"))
+# <================================================ END =======================================================>
 
 __mod_name__ = "ANTI-SPAM"
 # <================================================ END =======================================================>
