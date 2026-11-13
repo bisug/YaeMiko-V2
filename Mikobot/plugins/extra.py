@@ -1,21 +1,19 @@
 # <============================================== IMPORTS =========================================================>
 from time import gmtime, strftime, time
 
-from aiogram import F
+from pyrogram import filters
 from pyrogram.enums import ButtonStyle
-from aiogram.filters import Command
 from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    LinkPreviewOptions,
     Message,
 )
-from pyrogram import filters
-from pyrogram.types import LinkPreviewOptions
 
-from Mikobot import LOGGER, app, bot, dp, store, user_data
+from Mikobot import LOGGER, store, user_data
+from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
-from Mikobot.utils.gate import chain
 
 # <=======================================================================================================>
 
@@ -23,8 +21,8 @@ UPTIME = time()  # Check bot uptime
 
 
 # <================================================ FUNCTION =======================================================>
-@app.on_message(filters.command("id"))
-async def _id(client, message):
+@on_message(filters.command("id"), chained=True)
+async def _id(client, message: Message):
     chat = message.chat
     your_id = message.from_user.id
     mention_user = message.from_user.mention
@@ -71,12 +69,15 @@ async def _id(client, message):
         "CAACAgIAAx0EdppwYAABAgotZg5rBL4P05Xjmy80p7DdNdneDmUAAnccAALIWZhJPyYLf3FzPHs0BA"
     )
     await message.reply_sticker(sticker=sticker_id)
-    await message.reply_text(text, link_preview_options=LinkPreviewOptions(is_disabled=True))
+    await message.reply_text(
+        text, link_preview_options=LinkPreviewOptions(is_disabled=True)
+    )
 
 
 # Function to handle the "logs" command
+@on_message(filters.command("logs"), chained=True)
 @check_admin(only_dev=True)
-async def logs(message: Message):
+async def logs(client, message: Message):
     with open("Logs.txt", "rb") as f:
         caption = "Here is your log"
         reply_markup = InlineKeyboardMarkup(
@@ -90,7 +91,7 @@ async def logs(message: Message):
         )
         sent = await client.send_document(
             document=f,
-            filename=f.name,
+            file_name=f.name,
             caption=caption,
             reply_markup=reply_markup,
             chat_id=message.from_user.id,
@@ -98,19 +99,20 @@ async def logs(message: Message):
 
         # Store the message ID for later reference
         user_data.setdefault(message.from_user.id, {})["log_message_id"] = (
-            sent.message_id
+            sent.id if hasattr(sent, "id") else sent.message_id
         )
         store.save()
 
 
 # Asynchronous callback query handler for the "close" button
+@on_callback(filters.regex(r"^close$"), chained=True)
 @check_admin(only_dev=True)
-async def close_callback(query: CallbackQuery):
+async def close_callback(client, query: CallbackQuery):
     message_id = user_data.get(query.from_user.id, {}).get("log_message_id")
     if message_id:
         try:
             await client.delete_messages(
-                chat_id=query.message.chat.id, message_id=message_id
+                chat_id=query.message.chat.id, message_ids=message_id
             )
             user_data[query.from_user.id].pop("log_message_id", None)
             store.save()
@@ -121,8 +123,8 @@ async def close_callback(query: CallbackQuery):
         await query.answer("This log has already been closed.")
 
 
-@app.on_message(filters.command("pyroping"))
-async def ping(_, m: Message):
+@on_message(filters.command("pyroping"), chained=True)
+async def ping(client, m: Message):
     LOGGER.info(f"{m.from_user.id} used ping cmd in {m.chat.id}")
     start = time()
     replymsg = await m.reply_text(text="Pinging...")
@@ -142,10 +144,6 @@ async def ping(_, m: Message):
 # <=======================================================================================================>
 
 
-# <================================================ HANDLER =======================================================>
-dp.message.register(chain(logs), Command("logs"))
-dp.callback_query.register(chain(close_callback), F.data == "close")
-
 # <================================================= HELP ======================================================>
 __help__ = """
 ➠ *Commands*:
@@ -157,9 +155,8 @@ __help__ = """
 » /hyperlink <text> <link> : Creates a markdown hyperlink with the provided text and link.
 
 » /pickwinner <participant1> <participant2> ... : Picks a random winner from the provided list of participants.
-
-» /id: reply to get user id.
 """
 
 __mod_name__ = "EXTRA"
+__command_list__ = ["id", "pyroping"]
 # <================================================ END =======================================================>

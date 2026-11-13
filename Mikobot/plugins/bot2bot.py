@@ -11,10 +11,9 @@ turns this off for anyone who trusts their bot with that reach.
 
 import html
 
-from aiogram import F
+from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus, ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -23,10 +22,9 @@ from pyrogram.types import (
 )
 
 import Database.sql.bot2bot_sql as sql
-from Mikobot import bot, dp
+from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.helper_funcs.alternate import typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 # Populated by the review middleware: command name -> pending (bot_id, args).
@@ -38,13 +36,14 @@ PENDING: dict = {}
 APPROVED_ONCE: set = set()
 
 
+@on_message(filters.command("bot2bot"), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True)
 @typing_action
-async def bot2bot(message: Message, command: CommandObject) -> str:
+async def bot2bot(client, message: Message) -> str:
     """Show or set whether bots may run commands here."""
     chat = message.chat
     user = message.from_user
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
 
     if not args:
         mode, skip, allowed = sql.get_setting(chat.id)
@@ -81,10 +80,11 @@ async def bot2bot(message: Message, command: CommandObject) -> str:
     )
 
 
+@on_message(filters.command("bot2botskipreview"), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True)
 @typing_action
-async def bot2bot_skip_review(message: Message, command: CommandObject) -> str:
-    args = command.args.split() if command.args else []
+async def bot2bot_skip_review(client, message: Message) -> str:
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
 
@@ -134,7 +134,8 @@ async def request_review(bot_user, chat, message) -> bool:
         return True
 
     text = message.text or ""
-    key = f"{chat.id}:{message.message_id}"
+    msg_id = getattr(message, "id", getattr(message, "message_id", 0))
+    key = f"{chat.id}:{msg_id}"
     PENDING[key] = {"bot_id": bot_user.id, "text": text}
 
     try:
@@ -148,11 +149,11 @@ async def request_review(bot_user, chat, message) -> bool:
                     [
                         InlineKeyboardButton(
                             text="Approve",
-                            callback_data=f"bot2bot_approve_{chat.id}_{message.message_id}",
+                            callback_data=f"bot2bot_approve_{chat.id}_{msg_id}",
                         ),
                         InlineKeyboardButton(
                             text="Reject",
-                            callback_data=f"bot2bot_reject_{chat.id}_{message.message_id}",
+                            callback_data=f"bot2bot_reject_{chat.id}_{msg_id}",
                         ),
                     ]
                 ]
@@ -165,7 +166,8 @@ async def request_review(bot_user, chat, message) -> bool:
     return False
 
 
-async def review_callback(message, query: CallbackQuery) -> str:
+@on_callback(filters.regex(r"^bot2bot_(?:approve|reject)_-?\d+_\d+$"), chained=True)
+async def review_callback(client, query: CallbackQuery) -> str:
     parts = query.data.split("_")
     action = parts[2]
     chat_id = int(parts[3])
@@ -178,7 +180,7 @@ async def review_callback(message, query: CallbackQuery) -> str:
         return ""
 
     if member.status not in (
-        ChatMemberStatus.CREATOR,
+        ChatMemberStatus.OWNER,
         ChatMemberStatus.ADMINISTRATOR,
     ):
         await query.answer("Only admins can approve bot commands.", show_alert=True)
@@ -206,7 +208,7 @@ async def review_callback(message, query: CallbackQuery) -> str:
         return ""
 
     # Let this one replay through without asking again.
-    APPROVED_ONCE.add(replay.message_id)
+    APPROVED_ONCE.add(getattr(replay, "id", getattr(replay, "message_id", 0)))
 
     await query.message.edit_text(
         f"Approved by {mention_html(query.from_user.id, query.from_user.first_name)}.",
@@ -242,9 +244,3 @@ are applied without asking a human first.
 commands that change configuration are shown to an admin for approval by
 default. Turning review off gives those bots direct access to your settings.
 """
-
-dp.message.register(chain(bot2bot), Command("bot2bot"))
-dp.message.register(chain(bot2bot_skip_review), Command("bot2botskipreview"))
-dp.callback_query.register(
-    chain(review_callback), F.data.regexp(r"^bot2bot_(?:approve|reject)_-?\d+_\d+$")
-)

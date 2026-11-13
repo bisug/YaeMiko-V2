@@ -7,7 +7,7 @@
 # <============================================== IMPORTS =========================================================>
 from uuid import uuid4
 
-from aiogram import F
+from pyrogram import filters
 from pyrogram.enums import ButtonStyle
 from pyrogram.types import (
     CallbackQuery,
@@ -19,13 +19,14 @@ from pyrogram.types import (
 )
 
 from Database.sql.whispers_sql import add_whisper, del_whisper, get_whisper
-from Mikobot import BOT_USERNAME, bot, dp
-from Mikobot.utils.gate import chain
+from Mikobot import BOT_USERNAME
+from Mikobot.events import on_callback, on_inline_query
 
 
 # <==================================================== BOOT FUNCTION ===================================================>
 # Inline query handler
-async def mainwhisper(query: InlineQuery):
+@on_inline_query(chained=True)
+async def mainwhisper(client, query: InlineQuery):
     if not query.query:
         return await query.answer(
             [],
@@ -90,7 +91,8 @@ async def mainwhisper(query: InlineQuery):
 
 
 # Callback query handler
-async def showWhisper(callback_query: CallbackQuery):
+@on_callback(filters.regex(r"^whisper_"), chained=True)
+async def showWhisper(client, callback_query: CallbackQuery):
     whisperId = callback_query.data.split("_")[-1]
     whisper = get_whisper(whisperId)
 
@@ -144,12 +146,6 @@ def parse_user_message(query_text):
     return user, message
 
 
-# <==================================================== FUNCTION ===================================================>
-# Add handlers
-dp.inline_query.register(chain(mainwhisper))
-dp.callback_query.register(chain(showWhisper), F.data.regexp(r"^whisper_"))
-
-
 # <==================================================== HELP ===================================================>
 __help__ = f"""
 ➠ *Whisper inline function for secret chats.*
@@ -160,5 +156,6 @@ __help__ = f"""
 » @{BOT_USERNAME} @username your message
 """
 
-__mod_name__ = "WHISPER-MSG"
-# <==================================================== END ===================================================>
+__mod_name__ = "WHISPERS"
+__command_list__ = []
+# <================================================ END =======================================================>

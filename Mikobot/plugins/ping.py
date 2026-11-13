@@ -1,11 +1,12 @@
 # <============================================== IMPORTS =========================================================>
 import time
 
+from pyrogram import filters
 from pyrogram.enums import ParseMode
-from aiogram.filters import Command
 from pyrogram.types import Message
 
-from Mikobot import StartTime, dp
+from Mikobot import StartTime
+from Mikobot.events import on_message
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.utils.human_read import get_readable_time
 
@@ -13,8 +14,9 @@ from Mikobot.utils.human_read import get_readable_time
 
 
 # <================================================ FUNCTION =======================================================>
+@on_message(filters.command("ping"), chained=True)
 @check_admin(only_dev=True)
-async def ptb_ping(message: Message):
+async def ptb_ping(client, message: Message):
     start_time = time.time()
     sent = await message.reply_text("Pining")
     end_time = time.time()
@@ -29,9 +31,6 @@ async def ptb_ping(message: Message):
     )
 
 
-# <=======================================================================================================>
-
-
-# <================================================ HANDLER =======================================================>
-dp.message.register(ptb_ping, Command("ping"))
+__mod_name__ = "PING"
+__command_list__ = ["ping"]
 # <================================================ END =======================================================>
