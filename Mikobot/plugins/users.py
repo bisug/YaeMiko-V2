@@ -4,24 +4,23 @@ from io import BytesIO
 from threading import RLock
 from time import monotonic
 
-from pyrogram.enums import ChatMemberStatus, ParseMode
-from pyrogram.errors import RPCError, RPCError
-from aiogram.filters import Command
-from pyrogram.types import BufferedInputFile, LinkPreviewOptions, Message
 from cachetools import TTLCache
 from pyrogram import Client
 from pyrogram import filters as fil
+from pyrogram.enums import ChatMemberStatus, ParseMode
+from pyrogram.errors import RPCError
+from pyrogram.types import LinkPreviewOptions, Message
 
 import Database.sql.locale_sql as locale_sql
 import Database.sql.users_sql as sql
 from Database.sql.users_sql import get_all_users
-from Mikobot import DEV_USERS, LOGGER, OWNER_ID, app, bot, dp
-from Mikobot.plugins.helper_funcs.chat_status import check_admin
+from Mikobot import BOT_ID, DEV_USERS, LOGGER, OWNER_ID
+from Mikobot.events import on_message
+from Mikobot.plugins.helper_funcs.chat_status import check_admin, granted
 from Mikobot.plugins.helper_funcs.string_handling import escape_markdown_v2
 from Mikobot.utils.consts import ChatID
 from Mikobot.utils.errors import FLOOD_WAIT_ERRORS, flood_wait_seconds
 from Mikobot.utils.filters import GROUPS
-from Mikobot.utils.gate import chain
 
 # <=======================================================================================================>
 
@@ -52,8 +51,8 @@ def parse_broadcast_request(text: str, has_reply: bool = False):
 
 # <================================================ FUNCTION =======================================================>
 # Broadcast Function
-@app.on_message(fil.command("gcast"))
-async def broadcast_cmd(client: Client, message):  # kurigram handler
+@on_message(fil.command("gcast"), chained=True)
+async def broadcast_cmd(client: Client, message: Message):
     if not message.from_user:
         return
 
@@ -156,7 +155,7 @@ async def get_user_id(username: str) -> int | None:
     return None
 
 
-async def broadcast(message: Message):
+async def broadcast(client: Client, message: Message):
     to_send = (message.text or "").split(None, 1)
 
     if len(to_send) >= 2:
@@ -224,7 +223,8 @@ async def _async_update_user(user_id, username, chat_id, chat_title):
         LOGGER.exception("Failed to update user in database")
 
 
-async def log_user(message: Message):
+@on_message(GROUPS, chained=True)
+async def log_user(client: Client, message: Message):
     chat = message.chat
     msg = message
 
@@ -270,7 +270,8 @@ async def log_user(message: Message):
 
 
 @check_admin(only_dev=True)
-async def chats(message: Message):
+@on_message(fil.command("groups"), chained=True)
+async def chats(client: Client, message: Message):
     all_chats = await asyncio.to_thread(sql.get_all_chats) or []
     chatfile = "List of chats.\n0. Chat Name | Chat ID | Members Count\n"
     P = 1
@@ -294,20 +295,21 @@ async def chats(message: Message):
     with BytesIO(str.encode(chatfile)) as output:
         output.name = "groups_list.txt"
         await message.reply_document(
-            document=BufferedInputFile(output.read(), filename="groups_list.txt"),
+            document=output,
             caption="Here be the list of groups in my database.",
         )
 
 
-async def chat_checker(message: Message):
+@on_message(GROUPS, chained=True)
+async def chat_checker(client: Client, message: Message):
     chat_id = message.chat.id
     if chat_id in BOT_STATUS_CACHE:
         return
     try:
-        bot_admin = await client.get_chat_member(chat_id, client.id)
+        bot_admin = await client.get_chat_member(chat_id, client.me.id)
         BOT_STATUS_CACHE[chat_id] = True
         if bot_admin.status == ChatMemberStatus.ADMINISTRATOR:
-            if bot_admin.can_post_messages is False:
+            if not granted(bot_admin, "can_post_messages"):
                 await client.leave_chat(chat_id)
     except RPCError:
         BOT_STATUS_CACHE[chat_id] = True
@@ -316,7 +318,7 @@ async def chat_checker(message: Message):
 def __user_info__(user_id):
     if user_id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN):
         return """Groups Count: ???"""
-    if user_id == client.id:
+    if user_id == BOT_ID:
         return """Groups Count: ???"""
     num_chats = sql.get_user_num_chats(user_id)
     return f"""Groups Count: {num_chats}"""
@@ -332,15 +334,7 @@ def __migrate__(old_chat_id, new_chat_id):
     locale_sql.migrate_chat(old_chat_id, new_chat_id)
 
 
-# <================================================ HANDLER =======================================================>
-# BROADCAST_HANDLER = CommandHandler(
-# ["broadcastall", "broadcastusers", "broadcastgroups"], broadcast, block=False
-# )
-# log_user and chat_checker see every group message, so they register first,
-# matching PTB's groups 4 and 5.
-dp.message.register(chain(log_user), GROUPS)
-dp.message.register(chain(chat_checker), GROUPS)
-dp.message.register(chain(chats), Command("groups"))
+# <================================================ END =======================================================>
 
 __mod_name__ = "USERS"
 # <================================================ END =======================================================>

@@ -5,11 +5,10 @@ import tempfile
 from html import escape
 from random import choice
 
+from pyrogram import filters
 from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import (
-    FSInputFile,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
@@ -17,20 +16,21 @@ from pyrogram.types import (
 
 from Database.sql.approve_sql import is_approved
 from Infamous.karma import START_IMG
-from Mikobot import BOT_NAME, DEV_USERS, DRAGONS, INFOPIC, OWNER_ID, bot, dp
+from Mikobot import BOT_NAME, DEV_USERS, DRAGONS, INFOPIC, OWNER_ID
+from Mikobot.events import on_message
 from Mikobot.plugins.helper_funcs.chat_status import support_plus
 from Mikobot.plugins.users import get_user_id
 from Mikobot.utils.consts import ChatID
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 # <=======================================================================================================>
 
 
 # <================================================ FUNCTION =======================================================>
-async def info(message: Message, command: CommandObject):
+@on_message(filters.command(["info", "book"]), chained=True)
+async def info(client, message: Message):
     chat = message.chat
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
 
     def reply_with_text(text):
         return message.reply_text(text, parse_mode=ParseMode.HTML)
@@ -195,11 +195,14 @@ async def info(message: Message, command: CommandObject):
             if chat_obj.photo:
                 with tempfile.TemporaryDirectory(prefix="yae-info-") as tempdir:
                     photo_path = os.path.join(tempdir, f"{chat_obj.id}.png")
-                    await client.download_media(
-                        chat_obj.photo[-1].file_id, destination=photo_path
+                    file_id = getattr(chat_obj.photo, "big_file_id", None) or (
+                        chat_obj.photo[-1].file_id
+                        if isinstance(chat_obj.photo, list)
+                        else getattr(chat_obj.photo, "file_id", None)
                     )
+                    await client.download_media(file_id, file_name=photo_path)
                     await message.reply_photo(
-                        photo=FSInputFile(photo_path),
+                        photo=photo_path,
                         caption=head,
                         parse_mode=ParseMode.HTML,
                     )
@@ -216,7 +219,8 @@ async def info(message: Message, command: CommandObject):
 
 
 @support_plus
-async def stats(message: Message):
+@on_message(filters.command(["stats", "gstats"]), chained=True)
+async def stats(client, message: Message):
     from Mikobot.__main__ import STATS
 
     stats = f"📊 <b>{escape(BOT_NAME)}'s Statistics:</b>\n\n" + "\n".join(
@@ -255,9 +259,7 @@ __help__ = """
 » /uinfo : Fetch user information in banner.
 """
 
-# <================================================ HANDLER =======================================================>
-dp.message.register(chain(stats), Command(commands=["stats", "gstats"]))
-dp.message.register(chain(info), Command(commands=("info", "book")))
+# <================================================ END =======================================================>
 
 __mod_name__ = "INFO"
 __command_list__ = ["info"]

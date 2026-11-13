@@ -11,13 +11,13 @@ overwrite existing configuration.
 
 import asyncio
 import html
+import io
 import json
 
-from aiogram import F
-from pyrogram.enums import ChatMemberStatus, ParseMode
-from aiogram.filters import Command, CommandObject
+from pyrogram import filters
+from pyrogram.enums import ChatMemberStatus, ChatType, ParseMode
 from pyrogram.types import (
-    BufferedInputFile,
+    CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
@@ -30,11 +30,12 @@ import Database.sql.locks_sql as locks_sql
 import Database.sql.notes_sql as notes_sql
 import Database.sql.rules_sql as rules_sql
 import Database.sql.warns_sql as warns_sql
-from Mikobot import LOGGER, bot, dp
+from Mikobot import LOGGER
+from Mikobot import app as client
+from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.helper_funcs.alternate import typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 # Modules that can be exported, in the order they are listed to the admin.
@@ -119,31 +120,32 @@ def _reset(chat_id):
 async def _resolve(message: Message, need_owner: bool):
     """(chat_id, chat, error) for an export/import command."""
     user = message.from_user
-    conn = await connected(bot, message, message.chat, user.id, need_admin=True)
+    conn = await connected(client, message, message.chat, user.id, need_admin=True)
     if conn:
         return conn, await client.get_chat(conn), None
-    if message.chat.type.value == "private":
+    if message.chat.type == ChatType.PRIVATE:
         return None, None, "This command is meant to be used in a group."
     if need_owner:
         try:
             member = await client.get_chat_member(message.chat.id, user.id)
         except Exception:
             return None, None, "I can't check your permissions here."
-        if member.status != ChatMemberStatus.CREATOR:
+        if member.status != ChatMemberStatus.OWNER:
             return None, None, "Only the group owner can do that."
     return message.chat.id, message.chat, None
 
 
 @check_admin(is_user=True)
 @typing_action
-async def export(message: Message, command: CommandObject) -> str:
+@on_message(filters.command("export"), chained=True)
+async def export(client, message: Message) -> str:
     """Send this chat's settings as a JSON file."""
     chat_id, chat, error = await _resolve(message, need_owner=False)
     if error:
         await message.reply_text(error)
         return ""
 
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
     unknown = [a.lower() for a in args if a.lower() not in EXPORT_MODULES]
     if unknown:
         await message.reply_text(
@@ -159,16 +161,16 @@ async def export(message: Message, command: CommandObject) -> str:
 
     payload = json.dumps(data, indent=2, ensure_ascii=False, default=str)
     name = f"settings_{abs(int(chat_id))}.json"
-    await message.reply_document(
-        # aiogram types `document` as a file id or an InputFile; a raw BytesIO
-        # fails validation, so the buffer and the name are wrapped together.
-        document=BufferedInputFile(payload.encode(), filename=name),
-        caption=(
-            f"Settings export for <b>{html.escape(chat.title)}</b>."
-            f"\nReply to this with <code>/import</code> to apply it elsewhere."
-        ),
-        parse_mode=ParseMode.HTML,
-    )
+    with io.BytesIO(payload.encode()) as output:
+        output.name = name
+        await message.reply_document(
+            document=output,
+            caption=(
+                f"Settings export for <b>{html.escape(chat.title)}</b>."
+                f"\nReply to this with <code>/import</code> to apply it elsewhere."
+            ),
+            parse_mode=ParseMode.HTML,
+        )
     return (
         f"<b>{html.escape(chat.title)}:</b>\n"
         f"#EXPORT\n"
@@ -179,7 +181,8 @@ async def export(message: Message, command: CommandObject) -> str:
 
 @check_admin(is_user=True)
 @typing_action
-async def import_settings(message: Message, command: CommandObject) -> str:
+@on_message(filters.command("import"), chained=True)
+async def import_settings(client, message: Message) -> str:
     """Apply a settings file to this chat. Owner only."""
     chat_id, chat, error = await _resolve(message, need_owner=True)
     if error:
@@ -193,8 +196,11 @@ async def import_settings(message: Message, command: CommandObject) -> str:
         return ""
 
     try:
-        raw = await client.download_media(document.file_id)
-        data = json.loads(raw.decode("utf-8"))
+        downloaded = await client.download_media(document, in_memory=True)
+        raw = (
+            downloaded.getvalue() if isinstance(downloaded, io.BytesIO) else downloaded
+        )
+        data = json.loads(raw.decode("utf-8") if isinstance(raw, bytes) else raw)
     except Exception:
         await message.reply_text("That file could not be read as settings.")
         return ""
@@ -202,7 +208,9 @@ async def import_settings(message: Message, command: CommandObject) -> str:
         await message.reply_text("That file does not contain settings.")
         return ""
 
-    args = [a.lower() for a in (command.args.split() if command.args else [])]
+    args = [
+        a.lower() for a in (message.command[1:] if len(message.command) > 1 else [])
+    ]
     applied, failed = [], []
     for module_name, module in list(_data_modules()):
         if args and module_name not in args:
@@ -233,7 +241,8 @@ async def import_settings(message: Message, command: CommandObject) -> str:
 
 @check_admin(is_user=True)
 @typing_action
-async def reset(message: Message, command: CommandObject) -> str:
+@on_message(filters.command("reset"), chained=True)
+async def reset(client, message: Message) -> str:
     """Clear every exportable setting. Owner only, and confirmed inline."""
     chat_id, chat, error = await _resolve(message, need_owner=True)
     if error:
@@ -261,7 +270,8 @@ async def reset(message: Message, command: CommandObject) -> str:
     return ""
 
 
-async def reset_button(message, query) -> str:
+@on_callback(filters.regex(r"^settings_reset(?:_cancel)?_-?\d+$"), chained=True)
+async def reset_button(client, query: CallbackQuery) -> str:
     chat_id = int(query.data.split("_")[2])
     if query.data.startswith("settings_reset_cancel"):
         await query.message.edit_text("Reset cancelled.")
@@ -269,7 +279,7 @@ async def reset_button(message, query) -> str:
         return ""
     try:
         member = await client.get_chat_member(chat_id, query.from_user.id)
-        if member.status != ChatMemberStatus.CREATOR:
+        if member.status != ChatMemberStatus.OWNER:
             await query.answer("Only the group owner can do this.", show_alert=True)
             return ""
     except Exception:
@@ -296,10 +306,3 @@ __help__ = """
 
 ➡ Modules: blacklist, blocklist_stickers, locks, filters, notes, rules, warns.
 """
-
-dp.message.register(chain(export), Command("export"))
-dp.message.register(chain(import_settings), Command("import"))
-dp.message.register(chain(reset), Command("reset"))
-dp.callback_query.register(
-    chain(reset_button), F.data.regexp(r"^settings_reset(?:_cancel)?_-?\d+$")
-)
