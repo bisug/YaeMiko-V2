@@ -36,16 +36,16 @@ async def force_subscribe(message):
     if message.chat.type == ChatType.PRIVATE:
         return
     if not message.from_user:
-        return await message.reply("Only users can configure force subscribe.")
+        return await message.reply_text("Only users can configure force subscribe.")
     if message.chat.type in {ChatType.GROUP, ChatType.SUPERGROUP}:
         member = await app.get_chat_member(message.chat.id, message.from_user.id)
         if member.status not in {
             ChatMemberStatus.OWNER,
             ChatMemberStatus.ADMINISTRATOR,
         }:
-            return await message.reply("You need to be an admin to do this.")
+            return await message.reply_text("You need to be an admin to do this.")
         if member.status != ChatMemberStatus.OWNER:
-            return await message.reply(
+            return await message.reply_text(
                 "❗ Group creator required\nYou have to be the group creator to do that."
             )
     parts = message.text.split(None, 1)
@@ -53,30 +53,30 @@ async def force_subscribe(message):
     if not channel:
         chat_db = db.fs_settings(message.chat.id)
         if not chat_db:
-            await message.reply("Force subscribe is disabled in this chat.")
+            await message.reply_text("Force subscribe is disabled in this chat.")
         else:
-            await message.reply(
+            await message.reply_text(
                 f"Force subscribe is currently enabled. Users are forced to join @{chat_db.channel} to speak here."
             )
         return
     if channel.lower() in FORCESUBSCRIBE_ON:
-        return await message.reply("Please specify the channel username.")
+        return await message.reply_text("Please specify the channel username.")
     if channel.lower() in FORCESUBSCRIBE_OFF:
         db.disapprove(message.chat.id)
-        return await message.reply("**Force subscribe is disabled successfully.**")
+        return await message.reply_text("**Force subscribe is disabled successfully.**")
     try:
         channel_entity = await app.get_chat(channel)
     except Exception:
-        return await message.reply("Invalid channel username provided.")
+        return await message.reply_text("Invalid channel username provided.")
     username = getattr(channel_entity, "username", None)
     if not username or channel_entity.type != ChatType.CHANNEL:
-        return await message.reply("That's not a valid channel.")
+        return await message.reply_text("That's not a valid channel.")
     if not await participant_check(username, BOT_ID):
-        return await message.reply(
+        return await message.reply_text(
             f"**Not an admin in the channel**\nI am not an admin in the [channel](https://t.me/{username}). Add me as an admin to enable force subscribe."
         )
     db.add_channel(message.chat.id, str(username))
-    await message.reply(f"Force subscribe is enabled to @{username}.")
+    await message.reply_text(f"Force subscribe is enabled to @{username}.")
 
 
 @app.on_message(filters.group & filters.incoming)
@@ -131,7 +131,7 @@ async def force_subscribe_new_message(_, message):
             ]
         ]
     )
-    await message.reply(
+    await message.reply_text(
         f'<b><a href="tg://user?id={message.from_user.id}">{name}</a></b>, you have <b>not subscribed</b> to our <b><a href="https://t.me/{channel}">channel</a></b> yet. Please join and press the button below to unmute yourself.',
         reply_markup=markup,
     )

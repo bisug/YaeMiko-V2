@@ -1,8 +1,8 @@
 # <============================================== IMPORTS =========================================================>
-from aiogram.enums import ButtonStyle, ParseMode
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.enums import ButtonStyle, ParseMode
+from pyrogram.errors import RPCError
 from aiogram.filters import Command
-from aiogram.types import (
+from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     LinkPreviewOptions,
@@ -31,10 +31,10 @@ async def send_rules(message, chat_id, from_pm=False):
     user = message.from_user
     reply_msg = message.reply_to_message
     try:
-        chat = await bot.get_chat(chat_id)
-    except TelegramAPIError:
+        chat = await client.get_chat(chat_id)
+    except RPCError:
         if from_pm:
-            await bot.send_message(
+            await client.send_message(
                 user.id,
                 "The rules shortcut for this chat hasn't been set properly! Ask admins to "
                 "fix it.\nMaybe they forgot the hyphen in ID",
@@ -49,14 +49,14 @@ async def send_rules(message, chat_id, from_pm=False):
     )
 
     if from_pm and rules:
-        await bot.send_message(
+        await client.send_message(
             user.id,
             text,
             parse_mode=ParseMode.MARKDOWN_V2,
             link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     elif from_pm:
-        await bot.send_message(
+        await client.send_message(
             user.id,
             "The group admins haven't set any rules for this chat yet. "
             "This probably doesn't mean it's lawless though...!",
@@ -77,7 +77,7 @@ async def send_rules(message, chat_id, from_pm=False):
             ),
         )
     elif rules:
-        await message.answer(
+        await message.reply_text(
             "Please click the button below to see the rules.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
@@ -92,7 +92,7 @@ async def send_rules(message, chat_id, from_pm=False):
             ),
         )
     else:
-        await message.answer(
+        await message.reply_text(
             "The group admins haven't set any rules for this chat yet. "
             "This probably doesn't mean it's lawless though...!",
         )
@@ -109,13 +109,13 @@ async def set_rules(message: Message):
         markdown_rules = markdown_parser(txt, offset=offset)
 
         sql.set_rules(chat_id, markdown_rules)
-        await message.answer("Successfully set rules for this group.")
+        await message.reply_text("Successfully set rules for this group.")
 
 
 @check_admin(is_user=True)
 async def clear_rules(message: Message):
     sql.set_rules(message.chat.id, "")
-    await message.answer("Successfully cleared rules!")
+    await message.reply_text("Successfully cleared rules!")
 
 
 def __stats__():

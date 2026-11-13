@@ -12,10 +12,10 @@ turns this off for anyone who trusts their bot with that reach.
 import html
 
 from aiogram import F
-from aiogram.enums import ChatMemberStatus, ParseMode
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.enums import ChatMemberStatus, ParseMode
+from pyrogram.errors import RPCError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import (
+from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -48,7 +48,7 @@ async def bot2bot(message: Message, command: CommandObject) -> str:
 
     if not args:
         mode, skip, allowed = sql.get_setting(chat.id)
-        await message.reply(
+        await message.reply_text(
             f"Bot-to-bot is <b>{html.escape(mode)}</b>."
             f"\nCommand review: <b>{'off' if skip else 'on'}</b>."
             + (
@@ -62,14 +62,14 @@ async def bot2bot(message: Message, command: CommandObject) -> str:
 
     wanted = args[0].lower()
     if wanted not in sql.MODES:
-        await message.reply(
+        await message.reply_text(
             f"Use one of <code>{', '.join(sql.MODES)}</code>.",
             parse_mode=ParseMode.HTML,
         )
         return ""
 
     sql.set_mode(chat.id, wanted)
-    await message.reply(
+    await message.reply_text(
         f"Bot-to-bot is now <b>{html.escape(wanted)}</b>.",
         parse_mode=ParseMode.HTML,
     )
@@ -90,7 +90,7 @@ async def bot2bot_skip_review(message: Message, command: CommandObject) -> str:
 
     if not args:
         _mode, skip, _allowed = sql.get_setting(chat.id)
-        await message.reply(
+        await message.reply_text(
             f"Command review for bot commands is <b>{'off' if skip else 'on'}</b>.",
             parse_mode=ParseMode.HTML,
         )
@@ -102,11 +102,11 @@ async def bot2bot_skip_review(message: Message, command: CommandObject) -> str:
     elif value in ("off", "no", "false", "0"):
         enabled = False
     else:
-        await message.reply("Please enter `on` or `off`.")
+        await message.reply_text("Please enter `on` or `off`.")
         return ""
 
     sql.set_skip_review(chat.id, enabled)
-    await message.reply(
+    await message.reply_text(
         f"Command review for bot commands is now <b>{'off' if enabled else 'on'}</b>.",
         parse_mode=ParseMode.HTML,
     )
@@ -138,7 +138,7 @@ async def request_review(bot_user, chat, message) -> bool:
     PENDING[key] = {"bot_id": bot_user.id, "text": text}
 
     try:
-        await message.reply(
+        await message.reply_text(
             f"<b>Bot command needs approval</b>\n"
             f"<b>From:</b> {mention_html(bot_user.id, bot_user.first_name)}\n"
             f"<b>Command:</b> <code>{html.escape(text[:200])}</code>",
@@ -158,7 +158,7 @@ async def request_review(bot_user, chat, message) -> bool:
                 ]
             ),
         )
-    except TelegramAPIError:
+    except RPCError:
         # If the request cannot be shown, it cannot be approved either.
         PENDING.pop(key, None)
         return False
@@ -172,8 +172,8 @@ async def review_callback(message, query: CallbackQuery) -> str:
     message_id = int(parts[4]) if len(parts) > 4 else 0
 
     try:
-        member = await bot.get_chat_member(chat_id, query.from_user.id)
-    except TelegramAPIError:
+        member = await client.get_chat_member(chat_id, query.from_user.id)
+    except RPCError:
         await query.answer("I can't check your permissions there.", show_alert=True)
         return ""
 
@@ -199,8 +199,8 @@ async def review_callback(message, query: CallbackQuery) -> str:
         return ""
 
     try:
-        replay = await bot.send_message(chat_id, entry["text"])
-    except TelegramAPIError as exc:
+        replay = await client.send_message(chat_id, entry["text"])
+    except RPCError as exc:
         await query.message.edit_text(f"Could not run it: {exc.message}")
         await query.answer("Failed.")
         return ""
@@ -234,7 +234,7 @@ __help__ = """
 communication" is enabled in @BotFather, so most groups will never need this.
 
 » /bot2bot <off/admin/all>: Whether bots may run commands. `off` ignores
-them entirely, `admin` allows bots that are admins here, `all` allows any bot.
+them entirely, `admin` allows bots that are admins here, `all` allows any client.
 » /bot2botskipreview <on/off>: When on, bot commands that change settings
 are applied without asking a human first.
 

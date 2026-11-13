@@ -5,10 +5,10 @@ import re
 import time
 
 from aiogram import Bot, F
-from aiogram.enums import ButtonStyle, ChatType, ParseMode
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.enums import ButtonStyle, ChatType, ParseMode
+from pyrogram.errors import RPCError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import (
+from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -83,8 +83,8 @@ async def connection_chat(message: Message, command: CommandObject):
     conn = await connected(bot, message, chat, user.id, need_admin=True)
 
     if conn:
-        chat = await bot.get_chat(conn)
-        chat_obj = await bot.get_chat(conn)
+        chat = await client.get_chat(conn)
+        chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
         if message.chat.type != ChatType.PRIVATE:
@@ -109,23 +109,23 @@ async def connect_chat(message: Message, command: CommandObject):
         if args and len(args) >= 1:
             try:
                 connect_chat = int(args[0])
-                getstatusadmin = await bot.get_chat_member(
+                getstatusadmin = await client.get_chat_member(
                     connect_chat,
                     message.from_user.id,
                 )
             except ValueError:
                 try:
                     connect_chat = str(args[0])
-                    get_chat = await bot.get_chat(connect_chat)
+                    get_chat = await client.get_chat(connect_chat)
                     connect_chat = get_chat.id
-                    getstatusadmin = await bot.get_chat_member(
+                    getstatusadmin = await client.get_chat_member(
                         connect_chat,
                         message.from_user.id,
                     )
-                except TelegramAPIError:
+                except RPCError:
                     await send_message(message, "Invalid Chat ID!")
                     return
-            except TelegramAPIError:
+            except RPCError:
                 await send_message(message, "Invalid Chat ID!")
                 return
 
@@ -143,7 +143,7 @@ async def connect_chat(message: Message, command: CommandObject):
                     conn = await connected(
                         bot, message, chat, user.id, need_admin=False
                     )
-                    conn_chat = await bot.get_chat(conn)
+                    conn_chat = await client.get_chat(conn)
                     chat_name = conn_chat.title
                     await send_message(
                         message,
@@ -181,7 +181,7 @@ async def connect_chat(message: Message, command: CommandObject):
                 buttons = []
             conn = await connected(bot, message, chat, user.id, need_admin=False)
             if conn:
-                connectedchat = await bot.get_chat(conn)
+                connectedchat = await client.get_chat(conn)
                 text = "You are currently connected to *{}* (`{}`)".format(
                     connectedchat.title,
                     conn,
@@ -246,7 +246,7 @@ async def connect_chat(message: Message, command: CommandObject):
             )
 
     else:
-        getstatusadmin = await bot.get_chat_member(
+        getstatusadmin = await client.get_chat_member(
             chat.id,
             message.from_user.id,
         )
@@ -258,7 +258,7 @@ async def connect_chat(message: Message, command: CommandObject):
                 sql.connect, message.from_user.id, chat.id
             )
             if connection_status:
-                chat_obj = await bot.get_chat(chat.id)
+                chat_obj = await client.get_chat(chat.id)
                 chat_name = chat_obj.title
                 await send_message(
                     message,
@@ -269,14 +269,14 @@ async def connect_chat(message: Message, command: CommandObject):
                     await asyncio.to_thread(
                         sql.add_history_conn, user.id, str(chat.id), chat_name
                     )
-                    await bot.send_message(
+                    await client.send_message(
                         message.from_user.id,
                         "You are connected to *{}*. \nUse `/helpconnect` to check available commands.".format(
                             chat_name,
                         ),
                         parse_mode=ParseMode.MARKDOWN,
                     )
-                except TelegramAPIError:
+                except RPCError:
                     pass
             else:
                 await send_message(message, "ᴄᴏɴɴᴇᴄᴛɪᴏɴ ғᴀɪʟᴇᴅ!")
@@ -313,7 +313,7 @@ async def connected(bot: Bot, message: Message, chat, user_id, need_admin=True):
     connection = await asyncio.to_thread(sql.get_connected_chat, user_id)
     if connection:
         conn_id = connection.chat_id
-        getstatusadmin = await bot.get_chat_member(
+        getstatusadmin = await client.get_chat_member(
             conn_id,
             message.from_user.id,
         )
@@ -383,7 +383,7 @@ async def connect_button(query: CallbackQuery):
 
     if connect_match:
         target_chat = connect_match.group(1)
-        getstatusadmin = await bot.get_chat_member(target_chat, query.from_user.id)
+        getstatusadmin = await client.get_chat_member(target_chat, query.from_user.id)
         isadmin = getstatusadmin.status in ("administrator", "creator")
         ismember = getstatusadmin.status in ("member")
         isallow = await asyncio.to_thread(sql.allow_connect_to_chat, target_chat)
@@ -397,7 +397,7 @@ async def connect_button(query: CallbackQuery):
                 conn = await connected(
                     bot, query.message, chat, user.id, need_admin=False
                 )
-                conn_chat = await bot.get_chat(conn)
+                conn_chat = await client.get_chat(conn)
                 chat_name = conn_chat.title
                 await query.message.edit_text(
                     "Successfully connected to *{}*. Use `/helpconnect` to check available commands.".format(
@@ -413,7 +413,7 @@ async def connect_button(query: CallbackQuery):
                 await query.message.edit_text("Connection failed!")
                 await query.answer("Connection failed.", show_alert=True)
         else:
-            await bot.answer_callback_query(
+            await client.answer_callback_query(
                 query.id,
                 "Connection to this chat is not allowed!",
                 show_alert=True,
@@ -428,7 +428,7 @@ async def connect_button(query: CallbackQuery):
             )
             await query.answer()
         else:
-            await bot.answer_callback_query(
+            await client.answer_callback_query(
                 query.id,
                 "You're not connected!",
                 show_alert=True,
@@ -441,7 +441,7 @@ async def connect_button(query: CallbackQuery):
         await query.message.edit_text("Closed. To open again, type /connect")
         await query.answer()
     else:
-        await bot.answer_callback_query(
+        await client.answer_callback_query(
             query.id, "Invalid callback data.", show_alert=True
         )
 

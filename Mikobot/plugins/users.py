@@ -4,10 +4,10 @@ from io import BytesIO
 from threading import RLock
 from time import monotonic
 
-from aiogram.enums import ChatMemberStatus, ParseMode
-from aiogram.exceptions import TelegramAPIError, TelegramForbiddenError
+from pyrogram.enums import ChatMemberStatus, ParseMode
+from pyrogram.errors import RPCError, RPCError
 from aiogram.filters import Command
-from aiogram.types import BufferedInputFile, LinkPreviewOptions, Message
+from pyrogram.types import BufferedInputFile, LinkPreviewOptions, Message
 from cachetools import TTLCache
 from pyrogram import Client
 from pyrogram import filters as fil
@@ -60,7 +60,7 @@ async def broadcast_cmd(client: Client, message):  # kurigram handler
     user_id = message.from_user.id
 
     if user_id not in [OWNER_ID] + DEV_USERS:
-        await message.reply(
+        await message.reply_text(
             "You are not authorized to use this command. Only the owner and authorized users can use it."
         )
         return
@@ -69,7 +69,7 @@ async def broadcast_cmd(client: Client, message):  # kurigram handler
         message.text, has_reply=message.reply_to_message is not None
     )
     if not targets:
-        return await message.reply(
+        return await message.reply_text(
             "<b>GLOBALCASTING COMMANDS</b>\n"
             "-user : broadcast to users\n"
             "-group : broadcast to groups\n"
@@ -78,11 +78,11 @@ async def broadcast_cmd(client: Client, message):  # kurigram handler
             "<code>/gcast -all</code>"
         )
     if content is None:
-        return await message.reply(
+        return await message.reply_text(
             "<b>Please provide a message or reply to a message</b>"
         )
 
-    tex = await message.reply("<code>Starting global broadcast...</code>")
+    tex = await message.reply_text("<code>Starting global broadcast...</code>")
 
     usersss = 0
     chatttt = 0
@@ -175,28 +175,28 @@ async def broadcast(message: Message):
         if to_group:
             for chat in chats:
                 try:
-                    await bot.send_message(
+                    await client.send_message(
                         int(chat.chat_id),
                         escape_markdown_v2(to_send[1]),
                         parse_mode=ParseMode.MARKDOWN_V2,
                         link_preview_options=LinkPreviewOptions(is_disabled=True),
                     )
                     await asyncio.sleep(1)
-                except TelegramAPIError:
+                except RPCError:
                     failed += 1
         if to_user:
             for user in users:
                 try:
-                    await bot.send_message(
+                    await client.send_message(
                         int(user.user_id),
                         escape_markdown_v2(to_send[1]),
                         parse_mode=ParseMode.MARKDOWN_V2,
                         link_preview_options=LinkPreviewOptions(is_disabled=True),
                     )
                     await asyncio.sleep(1)
-                except TelegramAPIError:
+                except RPCError:
                     failed_user += 1
-        await message.answer(
+        await message.reply_text(
             f"Broadcast complete.\nGroups failed: {failed}.\nUsers failed: {failed_user}.",
         )
 
@@ -276,8 +276,8 @@ async def chats(message: Message):
     P = 1
     for chat in all_chats:
         try:
-            await bot.get_chat(chat.chat_id)
-            chat_members = await bot.get_chat_member_count(chat.chat_id)
+            await client.get_chat(chat.chat_id)
+            chat_members = await client.get_chat_members_count(chat.chat_id)
             chatfile += "{}. {} | {} | {}\n".format(
                 P,
                 chat.chat_name,
@@ -285,7 +285,7 @@ async def chats(message: Message):
                 chat_members,
             )
             P = P + 1
-        except TelegramAPIError:
+        except RPCError:
             # A single chat can be unreachable (kicked, renamed away, or the bot
             # was removed). Skipping it keeps the export usable; the entry is
             # simply missing from the listing.
@@ -293,7 +293,7 @@ async def chats(message: Message):
 
     with BytesIO(str.encode(chatfile)) as output:
         output.name = "groups_list.txt"
-        await message.answer_document(
+        await message.reply_document(
             document=BufferedInputFile(output.read(), filename="groups_list.txt"),
             caption="Here be the list of groups in my database.",
         )
@@ -304,19 +304,19 @@ async def chat_checker(message: Message):
     if chat_id in BOT_STATUS_CACHE:
         return
     try:
-        bot_admin = await bot.get_chat_member(chat_id, bot.id)
+        bot_admin = await client.get_chat_member(chat_id, client.id)
         BOT_STATUS_CACHE[chat_id] = True
         if bot_admin.status == ChatMemberStatus.ADMINISTRATOR:
             if bot_admin.can_post_messages is False:
-                await bot.leave_chat(chat_id)
-    except TelegramForbiddenError:
+                await client.leave_chat(chat_id)
+    except RPCError:
         BOT_STATUS_CACHE[chat_id] = True
 
 
 def __user_info__(user_id):
     if user_id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN):
         return """Groups Count: ???"""
-    if user_id == bot.id:
+    if user_id == client.id:
         return """Groups Count: ???"""
     num_chats = sql.get_user_num_chats(user_id)
     return f"""Groups Count: {num_chats}"""

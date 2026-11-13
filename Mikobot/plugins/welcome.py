@@ -13,10 +13,10 @@ from functools import partial
 
 import unidecode
 from aiogram import F
-from aiogram.enums import ButtonStyle, ChatType, ParseMode
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.enums import ButtonStyle, ChatType, ParseMode
+from pyrogram.errors import RPCError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import (
+from pyrogram.types import (
     CallbackQuery,
     ChatPermissions,
     InlineKeyboardButton,
@@ -224,10 +224,10 @@ async def enable_welcome(_, message: Message):
     chat_id = message.chat.id
     welcome_enabled = is_dwelcome_on(chat_id)
     if welcome_enabled:
-        await message.answer("Default welcome is already enabled")
+        await message.reply_text("Default welcome is already enabled")
         return
     dwelcome_on(chat_id)
-    await message.answer("New default welcome message enabled for this chat.")
+    await message.reply_text("New default welcome message enabled for this chat.")
 
 
 @app.on_message(ft.command("dwelcome off"))
@@ -236,10 +236,10 @@ async def disable_welcome(_, message: Message):
     chat_id = message.chat.id
     welcome_enabled = is_dwelcome_on(chat_id)
     if not welcome_enabled:
-        await message.answer("Default welcome is already disabled")
+        await message.reply_text("Default welcome is already disabled")
         return
     dwelcome_off(chat_id)
-    await message.answer("New default welcome disabled for this chat.")
+    await message.reply_text("New default welcome disabled for this chat.")
 
 
 # <=======================================================================================================>
@@ -299,8 +299,8 @@ async def send(source_message, message, keyboard, backup_message):
     reply = message.message_id
     if cleanserv:
         try:
-            await bot.delete_message(chat.id, message.message_id)
-        except TelegramAPIError:
+            await client.delete_messages(chat.id, message.message_id)
+        except RPCError:
             pass
         reply = False
     # In a forum a greeting has to name a topic, otherwise it lands in General
@@ -310,37 +310,37 @@ async def send(source_message, message, keyboard, backup_message):
         thread = None
     try:
         try:
-            msg = await bot.send_message(
+            msg = await client.send_message(
                 chat.id,
                 message,
                 parse_mode=ParseMode.HTML,
                 reply_markup=keyboard,
                 message_thread_id=thread,
             )
-        except TelegramAPIError:
-            msg = await message.answer(
+        except RPCError:
+            msg = await message.reply_text(
                 message,
                 parse_mode=ParseMode.HTML,
                 reply_markup=keyboard,
                 reply_to_message_id=reply,
             )
-    except TelegramAPIError as excp:
+    except RPCError as excp:
         if excp.message == "Reply message not found":
-            msg = await message.answer(
+            msg = await message.reply_text(
                 message,
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=keyboard,
             )
         elif excp.message == "Button_url_invalid":
             try:
-                msg = await bot.send_message(
+                msg = await client.send_message(
                     chat.id,
                     backup_message
                     + "\nNote: The current message has an invalid URL in one of its buttons. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
-            except TelegramAPIError:
-                msg = await message.answer(
+            except RPCError:
+                msg = await message.reply_text(
                     backup_message
                     + "\nNote: The current message has an invalid URL in one of its buttons. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
@@ -348,14 +348,14 @@ async def send(source_message, message, keyboard, backup_message):
                 )
         elif excp.message == "Unsupported URL protocol":
             try:
-                msg = await bot.send_message(
+                msg = await client.send_message(
                     chat.id,
                     backup_message
                     + "\nNote: The current message has buttons which use URL protocols that are unsupported by Telegram. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
-            except TelegramAPIError:
-                msg = await message.answer(
+            except RPCError:
+                msg = await message.reply_text(
                     backup_message
                     + "\nNote: The current message has buttons which use URL protocols that are unsupported by Telegram. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
@@ -363,14 +363,14 @@ async def send(source_message, message, keyboard, backup_message):
                 )
         elif excp.message == "Wrong URL host":
             try:
-                msg = await bot.send_message(
+                msg = await client.send_message(
                     chat.id,
                     backup_message
                     + "\nNote: The current message has some bad URLs. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
-            except TelegramAPIError:
-                msg = await message.answer(
+            except RPCError:
+                msg = await message.reply_text(
                     backup_message
                     + "\nNote: The current message has some bad URLs. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
@@ -381,14 +381,14 @@ async def send(source_message, message, keyboard, backup_message):
             return
         else:
             try:
-                msg = await bot.send_message(
+                msg = await client.send_message(
                     chat.id,
                     backup_message
                     + "\nNote: An error occurred when sending the custom message. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
-            except TelegramAPIError:
-                msg = await message.answer(
+            except RPCError:
+                msg = await message.reply_text(
                     backup_message
                     + "\nNote: An error occurred when sending the custom message. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
@@ -413,12 +413,12 @@ async def new_member(message: Message, command: CommandObject):
     new_members = message.new_chat_members or []
 
     for new_mem in new_members:
-        if new_mem.id == bot.id and not ALLOW_CHATS:
-            with suppress(TelegramAPIError):
-                await message.answer(
-                    "Groups are disabled for {}, I'm outta here.".format(bot.first_name)
+        if new_mem.id == client.id and not ALLOW_CHATS:
+            with suppress(RPCError):
+                await message.reply_text(
+                    "Groups are disabled for {}, I'm outta here.".format(client.first_name)
                 )
-            await bot.leave_chat(message.chat.id)
+            await client.leave_chat(message.chat.id)
             return
 
         welcome_log = None
@@ -436,13 +436,13 @@ async def new_member(message: Message, command: CommandObject):
             cleanserv = await _should_clean(chat.id, message)
             if cleanserv:
                 try:
-                    await bot.delete_message(chat.id, message.message_id)
-                except TelegramAPIError:
+                    await client.delete_messages(chat.id, message.message_id)
+                except RPCError:
                     pass
                 reply = False
 
             if new_mem.id == OWNER_ID:
-                await message.answer(
+                await message.reply_text(
                     "Oh, darling, I have searched for you everywhere.",
                     reply_to_message_id=reply,
                 )
@@ -454,7 +454,7 @@ async def new_member(message: Message, command: CommandObject):
                 continue
 
             elif new_mem.id in DEV_USERS:
-                await message.answer(
+                await message.reply_text(
                     "Be cool! A member of the team just joined.",
                     reply_to_message_id=reply,
                 )
@@ -464,7 +464,7 @@ async def new_member(message: Message, command: CommandObject):
                 continue
 
             elif new_mem.id in DRAGONS:
-                await message.answer(
+                await message.reply_text(
                     "Whoa! A dragon disaster just joined! Stay alert!",
                     reply_to_message_id=reply,
                 )
@@ -473,9 +473,9 @@ async def new_member(message: Message, command: CommandObject):
                 )
                 continue
 
-            elif new_mem.id == bot.id:
+            elif new_mem.id == client.id:
                 creator = None
-                for x in await bot.get_chat_administrators(message.chat.id):
+                for x in await client.get_chat_administrators(message.chat.id):
                     if x.status == "creator":
                         creator = x.user
                         break
@@ -500,14 +500,14 @@ async def new_member(message: Message, command: CommandObject):
                         reply += "\nCreator Username: @{}".format(creator.username)
 
                     if EVENT_LOGS:
-                        await bot.send_message(
+                        await client.send_message(
                             EVENT_LOGS,
                             reply,
                             parse_mode=ParseMode.MARKDOWN,
                         )
                 else:
                     if EVENT_LOGS:
-                        await bot.send_message(
+                        await client.send_message(
                             EVENT_LOGS,
                             "#NEW_GROUP\n<b>Group name:</b> {}\n<b>ID:</b> <code>{}</code>".format(
                                 html.escape(chat.title),
@@ -515,7 +515,7 @@ async def new_member(message: Message, command: CommandObject):
                             ),
                             parse_mode=ParseMode.HTML,
                         )
-                await message.answer(
+                await message.reply_text(
                     "I feel like I'm gonna suffocate in here.",
                     reply_to_message_id=reply,
                 )
@@ -595,7 +595,7 @@ async def new_member(message: Message, command: CommandObject):
         if user.id == new_mem.id:
             if should_mute:
                 if welc_mutes == "soft":
-                    await bot.restrict_chat_member(
+                    await client.restrict_chat_member(
                         chat.id,
                         new_mem.id,
                         permissions=ChatPermissions(
@@ -650,7 +650,7 @@ async def new_member(message: Message, command: CommandObject):
                     new_join_mem = '<a href="tg://user?id={}">{}</a>'.format(
                         user.id, html.escape(new_mem.first_name)
                     )
-                    message = await msg.reply(
+                    message = await msg.reply_text(
                         "{}\nYou have 120 seconds to prove you're human.".format(
                             new_join_mem
                         ),
@@ -668,11 +668,11 @@ async def new_member(message: Message, command: CommandObject):
                             ],
                         ),
                         parse_mode=ParseMode.HTML,
-                        # No explicit reply target: msg.reply() already replies to
+                        # No explicit reply target: msg.reply_text() already replies to
                         # the message it was called on, and aiogram's reply()
                         # takes neither reply_to_message_id nor reply_parameters.
                     )
-                    await bot.restrict_chat_member(
+                    await client.restrict_chat_member(
                         chat.id,
                         new_mem.id,
                         permissions=ChatPermissions(
@@ -714,8 +714,8 @@ async def new_member(message: Message, command: CommandObject):
                 prev_welc = await asyncio.to_thread(sql.get_clean_pref, chat.id)
                 if prev_welc:
                     try:
-                        await bot.delete_message(chat.id, prev_welc)
-                    except TelegramAPIError:
+                        await client.delete_messages(chat.id, prev_welc)
+                    except RPCError:
                         pass
 
                 if sent:
@@ -762,14 +762,14 @@ async def check_not_bot(member, chat_id, message_id):
     member_status = member_dict.get("status")
     if not member_status:
         try:
-            await bot.unban_chat_member(chat_id, member.id)
+            await client.unban_chat_member(chat_id, member.id)
         except Exception:
             LOGGER.exception(
                 "Unable to kick unverified user %s from chat %s", member.id, chat_id
             )
 
         try:
-            await bot.edit_message_text(
+            await client.edit_message_text(
                 "Kicks user\nThey can always rejoin and try.",
                 chat_id=chat_id,
                 message_id=message_id,
@@ -789,7 +789,7 @@ async def left_member(message: Message):
         sql.get_gdbye_pref, chat.id
     )
 
-    if user.id == bot.id:
+    if user.id == client.id:
         return
 
     if should_goodbye:
@@ -797,8 +797,8 @@ async def left_member(message: Message):
         cleanserv = await _should_clean(chat.id, message)
         if cleanserv:
             try:
-                await bot.delete_message(chat.id, message.message_id)
-            except TelegramAPIError:
+                await client.delete_messages(chat.id, message.message_id)
+            except RPCError:
                 pass
             reply = False
 
@@ -807,18 +807,18 @@ async def left_member(message: Message):
             if is_user_gbanned(left_mem.id):
                 return
 
-            if left_mem.id == bot.id:
+            if left_mem.id == client.id:
                 return
 
             if left_mem.id == OWNER_ID:
-                await message.answer(
+                await message.reply_text(
                     "My master left..",
                     reply_to_message_id=reply,
                 )
                 return
 
             elif left_mem.id in DEV_USERS:
-                await message.answer(
+                await message.reply_text(
                     "see you later pro!",
                     reply_to_message_id=reply,
                 )
@@ -887,7 +887,7 @@ async def welcome(message: Message, command: CommandObject):
         pref, welcome_m, cust_content, welcome_type = await asyncio.to_thread(
             sql.get_welc_pref, chat.id
         )
-        await message.answer(
+        await message.reply_text(
             f"This chat has its welcome setting set to: `{pref}`.\n"
             f"The welcome message (not filling the {{}}) is:",
             parse_mode=ParseMode.MARKDOWN,
@@ -897,7 +897,7 @@ async def welcome(message: Message, command: CommandObject):
             buttons = await asyncio.to_thread(sql.get_welc_buttons, chat.id)
             if noformat:
                 welcome_m += revert_buttons(buttons)
-                await message.answer(welcome_m)
+                await message.reply_text(welcome_m)
             else:
                 keyb = build_keyboard(buttons)
                 keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
@@ -924,18 +924,18 @@ async def welcome(message: Message, command: CommandObject):
     elif len(args) >= 1:
         if args[0].lower() in ("on", "yes"):
             await asyncio.to_thread(sql.set_welc_preference, str(chat.id), True)
-            await message.answer(
+            await message.reply_text(
                 "Okay! I'll greet members when they join.",
             )
 
         elif args[0].lower() in ("off", "no"):
             await asyncio.to_thread(sql.set_welc_preference, str(chat.id), False)
-            await message.answer(
+            await message.reply_text(
                 "I'll go loaf around and not welcome anyone then.",
             )
 
         else:
-            await message.answer(
+            await message.reply_text(
                 "I understand 'on/yes' or 'off/no' only!",
             )
 
@@ -950,7 +950,7 @@ async def goodbye(message: Message, command: CommandObject):
         pref, goodbye_m, goodbye_type = await asyncio.to_thread(
             sql.get_gdbye_pref, chat.id
         )
-        await message.answer(
+        await message.reply_text(
             f"This chat has its goodbye setting set to: `{pref}`.\n"
             f"The goodbye message (not filling the {{}}) is:",
             parse_mode=ParseMode.MARKDOWN,
@@ -960,7 +960,7 @@ async def goodbye(message: Message, command: CommandObject):
             buttons = await asyncio.to_thread(sql.get_gdbye_buttons, chat.id)
             if noformat:
                 goodbye_m += revert_buttons(buttons)
-                await message.answer(goodbye_m)
+                await message.reply_text(goodbye_m)
 
             else:
                 keyb = build_keyboard(buttons)
@@ -979,14 +979,14 @@ async def goodbye(message: Message, command: CommandObject):
     elif len(args) >= 1:
         if args[0].lower() in ("on", "yes"):
             await asyncio.to_thread(sql.set_gdbye_preference, str(chat.id), True)
-            await message.answer("Okay its set to on!")
+            await message.reply_text("Okay its set to on!")
 
         elif args[0].lower() in ("off", "no"):
             await asyncio.to_thread(sql.set_gdbye_preference, str(chat.id), False)
-            await message.answer("Okay its set to no!")
+            await message.reply_text("Okay its set to no!")
 
         else:
-            await message.answer(
+            await message.reply_text(
                 "I understand 'on/yes' or 'off/no' only!",
             )
 
@@ -1001,13 +1001,13 @@ async def set_welcome(message: Message, command: CommandObject):
     text, data_type, content, buttons = get_welcome_type(msg)
 
     if data_type is None:
-        await msg.reply("You didn't specify what to reply with!")
+        await msg.reply_text("You didn't specify what to reply with!")
         return ""
 
     await asyncio.to_thread(
         sql.set_custom_welcome, chat.id, content, text, data_type, buttons
     )
-    await msg.reply("Successfully set custom welcome message!")
+    await msg.reply_text("Successfully set custom welcome message!")
 
     return (
         f"<b>{html.escape(chat.title)}:</b>\n"
@@ -1030,7 +1030,7 @@ async def reset_welcome(message: Message, command: CommandObject):
         sql.DEFAULT_WELCOME,
         sql.Types.TEXT,
     )
-    await message.answer("Successfully reset welcome message to default!")
+    await message.reply_text("Successfully reset welcome message to default!")
 
     return (
         f"<b>{html.escape(chat.title)}:</b>\n"
@@ -1049,13 +1049,13 @@ async def set_goodbye(message: Message, command: CommandObject):
     text, data_type, content, buttons = get_welcome_type(msg)
 
     if data_type is None:
-        await msg.reply("You didn't specify what to reply with!")
+        await msg.reply_text("You didn't specify what to reply with!")
         return ""
 
     await asyncio.to_thread(
         sql.set_custom_gdbye, chat.id, content or text, data_type, buttons
     )
-    await msg.reply("Successfully set custom goodbye message!")
+    await msg.reply_text("Successfully set custom goodbye message!")
     return (
         f"<b>{html.escape(chat.title)}:</b>\n"
         f"#SET_GOODBYE\n"
@@ -1073,7 +1073,7 @@ async def reset_goodbye(message: Message, command: CommandObject) -> str:
     await asyncio.to_thread(
         sql.set_custom_gdbye, chat.id, sql.DEFAULT_GOODBYE, sql.Types.TEXT
     )
-    await message.answer(
+    await message.reply_text(
         "Successfully reset goodbye message to default!",
     )
 
@@ -1096,7 +1096,7 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
     if len(args) >= 1:
         if args[0].lower() in ("off", "no"):
             await asyncio.to_thread(sql.set_welcome_mutes, chat.id, "off")
-            await msg.reply("I will no longer mute people on joining!")
+            await msg.reply_text("I will no longer mute people on joining!")
             return (
                 f"<b>{html.escape(chat.title)}:</b>\n"
                 f"#WELCOME_MUTE\n"
@@ -1105,7 +1105,7 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
             )
         elif args[0].lower() in ["soft"]:
             await asyncio.to_thread(sql.set_welcome_mutes, chat.id, "soft")
-            await msg.reply(
+            await msg.reply_text(
                 "I will restrict users permission to send media for 24 hours.",
             )
             return (
@@ -1116,8 +1116,8 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
             )
         elif args[0].lower() in ["strong"]:
             await asyncio.to_thread(sql.set_welcome_mutes, chat.id, "strong")
-            await msg.reply(
-                "I will now mute people when they join until they prove they're not a bot. They will have 120 seconds before they get kicked.",
+            await msg.reply_text(
+                "I will now mute people when they join until they prove they're not a client. They will have 120 seconds before they get kicked.",
             )
             return (
                 f"<b>{html.escape(chat.title)}:</b>\n"
@@ -1126,7 +1126,7 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
                 f"Has toggled welcome mute to <b>strong</b>."
             )
         else:
-            await msg.reply(
+            await msg.reply_text(
                 "Please enter <code>off</code>/<code>no</code>/<code>soft</code>/<code>strong</code>!",
                 parse_mode=ParseMode.HTML,
             )
@@ -1137,7 +1137,7 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
             "Give me a setting!\nChoose one out of: <code>off</code>/<code>no</code> or <code>soft</code> or <code>strong</code> only! \n"
             f"Current setting: <code>{curr_setting}</code>"
         )
-        await msg.reply(reply, parse_mode=ParseMode.HTML)
+        await msg.reply_text(reply, parse_mode=ParseMode.HTML)
         return ""
 
 
@@ -1151,18 +1151,18 @@ async def clean_welcome(message: Message, command: CommandObject) -> str:
     if not args:
         clean_pref = await asyncio.to_thread(sql.is_clean_welcome_enabled, chat.id)
         if clean_pref:
-            await message.answer(
+            await message.reply_text(
                 "I should be deleting welcome messages up to two days old.",
             )
         else:
-            await message.answer(
+            await message.reply_text(
                 "I'm currently not deleting old welcome messages!",
             )
         return ""
 
     if args[0].lower() in ("on", "yes"):
         await asyncio.to_thread(sql.set_clean_welcome_enabled, str(chat.id), True)
-        await message.answer("I'll try to delete old welcome messages!")
+        await message.reply_text("I'll try to delete old welcome messages!")
         return (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#𝐂𝐋𝐄𝐀𝐍_𝐖𝐄𝐋𝐂𝐎𝐌𝐄\n"
@@ -1171,7 +1171,7 @@ async def clean_welcome(message: Message, command: CommandObject) -> str:
         )
     elif args[0].lower() in ("off", "no"):
         await asyncio.to_thread(sql.set_clean_welcome_enabled, str(chat.id), False)
-        await message.answer("I won't delete old welcome messages.")
+        await message.reply_text("I won't delete old welcome messages.")
         return (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#𝐂𝐋𝐄𝐀𝐍_𝐖𝐄𝐋𝐂𝐎𝐌𝐄\n"
@@ -1179,7 +1179,7 @@ async def clean_welcome(message: Message, command: CommandObject) -> str:
             "Has toggled clean welcomes to <code>off</code>."
         )
     else:
-        await message.answer(
+        await message.reply_text(
             "I understand 'on/yes' or 'off/no' only!",
         )
         return ""
@@ -1193,10 +1193,10 @@ async def _service_target(message: Message, command: CommandObject):
         bot, message, message.chat, message.from_user.id, need_admin=True
     )
     if conn:
-        chat = await bot.get_chat(conn)
+        chat = await client.get_chat(conn)
         return conn, chat, args
     if message.chat.type == ChatType.PRIVATE:
-        await message.answer("This command is meant to use in a group.")
+        await message.reply_text("This command is meant to use in a group.")
         return None, None, args
     return message.chat.id, message.chat, args
 
@@ -1210,7 +1210,7 @@ async def cleanservice(message: Message, command: CommandObject) -> str:
         return ""
 
     if not args:
-        await message.answer(
+        await message.reply_text(
             "Clean service is <code>{}</code>. Types: <code>{}</code>".format(
                 "on" if await asyncio.to_thread(sql.clean_service, chat_id) else "off",
                 ", ".join(
@@ -1233,7 +1233,7 @@ async def cleanservice(message: Message, command: CommandObject) -> str:
             else await asyncio.to_thread(sql.get_service_types, chat_id)
         )
         await asyncio.to_thread(sql.set_service_types, chat_id, ",".join(sorted(types)))
-        await message.answer(
+        await message.reply_text(
             "Clean service is now <code>on</code> for: <code>{}</code>".format(
                 ", ".join(sorted(types)) or "all"
             ),
@@ -1249,7 +1249,7 @@ async def cleanservice(message: Message, command: CommandObject) -> str:
     if first in ("off", "no", "false", "0"):
         await asyncio.to_thread(sql.set_clean_service, chat_id, False)
         await asyncio.to_thread(sql.set_service_types, chat_id, "")
-        await message.answer(
+        await message.reply_text(
             "Clean service is now <code>off</code>.", parse_mode=ParseMode.HTML
         )
         return (
@@ -1262,7 +1262,7 @@ async def cleanservice(message: Message, command: CommandObject) -> str:
     wanted = {arg.lower() for arg in args}
     unknown = wanted - set(SERVICE_TYPES)
     if unknown:
-        await message.answer(
+        await message.reply_text(
             "Unknown service type(s): <code>{}</code>".format(
                 ", ".join(sorted(unknown))
             ),
@@ -1273,7 +1273,7 @@ async def cleanservice(message: Message, command: CommandObject) -> str:
     await asyncio.to_thread(sql.set_clean_service, chat_id, True)
     merged = set(await asyncio.to_thread(sql.get_service_types, chat_id)) | wanted
     await asyncio.to_thread(sql.set_service_types, chat_id, ",".join(sorted(merged)))
-    await message.answer(
+    await message.reply_text(
         "Clean service is now <code>on</code> for: <code>{}</code>".format(
             ", ".join(sorted(merged))
         ),
@@ -1296,7 +1296,7 @@ async def nocleanservice(message: Message, command: CommandObject) -> str:
         return ""
 
     if not args:
-        await message.answer(
+        await message.reply_text(
             "Give me the service types to stop cleaning.",
             parse_mode=ParseMode.HTML,
         )
@@ -1305,7 +1305,7 @@ async def nocleanservice(message: Message, command: CommandObject) -> str:
     current = set(await asyncio.to_thread(sql.get_service_types, chat_id))
     removed = current & {arg.lower() for arg in args}
     if not removed:
-        await message.answer(
+        await message.reply_text(
             "Those types were not being cleaned.",
             parse_mode=ParseMode.HTML,
         )
@@ -1313,7 +1313,7 @@ async def nocleanservice(message: Message, command: CommandObject) -> str:
 
     current -= removed
     await asyncio.to_thread(sql.set_service_types, chat_id, ",".join(sorted(current)))
-    await message.answer(
+    await message.reply_text(
         "No longer cleaning: <code>{}</code>".format(", ".join(sorted(removed))),
         parse_mode=ParseMode.HTML,
     )
@@ -1329,7 +1329,7 @@ async def nocleanservice(message: Message, command: CommandObject) -> str:
 @typing_action
 async def cleanservicetypes(message: Message, command: CommandObject) -> str:
     """List the service types this chat can clean."""
-    await message.answer(
+    await message.reply_text(
         "Service types you can use:\n"
         + "\n".join(
             f"\n <code>{name}</code> — {desc}"
@@ -1376,7 +1376,7 @@ async def user_button(query: CallbackQuery):
         member_dict["status"] = True
         VERIFIED_USER_WAITLIST[waitlist_key] = member_dict
         await query.answer(text="Yeet! You're a human, unmuted!")
-        await bot.restrict_chat_member(
+        await client.restrict_chat_member(
             chat.id,
             user.id,
             permissions=ChatPermissions(
@@ -1397,8 +1397,8 @@ async def user_button(query: CallbackQuery):
             ),
         )
         try:
-            await bot.delete_message(chat.id, message.message_id)
-        except TelegramAPIError:
+            await client.delete_messages(chat.id, message.message_id)
+        except RPCError:
             # Needs delete rights and a message under 48h old. Failing to
             # remove the join notice is cosmetic, so it must not abort the
             # greeting that follows.
@@ -1426,8 +1426,8 @@ async def user_button(query: CallbackQuery):
                 prev_welc = await asyncio.to_thread(sql.get_clean_pref, chat.id)
                 if prev_welc:
                     try:
-                        await bot.delete_message(chat.id, prev_welc)
-                    except TelegramAPIError:
+                        await client.delete_messages(chat.id, prev_welc)
+                    except RPCError:
                         pass
 
                 if sent:
@@ -1473,12 +1473,12 @@ async def welcome_help(message: Message, command: CommandObject):
         " and calling `/setwelcome`."
     )
 
-    await message.answer(WELC_HELP_TXT, parse_mode=ParseMode.MARKDOWN)
+    await message.reply_text(WELC_HELP_TXT, parse_mode=ParseMode.MARKDOWN)
 
 
 @check_admin(is_user=True)
 async def welcome_mute_help(message: Message, command: CommandObject):
-    await message.answer(
+    await message.reply_text(
         WELC_MUTE_HELP_TXT,
         parse_mode=ParseMode.MARKDOWN,
     )

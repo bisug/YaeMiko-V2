@@ -9,14 +9,14 @@ import uuid
 from io import BytesIO
 
 from aiogram import F
-from aiogram.enums import ButtonStyle, ParseMode
-from aiogram.exceptions import (
-    TelegramAPIError,
-    TelegramBadRequest,
-    TelegramForbiddenError,
+from pyrogram.enums import ButtonStyle, ParseMode
+from pyrogram.errors import (
+    RPCError,
+    RPCError,
+    RPCError,
 )
 from aiogram.filters import Command, CommandObject
-from aiogram.types import (
+from pyrogram.types import (
     BufferedInputFile,
     CallbackQuery,
     InlineKeyboardButton,
@@ -84,7 +84,7 @@ async def new_fed(message: Message, command: CommandObject):
     chat = message.chat
     user = message.from_user
     if chat.type != "private":
-        await message.answer(
+        await message.reply_text(
             "Federations can only be created by privately messaging me.",
         )
         return
@@ -102,12 +102,12 @@ async def new_fed(message: Message, command: CommandObject):
 
         x = sql.new_fed(user.id, fed_name, fed_id)
         if not x:
-            await message.answer(
+            await message.reply_text(
                 f"Can't federate! Please contact @{SUPPORT_CHAT} if the problem persist.",
             )
             return
 
-        await message.answer(
+        await message.reply_text(
             "*You have succeeded in creating a new federation!*"
             "\nName: `{}`"
             "\nID: `{}`"
@@ -117,7 +117,7 @@ async def new_fed(message: Message, command: CommandObject):
         )
         if EVENT_LOGS:
             try:
-                await bot.send_message(
+                await client.send_message(
                     EVENT_LOGS,
                     "New Federation: <b>{}</b>\nID: <pre>{}</pre>".format(
                         fed_name, fed_id
@@ -127,7 +127,7 @@ async def new_fed(message: Message, command: CommandObject):
             except Exception:
                 LOGGER.warning("Cannot send a message to EVENT_LOGS", exc_info=True)
     else:
-        await message.answer(
+        await message.reply_text(
             "Please write down the name of the federation",
         )
 
@@ -137,7 +137,7 @@ async def del_fed(message: Message, command: CommandObject):
     chat = message.chat
     user = message.from_user
     if chat.type != "private":
-        await message.answer(
+        await message.reply_text(
             "Federations can only be deleted by privately messaging me.",
         )
         return
@@ -145,22 +145,22 @@ async def del_fed(message: Message, command: CommandObject):
         is_fed_id = args[0]
         getinfo = sql.get_fed_info(is_fed_id)
         if getinfo is False:
-            await message.answer("This federation does not exist.")
+            await message.reply_text("This federation does not exist.")
             return
         if int(getinfo["owner"]) == int(user.id) or int(user.id) == OWNER_ID:
             fed_id = is_fed_id
         else:
-            await message.answer("Only federation owners can do this!")
+            await message.reply_text("Only federation owners can do this!")
             return
     else:
-        await message.answer("What should I delete?")
+        await message.reply_text("What should I delete?")
         return
 
     if is_user_fed_owner(fed_id, user.id) is False:
-        await message.answer("Only federation owners can do this!")
+        await message.reply_text("Only federation owners can do this!")
         return
 
-    await message.answer(
+    await message.reply_text(
         "You sure you want to delete your federation? This cannot be reverted, you will lose your entire ban list, and '{}' will be permanently lost.".format(
             getinfo["fname"],
         ),
@@ -191,19 +191,19 @@ async def rename_fed(message: Message, command: CommandObject):
     args = msg.text.split(None, 2)
 
     if len(args) < 3:
-        return await msg.reply("usage: /renamefed <fed_id> <newname>")
+        return await msg.reply_text("usage: /renamefed <fed_id> <newname>")
 
     fed_id, newname = args[1], args[2]
     verify_fed = sql.get_fed_info(fed_id)
 
     if not verify_fed:
-        return await msg.reply("This fed not exist in my database!")
+        return await msg.reply_text("This fed not exist in my database!")
 
     if is_user_fed_owner(fed_id, user.id):
         sql.rename_fed(fed_id, user.id, newname)
-        await msg.reply(f"Successfully renamed your fed name to {newname}!")
+        await msg.reply_text(f"Successfully renamed your fed name to {newname}!")
     else:
-        await msg.reply("Only federation owner can do this!")
+        await msg.reply_text("Only federation owner can do this!")
 
 
 async def fed_chat(message: Message, command: CommandObject):
@@ -212,13 +212,13 @@ async def fed_chat(message: Message, command: CommandObject):
 
     user_id = message.from_user.id
     if not await is_user_admin(message.chat, user_id):
-        await message.answer(
+        await message.reply_text(
             "You must be an admin to execute this command",
         )
         return
 
     if not fed_id:
-        await message.answer("This group is not in any federation!")
+        await message.reply_text("This group is not in any federation!")
         return
 
     chat = message.chat
@@ -227,7 +227,7 @@ async def fed_chat(message: Message, command: CommandObject):
     text = "This group is part of the following federation:"
     text += "\n{} (ID: <code>{}</code>)".format(info["fname"], fed_id)
 
-    await message.answer(text, parse_mode=ParseMode.HTML)
+    await message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
 async def join_fed(message: Message, command: CommandObject):
@@ -254,23 +254,23 @@ async def join_fed(message: Message, command: CommandObject):
                 if str(admin.user.id) == str(user.id):
                     pass
                 else:
-                    await message.answer(
+                    await message.reply_text(
                         "Only group creators can use this command!",
                     )
                     return
     if fed_id:
-        await message.answer("You cannot join two federations from one chat")
+        await message.reply_text("You cannot join two federations from one chat")
         return
 
     if len(args) >= 1:
         getfed = sql.search_fed_by_id(args[0])
         if getfed is False:
-            await message.answer("Please enter a valid federation ID")
+            await message.reply_text("Please enter a valid federation ID")
             return
 
         x = sql.chat_join_fed(args[0], chat.title, chat.id)
         if not x:
-            await message.answer(
+            await message.reply_text(
                 f"Failed to join federation! Please contact @{SUPPORT_CHAT} should this problem persist!",
             )
             return
@@ -278,7 +278,7 @@ async def join_fed(message: Message, command: CommandObject):
         get_fedlog = await sql.get_fed_log(args[0])
         if get_fedlog:
             if ast.literal_eval(get_fedlog):
-                await bot.send_message(
+                await client.send_message(
                     get_fedlog,
                     "Chat *{}* has joined the federation *{}*".format(
                         chat.title,
@@ -290,7 +290,7 @@ async def join_fed(message: Message, command: CommandObject):
                     ),
                 )
 
-        await message.answer(
+        await message.reply_text(
             "This group has joined the federation: {}!".format(getfed["fname"]),
         )
 
@@ -311,16 +311,16 @@ async def leave_fed(message: Message, command: CommandObject):
 
     # administrators = await chat.get_administrators().status
     try:
-        member = await bot.get_chat_member(chat.id, user.id)
+        member = await client.get_chat_member(chat.id, user.id)
         getuser = member.status
-    except TelegramAPIError:
+    except RPCError:
         getuser = None
     if getuser == "creator" or user.id in DRAGONS:
         if sql.chat_leave_fed(chat.id) is True:
             get_fedlog = await sql.get_fed_log(fed_id)
             if get_fedlog:
                 if ast.literal_eval(get_fedlog):
-                    await bot.send_message(
+                    await client.send_message(
                         get_fedlog,
                         "Chat *{}* has left the federation *{}*".format(
                             chat.title,
@@ -336,11 +336,11 @@ async def leave_fed(message: Message, command: CommandObject):
                 "This group has left the federation {}!".format(fed_info["fname"]),
             )
         else:
-            await message.answer(
+            await message.reply_text(
                 "How can you leave a federation that you never joined?!",
             )
     else:
-        await message.answer("Only group creators can use this command!")
+        await message.reply_text("Only group creators can use this command!")
 
 
 async def user_join_fed(message: Message, command: CommandObject):
@@ -371,7 +371,7 @@ async def user_join_fed(message: Message, command: CommandObject):
                 and not any(e.type == "text_mention" for e in (msg.entities or ()))
             )
         ):
-            await msg.reply("I cannot extract user from this message")
+            await msg.reply_text("I cannot extract user from this message")
             return
 
         getuser = sql.search_user_in_fed(fed_id, user_id)
@@ -379,27 +379,27 @@ async def user_join_fed(message: Message, command: CommandObject):
         info = sql.get_fed_info(fed_id)
         get_owner = ast.literal_eval(info["fusers"])["owner"]
         if int(user_id) == int(get_owner):
-            await message.answer(
+            await message.reply_text(
                 "You do know that the user is the federation owner, right? RIGHT?",
             )
             return
         if getuser:
-            await message.answer(
+            await message.reply_text(
                 "I cannot promote users who are already federation admins! Can remove them if you want!",
             )
             return
-        if user_id == bot.id:
-            await message.answer(
+        if user_id == client.id:
+            await message.reply_text(
                 "I already am a federation admin in all federations!",
             )
             return
         res = sql.user_join_fed(fed_id, user_id)
         if res:
-            await message.answer("Successfully Promoted!")
+            await message.reply_text("Successfully Promoted!")
         else:
-            await message.answer("Failed to promote!")
+            await message.reply_text("Failed to promote!")
     else:
-        await message.answer("Only federation owners can do this!")
+        await message.reply_text("Only federation owners can do this!")
 
 
 async def user_demote_fed(message: Message, command: CommandObject):
@@ -430,28 +430,28 @@ async def user_demote_fed(message: Message, command: CommandObject):
                 and not any(e.type == "text_mention" for e in (msg.entities or ()))
             )
         ):
-            await msg.reply("I cannot extract user from this message")
+            await msg.reply_text("I cannot extract user from this message")
             return
 
-        if user_id == bot.id:
-            await message.answer(
+        if user_id == client.id:
+            await message.reply_text(
                 "The thing you are trying to demote me from will fail to work without me! Just saying.",
             )
             return
 
         if sql.search_user_in_fed(fed_id, user_id) is False:
-            await message.answer(
+            await message.reply_text(
                 "I cannot demote people who are not federation admins!",
             )
             return
 
         res = sql.user_demote_fed(fed_id, user_id)
         if res is True:
-            await message.answer("Demoted from a Fed Admin!")
+            await message.reply_text("Demoted from a Fed Admin!")
         else:
-            await message.answer("Demotion failed!")
+            await message.reply_text("Demotion failed!")
     else:
-        await message.answer("Only federation owners can do this!")
+        await message.reply_text("Only federation owners can do this!")
         return
 
 
@@ -479,10 +479,10 @@ async def fed_info(message: Message, command: CommandObject):
         info = sql.get_fed_info(fed_id)
 
     if is_user_fed_admin(fed_id, user.id) is False:
-        await message.answer("Only a federation admin can do this!")
+        await message.reply_text("Only a federation admin can do this!")
         return
 
-    owner = await bot.get_chat(info["owner"])
+    owner = await client.get_chat(info["owner"])
     try:
         owner_name = owner.first_name + " " + owner.last_name
     except AttributeError, TypeError:
@@ -506,7 +506,7 @@ async def fed_info(message: Message, command: CommandObject):
         len(getfchat),
     )
 
-    await message.answer(text, parse_mode=ParseMode.HTML)
+    await message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
 async def fed_admin(message: Message, command: CommandObject):
@@ -523,11 +523,11 @@ async def fed_admin(message: Message, command: CommandObject):
     fed_id = sql.get_fed_id(chat.id)
 
     if not fed_id:
-        await message.answer("This group is not in any federation!")
+        await message.reply_text("This group is not in any federation!")
         return
 
     if is_user_fed_admin(fed_id, user.id) is False:
-        await message.answer("Only federation admins can do this!")
+        await message.reply_text("Only federation admins can do this!")
         return
 
     user = message.from_user
@@ -536,7 +536,7 @@ async def fed_admin(message: Message, command: CommandObject):
 
     text = "<b>Federation Admin {}:</b>\n\n".format(info["fname"])
     text += "👑 Owner:\n"
-    owner = await bot.get_chat(info["owner"])
+    owner = await client.get_chat(info["owner"])
     try:
         owner_name = owner.first_name + " " + owner.last_name
     except AttributeError, TypeError:
@@ -549,10 +549,10 @@ async def fed_admin(message: Message, command: CommandObject):
     else:
         text += "\n🔱 Admin:\n"
         for x in members:
-            user = await bot.get_chat(x)
+            user = await client.get_chat(x)
             text += " • {}\n".format(mention_html(user.id, user.first_name))
 
-    await message.answer(text, parse_mode=ParseMode.HTML)
+    await message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
 async def fed_ban(message: Message, command: CommandObject):
@@ -570,7 +570,7 @@ async def fed_ban(message: Message, command: CommandObject):
     fed_id = sql.get_fed_id(chat.id)
 
     if not fed_id:
-        await message.answer(
+        await message.reply_text(
             "This group is not a part of any federation!",
         )
         return
@@ -579,41 +579,41 @@ async def fed_ban(message: Message, command: CommandObject):
     getfednotif = sql.user_feds_report(info["owner"])
 
     if is_user_fed_admin(fed_id, user.id) is False:
-        await message.answer("Only federation admins can do this!")
+        await message.reply_text("Only federation admins can do this!")
         return
 
     user_id, reason = await extract_unt_fedban(message, args)
 
     if not user_id:
-        await message.answer("You don't seem to be referring to a user")
+        await message.reply_text("You don't seem to be referring to a user")
         return
 
     fban, fbanreason, fbantime = sql.get_fban_user(fed_id, user_id)
 
-    if user_id == bot.id:
-        await message.answer(
+    if user_id == client.id:
+        await message.reply_text(
             "What is funnier than kicking the group creator? Self sacrifice.",
         )
         return
 
     if is_user_fed_owner(fed_id, user_id) is True:
-        await message.answer("Why did you try the federation fban?")
+        await message.reply_text("Why did you try the federation fban?")
         return
 
     if is_user_fed_admin(fed_id, user_id) is True:
-        await message.answer("He is a federation admin, I can't fban him.")
+        await message.reply_text("He is a federation admin, I can't fban him.")
         return
 
     if user_id == OWNER_ID:
-        await message.answer("Disaster level God cannot be fed banned!")
+        await message.reply_text("Disaster level God cannot be fed banned!")
         return
 
     if int(user_id) in DRAGONS:
-        await message.answer("Dragons cannot be fed banned!")
+        await message.reply_text("Dragons cannot be fed banned!")
         return
 
     if user_id in [777000, 1087968824]:
-        await message.answer("Fool! You can't attack Telegram's native tech!")
+        await message.reply_text("Fool! You can't attack Telegram's native tech!")
         return
 
     fban_user_id = int(user_id)
@@ -634,7 +634,7 @@ async def fed_ban(message: Message, command: CommandObject):
 
         temp = sql.un_fban_user(fed_id, fban_user_id)
         if not temp:
-            await message.answer("Failed to update the reason for fedban!")
+            await message.reply_text("Failed to update the reason for fedban!")
             return
         x = sql.fban_user(
             fed_id,
@@ -646,14 +646,14 @@ async def fed_ban(message: Message, command: CommandObject):
             int(time.time()),
         )
         if not x:
-            await message.answer(
+            await message.reply_text(
                 f"Failed to ban from the federation! If this problem continues, contact @{SUPPORT_CHAT}.",
             )
             return
 
         fed_chats = sql.all_fed_chats(fed_id)
         # Will send to current chat
-        await bot.send_message(
+        await client.send_message(
             chat.id,
             "<b>FedBan reason updated</b>"
             "\n<b>Federation:</b> {}"
@@ -671,7 +671,7 @@ async def fed_ban(message: Message, command: CommandObject):
         )
         # Send message to owner if fednotif is enabled
         if getfednotif:
-            await bot.send_message(
+            await client.send_message(
                 info["owner"],
                 "<b>FedBan reason updated</b>"
                 "\n<b>Federation:</b> {}"
@@ -691,7 +691,7 @@ async def fed_ban(message: Message, command: CommandObject):
         get_fedlog = await sql.get_fed_log(fed_id)
         if get_fedlog:
             if int(get_fedlog) != int(chat.id):
-                await bot.send_message(
+                await client.send_message(
                     get_fedlog,
                     "<b>FedBan reason updated</b>"
                     "\n<b>Federation:</b> {}"
@@ -711,19 +711,19 @@ async def fed_ban(message: Message, command: CommandObject):
             try:
                 # Do not spam all fed chats
                 """
-				bot.send_message(chat, "<b>FedBan reason updated</b>" \
+				client.send_message(chat, "<b>FedBan reason updated</b>" \
 							 "\n<b>Federation:</b> {}" \
 							 "\n<b>Federation Admin:</b> {}" \
 							 "\n<b>User:</b> {}" \
 							 "\n<b>User ID:</b> <code>{}</code>" \
 							 "\n<b>Reason:</b> {}".format(fed_name, mention_html(user.id, user.first_name), user_target, fban_user_id, reason), parse_mode="HTML")
 				"""
-                await bot.ban_chat_member(fedschat, fban_user_id)
-            except TelegramBadRequest as excp:
+                await client.ban_chat_member(fedschat, fban_user_id)
+            except RPCError as excp:
                 if excp.message in FBAN_ERRORS:
                     try:
-                        await bot.get_chat(fedschat)
-                    except TelegramForbiddenError:
+                        await client.get_chat(fedschat)
+                    except RPCError:
                         sql.chat_leave_fed(fedschat)
                         LOGGER.info(
                             "Chat {} has leave fed {} because I was kicked".format(
@@ -738,7 +738,7 @@ async def fed_ban(message: Message, command: CommandObject):
                     LOGGER.warning(
                         "Could not fban on {} because: {}".format(chat, excp.message),
                     )
-            except TelegramAPIError:
+            except RPCError:
                 pass
         # Also do not spam all fed admins
         """
@@ -759,12 +759,12 @@ async def fed_ban(message: Message, command: CommandObject):
                 all_fedschat = sql.all_fed_chats(fedsid)
                 for fedschat in all_fedschat:
                     try:
-                        await bot.ban_chat_member(fedschat, fban_user_id)
-                    except TelegramBadRequest as excp:
+                        await client.ban_chat_member(fedschat, fban_user_id)
+                    except RPCError as excp:
                         if excp.message in FBAN_ERRORS:
                             try:
-                                await bot.get_chat(fedschat)
-                            except TelegramForbiddenError:
+                                await client.get_chat(fedschat)
+                            except RPCError:
                                 targetfed_id = sql.get_fed_id(fedschat)
                                 sql.unsubs_fed(fed_id, targetfed_id)
                                 LOGGER.info(
@@ -783,7 +783,7 @@ async def fed_ban(message: Message, command: CommandObject):
                                     excp.message,
                                 ),
                             )
-                    except TelegramAPIError:
+                    except RPCError:
                         pass
         # await send_message(message, "Fedban Reason has been updated.")
         return
@@ -792,7 +792,7 @@ async def fed_ban(message: Message, command: CommandObject):
 
     # starting = "Starting a federation ban for {} in the Federation <b>{}</b>.".format(
     #    user_target, fed_name)
-    # await message.answer(starting, parse_mode=ParseMode.HTML)
+    # await message.reply_text(starting, parse_mode=ParseMode.HTML)
 
     # if reason == "":
     #    reason = "No reason given."
@@ -807,14 +807,14 @@ async def fed_ban(message: Message, command: CommandObject):
         int(time.time()),
     )
     if not x:
-        await message.answer(
+        await message.reply_text(
             f"Failed to ban from the federation! If this problem continues, contact @{SUPPORT_CHAT}.",
         )
         return
 
     fed_chats = sql.all_fed_chats(fed_id)
     # Will send to current chat
-    await bot.send_message(
+    await client.send_message(
         chat.id,
         "<b>New FedBan</b>"
         "\n<b>Federation:</b> {}"
@@ -832,7 +832,7 @@ async def fed_ban(message: Message, command: CommandObject):
     )
     # Send message to owner if fednotif is enabled
     if getfednotif:
-        await bot.send_message(
+        await client.send_message(
             info["owner"],
             "<b>New FedBan</b>"
             "\n<b>Federation:</b> {}"
@@ -852,7 +852,7 @@ async def fed_ban(message: Message, command: CommandObject):
     get_fedlog = await sql.get_fed_log(fed_id)
     if get_fedlog:
         if int(get_fedlog) != int(chat.id):
-            await bot.send_message(
+            await client.send_message(
                 get_fedlog,
                 "<b>New FedBan</b>"
                 "\n<b>Federation:</b> {}"
@@ -874,15 +874,15 @@ async def fed_ban(message: Message, command: CommandObject):
         try:
             # Do not spamming all fed chats
             """
-			bot.send_message(chat, "<b>FedBan reason updated</b>" \
+			client.send_message(chat, "<b>FedBan reason updated</b>" \
 							"\n<b>Federation:</b> {}" \
 							"\n<b>Federation Admin:</b> {}" \
 							"\n<b>User:</b> {}" \
 							"\n<b>User ID:</b> <code>{}</code>" \
 							"\n<b>Reason:</b> {}".format(fed_name, mention_html(user.id, user.first_name), user_target, fban_user_id, reason), parse_mode="HTML")
 			"""
-            await bot.ban_chat_member(fedschat, fban_user_id)
-        except TelegramBadRequest as excp:
+            await client.ban_chat_member(fedschat, fban_user_id)
+        except RPCError as excp:
             if excp.message in FBAN_ERRORS:
                 pass
             elif excp.message == "User_id_invalid":
@@ -891,7 +891,7 @@ async def fed_ban(message: Message, command: CommandObject):
                 LOGGER.warning(
                     "Could not fban on {} because: {}".format(chat, excp.message),
                 )
-        except TelegramAPIError:
+        except RPCError:
             pass
 
         # Also do not spamming all fed admins
@@ -913,12 +913,12 @@ async def fed_ban(message: Message, command: CommandObject):
                 all_fedschat = sql.all_fed_chats(fedsid)
                 for fedschat in all_fedschat:
                     try:
-                        await bot.ban_chat_member(fedschat, fban_user_id)
-                    except TelegramBadRequest as excp:
+                        await client.ban_chat_member(fedschat, fban_user_id)
+                    except RPCError as excp:
                         if excp.message in FBAN_ERRORS:
                             try:
-                                await bot.get_chat(fedschat)
-                            except TelegramForbiddenError:
+                                await client.get_chat(fedschat)
+                            except RPCError:
                                 targetfed_id = sql.get_fed_id(fedschat)
                                 sql.unsubs_fed(fed_id, targetfed_id)
                                 LOGGER.info(
@@ -937,7 +937,7 @@ async def fed_ban(message: Message, command: CommandObject):
                                     excp.message,
                                 ),
                             )
-                    except TelegramAPIError:
+                    except RPCError:
                         pass
 
 
@@ -956,7 +956,7 @@ async def unfban(message: Message, command: CommandObject):
     fed_id = sql.get_fed_id(chat.id)
 
     if not fed_id:
-        await message.answer(
+        await message.reply_text(
             "This group is not a part of any federation!",
         )
         return
@@ -965,12 +965,12 @@ async def unfban(message: Message, command: CommandObject):
     getfednotif = sql.user_feds_report(info["owner"])
 
     if is_user_fed_admin(fed_id, user.id) is False:
-        await message.answer("Only federation admins can do this!")
+        await message.reply_text("Only federation admins can do this!")
         return
 
     user_id = await extract_user_fban(message, args)
     if not user_id:
-        await message.answer("You do not seem to be referring to a user.")
+        await message.reply_text("You do not seem to be referring to a user.")
         return
 
     fban_user_id = int(user_id)
@@ -980,12 +980,12 @@ async def unfban(message: Message, command: CommandObject):
 
     fban, fbanreason, fbantime = sql.get_fban_user(fed_id, fban_user_id)
     if fban is False:
-        await message.answer("This user is not fbanned!")
+        await message.reply_text("This user is not fbanned!")
         return
 
     chat_list = sql.all_fed_chats(fed_id)
     # Will send to current chat
-    await bot.send_message(
+    await client.send_message(
         chat.id,
         "<b>Un-FedBan</b>"
         "\n<b>Federation:</b> {}"
@@ -1001,7 +1001,7 @@ async def unfban(message: Message, command: CommandObject):
     )
     # Send message to owner if fednotif is enabled
     if getfednotif:
-        await bot.send_message(
+        await client.send_message(
             info["owner"],
             "<b>Un-FedBan</b>"
             "\n<b>Federation:</b> {}"
@@ -1019,7 +1019,7 @@ async def unfban(message: Message, command: CommandObject):
     get_fedlog = await sql.get_fed_log(fed_id)
     if get_fedlog:
         if int(get_fedlog) != int(chat.id):
-            await bot.send_message(
+            await client.send_message(
                 get_fedlog,
                 "<b>Un-FedBan</b>"
                 "\n<b>Federation:</b> {}"
@@ -1037,18 +1037,18 @@ async def unfban(message: Message, command: CommandObject):
     for fedchats in chat_list:
         unfbanned_in_chats += 1
         try:
-            member = await bot.get_chat_member(fedchats, user_id)
+            member = await client.get_chat_member(fedchats, user_id)
             if member.status == "kicked":
-                await bot.unban_chat_member(fedchats, user_id)
+                await client.unban_chat_member(fedchats, user_id)
             # Do not spamming all fed chats
             """
-			bot.send_message(chat, "<b>Un-FedBan</b>" \
+			client.send_message(chat, "<b>Un-FedBan</b>" \
 						 "\n<b>Federation:</b> {}" \
 						 "\n<b>Federation Admin:</b> {}" \
 						 "\n<b>User:</b> {}" \
 						 "\n<b>User ID:</b> <code>{}</code>".format(info['fname'], mention_html(user.id, user.first_name), user_target, fban_user_id), parse_mode="HTML")
 			"""
-        except TelegramBadRequest as excp:
+        except RPCError as excp:
             if excp.message in UNFBAN_ERRORS:
                 pass
             elif excp.message == "User_id_invalid":
@@ -1057,7 +1057,7 @@ async def unfban(message: Message, command: CommandObject):
                 LOGGER.warning(
                     "Could not fban on {} because: {}".format(chat, excp.message),
                 )
-        except TelegramAPIError:
+        except RPCError:
             pass
 
     try:
@@ -1079,12 +1079,12 @@ async def unfban(message: Message, command: CommandObject):
             all_fedschat = sql.all_fed_chats(fedsid)
             for fedschat in all_fedschat:
                 try:
-                    await bot.unban_chat_member(fedchats, user_id)
-                except TelegramBadRequest as excp:
+                    await client.unban_chat_member(fedchats, user_id)
+                except RPCError as excp:
                     if excp.message in FBAN_ERRORS:
                         try:
-                            await bot.get_chat(fedschat)
-                        except TelegramForbiddenError:
+                            await client.get_chat(fedschat)
+                        except RPCError:
                             targetfed_id = sql.get_fed_id(fedschat)
                             sql.unsubs_fed(fed_id, targetfed_id)
                             LOGGER.info(
@@ -1103,7 +1103,7 @@ async def unfban(message: Message, command: CommandObject):
                                 excp.message,
                             ),
                         )
-                except TelegramAPIError:
+                except RPCError:
                     pass
 
     if unfbanned_in_chats == 0:
@@ -1150,11 +1150,11 @@ async def set_frules(message: Message, command: CommandObject):
     fed_id = sql.get_fed_id(chat.id)
 
     if not fed_id:
-        await message.answer("This group is not in any federation!")
+        await message.reply_text("This group is not in any federation!")
         return
 
     if is_user_fed_admin(fed_id, user.id) is False:
-        await message.answer("Only fed admins can do this!")
+        await message.reply_text("Only fed admins can do this!")
         return
 
     if len(args) >= 1:
@@ -1167,7 +1167,7 @@ async def set_frules(message: Message, command: CommandObject):
             markdown_rules = markdown_parser(txt, offset=offset)
         x = sql.set_frules(fed_id, markdown_rules)
         if not x:
-            await message.answer(
+            await message.reply_text(
                 f"Whoa! There was an error while setting federation rules! If you wondered why please ask it in @{SUPPORT_CHAT}!",
             )
             return
@@ -1177,7 +1177,7 @@ async def set_frules(message: Message, command: CommandObject):
         get_fedlog = await sql.get_fed_log(fed_id)
         if get_fedlog:
             if ast.literal_eval(get_fedlog):
-                await bot.send_message(
+                await client.send_message(
                     get_fedlog,
                     "*{}* has updated federation rules for fed *{}*".format(
                         user.first_name,
@@ -1188,9 +1188,9 @@ async def set_frules(message: Message, command: CommandObject):
                         message.message_thread_id if chat.is_forum else None
                     ),
                 )
-        await message.answer(f"Rules have been changed to :\n{rules}!")
+        await message.reply_text(f"Rules have been changed to :\n{rules}!")
     else:
-        await message.answer("Please write rules to set this up!")
+        await message.reply_text("Please write rules to set this up!")
 
 
 async def get_frules(message: Message, command: CommandObject):
@@ -1205,13 +1205,13 @@ async def get_frules(message: Message, command: CommandObject):
 
     fed_id = sql.get_fed_id(chat.id)
     if not fed_id:
-        await message.answer("This group is not in any federation!")
+        await message.reply_text("This group is not in any federation!")
         return
 
     rules = sql.get_frules(fed_id)
     text = "*Rules in this fed:*\n"
     text += rules
-    await message.answer(text, parse_mode=ParseMode.MARKDOWN)
+    await message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
 
 async def fed_broadcast(message: Message, command: CommandObject):
@@ -1232,7 +1232,7 @@ async def fed_broadcast(message: Message, command: CommandObject):
         fed_id = sql.get_fed_id(chat.id)
         fedinfo = sql.get_fed_info(fed_id)
         if is_user_fed_owner(fed_id, user.id) is False:
-            await message.answer("Only federation owners can do this!")
+            await message.reply_text("Only federation owners can do this!")
             return
         # Parsing md
         raw_text = msg.text
@@ -1248,16 +1248,16 @@ async def fed_broadcast(message: Message, command: CommandObject):
         for chat in chat_list:
             title = "*New broadcast from Fed {}*\n".format(fedinfo["fname"])
             try:
-                await bot.send_message(
+                await client.send_message(
                     chat,
                     title + text,
                     parse_mode=ParseMode.MARKDOWN,
                     message_thread_id=msg.message_thread_id if chat.is_forum else None,
                 )
-            except TelegramAPIError:
+            except RPCError:
                 try:
-                    await bot.get_chat(chat)
-                except TelegramForbiddenError:
+                    await client.get_chat(chat)
+                except RPCError:
                     failed += 1
                     sql.chat_leave_fed(chat)
                     LOGGER.info(
@@ -1275,7 +1275,7 @@ async def fed_broadcast(message: Message, command: CommandObject):
             send_text += "{} the group failed to receive the message, probably because it left the Federation.".format(
                 failed,
             )
-        await message.answer(send_text)
+        await message.reply_text(send_text)
 
 
 async def fed_ban_list(message: Message, command: CommandObject):
@@ -1294,20 +1294,20 @@ async def fed_ban_list(message: Message, command: CommandObject):
     info = sql.get_fed_info(fed_id)
 
     if not fed_id:
-        await message.answer(
+        await message.reply_text(
             "This group is not a part of any federation!",
         )
         return
 
     if is_user_fed_owner(fed_id, user.id) is False:
-        await message.answer("Only Federation owners can do this!")
+        await message.reply_text("Only Federation owners can do this!")
         return
 
     user = message.from_user
     chat = message.chat
     getfban = sql.get_all_fban_users(fed_id)
     if len(getfban) == 0:
-        await message.answer(
+        await message.reply_text(
             "The federation ban list of {} is empty".format(info["fname"]),
             parse_mode=ParseMode.HTML,
         )
@@ -1324,7 +1324,7 @@ async def fed_ban_list(message: Message, command: CommandObject):
                         "%H:%M:%S %d/%m/%Y",
                         time.localtime(cek.get("value")),
                     )
-                    await message.answer(
+                    await message.reply_text(
                         "You can backup your data once every 30 minutes!\nYou can back up data again at `{}`".format(
                             waktu,
                         ),
@@ -1371,7 +1371,7 @@ async def fed_ban_list(message: Message, command: CommandObject):
                         "%H:%M:%S %d/%m/%Y",
                         time.localtime(cek.get("value")),
                     )
-                    await message.answer(
+                    await message.reply_text(
                         "You can back up data once every 30 minutes!\nYou can back up data again at `{}`".format(
                             waktu,
                         ),
@@ -1430,8 +1430,8 @@ async def fed_ban_list(message: Message, command: CommandObject):
         )
 
     try:
-        await message.answer(text, parse_mode=ParseMode.HTML)
-    except TelegramAPIError:
+        await message.reply_text(text, parse_mode=ParseMode.HTML)
+    except RPCError:
         # Too long for one message, so it ships as a document instead.
         jam = time.time()
         new_jam = jam + 1800
@@ -1442,7 +1442,7 @@ async def fed_ban_list(message: Message, command: CommandObject):
                     "%H:%M:%S %d/%m/%Y",
                     time.localtime(cek.get("value")),
                 )
-                await message.answer(
+                await message.reply_text(
                     "You can back up data once every 30 minutes!\nYou can back up data again at `{}`".format(
                         waktu,
                     ),
@@ -1475,7 +1475,7 @@ async def fed_notif(message: Message, command: CommandObject):
     fed_id = sql.get_fed_id(chat.id)
 
     if not fed_id:
-        await message.answer(
+        await message.reply_text(
             "This group is not a part of any federation!",
         )
         return
@@ -1483,19 +1483,19 @@ async def fed_notif(message: Message, command: CommandObject):
     if args:
         if args[0] in ("yes", "on"):
             sql.set_feds_setting(user.id, True)
-            await msg.reply(
+            await msg.reply_text(
                 "Reporting Federation back up! Every user who is fban / unfban you will be notified via PM.",
             )
         elif args[0] in ("no", "off"):
             sql.set_feds_setting(user.id, False)
-            await msg.reply(
+            await msg.reply_text(
                 "Reporting Federation has stopped! Every user who is fban / unfban you will not be notified via PM.",
             )
         else:
-            await msg.reply("Please enter `on`/`off`", parse_mode=ParseMode.MARKDOWN)
+            await msg.reply_text("Please enter `on`/`off`", parse_mode=ParseMode.MARKDOWN)
     else:
         getreport = sql.user_feds_report(user.id)
-        await msg.reply(
+        await msg.reply_text(
             "Your current Federation report preferences: `{}`".format(getreport),
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -1516,18 +1516,18 @@ async def fed_chats(message: Message, command: CommandObject):
     info = sql.get_fed_info(fed_id)
 
     if not fed_id:
-        await message.answer(
+        await message.reply_text(
             "This group is not a part of any federation!",
         )
         return
 
     if is_user_fed_admin(fed_id, user.id) is False:
-        await message.answer("Only federation admins can do this!")
+        await message.reply_text("Only federation admins can do this!")
         return
 
     getlist = sql.all_fed_chats(fed_id)
     if len(getlist) == 0:
-        await message.answer(
+        await message.reply_text(
             "No users are fbanned from the federation {}".format(info["fname"]),
             parse_mode=ParseMode.HTML,
         )
@@ -1536,9 +1536,9 @@ async def fed_chats(message: Message, command: CommandObject):
     text = "<b>New chat joined the federation {}:</b>\n".format(info["fname"])
     for chats in getlist:
         try:
-            chat_obj = await bot.get_chat(chats)
+            chat_obj = await client.get_chat(chats)
             chat_name = chat_obj.title
-        except TelegramForbiddenError:
+        except RPCError:
             sql.chat_leave_fed(chats)
             LOGGER.info(
                 "Chat {} has leave fed {} because I was kicked".format(
@@ -1550,8 +1550,8 @@ async def fed_chats(message: Message, command: CommandObject):
         text += " • {} (<code>{}</code>)\n".format(chat_name, chats)
 
     try:
-        await message.answer(text, parse_mode=ParseMode.HTML)
-    except TelegramAPIError:
+        await message.reply_text(text, parse_mode=ParseMode.HTML)
+    except RPCError:
         # Same length fallback as the ban list above.
         cleanr = re.compile("<.*?>")
         cleantext = re.sub(cleanr, "", text)
@@ -1582,13 +1582,13 @@ async def fed_import_bans(message: Message, command: CommandObject):
     getfed = sql.get_fed_info(fed_id)
 
     if not fed_id:
-        await message.answer(
+        await message.reply_text(
             "This group is not a part of any federation!",
         )
         return
 
     if is_user_fed_owner(fed_id, user.id) is False:
-        await message.answer("Only Federation owners can do this!")
+        await message.reply_text("Only Federation owners can do this!")
         return
 
     if msg.reply_to_message and msg.reply_to_message.document:
@@ -1601,7 +1601,7 @@ async def fed_import_bans(message: Message, command: CommandObject):
                     "%H:%M:%S %d/%m/%Y",
                     time.localtime(cek.get("value")),
                 )
-                await message.answer(
+                await message.reply_text(
                     "You can get your data once every 30 minutes!\nYou can get data again at `{}`".format(
                         waktu,
                     ),
@@ -1615,14 +1615,14 @@ async def fed_import_bans(message: Message, command: CommandObject):
             if user.id not in DRAGONS:
                 put_chat(chat.id, new_jam, chat_data)
         # if int(int(msg.reply_to_message.document.file_size)/1024) >= 200:
-        # 	msg.reply("This file is too big!")
+        # 	msg.reply_text("This file is too big!")
         # 	return
         success = 0
         failed = 0
         try:
-            file_info = await bot.get_file(msg.reply_to_message.document.file_id)
-        except TelegramBadRequest:
-            await msg.reply(
+            file_info = await client.get_file(msg.reply_to_message.document.file_id)
+        except RPCError:
+            await msg.reply_text(
                 "Try downloading and re-uploading the file, this one seems broken!",
             )
             return
@@ -1658,7 +1658,7 @@ async def fed_import_bans(message: Message, command: CommandObject):
                         failed += 1
                         continue
                     # Checking user
-                    if int(import_userid) == bot.id:
+                    if int(import_userid) == client.id:
                         failed += 1
                         continue
                     if is_user_fed_owner(fed_id, import_userid) is True:
@@ -1709,7 +1709,7 @@ async def fed_import_bans(message: Message, command: CommandObject):
                     )
                     if failed >= 1:
                         teks += " {} Failed to import.".format(failed)
-                    await bot.send_message(
+                    await client.send_message(
                         get_fedlog,
                         teks,
                         parse_mode=ParseMode.MARKDOWN,
@@ -1743,7 +1743,7 @@ async def fed_import_bans(message: Message, command: CommandObject):
                         failed += 1
                         continue
                     # Checking user
-                    if int(import_userid) == bot.id:
+                    if int(import_userid) == client.id:
                         failed += 1
                         continue
                     if is_user_fed_owner(fed_id, import_userid) is True:
@@ -1799,7 +1799,7 @@ async def fed_import_bans(message: Message, command: CommandObject):
                     )
                     if failed >= 1:
                         teks += " {} Failed to import.".format(failed)
-                    await bot.send_message(
+                    await client.send_message(
                         get_fedlog,
                         teks,
                         parse_mode=ParseMode.MARKDOWN,
@@ -2035,7 +2035,7 @@ async def subs_feds(message: Message, command: CommandObject):
             get_fedlog = await sql.get_fed_log(args[0])
             if get_fedlog:
                 if int(get_fedlog) != int(chat.id):
-                    await bot.send_message(
+                    await client.send_message(
                         get_fedlog,
                         "Federation `{}` has subscribe the federation `{}`".format(
                             fedinfo["fname"],
@@ -2106,7 +2106,7 @@ async def unsubs_feds(message: Message, command: CommandObject):
             get_fedlog = await sql.get_fed_log(args[0])
             if get_fedlog:
                 if int(get_fedlog) != int(chat.id):
-                    await bot.send_message(
+                    await client.send_message(
                         get_fedlog,
                         "Federation `{}` has unsubscribe fed `{}`.".format(
                             fedinfo["fname"],
@@ -2222,10 +2222,10 @@ async def welcome_fed(message: Message, command: CommandObject):
     fed_id = sql.get_fed_id(chat.id)
     fban, fbanreason, fbantime = sql.get_fban_user(fed_id, user.id)
     if fban:
-        await message.answer(
+        await message.reply_text(
             "This user is banned in current federation! I will remove him.",
         )
-        await bot.ban_chat_member(chat.id, user.id)
+        await client.ban_chat_member(chat.id, user.id)
         return True
     else:
         return False
@@ -2282,7 +2282,7 @@ def get_chat(chat_id, chat_data):
 
 
 async def fed_owner_help(message: Message, command: CommandObject):
-    await message.answer(
+    await message.reply_text(
         """*👑 Fed Owner Only:*
  » `/newfed <fed_name>`*:* Creates a Federation, One allowed per user
  » `/renamefed <fed_id> <new_fed_name>`*:* Renames the fed id to a new name
@@ -2300,7 +2300,7 @@ async def fed_owner_help(message: Message, command: CommandObject):
 
 
 async def fed_admin_help(message: Message, command: CommandObject):
-    await message.answer(
+    await message.reply_text(
         """*🔱 Fed Admins:*
  » `/fban <user> <reason>`*:* Fed bans a user
  » `/unfban <user> <reason>`*:* Removes a user from a fed ban
@@ -2317,7 +2317,7 @@ async def fed_admin_help(message: Message, command: CommandObject):
 
 
 async def fed_user_help(message: Message, command: CommandObject):
-    await message.answer(
+    await message.reply_text(
         """*🎩 Any user:*
  » `/fbanstat`*:* Shows if you/or the user you are replying to or their username is fbanned somewhere or not
  » `/fednotif <on/off>`*:* Federation settings not in PM when there are users who are fbaned/unfbanned

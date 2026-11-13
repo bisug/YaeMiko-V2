@@ -5,10 +5,10 @@ from html import escape
 
 from aiogram import F
 from aiogram.dispatcher.event.bases import SkipHandler
-from aiogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
+from pyrogram.errors import RPCError
 from aiogram.filters import Command
-from aiogram.types import (
+from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -41,14 +41,14 @@ from Mikobot.utils.parser import escape_markdown, mention_html
 # <=======================================================================================================>
 
 ENUM_FUNC_MAP = {
-    Types.TEXT.value: bot.send_message,
-    Types.BUTTON_TEXT.value: bot.send_message,
-    Types.STICKER.value: bot.send_sticker,
-    Types.DOCUMENT.value: bot.send_document,
-    Types.PHOTO.value: bot.send_photo,
-    Types.AUDIO.value: bot.send_audio,
-    Types.VOICE.value: bot.send_voice,
-    Types.VIDEO.value: bot.send_video,
+    Types.TEXT.value: client.send_message,
+    Types.BUTTON_TEXT.value: client.send_message,
+    Types.STICKER.value: client.send_sticker,
+    Types.DOCUMENT.value: client.send_document,
+    Types.PHOTO.value: client.send_photo,
+    Types.AUDIO.value: client.send_audio,
+    Types.VOICE.value: client.send_voice,
+    Types.VIDEO.value: client.send_video,
 }
 
 
@@ -87,7 +87,7 @@ async def list_handlers(message: Message):
     conn = await connected(bot, message, chat, user.id, need_admin=False)
     if conn is not False:
         chat_id = conn
-        chat_obj = await bot.get_chat(conn)
+        chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
         filter_list = f"*Filter in {escape_markdown(chat_name)}:*\n"
     else:
@@ -144,7 +144,7 @@ async def filters(message: Message):
     conn = await connected(bot, message, chat, user.id)
     if conn is not False:
         chat_id = conn
-        chat_obj = await bot.get_chat(conn)
+        chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
         chat_id = message.chat.id
@@ -296,7 +296,7 @@ async def stop_filter(message: Message):
     conn = await connected(bot, message, chat, user.id)
     if conn is not False:
         chat_id = conn
-        chat_obj = await bot.get_chat(conn)
+        chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
         chat_id = message.chat.id
@@ -376,7 +376,7 @@ async def reply_filter(message: Message):
                     if text.startswith("~!") and text.endswith("!~"):
                         sticker_id = text.replace("~!", "").replace("!~", "")
                         try:
-                            await bot.send_sticker(
+                            await client.send_sticker(
                                 chat.id,
                                 sticker_id,
                                 reply_to_message_id=message.message_id,
@@ -385,12 +385,12 @@ async def reply_filter(message: Message):
                                 ),
                             )
                             return
-                        except TelegramAPIError as excp:
+                        except RPCError as excp:
                             if (
                                 excp.message
                                 == "Wrong remote file identifier specified: wrong padding in the string"
                             ):
-                                await bot.send_message(
+                                await client.send_message(
                                     chat.id,
                                     "Message couldn't be sent, Is the sticker id valid?",
                                     message_thread_id=(
@@ -450,20 +450,20 @@ async def reply_filter(message: Message):
 
                 if filt.file_type in (Types.BUTTON_TEXT, Types.TEXT):
                     try:
-                        await message.answer(
+                        await message.reply_text(
                             markdown_to_html(filtext),
                             parse_mode=ParseMode.HTML,
                             link_preview_options=LinkPreviewOptions(is_disabled=True),
                             reply_markup=keyboard,
                         )
-                    except TelegramAPIError as excp:
+                    except RPCError as excp:
                         LOGGER.exception("Error in filters: " + excp.message)
                         try:
                             await send_message(
                                 message,
                                 get_exception(excp, filt, chat),
                             )
-                        except TelegramAPIError as excp:
+                        except RPCError as excp:
                             LOGGER.exception(
                                 "Failed to send message: " + excp.message,
                             )
@@ -494,7 +494,7 @@ async def reply_filter(message: Message):
                                 ),
                                 has_spoiler=message.has_media_spoiler,
                             )
-                    except TelegramAPIError:
+                    except RPCError:
                         await send_message(
                             message,
                             "I don't have the permission to send the content of the filter.",
@@ -523,7 +523,7 @@ async def reply_filter(message: Message):
                     keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
 
                     try:
-                        await bot.send_message(
+                        await client.send_message(
                             chat.id,
                             markdown_to_html(filt.reply),
                             parse_mode=ParseMode.HTML,
@@ -533,7 +533,7 @@ async def reply_filter(message: Message):
                                 message.message_thread_id if chat.is_forum else None
                             ),
                         )
-                    except TelegramAPIError as excp:
+                    except RPCError as excp:
                         if (
                             "unsupported url protocol"
                             in str(excp.message or excp).lower()
@@ -545,7 +545,7 @@ async def reply_filter(message: Message):
                                     "Telegram doesn't support buttons for some protocols, such as tg://. Please try "
                                     "again...",
                                 )
-                            except TelegramAPIError as excp:
+                            except RPCError as excp:
                                 LOGGER.exception("Error in filters: " + excp.message)
                         else:
                             try:
@@ -553,7 +553,7 @@ async def reply_filter(message: Message):
                                     message,
                                     "This message couldn't be sent as it's incorrectly formatted.",
                                 )
-                            except TelegramAPIError as excp:
+                            except RPCError as excp:
                                 LOGGER.exception("Error in filters: " + excp.message)
                             LOGGER.warning(
                                 "Message %s could not be parsed",
@@ -568,14 +568,14 @@ async def reply_filter(message: Message):
                 else:
                     # LEGACY - all new filters will have has_markdown set to True.
                     try:
-                        await bot.send_message(
+                        await client.send_message(
                             chat.id,
                             filt.reply,
                             message_thread_id=(
                                 message.message_thread_id if chat.is_forum else None
                             ),
                         )
-                    except TelegramAPIError as excp:
+                    except RPCError as excp:
                         LOGGER.exception("Error in filters: " + excp.message)
                 break
 
@@ -583,9 +583,9 @@ async def reply_filter(message: Message):
 async def rmall_filters(message: Message):
     chat = message.chat
     user = message.from_user
-    member = await bot.get_chat_member(chat.id, user.id)
+    member = await client.get_chat_member(chat.id, user.id)
     if member.status != ChatMemberStatus.CREATOR and user.id not in DRAGONS:
-        await message.reply(
+        await message.reply_text(
             "Only the chat owner can clear all notes at once.",
         )
     else:
@@ -607,7 +607,7 @@ async def rmall_filters(message: Message):
                 ],
             ],
         )
-        await message.reply(
+        await message.reply_text(
             f"Are you sure you would like to stop ALL filters in {escape_markdown(chat.title)}? This action cannot be undone.",
             reply_markup=buttons,
             parse_mode=ParseMode.MARKDOWN,
@@ -617,7 +617,7 @@ async def rmall_filters(message: Message):
 async def rmall_callback(query: CallbackQuery):
     chat = query.message.chat
     msg = query.message
-    member = await bot.get_chat_member(chat.id, query.from_user.id)
+    member = await client.get_chat_member(chat.id, query.from_user.id)
     if query.data == "filters_rmall":
         if member.status == ChatMemberStatus.CREATOR or query.from_user.id in DRAGONS:
             allfilters = sql.get_chat_triggers(chat.id)
@@ -676,7 +676,7 @@ async def addnew_filter(
     msg = message
     totalfilt = sql.get_chat_triggers(chat_id)
     if len(totalfilt) >= 150:  # Idk why i made this like function....
-        await msg.answer("This group has reached its max filters limit of 150.")
+        await msg.reply_text("This group has reached its max filters limit of 150.")
         return False
     else:
         sql.new_add_filter(

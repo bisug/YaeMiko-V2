@@ -48,7 +48,7 @@ async def upvote(_, message):
     if not (reply_user and current_user):
         return
     if reply_user.id == OWNER_ID:
-        await message.reply("How so pro?")
+        await message.reply_text("How so pro?")
         return
     if reply_user.id == current_user.id:
         return
@@ -60,7 +60,7 @@ async def upvote(_, message):
     karma = current_karma["karma"] + 1 if current_karma else 1
     new_karma = {"karma": karma}
     update_karma(chat_id, int_to_alpha(user_id), new_karma)
-    await message.reply(
+    await message.reply_text(
         f"𝗜𝗻𝗰𝗿𝗲𝗺𝗲𝗻𝘁𝗲𝗱 𝗸𝗮𝗿𝗺𝗮 𝗼𝗳 {user_mention} 𝗯𝘆 1.\n**⭐️ 𝗧𝗢𝗧𝗔𝗟 𝗣𝗢𝗜𝗡𝗧𝗦:** {karma}"
     )
 
@@ -84,7 +84,7 @@ async def downvote(_, message):
     if not (reply_user and current_user):
         return
     if reply_user.id == OWNER_ID:
-        await message.reply("I know him, so I'm not gonna do that, baby.")
+        await message.reply_text("I know him, so I'm not gonna do that, baby.")
         return
     if reply_user.id == current_user.id:
         return
@@ -95,7 +95,7 @@ async def downvote(_, message):
     karma = current_karma["karma"] - 1 if current_karma else 0
     new_karma = {"karma": karma}
     update_karma(message.chat.id, int_to_alpha(user_id), new_karma)
-    await message.reply(
+    await message.reply_text(
         f"𝗗𝗲𝗰𝗿𝗲𝗺𝗲𝗻𝘁𝗲𝗱 𝗸𝗮𝗿𝗺𝗮 𝗼𝗳 {user_mention} 𝗯𝘆 1.\n**⭐️ 𝗧𝗢𝗧𝗔𝗟 𝗣𝗢𝗜𝗡𝗧𝗦:** {karma}"
     )
 
@@ -104,7 +104,7 @@ async def downvote(_, message):
 @capture_err
 async def karma(_, message):
     if not message.reply_to_message:
-        m = await message.reply("Analyzing karma... This may take a while.")
+        m = await message.reply_text("Analyzing karma... This may take a while.")
         karma = get_karmas(message.chat.id)
         if not karma:
             await m.edit_text("No karma in the database for this chat.")
@@ -138,13 +138,13 @@ async def karma(_, message):
         await m.edit_text(msg)
     else:
         if not message.reply_to_message.from_user:
-            return await message.reply(
+            return await message.reply_text(
                 "Cannot check karma for anonymous senders or channels."
             )
         user_id = message.reply_to_message.from_user.id
         karma = get_karma(message.chat.id, int_to_alpha(user_id))
         karma = karma["karma"] if karma else 0
-        await message.reply(f"**⭐️ 𝗧𝗢𝗧𝗔𝗟 𝗣𝗢𝗜𝗡𝗧𝗦:** {karma}")
+        await message.reply_text(f"**⭐️ 𝗧𝗢𝗧𝗔𝗟 𝗣𝗢𝗜𝗡𝗧𝗦:** {karma}")
 
 
 @app.on_message(filters.command("karma"))
@@ -152,24 +152,24 @@ async def karma(_, message):
 async def karma_toggle_xd(_, message):
     usage = "**Usage:**\n/karma [ON|OFF]"
     if len(message.command) != 2:
-        return await message.reply(usage)
+        return await message.reply_text(usage)
     chat_id = message.chat.id
     state = message.text.split(None, 1)[1].strip().lower()
 
     if state == "on":
         if is_karma_on(chat_id):
-            await message.reply("Karma system is already enabled.")
+            await message.reply_text("Karma system is already enabled.")
         else:
             karma_on(chat_id)
-            await message.reply("Enabled the karma system.")
+            await message.reply_text("Enabled the karma system.")
     elif state == "off":
         if not is_karma_on(chat_id):
-            await message.reply("Karma system is already disabled.")
+            await message.reply_text("Karma system is already disabled.")
         else:
             karma_off(chat_id)
-            await message.reply("Disabled the karma system.")
+            await message.reply_text("Disabled the karma system.")
     else:
-        await message.reply(usage)
+        await message.reply_text(usage)
 
 
 # <=================================================== HELP ====================================================>

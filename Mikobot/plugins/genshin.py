@@ -5,10 +5,10 @@ from dataclasses import dataclass
 
 import httpx
 from aiogram import F
-from aiogram.enums import ParseMode
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.enums import ParseMode
+from pyrogram.errors import RPCError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import (
+from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardMarkup,
     InputMediaPhoto,
@@ -872,24 +872,24 @@ async def _send_rich(
 
     sendRichMessage is a comparatively new Bot API method. A bot pointed at an
     older server, or a client that cannot render blocks, answers with a
-    TelegramAPIError; rather than leave the user with nothing, the blocks are
+    RPCError; rather than leave the user with nothing, the blocks are
     flattened to readable text and sent normally.
     """
     rich = InputRichMessage(blocks=blocks)
     try:
-        return await bot.send_rich_message(
+        return await client.send_rich_message(
             chat_id,
             rich,
             reply_markup=reply_markup,
             message_thread_id=thread_id,
         )
-    except TelegramAPIError as err:
+    except RPCError as err:
         LOGGER.debug("Rich message unavailable (%s), falling back to text", err)
         try:
-            return await bot.send_message(
+            return await client.send_message(
                 chat_id, _blocks_to_text(blocks), reply_markup=reply_markup
             )
-        except TelegramAPIError:
+        except RPCError:
             LOGGER.debug("Could not deliver a genshin result", exc_info=True)
             return None
 
@@ -962,7 +962,7 @@ async def _lookup(message: Message, command: CommandObject, kind: str):
             f"{t.emoji} <code>/{t.command}</code> — {t.label.lower()}"
             for t in ENTITY_TYPES.values()
         )
-        await message.reply(
+        await message.reply_text(
             f"Give me a name. Example: <code>/{entity.command} {query or 'albedo'}</code>\n\n"
             f"{listing}\n\n"
             "Add <code>-fr</code> for French, e.g. <code>/gchar albedo-fr</code>.",
@@ -970,7 +970,7 @@ async def _lookup(message: Message, command: CommandObject, kind: str):
         )
         return
 
-    status = await message.reply(
+    status = await message.reply_text(
         f"Looking up {html_escape(query)}…", parse_mode=ParseMode.HTML
     )
     try:
@@ -1024,7 +1024,7 @@ async def _lookup(message: Message, command: CommandObject, kind: str):
 
     try:
         await status.delete()
-    except TelegramAPIError:
+    except RPCError:
         pass
     await _send_rich(message.chat.id, blocks, markup, thread_id)
 
@@ -1038,10 +1038,10 @@ async def _replace(status: Message, text: str):
     """Swap the 'looking up' placeholder for a short plain-text notice."""
     try:
         await status.edit_text(text, parse_mode=None)
-    except TelegramAPIError:
+    except RPCError:
         try:
             await status.answer(text, parse_mode=None)
-        except TelegramAPIError:
+        except RPCError:
             LOGGER.debug("Could not deliver a genshin notice", exc_info=True)
 
 
@@ -1110,7 +1110,7 @@ async def genshin_page(query: CallbackQuery):
 
     try:
         await query.message.delete()
-    except TelegramAPIError:
+    except RPCError:
         LOGGER.debug("Could not clear the previous genshin page", exc_info=True)
 
     await _send_rich(
@@ -1125,11 +1125,11 @@ async def genshin_page(query: CallbackQuery):
 async def genshin_close(query: CallbackQuery):
     try:
         await query.message.delete()
-    except TelegramAPIError:
+    except RPCError:
         # Already gone, or not ours to delete; clearing the buttons will do.
         try:
             await query.message.edit_reply_markup(reply_markup=None)
-        except TelegramAPIError:
+        except RPCError:
             LOGGER.debug("Could not close a genshin listing", exc_info=True)
     await query.answer()
 

@@ -102,12 +102,12 @@ async def _upload(path: Path, host: str) -> str:
 async def telegraph_upload(client: Client, message: Message):
     replied = message.reply_to_message
     if not replied or not replied.media:
-        await message.reply("Reply to a photo, video, animation, or document.")
+        await message.reply_text("Reply to a photo, video, animation, or document.")
         return
 
     if getattr(replied.media, "file_size", 0) > MAX_UPLOAD_BYTES:
         size = MAX_UPLOAD_BYTES // (1024 * 1024)
-        await message.reply(f"That media is too large to upload ({size} MB maximum).")
+        await message.reply_text(f"That media is too large to upload ({size} MB maximum).")
         return
 
     # The file is deliberately not held here. The TemporaryDirectory this used
@@ -140,7 +140,7 @@ async def telegraph_upload(client: Client, message: Message):
             ],
         ]
     )
-    await message.reply("Where should this be uploaded?", reply_markup=keyboard)
+    await message.reply_text("Where should this be uploaded?", reply_markup=keyboard)
 
 
 @callbackquery(pattern=r"^hostup_(catbox|litterbox)_[0-9a-f]{8}$")

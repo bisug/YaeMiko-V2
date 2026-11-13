@@ -79,13 +79,13 @@ async def nibba_nibbi(_, message):
                 if member.user and not member.user.is_bot:
                     list_of_users.append(member.user.id)
             if len(list_of_users) < 2:
-                return await message.reply("Not enough users in the group.")
+                return await message.reply_text("Not enough users in the group.")
             c1_id, c2_id = random.sample(list_of_users, 2)
             users = await _.get_users([c1_id, c2_id])
             # kurigram keeps a None placeholder for an id it could not
             # resolve, so a missing member would raise on .mention.
             if users[0] is None or users[1] is None:
-                return await message.reply(
+                return await message.reply_text(
                     "I could not resolve both users. Please try again later."
                 )
             c1_mention, c2_mention = users[0].mention, users[1].mention
@@ -100,7 +100,7 @@ async def nibba_nibbi(_, message):
             c2_id = int(is_selected["c2_id"])
             users = await _.get_users([c1_id, c2_id])
             if users[0] is None or users[1] is None:
-                return await message.reply(
+                return await message.reply_text(
                     "I could not resolve both users. Please try again later."
                 )
             c1, c2 = users[0], users[1]
@@ -111,7 +111,7 @@ async def nibba_nibbi(_, message):
                 message.chat.id, photo=COUPLES_PIC, caption=couple_selection_message
             )
     except Exception:
-        await message.reply(
+        await message.reply_text(
             "Unable to select a couple right now. Please try again later."
         )
 

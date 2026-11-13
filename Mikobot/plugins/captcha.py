@@ -20,10 +20,10 @@ import string
 import time
 
 from aiogram import F
-from aiogram.enums import ChatType, ParseMode
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.enums import ChatType, ParseMode
+from pyrogram.errors import RPCError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import (
+from pyrogram.types import (
     CallbackQuery,
     ChatJoinRequest,
     ChatPermissions,
@@ -217,19 +217,19 @@ async def _fail(chat_id, user_id, message: Message = None) -> None:
     """A wrong answer is a short ban, not a mute."""
     _drop_challenge(chat_id, user_id)
     try:
-        await bot.ban_chat_member(
+        await client.ban_chat_member(
             chat_id, user_id, until_date=int(time.time()) + FAIL_BAN_SECONDS
         )
-    except TelegramAPIError:
+    except RPCError:
         LOGGER.exception("Captcha ban failed for %s in %s", user_id, chat_id)
         return
     if message is not None:
         try:
-            await message.answer(
+            await message.reply_text(
                 "That was not right, so you have been banned for a minute."
                 " Try joining again afterwards.",
             )
-        except TelegramAPIError:
+        except RPCError:
             pass
 
 
@@ -237,13 +237,13 @@ async def _pass(chat_id, user_id, approve: bool = False) -> None:
     """Unmute and remember the solve, so the user is never asked again."""
     _drop_challenge(chat_id, user_id)
     try:
-        await bot.restrict_chat_member(chat_id, user_id, _full_permissions())
-    except TelegramAPIError:
+        await client.restrict_chat_member(chat_id, user_id, _full_permissions())
+    except RPCError:
         LOGGER.exception("Captcha unmute failed for %s in %s", user_id, chat_id)
     if approve:
         try:
-            await bot.approve_chat_join_request(chat_id, user_id)
-        except TelegramAPIError:
+            await client.approve_chat_join_request(chat_id, user_id)
+        except RPCError:
             LOGGER.exception(
                 "Join request approval failed for %s in %s", user_id, chat_id
             )
@@ -280,7 +280,7 @@ async def on_join(message: Message) -> str:
         if not _should_challenge(chat.id, member.id, settings):
             continue
         try:
-            await bot.restrict_chat_member(
+            await client.restrict_chat_member(
                 chat.id,
                 member.id,
                 permissions=ChatPermissions(can_send_messages=False),
@@ -290,7 +290,7 @@ async def on_join(message: Message) -> str:
                     else None
                 ),
             )
-        except TelegramAPIError:
+        except RPCError:
             LOGGER.exception("Captcha mute failed for %s in %s", member.id, chat.id)
             continue
 
@@ -316,7 +316,7 @@ async def on_join(message: Message) -> str:
 async def _button_prompt(message, member, settings) -> None:
     """Button mode: solved in the chat with one press."""
     try:
-        await message.reply(
+        await message.reply_text(
             f"{mention_html(member.id, member.first_name)}\n"
             f"You have been muted until you confirm you are human.",
             parse_mode=ParseMode.HTML,
@@ -331,7 +331,7 @@ async def _button_prompt(message, member, settings) -> None:
                 ]
             ),
         )
-    except TelegramAPIError:
+    except RPCError:
         LOGGER.exception("Could not post the captcha prompt in %s", message.chat.id)
 
 
@@ -343,7 +343,7 @@ async def _private_prompt(message, member, settings) -> None:
     """
     _store_challenge(message.chat.id, member.id, "", settings["mode"])
     try:
-        await message.reply(
+        await message.reply_text(
             f"{mention_html(member.id, member.first_name)}\n"
             f"I have sent you a private message to prove you are human.",
             parse_mode=ParseMode.HTML,
@@ -358,7 +358,7 @@ async def _private_prompt(message, member, settings) -> None:
                 ]
             ),
         )
-    except TelegramAPIError:
+    except RPCError:
         LOGGER.exception("Could not post the captcha prompt in %s", message.chat.id)
 
 
@@ -403,7 +403,7 @@ async def _send_private_challenge(user, chat_id, settings) -> bool:
             parse_mode=ParseMode.HTML,
             reply_markup=keyboard,
         )
-    except TelegramAPIError:
+    except RPCError:
         # No PM, no captcha: the user cannot pass, so do not leave them muted.
         await _fail(chat_id, user.id)
         return False
@@ -416,8 +416,8 @@ async def _kick_later(chat_id, user_id, delay: int) -> None:
     if sql.has_solved(chat_id, user_id):
         return
     try:
-        await bot.unban_chat_member(chat_id, user_id)
-    except TelegramAPIError:
+        await client.unban_chat_member(chat_id, user_id)
+    except RPCError:
         LOGGER.exception("Captcha kick failed for %s in %s", user_id, chat_id)
         return
     # The kick is what lets them be challenged again next time.
@@ -517,8 +517,8 @@ async def on_join_request(join_request: ChatJoinRequest) -> str:
         return ""
     if await asyncio.to_thread(sql.has_solved, chat.id, user.id):
         try:
-            await bot.approve_chat_join_request(chat.id, user.id)
-        except TelegramAPIError:
+            await client.approve_chat_join_request(chat.id, user.id)
+        except RPCError:
             LOGGER.exception("Join approval failed for %s in %s", user.id, chat.id)
         return ""
 
@@ -539,7 +539,7 @@ async def on_join_request(join_request: ChatJoinRequest) -> str:
                 ]
             ),
         )
-    except TelegramAPIError:
+    except RPCError:
         LOGGER.warning("Cannot message %s, leaving the join request pending", user.id)
     return ""
 
@@ -554,8 +554,8 @@ async def join_button(message, query: CallbackQuery) -> str:
     settings = await asyncio.to_thread(sql.get_settings, chat_id)
     if settings["mode"] == sql.MODE_BUTTON:
         try:
-            await bot.approve_chat_join_request(chat_id, user_id)
-        except TelegramAPIError:
+            await client.approve_chat_join_request(chat_id, user_id)
+        except RPCError:
             await query.answer("I could not admit you right now.", show_alert=True)
             return ""
         await asyncio.to_thread(sql.mark_solved, chat_id, user_id)
@@ -602,7 +602,7 @@ async def math_answer(message: Message) -> str:
 
     if text == entry["answer"]:
         await _pass(*match, approve=True)
-        await message.reply("Correct, you're verified.")
+        await message.reply_text("Correct, you're verified.")
     else:
         await _fail(*match, message)
     return ""
@@ -617,7 +617,7 @@ async def captcha(message: Message, command: CommandObject) -> str:
 
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, chat.id)
-        await message.reply(
+        await message.reply_text(
             f"CAPTCHA is <b>{'on' if settings['enabled'] else 'off'}</b>\n"
             f"Mode: <code>{html.escape(settings['mode'])}</code>\n"
             f"Button text: <code>{html.escape(settings['button_text'])}</code>\n"
@@ -630,7 +630,7 @@ async def captcha(message: Message, command: CommandObject) -> str:
 
     value = args[0].lower()
     if value not in ("on", "off", "yes", "no", "true", "false", "1", "0"):
-        await message.reply("Use `on` or `off`.")
+        await message.reply_text("Use `on` or `off`.")
         return ""
 
     enabled = value in ("on", "yes", "true", "1")
@@ -640,14 +640,14 @@ async def captcha(message: Message, command: CommandObject) -> str:
         # the user would be muted with no way out.
         welcomes = await asyncio.to_thread(welcome_sql.get_welcome_pref, chat.id)
         if not welcomes:
-            await message.reply(
+            await message.reply_text(
                 "Enable welcome messages first, or there is nowhere to show"
                 " the CAPTCHA."
             )
             return ""
 
     await asyncio.to_thread(sql.set_enabled, chat.id, enabled)
-    await message.reply(
+    await message.reply_text(
         f"CAPTCHA is now <b>{'on' if enabled else 'off'}</b>.",
         parse_mode=ParseMode.HTML,
     )
@@ -675,7 +675,7 @@ async def captcha_mode(message: Message, command: CommandObject):
     args = command.args.split() if command.args else []
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, message.chat.id)
-        await message.reply(
+        await message.reply_text(
             f"CAPTCHA mode is <code>{html.escape(settings['mode'])}</code>."
             f" Options: <code>{', '.join(sql.MODES)}</code>",
             parse_mode=ParseMode.HTML,
@@ -684,14 +684,14 @@ async def captcha_mode(message: Message, command: CommandObject):
 
     wanted = args[0].lower()
     if wanted not in sql.MODES:
-        await message.reply(
+        await message.reply_text(
             f"Use one of: <code>{', '.join(sql.MODES)}</code>.",
             parse_mode=ParseMode.HTML,
         )
         return ""
 
     await asyncio.to_thread(sql.set_mode, message.chat.id, wanted)
-    await message.reply(
+    await message.reply_text(
         f"CAPTCHA mode is now <code>{wanted}</code>.", parse_mode=ParseMode.HTML
     )
 
@@ -703,7 +703,7 @@ async def captcha_buttons(message: Message, command: CommandObject):
     text = args.strip()
     if not text:
         settings = await asyncio.to_thread(sql.get_settings, message.chat.id)
-        await message.reply(
+        await message.reply_text(
             f"Button text is <code>{html.escape(settings['button_text'])}</code>."
         )
         return ""
@@ -711,14 +711,14 @@ async def captcha_buttons(message: Message, command: CommandObject):
     # The label sits inside an InlineKeyboardButton, which renders no markup,
     # so only plain text is accepted.
     await asyncio.to_thread(sql.set_button_text, message.chat.id, text)
-    await message.reply("Button text updated.")
+    await message.reply_text("Button text updated.")
 
 
 @check_admin(permission="can_restrict_members", is_both=True)
 @typing_action
 async def captcha_reset_text(message: Message, command: CommandObject):
     await asyncio.to_thread(sql.set_button_text, message.chat.id, sql.DEF_BUTTON_TEXT)
-    await message.reply(
+    await message.reply_text(
         f"Button text reset to <code>{html.escape(sql.DEF_BUTTON_TEXT)}</code>.",
         parse_mode=ParseMode.HTML,
     )
@@ -731,7 +731,7 @@ async def captcha_kick(message: Message, command: CommandObject):
     chat = message.chat
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, chat.id)
-        await message.reply(
+        await message.reply_text(
             f"CAPTCHA kicks are <b>{'on' if settings['kick_enabled'] else 'off'}</b>."
             f"\nTime: <code>{_fmt(settings['kick_time'])}</code>",
             parse_mode=ParseMode.HTML,
@@ -741,12 +741,12 @@ async def captcha_kick(message: Message, command: CommandObject):
     value = args[0].lower()
     if value in ("on", "yes", "true", "1"):
         await asyncio.to_thread(sql.set_kick_enabled, chat.id, True)
-        await message.reply("Unsolved members will be kicked.")
+        await message.reply_text("Unsolved members will be kicked.")
     elif value in ("off", "no", "false", "0"):
         await asyncio.to_thread(sql.set_kick_enabled, chat.id, False)
-        await message.reply("CAPTCHA kicks are off.")
+        await message.reply_text("CAPTCHA kicks are off.")
     else:
-        await message.reply("Use `on` or `off`.")
+        await message.reply_text("Use `on` or `off`.")
 
 
 @check_admin(permission="can_restrict_members", is_both=True)
@@ -756,7 +756,7 @@ async def captcha_kick_time(message: Message, command: CommandObject):
     chat = message.chat
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, chat.id)
-        await message.reply(
+        await message.reply_text(
             f"Kick time is <code>{_fmt(settings['kick_time'])}</code>.",
             parse_mode=ParseMode.HTML,
         )
@@ -769,13 +769,13 @@ async def captcha_kick_time(message: Message, command: CommandObject):
     # Documented bounds: too short kicks almost everyone, too long fills the
     # member list with muted accounts.
     if not sql.MIN_KICK_TIME <= seconds <= sql.MAX_KICK_TIME:
-        await message.reply(
+        await message.reply_text(
             "That has to be between <code>5m</code> and <code>1d</code>.",
             parse_mode=ParseMode.HTML,
         )
         return ""
     await asyncio.to_thread(sql.set_kick_time, chat.id, seconds)
-    await message.reply(
+    await message.reply_text(
         f"Unsolved members are now kicked after <code>{_fmt(seconds)}</code>.",
         parse_mode=ParseMode.HTML,
     )
@@ -788,7 +788,7 @@ async def captcha_rules(message: Message, command: CommandObject):
     chat = message.chat
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, chat.id)
-        await message.reply(
+        await message.reply_text(
             f"Showing rules in the CAPTCHA is <b>{'on' if settings['show_rules'] else 'off'}</b>.",
             parse_mode=ParseMode.HTML,
         )
@@ -796,12 +796,12 @@ async def captcha_rules(message: Message, command: CommandObject):
     value = args[0].lower()
     if value in ("on", "yes", "true", "1"):
         await asyncio.to_thread(sql.set_show_rules, chat.id, True)
-        await message.reply("Rules will be shown as part of the CAPTCHA.")
+        await message.reply_text("Rules will be shown as part of the CAPTCHA.")
     elif value in ("off", "no", "false", "0"):
         await asyncio.to_thread(sql.set_show_rules, chat.id, False)
-        await message.reply("Rules will not be shown in the CAPTCHA.")
+        await message.reply_text("Rules will not be shown in the CAPTCHA.")
     else:
-        await message.reply("Use `on` or `off`.")
+        await message.reply_text("Use `on` or `off`.")
 
 
 @check_admin(permission="can_restrict_members", is_both=True)
@@ -811,7 +811,7 @@ async def captcha_mute_time(message: Message, command: CommandObject):
     chat = message.chat
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, chat.id)
-        await message.reply(
+        await message.reply_text(
             f"Auto-unmute after <code>{_fmt(settings['mute_time'])}</code>."
             + (
                 "\n<i>Careful: this unmutes people who never proved anything.</i>"
@@ -824,7 +824,7 @@ async def captcha_mute_time(message: Message, command: CommandObject):
 
     if args[0].lower() == "off":
         await asyncio.to_thread(sql.set_mute_time, chat.id, 0)
-        await message.reply("Members now stay muted until they solve it.")
+        await message.reply_text("Members now stay muted until they solve it.")
         return ""
 
     expiry = await extract_time(message, args[0])
@@ -832,7 +832,7 @@ async def captcha_mute_time(message: Message, command: CommandObject):
         return ""
     seconds = expiry - int(time.time())
     await asyncio.to_thread(sql.set_mute_time, chat.id, seconds)
-    await message.reply(
+    await message.reply_text(
         f"Members are now unmuted automatically after <code>{_fmt(seconds)}</code>.",
         parse_mode=ParseMode.HTML,
     )
@@ -845,18 +845,18 @@ async def captcha_reset(message: Message, command: CommandObject):
     args = command.args.split() if command.args else []
     chat = message.chat
     if not args:
-        await message.reply(
+        await message.reply_text(
             "Reply to someone with `/resetcaptcha` to make them redo it."
         )
         return ""
 
     if not args[0].isdigit():
-        await message.reply("Give me a user id.")
+        await message.reply_text("Give me a user id.")
         return ""
 
     user_id = int(args[0])
     await asyncio.to_thread(sql.reset_solved, chat.id, user_id)
-    await message.reply(
+    await message.reply_text(
         f"{mention_html(user_id, 'That user')} will be asked to solve the CAPTCHA again."
     )
 

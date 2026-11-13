@@ -5,10 +5,10 @@ import re
 from io import BytesIO
 
 from aiogram import F
-from aiogram.enums import ButtonStyle, ChatMemberStatus, ParseMode
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.enums import ButtonStyle, ChatMemberStatus, ParseMode
+from pyrogram.errors import RPCError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import (
+from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -151,7 +151,7 @@ async def get(
 
         try:
             if note.msgtype in (sql.Types.BUTTON_TEXT, sql.Types.TEXT):
-                await bot.send_message(
+                await client.send_message(
                     chat_id,
                     markdown_to_html(text),
                     reply_to_message_id=reply_id,
@@ -176,22 +176,22 @@ async def get(
                     ),
                 )
 
-        except TelegramAPIError as excp:
+        except RPCError as excp:
             if excp.message == "Entity_mention_user_invalid":
-                await message.answer(
+                await message.reply_text(
                     "Looks like you tried to mention someone I've never seen before. If you really "
                     "want to mention them, forward one of their messages to me, and I'll be able "
                     "to tag them!",
                 )
             elif FILE_MATCHER.match(note.value):
-                await message.answer(
+                await message.reply_text(
                     "This note was an incorrectly imported file from another bot - I can't use "
                     "it. If you really need it, you'll have to save it again. In "
                     "the meantime, I'll remove it from your notes list.",
                 )
                 sql.rm_note(note_chat_id, notename)
             else:
-                await message.answer(
+                await message.reply_text(
                     "This note could not be sent, as it is incorrectly formatted. Ask in "
                     f"@{SUPPORT_CHAT} if you can't figure out why!",
                 )
@@ -203,7 +203,7 @@ async def get(
                 LOGGER.warning("Message was: %s", str(note.value))
         return
     elif show_none:
-        await message.answer("This note doesn't exist")
+        await message.reply_text("This note doesn't exist")
 
 
 @connection_status
@@ -222,7 +222,7 @@ async def cmd_get(message: Message, command: CommandObject, connected_chat=None)
             message, args[0].lower(), show_none=True, connected_chat=connected_chat
         )
     else:
-        await message.answer("Get rekt")
+        await message.reply_text("Get rekt")
 
 
 @connection_status
@@ -243,7 +243,7 @@ async def slash_get(msg: Message, connected_chat=None):
         note_name = str(noteid).strip(">").split()[1]
         await get(msg, note_name, show_none=False, connected_chat=connected_chat)
     except IndexError:
-        await msg.answer("Wrong Note ID 😾")
+        await msg.reply_text("Wrong Note ID 😾")
 
 
 @connection_status
@@ -251,13 +251,13 @@ async def slash_get(msg: Message, connected_chat=None):
 async def save(msg: Message, command: CommandObject):
     chat_id = msg.chat.id
     if len(command.args.split() if command.args else []) < 1:
-        await msg.answer("You should give the note a name.")
+        await msg.reply_text("You should give the note a name.")
         return
 
     note_name, text, data_type, content, buttons = get_note_type(msg)
     note_name = note_name.lower()
     if data_type is None:
-        await msg.answer("Dude, there's no note content")
+        await msg.reply_text("Dude, there's no note content")
         return
 
     sql.add_note_to_db(
@@ -269,7 +269,7 @@ async def save(msg: Message, command: CommandObject):
         file=content,
     )
 
-    await msg.answer(
+    await msg.reply_text(
         f"Yas! Added `{note_name}`.\nGet it with /get `{note_name}`, or `#{note_name}`",
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -281,14 +281,14 @@ async def save(msg: Message, command: CommandObject):
         and not msg.reply_to_message.forum_topic_created
     ):
         if text:
-            await msg.answer(
-                "Seems like you're trying to save a message from a bot. Unfortunately, "
+            await msg.reply_text(
+                "Seems like you're trying to save a message from a client. Unfortunately, "
                 "bots can't forward bot messages, so I can't save the exact message. "
                 "\nI'll save all the text I can, but if you want more, you'll have to "
                 "forward the message yourself, and then save it.",
             )
         else:
-            await msg.answer(
+            await msg.reply_text(
                 "Bots are kinda handicapped by telegram, making it hard for bots to "
                 "interact with other bots, so I can't save this message "
                 "like I usually would - do you mind forwarding it and "
@@ -306,17 +306,17 @@ async def clear(message: Message, command: CommandObject):
         notename = args[0].lower()
 
         if sql.rm_note(chat_id, notename):
-            await message.reply("Successfully removed note.")
+            await message.reply_text("Successfully removed note.")
         else:
-            await message.reply("That's not a note in my database!")
+            await message.reply_text("That's not a note in my database!")
 
 
 async def clearall(message: Message):
     chat = message.chat
     user = message.from_user
-    member = await bot.get_chat_member(chat.id, user.id)
+    member = await client.get_chat_member(chat.id, user.id)
     if member.status != ChatMemberStatus.CREATOR and user.id not in DRAGONS:
-        await message.reply(
+        await message.reply_text(
             "Only the chat owner can clear all notes at once.",
         )
     else:
@@ -338,7 +338,7 @@ async def clearall(message: Message):
                 ],
             ],
         )
-        await message.reply(
+        await message.reply_text(
             f"Are you sure you would like to clear ALL notes in {escape_markdown(chat.title)}? This action cannot be undone.",
             reply_markup=buttons,
             parse_mode=ParseMode.MARKDOWN,
@@ -348,7 +348,7 @@ async def clearall(message: Message):
 async def clearall_btn(query: CallbackQuery):
     chat = query.message.chat
     message = query.message
-    member = await bot.get_chat_member(chat.id, query.from_user.id)
+    member = await client.get_chat_member(chat.id, query.from_user.id)
     if query.data == "notes_rmall":
         if member.status == ChatMemberStatus.CREATOR or query.from_user.id in DRAGONS:
             note_list = sql.get_all_chat_notes(chat.id)
@@ -358,7 +358,7 @@ async def clearall_btn(query: CallbackQuery):
                     sql.rm_note(chat.id, note)
                 await message.edit_text("Deleted all notes.")
                 await query.answer("Deleted all notes.")
-            except TelegramAPIError:
+            except RPCError:
                 return
 
         if member.status == ChatMemberStatus.ADMINISTRATOR:
@@ -389,18 +389,18 @@ async def list_notes(message: Message):
         else:
             note_name = f"`{note_id}.`  `#{(note.name.lower())}`\n"
         if len(msg) + len(note_name) > MessageLimit.MAX_TEXT_LENGTH:
-            await message.reply(msg, parse_mode=ParseMode.MARKDOWN)
+            await message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
             msg = ""
         msg += note_name
 
     if not note_list:
         try:
-            await message.reply("No notes in this chat!")
-        except TelegramAPIError:
-            await message.reply("No notes in this chat!")
+            await message.reply_text("No notes in this chat!")
+        except RPCError:
+            await message.reply_text("No notes in this chat!")
 
     elif len(msg) != 0:
-        await message.reply(msg, parse_mode=ParseMode.MARKDOWN)
+        await message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
 
 
 async def __import_data__(chat_id, data, message: Message):
@@ -528,12 +528,12 @@ async def __import_data__(chat_id, data, message: Message):
     if failures:
         with BytesIO(str.encode("\n".join(failures))) as output:
             output.name = "failed_imports.txt"
-            await bot.send_document(
+            await client.send_document(
                 chat_id,
                 document=output,
                 filename="failed_imports.txt",
                 caption="These files/photos failed to import due to originating "
-                "from another bot. This is a telegram API restriction, and can't "
+                "from another client. This is a telegram API restriction, and can't "
                 "be avoided. Sorry for the inconvenience!",
                 message_thread_id=(
                     message.message_thread_id if message.chat.is_forum else None
@@ -543,14 +543,14 @@ async def __import_data__(chat_id, data, message: Message):
 
 # Which bot method sends each stored note type.
 ENUM_FUNC_MAP = {
-    sql.Types.TEXT.value: bot.send_message,
-    sql.Types.BUTTON_TEXT.value: bot.send_message,
-    sql.Types.STICKER.value: bot.send_sticker,
-    sql.Types.DOCUMENT.value: bot.send_document,
-    sql.Types.PHOTO.value: bot.send_photo,
-    sql.Types.AUDIO.value: bot.send_audio,
-    sql.Types.VOICE.value: bot.send_voice,
-    sql.Types.VIDEO.value: bot.send_video,
+    sql.Types.TEXT.value: client.send_message,
+    sql.Types.BUTTON_TEXT.value: client.send_message,
+    sql.Types.STICKER.value: client.send_sticker,
+    sql.Types.DOCUMENT.value: client.send_document,
+    sql.Types.PHOTO.value: client.send_photo,
+    sql.Types.AUDIO.value: client.send_audio,
+    sql.Types.VOICE.value: client.send_voice,
+    sql.Types.VIDEO.value: client.send_video,
 }
 
 

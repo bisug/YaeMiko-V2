@@ -4,10 +4,10 @@ import re
 import unicodedata
 
 from aiogram import F
-from aiogram.enums import ChatType, ParseMode
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.enums import ChatType, ParseMode
+from pyrogram.errors import RPCError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import ChatPermissions, Message
+from pyrogram.types import ChatPermissions, Message
 
 import Database.sql.blacklist_sql as sql
 import Database.sql.log_channel_sql as sql_log
@@ -230,7 +230,7 @@ async def blacklist(message: Message, command: CommandObject):
     conn = await connected(bot, message, chat, user.id, need_admin=False)
     if conn:
         chat_id = conn
-        chat_obj = await bot.get_chat(conn)
+        chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
         if chat.type == ChatType.PRIVATE:
@@ -277,7 +277,7 @@ async def add_blacklist(message: Message, command: CommandObject):
     conn = await connected(bot, message, chat, user.id)
     if conn:
         chat_id = conn
-        chat_obj = await bot.get_chat(conn)
+        chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
         chat_id = message.chat.id
@@ -332,7 +332,7 @@ async def unblacklist(message: Message, command: CommandObject):
     conn = await connected(bot, message, chat, user.id)
     if conn:
         chat_id = conn
-        chat_obj = await bot.get_chat(conn)
+        chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
         chat_id = message.chat.id
@@ -413,9 +413,9 @@ async def blacklist_mode(message: Message, command: CommandObject):
 
     conn = await connected(bot, message, chat, user.id, need_admin=True)
     if conn:
-        chat = await bot.get_chat(conn)
+        chat = await client.get_chat(conn)
         chat_id = conn
-        chat_obj = await bot.get_chat(conn)
+        chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
         if message.chat.type == ChatType.PRIVATE:
@@ -545,7 +545,7 @@ async def silent_actions(message: Message, command: CommandObject):
 
     conn = await connected(bot, message, chat, user.id, need_admin=True)
     if conn:
-        chat = await bot.get_chat(conn)
+        chat = await client.get_chat(conn)
         chat_id = conn
     else:
         if message.chat.type == ChatType.PRIVATE:
@@ -648,7 +648,7 @@ async def blocklist_delete(message: Message, command: CommandObject):
 
     conn = await connected(bot, message, chat, user.id, need_admin=True)
     if conn:
-        chat = await bot.get_chat(conn)
+        chat = await client.get_chat(conn)
         chat_id = conn
     else:
         if message.chat.type == ChatType.PRIVATE:
@@ -708,7 +708,7 @@ async def _silent_action(chat, user, getmode, value, trigger) -> None:
     """Apply a blacklist punishment without announcing it in the chat."""
     try:
         if getmode == 3:
-            await bot.restrict_chat_member(
+            await client.restrict_chat_member(
                 chat.id,
                 user.id,
                 permissions=ChatPermissions(can_send_messages=False),
@@ -716,25 +716,25 @@ async def _silent_action(chat, user, getmode, value, trigger) -> None:
         elif getmode == 4:
             # Kick == unban the current user; PTB returned a truthy result
             # from chat.unban_member, aiogram raises instead.
-            await bot.unban_chat_member(chat.id, user.id)
+            await client.unban_chat_member(chat.id, user.id)
         elif getmode == 5:
-            await bot.ban_chat_member(chat.id, user.id)
+            await client.ban_chat_member(chat.id, user.id)
         elif getmode == 6:
             bantime = await extract_time(_QuietMessage(), value)
             if not bantime:
                 return
-            await bot.ban_chat_member(chat.id, user.id, until_date=bantime)
+            await client.ban_chat_member(chat.id, user.id, until_date=bantime)
         elif getmode == 7:
             mutetime = await extract_time(_QuietMessage(), value)
             if not mutetime:
                 return
-            await bot.restrict_chat_member(
+            await client.restrict_chat_member(
                 chat.id,
                 user.id,
                 until_date=mutetime,
                 permissions=ChatPermissions(can_send_messages=False),
             )
-    except TelegramAPIError:
+    except RPCError:
         LOGGER.exception("Silent blacklist action failed in %s", chat.id)
 
 
@@ -784,7 +784,7 @@ async def del_blacklist(message: Message):
                 ):
                     try:
                         await message.delete()
-                    except TelegramAPIError:
+                    except RPCError:
                         pass
 
                 if getmode == 0:
@@ -798,12 +798,12 @@ async def del_blacklist(message: Message):
                 elif getmode == 1:
                     try:
                         await message.delete()
-                    except TelegramAPIError:
+                    except RPCError:
                         pass
                 elif getmode == 2:
                     try:
                         await message.delete()
-                    except TelegramAPIError:
+                    except RPCError:
                         pass
                     await warn(
                         user,
@@ -815,12 +815,12 @@ async def del_blacklist(message: Message):
                     return
                 elif getmode == 3:
                     await message.delete()
-                    await bot.restrict_chat_member(
+                    await client.restrict_chat_member(
                         chat.id,
                         user.id,
                         permissions=ChatPermissions(can_send_messages=False),
                     )
-                    await bot.send_message(
+                    await client.send_message(
                         chat.id,
                         f"Muted {html.escape(user.first_name)} for using Blacklisted word: {html.escape(trigger)}!",
                         message_thread_id=(
@@ -832,8 +832,8 @@ async def del_blacklist(message: Message):
                     await message.delete()
                     # Kick == unban the current user; PTB returned a truthy
                     # result from chat.unban_member, aiogram raises instead.
-                    await bot.unban_chat_member(chat.id, user.id)
-                    await bot.send_message(
+                    await client.unban_chat_member(chat.id, user.id)
+                    await client.send_message(
                         chat.id,
                         f"Kicked {html.escape(user.first_name)} for using Blacklisted word: {html.escape(trigger)}!",
                         message_thread_id=(
@@ -843,8 +843,8 @@ async def del_blacklist(message: Message):
                     return
                 elif getmode == 5:
                     await message.delete()
-                    await bot.ban_chat_member(chat.id, user.id)
-                    await bot.send_message(
+                    await client.ban_chat_member(chat.id, user.id)
+                    await client.send_message(
                         chat.id,
                         f"Banned {html.escape(user.first_name)} for using Blacklisted word: {html.escape(trigger)}",
                         message_thread_id=(
@@ -857,8 +857,8 @@ async def del_blacklist(message: Message):
                     bantime = await extract_time(message, value)
                     if not bantime:
                         return
-                    await bot.ban_chat_member(chat.id, user.id, until_date=bantime)
-                    await bot.send_message(
+                    await client.ban_chat_member(chat.id, user.id, until_date=bantime)
+                    await client.send_message(
                         chat.id,
                         f"Banned {html.escape(user.first_name)} until '{html.escape(value)}' for using Blacklisted word: {html.escape(trigger)}!",
                         message_thread_id=(
@@ -871,13 +871,13 @@ async def del_blacklist(message: Message):
                     mutetime = await extract_time(message, value)
                     if not mutetime:
                         return
-                    await bot.restrict_chat_member(
+                    await client.restrict_chat_member(
                         chat.id,
                         user.id,
                         until_date=mutetime,
                         permissions=ChatPermissions(can_send_messages=False),
                     )
-                    await bot.send_message(
+                    await client.send_message(
                         chat.id,
                         f"Muted {html.escape(user.first_name)} until '{html.escape(value)}' for using Blacklisted word: {html.escape(trigger)}!",
                         message_thread_id=(
@@ -885,7 +885,7 @@ async def del_blacklist(message: Message):
                         ),
                     )
                     return
-            except TelegramAPIError as excp:
+            except RPCError as excp:
                 if "message to delete not found" not in str(excp).lower():
                     LOGGER.exception("Error while deleting blacklist message.")
             break

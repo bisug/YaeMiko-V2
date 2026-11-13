@@ -8,7 +8,7 @@ import httpx
 # PROVIDED BY https://t.me/ProjectCodeX
 # <============================================== IMPORTS =========================================================>
 from aiogram.filters import Command
-from aiogram.types import Message
+from pyrogram.types import Message
 
 from Mikobot import dp
 from Mikobot.state import state
@@ -39,10 +39,10 @@ async def get_cosplay_data() -> str:
 
 
 async def cosplay(message: Message):
-    status = await message.answer("Fetching a cosplay photo...")
+    status = await message.reply_text("Fetching a cosplay photo...")
     try:
         photo_url = await get_cosplay_data()
-        await message.answer_photo(photo=photo_url)
+        await message.reply_photo(photo=photo_url)
     except httpx.HTTPError, ValueError, KeyError, TypeError:
         await status.edit_text(
             "Unable to fetch a cosplay photo right now. Please try again later."

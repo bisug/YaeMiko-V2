@@ -3,9 +3,9 @@ import math
 from urllib.parse import quote
 
 from aiogram import F
-from aiogram.enums import ButtonStyle, ParseMode
+from pyrogram.enums import ButtonStyle, ParseMode
 from aiogram.filters import Command, CommandObject
-from aiogram.types import (
+from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -218,7 +218,7 @@ async def _render(
 
 async def pokedex(message: Message, command: CommandObject) -> None:
     if not command.args:
-        await message.answer("Usage: <code>/pokedex &lt;name or ID&gt;</code>")
+        await message.reply_text("Usage: <code>/pokedex &lt;name or ID&gt;</code>")
         return
     try:
         # Joined back into one string: the name may be several words.
@@ -226,25 +226,25 @@ async def pokedex(message: Message, command: CommandObject) -> None:
         species, _ = await get_pokemon_details(pokemon)
         text, image = _overview(pokemon, species)
         if image:
-            await message.answer_photo(
+            await message.reply_photo(
                 photo=image,
                 caption=text,
                 parse_mode=ParseMode.HTML,
                 reply_markup=_keyboard(pokemon["id"]),
             )
         else:
-            await message.answer(
+            await message.reply_text(
                 text, parse_mode=ParseMode.HTML, reply_markup=_keyboard(pokemon["id"])
             )
     except HTTPError as error:
         if error.response.status_code == 404:
-            await message.answer(
+            await message.reply_text(
                 "Pokémon not found. Check the name or National Pokédex ID."
             )
         else:
-            await message.answer("PokéAPI is unavailable. Please try again later.")
+            await message.reply_text("PokéAPI is unavailable. Please try again later.")
     except ValueError, KeyError, TypeError:
-        await message.answer(
+        await message.reply_text(
             "PokéAPI returned incomplete data. Please try again later."
         )
 

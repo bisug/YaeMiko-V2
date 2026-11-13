@@ -1,9 +1,9 @@
 import html
 
-from aiogram.enums import ChatType, ParseMode
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.enums import ChatType, ParseMode
+from pyrogram.errors import RPCError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import ChatPermissions, Message
+from pyrogram.types import ChatPermissions, Message
 
 import Database.sql.blsticker_sql as sql
 from Mikobot import LOGGER, bot, dp
@@ -27,7 +27,7 @@ async def blackliststicker(message: Message, command: CommandObject):
     conn = await connected(bot, message, chat, user.id, need_admin=False)
     if conn:
         chat_id = conn
-        chat_obj = await bot.get_chat(conn)
+        chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
         if chat.type == ChatType.PRIVATE:
@@ -80,7 +80,7 @@ async def add_blackliststicker(message: Message, command: CommandObject):
     conn = await connected(bot, message, chat, user.id)
     if conn:
         chat_id = conn
-        chat_obj = await bot.get_chat(conn)
+        chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
         chat_id = message.chat.id
@@ -98,10 +98,10 @@ async def add_blackliststicker(message: Message, command: CommandObject):
         added = 0
         for trigger in to_blacklist:
             try:
-                await bot.get_sticker_set(trigger)
+                await client.get_sticker_set(trigger)
                 sql.add_to_stickers(chat_id, trigger.lower())
                 added += 1
-            except TelegramAPIError:
+            except RPCError:
                 await send_message(
                     message,
                     "Sticker `{}` can not be found!".format(trigger),
@@ -139,10 +139,10 @@ async def add_blackliststicker(message: Message, command: CommandObject):
             )
             return
         try:
-            await bot.get_sticker_set(trigger)
+            await client.get_sticker_set(trigger)
             sql.add_to_stickers(chat_id, trigger.lower())
             added += 1
-        except TelegramAPIError:
+        except RPCError:
             await send_message(
                 message,
                 "Sticker `{}` can not be found!".format(trigger),
@@ -176,7 +176,7 @@ async def unblackliststicker(message: Message, command: CommandObject):
     conn = await connected(bot, message, chat, user.id)
     if conn:
         chat_id = conn
-        chat_obj = await bot.get_chat(conn)
+        chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
         chat_id = message.chat.id
@@ -278,9 +278,9 @@ async def blacklist_mode(message: Message, command: CommandObject):
     args = command.args.split() if command.args else []
     conn = await connected(bot, message, chat, user.id, need_admin=True)
     if conn:
-        chat = await bot.get_chat(conn)
+        chat = await client.get_chat(conn)
         chat_id = conn
-        chat_obj = await bot.get_chat(conn)
+        chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
         if message.chat.type == "private":
@@ -435,12 +435,12 @@ async def del_blackliststicker(message: Message):
                     return
                 elif getmode == 3:
                     await message.delete()
-                    await bot.restrict_chat_member(
+                    await client.restrict_chat_member(
                         chat.id,
                         user.id,
                         permissions=ChatPermissions(can_send_messages=False),
                     )
-                    await bot.send_message(
+                    await client.send_message(
                         chat.id,
                         "{} muted because using '{}' which in blacklist stickers".format(
                             mention_markdown(user.id, user.first_name),
@@ -456,8 +456,8 @@ async def del_blackliststicker(message: Message):
                     await message.delete()
                     # PTB's chat.unban_member returned a truthy result; aiogram
                     # raises, so the kick has to be awaited for it to happen.
-                    await bot.unban_chat_member(chat.id, user.id)
-                    await bot.send_message(
+                    await client.unban_chat_member(chat.id, user.id)
+                    await client.send_message(
                         chat.id,
                         "{} kicked because using '{}' which in blacklist stickers".format(
                             mention_markdown(user.id, user.first_name),
@@ -471,8 +471,8 @@ async def del_blackliststicker(message: Message):
                     return
                 elif getmode == 5:
                     await message.delete()
-                    await bot.ban_chat_member(chat.id, user.id)
-                    await bot.send_message(
+                    await client.ban_chat_member(chat.id, user.id)
+                    await client.send_message(
                         chat.id,
                         "{} banned because using '{}' which in blacklist stickers".format(
                             mention_markdown(user.id, user.first_name),
@@ -489,8 +489,8 @@ async def del_blackliststicker(message: Message):
                     bantime = await extract_time(message, value)
                     if not bantime:
                         return
-                    await bot.ban_chat_member(chat.id, user.id, until_date=bantime)
-                    await bot.send_message(
+                    await client.ban_chat_member(chat.id, user.id, until_date=bantime)
+                    await client.send_message(
                         chat.id,
                         "{} banned for {} because using '{}' which in blacklist stickers".format(
                             mention_markdown(user.id, user.first_name),
@@ -508,13 +508,13 @@ async def del_blackliststicker(message: Message):
                     mutetime = await extract_time(message, value)
                     if not mutetime:
                         return
-                    await bot.restrict_chat_member(
+                    await client.restrict_chat_member(
                         chat.id,
                         user.id,
                         permissions=ChatPermissions(can_send_messages=False),
                         until_date=mutetime,
                     )
-                    await bot.send_message(
+                    await client.send_message(
                         chat.id,
                         "{} muted for {} because using '{}' which in blacklist stickers".format(
                             mention_markdown(user.id, user.first_name),
@@ -527,7 +527,7 @@ async def del_blackliststicker(message: Message):
                         ),
                     )
                     return
-            except TelegramAPIError as excp:
+            except RPCError as excp:
                 if "message to delete not found" not in str(excp).lower():
                     LOGGER.exception("Error while deleting blacklist message.")
                 break

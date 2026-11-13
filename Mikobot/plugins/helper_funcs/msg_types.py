@@ -1,7 +1,7 @@
 # <============================================== IMPORTS =========================================================>
 from enum import IntEnum, unique
 
-from aiogram.types import Message
+from pyrogram.types import Message
 
 from Mikobot.plugins.helper_funcs.string_handling import (
     button_markdown_parser,

@@ -2,9 +2,9 @@
 from time import gmtime, strftime, time
 
 from aiogram import F
-from aiogram.enums import ButtonStyle
+from pyrogram.enums import ButtonStyle
 from aiogram.filters import Command
-from aiogram.types import (
+from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -48,7 +48,7 @@ async def _id(client, message):
             text += f"**๏ [{user_mention}](tg://user?id={user_id})** » `{user_id}`\n"
 
         except Exception:
-            return await message.reply("**🪄 ᴛʜɪs ᴜsᴇʀ ᴅᴏᴇsɴ'ᴛ ᴇxɪsᴛ.**")
+            return await message.reply_text("**🪄 ᴛʜɪs ᴜsᴇʀ ᴅᴏᴇsɴ'ᴛ ᴇxɪsᴛ.**")
 
     text += f"**๏ [ᴄʜᴀᴛ ɪᴅ ](https://t.me/{chat.username})** » `{chat.id}`\n\n"
 
@@ -71,7 +71,7 @@ async def _id(client, message):
         "CAACAgIAAx0EdppwYAABAgotZg5rBL4P05Xjmy80p7DdNdneDmUAAnccAALIWZhJPyYLf3FzPHs0BA"
     )
     await message.reply_sticker(sticker=sticker_id)
-    await message.reply(text, link_preview_options=LinkPreviewOptions(is_disabled=True))
+    await message.reply_text(text, link_preview_options=LinkPreviewOptions(is_disabled=True))
 
 
 # Function to handle the "logs" command
@@ -88,7 +88,7 @@ async def logs(message: Message):
                 ]
             ]
         )
-        sent = await bot.send_document(
+        sent = await client.send_document(
             document=f,
             filename=f.name,
             caption=caption,
@@ -109,7 +109,7 @@ async def close_callback(query: CallbackQuery):
     message_id = user_data.get(query.from_user.id, {}).get("log_message_id")
     if message_id:
         try:
-            await bot.delete_message(
+            await client.delete_messages(
                 chat_id=query.message.chat.id, message_id=message_id
             )
             user_data[query.from_user.id].pop("log_message_id", None)
@@ -125,7 +125,7 @@ async def close_callback(query: CallbackQuery):
 async def ping(_, m: Message):
     LOGGER.info(f"{m.from_user.id} used ping cmd in {m.chat.id}")
     start = time()
-    replymsg = await m.reply(text="Pinging...")
+    replymsg = await m.reply_text(text="Pinging...")
     delta_ping = time() - start
 
     up = strftime("%Hh %Mm %Ss", gmtime(time() - UPTIME))

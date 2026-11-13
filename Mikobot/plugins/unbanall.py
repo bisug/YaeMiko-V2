@@ -22,23 +22,23 @@ async def is_admin(chat_id, user_id):
 @register(pattern=r"^/(?:unbanall|unmuteall)(?:@\S+)?$")
 async def bulk_moderation(message):
     if message.chat.type not in {ChatType.GROUP, ChatType.SUPERGROUP}:
-        return await message.reply(
+        return await message.reply_text(
             "This command can be used in groups and supergroups only."
         )
     command = message.command[0].lower() if message.command else ""
     if not message.from_user or not await is_admin(
         message.chat.id, message.from_user.id
     ):
-        return await message.reply("Only admins can use this command.")
+        return await message.reply_text("Only admins can use this command.")
     bot_member = await app.get_chat_member(message.chat.id, (await app.get_me()).id)
     if not has_restrict_rights(bot_member):
-        return await message.reply("I need permission to restrict members.")
+        return await message.reply_text("I need permission to restrict members.")
     member_filter = (
         ChatMembersFilter.BANNED
         if command == "/unbanall"
         else ChatMembersFilter.RESTRICTED
     )
-    status = await message.reply("Searching participant list...")
+    status = await message.reply_text("Searching participant list...")
     count = 0
     async for member in app.get_chat_members(message.chat.id, filter=member_filter):
         try:

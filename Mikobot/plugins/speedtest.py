@@ -2,8 +2,8 @@
 import asyncio
 
 from aiogram import F
-from aiogram.enums import ButtonStyle, ParseMode
-from aiogram.types import (
+from pyrogram.enums import ButtonStyle, ParseMode
+from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -34,7 +34,7 @@ async def speedtestxyz(message: Message):
             ),
         ],
     ]
-    await message.answer(
+    await message.reply_text(
         "Select SpeedTest Mode",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
     )
@@ -57,7 +57,7 @@ async def speedtestxyz_callback(query: CallbackQuery):
 
         if query.data == "speedtest_image":
             speedtest_image = await asyncio.to_thread(speed.results.share)
-            await query.message.answer_photo(
+            await query.message.reply_photo(
                 photo=speedtest_image,
                 caption=replymsg,
             )

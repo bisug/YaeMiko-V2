@@ -1,10 +1,10 @@
 import html
 
 from aiogram import Bot
-from aiogram.enums import ChatMemberStatus, ParseMode
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.enums import ChatMemberStatus, ParseMode
+from pyrogram.errors import RPCError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import Chat, ChatPermissions, Message
+from pyrogram.types import Chat, ChatPermissions, Message
 
 from Mikobot import LOGGER, bot, dp
 from Mikobot.plugins.helper_funcs.chat_status import (
@@ -28,11 +28,11 @@ async def check_user(user_id: int, bot: Bot, chat: Chat) -> str | None:
         return reply
 
     try:
-        member = await bot.get_chat_member(chat.id, user_id)
-    except TelegramAPIError:
+        member = await client.get_chat_member(chat.id, user_id)
+    except RPCError:
         return "I can't seem to find this user"
 
-    if user_id == bot.id:
+    if user_id == client.id:
         reply = "I'm not gonna MUTE myself, How high are you?"
         return reply
 
@@ -52,11 +52,11 @@ async def _delete_replied(message: Message, command: CommandObject) -> None:
     if not command.command or not command.command.startswith("d"):
         return
     if not message.reply_to_message:
-        await message.answer("Reply to the message you want deleted with that.")
+        await message.reply_text("Reply to the message you want deleted with that.")
         raise _StopCommand
     try:
         await message.reply_to_message.delete()
-    except TelegramAPIError:
+    except RPCError:
         pass
 
 
@@ -82,10 +82,10 @@ async def mute(message: Message, command: CommandObject) -> str:
     reply = await check_user(user_id, bot, chat)
 
     if reply:
-        await message.answer(reply)
+        await message.reply_text(reply)
         return ""
 
-    member = await bot.get_chat_member(chat.id, user_id)
+    member = await client.get_chat_member(chat.id, user_id)
 
     log = (
         f"<b>{html.escape(chat.title)}:</b>\n"
@@ -99,8 +99,8 @@ async def mute(message: Message, command: CommandObject) -> str:
 
     if member.status in RESTRICTED_OR_MEMBER:
         chat_permissions = ChatPermissions(can_send_messages=False)
-        await bot.restrict_chat_member(chat.id, user_id, chat_permissions)
-        await bot.send_message(
+        await client.restrict_chat_member(chat.id, user_id, chat_permissions)
+        await client.send_message(
             chat.id,
             f"Muted <b>{html.escape(member.user.first_name)}</b> with no expiration date!",
             parse_mode=ParseMode.HTML,
@@ -109,7 +109,7 @@ async def mute(message: Message, command: CommandObject) -> str:
         return log
 
     else:
-        await message.answer("This user is already muted!")
+        await message.reply_text("This user is already muted!")
 
     return ""
 
@@ -123,16 +123,16 @@ async def unmute(message: Message, command: CommandObject) -> str:
 
     user_id = await extract_user(message, command.args.split() if command.args else [])
     if not user_id:
-        await message.answer(
+        await message.reply_text(
             "You'll need to either give me a username to unmute, or reply to someone to be unmuted.",
         )
         return ""
 
-    member = await bot.get_chat_member(chat.id, int(user_id))
+    member = await client.get_chat_member(chat.id, int(user_id))
 
     if member.status not in LEFT_OR_BANNED:
         if member.status != ChatMemberStatus.RESTRICTED:
-            await message.answer("This user already has the right to speak.")
+            await message.reply_text("This user already has the right to speak.")
         else:
             chat_permissions = ChatPermissions(
                 can_send_messages=True,
@@ -149,10 +149,10 @@ async def unmute(message: Message, command: CommandObject) -> str:
                 can_add_web_page_previews=True,
             )
             try:
-                await bot.restrict_chat_member(chat.id, int(user_id), chat_permissions)
-            except TelegramAPIError:
+                await client.restrict_chat_member(chat.id, int(user_id), chat_permissions)
+            except RPCError:
                 pass
-            await bot.send_message(
+            await client.send_message(
                 chat.id,
                 f"I shall allow <b>{html.escape(member.user.first_name)}</b> to text!",
                 parse_mode=ParseMode.HTML,
@@ -165,7 +165,7 @@ async def unmute(message: Message, command: CommandObject) -> str:
                 f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
             )
     else:
-        await message.answer(
+        await message.reply_text(
             "This user isn't even in the chat, unmuting them won't make them talk more than they "
             "already do!",
         )
@@ -191,13 +191,13 @@ async def temp_mute(message: Message, command: CommandObject) -> str:
     reply = await check_user(user_id, bot, chat)
 
     if reply:
-        await message.answer(reply)
+        await message.reply_text(reply)
         return ""
 
-    member = await bot.get_chat_member(chat.id, user_id)
+    member = await client.get_chat_member(chat.id, user_id)
 
     if not reason:
-        await message.answer("You haven't specified a time to mute this user for!")
+        await message.reply_text("You haven't specified a time to mute this user for!")
         return ""
 
     split_reason = reason.split(None, 1)
@@ -226,13 +226,13 @@ async def temp_mute(message: Message, command: CommandObject) -> str:
     try:
         if member.status in RESTRICTED_OR_MEMBER:
             chat_permissions = ChatPermissions(can_send_messages=False)
-            await bot.restrict_chat_member(
+            await client.restrict_chat_member(
                 chat.id,
                 user_id,
                 chat_permissions,
                 until_date=mutetime,
             )
-            await bot.send_message(
+            await client.send_message(
                 chat.id,
                 f"Muted <b>{html.escape(member.user.first_name)}</b> for {time_val}!",
                 parse_mode=ParseMode.HTML,
@@ -240,12 +240,12 @@ async def temp_mute(message: Message, command: CommandObject) -> str:
             )
             return log
         else:
-            await message.answer("This user is already muted.")
+            await message.reply_text("This user is already muted.")
 
-    except TelegramAPIError as excp:
+    except RPCError as excp:
         if "reply message not found" in str(excp.message or excp).lower():
             # Do not reply
-            await message.answer(f"Muted for {time_val}!")
+            await message.reply_text(f"Muted for {time_val}!")
             return log
         else:
             LOGGER.exception(
@@ -255,7 +255,7 @@ async def temp_mute(message: Message, command: CommandObject) -> str:
                 chat.id,
                 excp,
             )
-            await message.answer("Well damn, I can't mute that user.")
+            await message.reply_text("Well damn, I can't mute that user.")
 
     return ""
 

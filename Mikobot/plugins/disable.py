@@ -2,9 +2,9 @@
 import importlib
 import re
 
-from aiogram.enums import ParseMode
+from pyrogram.enums import ParseMode
 from aiogram.filters import BaseFilter, Command, CommandObject
-from aiogram.types import Message
+from pyrogram.types import Message
 
 import Database.sql.toggle_sql as toggle_sql
 from Mikobot import dp
@@ -99,15 +99,15 @@ if is_module_loaded(FILENAME):
 
             if disable_cmd in set(DISABLE_CMDS + DISABLE_OTHER):
                 sql.disable_command(message.chat.id, str(disable_cmd).lower())
-                await message.answer(
+                await message.reply_text(
                     f"Disabled the use of `{disable_cmd}`",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             else:
-                await message.answer("That command can't be disabled")
+                await message.reply_text("That command can't be disabled")
 
         else:
-            await message.answer("What should I disable?")
+            await message.reply_text("What should I disable?")
 
     @connection_status
     @check_admin(is_user=True)
@@ -119,13 +119,13 @@ if is_module_loaded(FILENAME):
             try:
                 module = importlib.import_module(module_path)
             except Exception:
-                await message.answer("Does that module even exsist?")
+                await message.reply_text("Does that module even exsist?")
                 return
 
             try:
                 command_list = module.__command_list__
             except Exception:
-                await message.answer("Module does not contain command list!")
+                await message.reply_text("Module does not contain command list!")
                 return
 
             disabled_cmds = []
@@ -143,20 +143,20 @@ if is_module_loaded(FILENAME):
 
             if disabled_cmds:
                 disabled_cmds_string = ", ".join(disabled_cmds)
-                await message.answer(
+                await message.reply_text(
                     f"Disabled the use of`{disabled_cmds_string}`",
                     parse_mode=ParseMode.MARKDOWN,
                 )
 
             if failed_disabled_cmds:
                 failed_disabled_cmds_string = ", ".join(failed_disabled_cmds)
-                await message.answer(
+                await message.reply_text(
                     f"Commands `{failed_disabled_cmds_string}` can't be disabled",
                     parse_mode=ParseMode.MARKDOWN,
                 )
 
         else:
-            await message.answer("What should I disable?")
+            await message.reply_text("What should I disable?")
 
     @connection_status
     @check_admin(is_user=True)
@@ -168,15 +168,15 @@ if is_module_loaded(FILENAME):
                 enable_cmd = enable_cmd[1:]
 
             if sql.enable_command(message.chat.id, enable_cmd):
-                await message.answer(
+                await message.reply_text(
                     f"Enabled the use of`{enable_cmd}`",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             else:
-                await message.answer("Is that even disabled?")
+                await message.reply_text("Is that even disabled?")
 
         else:
-            await message.answer("What sould I enable?")
+            await message.reply_text("What sould I enable?")
 
     @connection_status
     @check_admin(is_user=True)
@@ -189,13 +189,13 @@ if is_module_loaded(FILENAME):
             try:
                 module = importlib.import_module(module_path)
             except Exception:
-                await message.answer("Does that module even exsist?")
+                await message.reply_text("Does that module even exsist?")
                 return
 
             try:
                 command_list = module.__command_list__
             except Exception:
-                await message.answer("Module does not contain command list!")
+                await message.reply_text("Module does not contain command list!")
                 return
 
             enabled_cmds = []
@@ -212,20 +212,20 @@ if is_module_loaded(FILENAME):
 
             if enabled_cmds:
                 enabled_cmds_string = ", ".join(enabled_cmds)
-                await message.answer(
+                await message.reply_text(
                     f"Enabled the use of`{enabled_cmds_string}`",
                     parse_mode=ParseMode.MARKDOWN,
                 )
 
             if failed_enabled_cmds:
                 failed_enabled_cmds_string = ", ".join(failed_enabled_cmds)
-                await message.answer(
+                await message.reply_text(
                     f"Are the commands `{failed_enabled_cmds_string}` even disabled?",
                     parse_mode=ParseMode.MARKDOWN,
                 )
 
         else:
-            await message.answer("What sould I enable?")
+            await message.reply_text("What sould I enable?")
 
     @connection_status
     @check_admin(is_user=True)
@@ -234,12 +234,12 @@ if is_module_loaded(FILENAME):
             result = ""
             for cmd in set(DISABLE_CMDS + DISABLE_OTHER):
                 result += f" - `{escape_markdown(cmd)}`\n"
-            await message.answer(
+            await message.reply_text(
                 f"The following commands are toggleable:\n{result}",
                 parse_mode=ParseMode.MARKDOWN,
             )
         else:
-            await message.answer("No commands can be disabled.")
+            await message.reply_text("No commands can be disabled.")
 
     def build_curr_disabled(chat_id: str | int) -> str:
         disabled = sql.get_all_disabled(chat_id)
@@ -253,7 +253,7 @@ if is_module_loaded(FILENAME):
 
     @connection_status
     async def commands(message: Message):
-        await message.answer(
+        await message.reply_text(
             build_curr_disabled(message.chat.id),
             parse_mode=ParseMode.MARKDOWN,
         )

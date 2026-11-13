@@ -3,9 +3,9 @@ import html
 import time
 
 from aiogram import F
-from aiogram.enums import ChatMemberStatus, ChatType, ParseMode
+from pyrogram.enums import ChatMemberStatus, ChatType, ParseMode
 from aiogram.filters import CommandObject
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 import Database.sql.raid_sql as sql
 from Database.sql.approve_sql import is_approved
@@ -41,9 +41,9 @@ async def _resolve(message: Message, command: CommandObject):
     user = message.from_user
     conn = await connected(bot, message, message.chat, user.id, need_admin=True)
     if conn:
-        return await bot.get_chat(conn), conn
+        return await client.get_chat(conn), conn
     if message.chat.type == ChatType.PRIVATE:
-        await message.reply("This command is meant to be used in a group.")
+        await message.reply_text("This command is meant to be used in a group.")
         return None, None
     return message.chat, message.chat.id
 
@@ -63,7 +63,7 @@ async def antiraid(message: Message, command: CommandObject) -> str:
         active, raid_time, action_time, auto = await asyncio.to_thread(
             sql.get_raid_setting, chat_id
         )
-        await message.reply(
+        await message.reply_text(
             f"<b>AntiRaid is currently {'enabled' if active else 'disabled'}.</b>\n\n"
             f"Raid duration: <code>{format_duration(raid_time)}</code>"
             f"\nBan duration: <code>{format_duration(action_time)}</code>"
@@ -88,7 +88,7 @@ async def antiraid(message: Message, command: CommandObject) -> str:
     if args[0].lower() in OFF_WORDS:
         await asyncio.to_thread(sql.rem_raid, chat_id)
         await asyncio.to_thread(sql.clear_joins, chat_id)
-        await message.reply("Disabled AntiRaid. New joins are no longer banned.")
+        await message.reply_text("Disabled AntiRaid. New joins are no longer banned.")
         return (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#ANTIRAID\n"
@@ -107,7 +107,7 @@ async def antiraid(message: Message, command: CommandObject) -> str:
     await asyncio.to_thread(sql.set_raid, chat_id, duration)
     _active, raid_time, *_ = await asyncio.to_thread(sql.get_raid_setting, chat_id)
     shown = format_duration(duration or raid_time)
-    await message.reply(
+    await message.reply_text(
         f"Enabled AntiRaid for <code>{shown}</code>. New members will be banned on join.",
         parse_mode=ParseMode.HTML,
     )
@@ -132,7 +132,7 @@ async def raidtime(message: Message, command: CommandObject) -> str:
 
     if not args:
         _active, raid_time, *_ = await asyncio.to_thread(sql.get_raid_setting, chat_id)
-        await message.reply(
+        await message.reply_text(
             f"AntiRaid stays enabled for <code>{format_duration(raid_time)}</code>.",
             parse_mode=ParseMode.HTML,
         )
@@ -143,7 +143,7 @@ async def raidtime(message: Message, command: CommandObject) -> str:
         return ""
     shown = format_duration(expiry - int(time.time()))
     await asyncio.to_thread(sql.set_raid_time, chat_id, expiry - int(time.time()))
-    await message.reply(
+    await message.reply_text(
         f"AntiRaid will now stay enabled for <code>{shown}</code>.",
         parse_mode=ParseMode.HTML,
     )
@@ -170,7 +170,7 @@ async def raidactiontime(message: Message, command: CommandObject) -> str:
         _active, _raid_time, action_time, _auto = await asyncio.to_thread(
             sql.get_raid_setting, chat_id
         )
-        await message.reply(
+        await message.reply_text(
             f"Raiders are banned for <code>{format_duration(action_time)}</code>.",
             parse_mode=ParseMode.HTML,
         )
@@ -181,7 +181,7 @@ async def raidactiontime(message: Message, command: CommandObject) -> str:
         return ""
     shown = format_duration(expiry - int(time.time()))
     await asyncio.to_thread(sql.set_action_time, chat_id, expiry - int(time.time()))
-    await message.reply(
+    await message.reply_text(
         f"Raiders will now be banned for <code>{shown}</code>.",
         parse_mode=ParseMode.HTML,
     )
@@ -208,7 +208,7 @@ async def autoantiraid(message: Message, command: CommandObject) -> str:
         _active, _raid_time, _action_time, auto = await asyncio.to_thread(
             sql.get_raid_setting, chat_id
         )
-        await message.reply(
+        await message.reply_text(
             f"Auto AntiRaid is <code>{f'{auto} joins/min' if auto else 'off'}</code>.",
             parse_mode=ParseMode.HTML,
         )
@@ -216,7 +216,7 @@ async def autoantiraid(message: Message, command: CommandObject) -> str:
 
     if args[0].lower() in OFF_WORDS:
         await asyncio.to_thread(sql.set_auto_antiraid, chat_id, 0)
-        await message.reply("Disabled automatic AntiRaid.")
+        await message.reply_text("Disabled automatic AntiRaid.")
         return (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#ANTIRAID\n"
@@ -225,7 +225,7 @@ async def autoantiraid(message: Message, command: CommandObject) -> str:
         )
 
     if not args[0].isdigit():
-        await message.reply(
+        await message.reply_text(
             "Give me a number of joins per minute, or `off`.",
             parse_mode=ParseMode.HTML,
         )
@@ -234,7 +234,7 @@ async def autoantiraid(message: Message, command: CommandObject) -> str:
     threshold = int(args[0])
     await asyncio.to_thread(sql.set_auto_antiraid, chat_id, threshold)
     await asyncio.to_thread(sql.clear_joins, chat_id)
-    await message.reply(
+    await message.reply_text(
         f"AntiRaid will enable itself when more than <code>{threshold}</code>"
         f" users join within a minute.",
         parse_mode=ParseMode.HTML,
@@ -261,7 +261,7 @@ async def _raid_join(message: Message) -> str:
     new_user = member.user
     if new_user is None or new_user.is_bot:
         return ""
-    if new_user.id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN, bot.id):
+    if new_user.id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN, client.id):
         return ""
 
     active, _raid_time, action_time, auto = await asyncio.to_thread(
@@ -272,7 +272,7 @@ async def _raid_join(message: Message) -> str:
         if not active and joins > auto:
             await asyncio.to_thread(sql.set_raid, chat.id)
             active = True
-            await message.reply(
+            await message.reply_text(
                 f"\u26a0\ufe0f {joins} users joined in under a minute."
                 f" AntiRaid has been <b>enabled</b>.",
                 parse_mode=ParseMode.HTML,
@@ -283,7 +283,7 @@ async def _raid_join(message: Message) -> str:
         return ""
 
     try:
-        status = await bot.get_chat_member(chat.id, new_user.id)
+        status = await client.get_chat_member(chat.id, new_user.id)
     except Exception:
         LOGGER.warning(
             "AntiRaid could not read membership of %s in %s", new_user.id, chat.id
@@ -293,7 +293,7 @@ async def _raid_join(message: Message) -> str:
         return ""
 
     try:
-        await bot.ban_chat_member(
+        await client.ban_chat_member(
             chat.id, new_user.id, until_date=int(time.time()) + int(action_time)
         )
     except Exception:
@@ -301,7 +301,7 @@ async def _raid_join(message: Message) -> str:
         return ""
 
     shown = format_duration(action_time)
-    await message.reply(
+    await message.reply_text(
         f"\U0001f512 <b>AntiRaid:</b> {mention_html(new_user.id, new_user.first_name)}"
         f" was banned for {shown} while AntiRaid is active.",
         parse_mode=ParseMode.HTML,
@@ -321,7 +321,7 @@ async def antiraid_button(message, query) -> str:
     action = query.data.rsplit("_", 1)[1]
 
     try:
-        status = await bot.get_chat_member(chat_id, query.from_user.id)
+        status = await client.get_chat_member(chat_id, query.from_user.id)
     except Exception:
         await query.answer("I can't see that chat anymore.", show_alert=True)
         return ""

@@ -5,10 +5,10 @@ import time
 from datetime import datetime, timezone
 from io import BytesIO
 
-from aiogram.enums import ChatMemberStatus, ChatType, ParseMode
-from aiogram.exceptions import TelegramAPIError, TelegramForbiddenError
+from pyrogram.enums import ChatMemberStatus, ChatType, ParseMode
+from pyrogram.errors import RPCError, RPCError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import BufferedInputFile, Message
+from pyrogram.types import BufferedInputFile, Message
 
 import Database.sql.global_bans_sql as sql
 from Database.sql.userinfo_sql import get_user_info
@@ -78,29 +78,29 @@ async def gban(message: Message, command: CommandObject):
     user_id, reason = await extract_user_and_text(message, args)
 
     if not user_id:
-        await message.answer(
+        await message.reply_text(
             "You don't seem to be referring to a user or the ID specified is incorrect..",
         )
         return
 
     if int(user_id) in DEV_USERS:
-        await message.answer(
+        await message.reply_text(
             "That user is part of the Association\nI can't act against our own.",
         )
         return
 
     if int(user_id) in DRAGONS:
-        await message.answer(
+        await message.reply_text(
             "I spy, with my little eye... a disaster! Why are you guys turning on each other?",
         )
         return
 
-    if user_id == bot.id:
-        await message.answer("You uhh...want me to kick myself?")
+    if user_id == client.id:
+        await message.reply_text("You uhh...want me to kick myself?")
         return
 
     if user_id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN):
-        await message.answer("Fool! You can't attack Telegram's native tech!")
+        await message.reply_text("Fool! You can't attack Telegram's native tech!")
         return
 
     user_info = get_user_info(user_id) or {}
@@ -110,14 +110,14 @@ async def gban(message: Message, command: CommandObject):
 
     if sql.is_user_gbanned(user_id):
         if not reason:
-            await message.answer(
+            await message.reply_text(
                 "This user is already gbanned; I'd change the reason, but you haven't given me one...",
             )
             return
 
         old_reason = sql.update_gban_reason(user_id, user_username or user_name, reason)
         if old_reason:
-            await message.answer(
+            await message.reply_text(
                 "This user is already gbanned, for the following reason:\n"
                 "<code>{}</code>\n"
                 "I've gone and updated it with your new reason!".format(
@@ -127,13 +127,13 @@ async def gban(message: Message, command: CommandObject):
             )
 
         else:
-            await message.answer(
+            await message.reply_text(
                 "This user is already gbanned, but had no reason set; I've gone and updated it!",
             )
 
         return
 
-    await message.answer("On it!")
+    await message.reply_text("On it!")
 
     start_time = time.time()
     datetime_fmt = "%Y-%m-%dT%H:%M"
@@ -161,11 +161,11 @@ async def gban(message: Message, command: CommandObject):
 
     if EVENT_LOGS:
         try:
-            log = await bot.send_message(
+            log = await client.send_message(
                 EVENT_LOGS, log_message, parse_mode=ParseMode.HTML
             )
-        except TelegramAPIError:
-            log = await bot.send_message(
+        except RPCError:
+            log = await client.send_message(
                 EVENT_LOGS,
                 log_message
                 + "\n\nFormatting has been disabled due to an unexpected error.",
@@ -187,16 +187,16 @@ async def gban(message: Message, command: CommandObject):
             continue
 
         try:
-            await bot.ban_chat_member(chat_id, user_id)
+            await client.ban_chat_member(chat_id, user_id)
             gbanned_chats += 1
 
-        except TelegramAPIError as excp:
+        except RPCError as excp:
             if excp.message in GBAN_ERRORS:
                 pass
             else:
-                await message.answer(f"Could not gban due to: {excp.message}")
+                await message.reply_text(f"Could not gban due to: {excp.message}")
                 if EVENT_LOGS:
-                    await bot.send_message(
+                    await client.send_message(
                         EVENT_LOGS,
                         f"Could not gban due to {excp.message}",
                         parse_mode=ParseMode.HTML,
@@ -228,12 +228,12 @@ async def gban(message: Message, command: CommandObject):
 
     if gban_time > 60:
         gban_time = round((gban_time / 60), 2)
-        await message.answer("Done! Gbanned.", parse_mode=ParseMode.HTML)
+        await message.reply_text("Done! Gbanned.", parse_mode=ParseMode.HTML)
     else:
-        await message.answer("Done! Gbanned.", parse_mode=ParseMode.HTML)
+        await message.reply_text("Done! Gbanned.", parse_mode=ParseMode.HTML)
 
     try:
-        await bot.send_message(
+        await client.send_message(
             user_id,
             "#EVENT"
             "You have been marked as Malicious and as such have been banned from any future groups we manage."
@@ -241,7 +241,7 @@ async def gban(message: Message, command: CommandObject):
             f"</b>Appeal Chat:</b> @{SUPPORT_CHAT}",
             parse_mode=ParseMode.HTML,
         )
-    except TelegramAPIError:
+    except RPCError:
         # The user may have blocked the bot, which is exactly why they are being
         # banned. The global ban is already recorded either way.
         LOGGER.debug("Could not DM the gban notice to %s", user_id, exc_info=True)
@@ -257,7 +257,7 @@ async def ungban(message: Message, command: CommandObject):
     user_id = await extract_user(message, args)
 
     if not user_id:
-        await message.answer(
+        await message.reply_text(
             "You don't seem to be referring to a user or the ID specified is incorrect..",
         )
         return
@@ -267,10 +267,10 @@ async def ungban(message: Message, command: CommandObject):
     user_target = mention_html(user_id, user_name)
 
     if not sql.is_user_gbanned(user_id):
-        await message.answer("This user is not gbanned!")
+        await message.reply_text("This user is not gbanned!")
         return
 
-    await message.answer(f"I'll give {user_name} a second chance, globally.")
+    await message.reply_text(f"I'll give {user_name} a second chance, globally.")
 
     start_time = time.time()
     datetime_fmt = "%Y-%m-%dT%H:%M"
@@ -292,11 +292,11 @@ async def ungban(message: Message, command: CommandObject):
 
     if EVENT_LOGS:
         try:
-            log = await bot.send_message(
+            log = await client.send_message(
                 EVENT_LOGS, log_message, parse_mode=ParseMode.HTML
             )
-        except TelegramAPIError:
-            log = await bot.send_message(
+        except RPCError:
+            log = await client.send_message(
                 EVENT_LOGS,
                 log_message
                 + "\n\nFormatting has been disabled due to an unexpected error.",
@@ -315,24 +315,24 @@ async def ungban(message: Message, command: CommandObject):
             continue
 
         try:
-            member = await bot.get_chat_member(chat_id, user_id)
+            member = await client.get_chat_member(chat_id, user_id)
             if member.status == "kicked":
-                await bot.unban_chat_member(chat_id, user_id)
+                await client.unban_chat_member(chat_id, user_id)
                 ungbanned_chats += 1
 
-        except TelegramAPIError as excp:
+        except RPCError as excp:
             if excp.message in UNGBAN_ERRORS:
                 pass
             else:
-                await message.answer(f"Could not un-gban due to: {excp.message}")
+                await message.reply_text(f"Could not un-gban due to: {excp.message}")
                 if EVENT_LOGS:
-                    await bot.send_message(
+                    await client.send_message(
                         EVENT_LOGS,
                         f"Could not un-gban due to: {excp.message}",
                         parse_mode=ParseMode.HTML,
                     )
                 else:
-                    await bot.send_message(
+                    await client.send_message(
                         OWNER_ID,
                         f"Could not un-gban due to: {excp.message}",
                     )
@@ -353,9 +353,9 @@ async def ungban(message: Message, command: CommandObject):
 
     if ungban_time > 60:
         ungban_time = round((ungban_time / 60), 2)
-        await message.answer(f"Person has been un-gbanned. Took {ungban_time} min")
+        await message.reply_text(f"Person has been un-gbanned. Took {ungban_time} min")
     else:
-        await message.answer(f"Person has been un-gbanned. Took {ungban_time} sec")
+        await message.reply_text(f"Person has been un-gbanned. Took {ungban_time} sec")
 
 
 @support_plus
@@ -363,7 +363,7 @@ async def gbanlist(message: Message):
     banned_users = sql.get_gban_list()
 
     if not banned_users:
-        await message.reply(
+        await message.reply_text(
             "There aren't any gbanned users! You're kinder than I expected...",
         )
         return
@@ -384,7 +384,7 @@ async def gbanlist(message: Message):
 
 async def check_and_ban(message: Message, user_id, should_message=True):
     if sql.is_user_gbanned(user_id):
-        await bot.ban_chat_member(message.chat.id, user_id)
+        await client.ban_chat_member(message.chat.id, user_id)
         if should_message:
             text = (
                 f"<b>Alert</b>: this user is globally banned.\n"
@@ -395,7 +395,7 @@ async def check_and_ban(message: Message, user_id, should_message=True):
             user = await asyncio.to_thread(sql.get_gbanned_user, user_id)
             if user.reason:
                 text += f"\n<b>Ban Reason:</b> <code>{html.escape(user.reason)}</code>"
-            await message.reply(text, parse_mode=ParseMode.HTML)
+            await message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
 async def enforce_gban(msg: Message):
@@ -418,8 +418,8 @@ async def enforce_gban(msg: Message):
         return
 
     try:
-        get_member = await bot.get_chat_member(chat.id, bot.id)
-    except TelegramForbiddenError:
+        get_member = await client.get_chat_member(chat.id, client.id)
+    except RPCError:
         return
     if (
         get_member.status != ChatMemberStatus.ADMINISTRATOR
@@ -447,17 +447,17 @@ async def gbanstat(message: Message, command: CommandObject):
     if len(args) > 0:
         if args[0].lower() in ["on", "yes"]:
             sql.enable_gbans(message.chat.id)
-            await message.reply(
+            await message.reply_text(
                 "Antispam is now enabled ✅ "
                 "I am now protecting your group from potential remote threats!",
             )
         elif args[0].lower() in ["off", "no"]:
             sql.disable_gbans(message.chat.id)
-            await message.reply(
+            await message.reply_text(
                 "I am not now protecting your group from potential remote threats!",
             )
     else:
-        await message.reply(
+        await message.reply_text(
             "Give me some arguments to choose a setting! on/off, yes/no!\n\n"
             "Your current setting is: {}\n"
             "When True, any gbans that happen will also happen in your group. "
@@ -475,7 +475,7 @@ def __user_info__(user_id):
     text = "Malicious: <b>{}</b>"
     if user_id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN):
         return ""
-    if user_id == bot.id:
+    if user_id == client.id:
         return ""
     if int(user_id) in DRAGONS:
         return ""

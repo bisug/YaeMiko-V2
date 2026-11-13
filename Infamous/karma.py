@@ -3,8 +3,8 @@
 # https://t.me/O_okarma
 
 # <============================================== IMPORTS =========================================================>
-from aiogram.enums import ButtonStyle
-from aiogram.types import InlineKeyboardButton
+from pyrogram.enums import ButtonStyle
+from pyrogram.types import InlineKeyboardButton
 from pyrogram.enums import ButtonStyle as PyrogramButtonStyle
 from pyrogram.types import InlineKeyboardButton as ib
 

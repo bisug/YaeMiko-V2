@@ -34,7 +34,6 @@ IMPORT_MAP = {
     "from aiogram.exceptions import TelegramBadRequest": (
         "from pyrogram.errors import RPCError"
     ),
-    "from aiogram.filters import Comma": "from pyrogram import filters",
 }
 
 # Calls on a message. kurigram has no answer(), it has reply_text() and one

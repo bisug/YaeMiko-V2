@@ -1,6 +1,6 @@
 # <============================================== IMPORTS =========================================================>
 
-from aiogram.types import Message
+from pyrogram.types import Message
 
 from Mikobot.plugins.helper_funcs.string_handling import entities_map
 from Mikobot.plugins.users import get_user_id
@@ -85,7 +85,7 @@ async def extract_user_and_text(
 ) -> tuple:
     result = await _resolve_target(message, args)
     if result == (None, None) and len(args) >= 1 and args[0][0] == "@":
-        await message.answer(
+        await message.reply_text(
             "No idea who this user is. You'll be able to interact with them if "
             "you reply to that person's message instead, or forward one of that user's messages.",
         )
@@ -103,7 +103,7 @@ async def extract_text(message) -> str:
 async def extract_unt_fedban(message: Message, args: list[str]) -> tuple:
     result = await _resolve_target(message, args)
     if result == (None, None) and len(args) >= 1 and args[0][0] == "@":
-        await message.answer(
+        await message.reply_text(
             "I don't have that user in my db.  "
             "You'll be able to interact with them if you reply to that person's message instead, or forward one of that user's messages.",
         )

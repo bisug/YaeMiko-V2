@@ -17,7 +17,7 @@ async def _packkang(app, message):
     """
     @MaybeSuraj on telegram. who helped me in making this module.
     """
-    txt = await message.reply("Processing....")
+    txt = await message.reply_text("Processing....")
     if not message.from_user:
         await txt.edit("This command can only be used by users.")
         return
@@ -89,7 +89,7 @@ async def _packkang(app, message):
             ),
         )
     except Exception as e:
-        await message.reply(str(e))
+        await message.reply_text(str(e))
 
 
 # <================================================ END =======================================================>

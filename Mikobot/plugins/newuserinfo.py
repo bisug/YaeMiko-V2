@@ -83,11 +83,11 @@ async def userinfopic(
 async def userinfo_command(client, message):
     user = message.from_user
     if not user:
-        return await message.reply("Only users can check userinfo.")
+        return await message.reply_text("Only users can check userinfo.")
     user_x, user_y = 1035, 2885
     user_id_x, user_id_y = 1035, 2755
 
-    processing_message = await message.reply("Processing user information...")
+    processing_message = await message.reply_text("Processing user information...")
     try:
         with tempfile.TemporaryDirectory(prefix="yae-userinfo-") as temp_dir:
             image_path = await userinfopic(

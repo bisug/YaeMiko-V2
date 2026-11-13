@@ -5,10 +5,10 @@ import re
 import time
 
 from aiogram import F
-from aiogram.enums import ParseMode
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.enums import ParseMode
+from pyrogram.errors import RPCError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import CallbackQuery, ChatPermissions, Message
+from pyrogram.types import CallbackQuery, ChatPermissions, Message
 
 from Database.sql import antiflood_sql as sql
 from Database.sql.approve_sql import is_approved
@@ -60,16 +60,16 @@ async def check_flood(message: Message):
     try:
         getmode, getvalue = await asyncio.to_thread(sql.get_flood_setting, chat.id)
         if getmode == 1:
-            await bot.ban_chat_member(chat.id, user.id)
+            await client.ban_chat_member(chat.id, user.id)
             execstrings = "BANNED"
             tag = "BANNED"
         elif getmode == 2:
-            await bot.ban_chat_member(chat.id, user.id)
-            await bot.unban_chat_member(chat.id, user.id)
+            await client.ban_chat_member(chat.id, user.id)
+            await client.unban_chat_member(chat.id, user.id)
             execstrings = "KICKED"
             tag = "KICKED"
         elif getmode == 3:
-            await bot.restrict_chat_member(
+            await client.restrict_chat_member(
                 chat.id,
                 user.id,
                 permissions=ChatPermissions(can_send_messages=False),
@@ -80,14 +80,14 @@ async def check_flood(message: Message):
             bantime = await extract_time(msg, getvalue)
             if not bantime:
                 return
-            await bot.ban_chat_member(chat.id, user.id, until_date=bantime)
+            await client.ban_chat_member(chat.id, user.id, until_date=bantime)
             execstrings = "BANNED for {}".format(getvalue)
             tag = "TBAN"
         elif getmode == 5:
             mutetime = await extract_time(msg, getvalue)
             if not mutetime:
                 return
-            await bot.restrict_chat_member(
+            await client.restrict_chat_member(
                 chat.id,
                 user.id,
                 until_date=mutetime,
@@ -102,8 +102,8 @@ async def check_flood(message: Message):
             tracked = sql.take_flooded_messages(chat.id, user.id)
             for message_id in tracked:
                 try:
-                    await bot.delete_message(chat.id, message_id)
-                except TelegramAPIError:
+                    await client.delete_messages(chat.id, message_id)
+                except RPCError:
                     continue
 
         await send_message(
@@ -117,8 +117,8 @@ async def check_flood(message: Message):
             mention_html(user.id, user.first_name),
         )
 
-    except TelegramAPIError:
-        await msg.answer(
+    except RPCError:
+        await msg.reply_text(
             "I can't restrict people here, give me permissions first! Until then, I'll disable anti-flood.",
         )
         await asyncio.to_thread(sql.set_flood, chat.id, 0)
@@ -142,7 +142,7 @@ async def flood_button(query: CallbackQuery):
     user_id = int(match.group(1))
     chat = message.chat.id
     try:
-        await bot.restrict_chat_member(
+        await client.restrict_chat_member(
             chat,
             user_id,
             permissions=ChatPermissions(
@@ -179,7 +179,7 @@ async def set_flood(message: Message, command: CommandObject):
     conn = await connected(bot, message, chat, user.id, need_admin=True)
     if conn:
         chat_id = conn
-        chat_obj = await bot.get_chat(conn)
+        chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
         if message.chat.type == "private":
@@ -196,22 +196,22 @@ async def set_flood(message: Message, command: CommandObject):
         if val in ["off", "no", "0"]:
             sql.set_flood(chat_id, 0)
             if conn:
-                await message.answer(
+                await message.reply_text(
                     "Antiflood has been disabled in {}.".format(chat_name),
                 )
             else:
-                await message.answer("Antiflood has been disabled.")
+                await message.reply_text("Antiflood has been disabled.")
 
         elif val.isdigit():
             amount = int(val)
             if amount <= 0:
                 sql.set_flood(chat_id, 0)
                 if conn:
-                    await message.answer(
+                    await message.reply_text(
                         "Antiflood has been disabled in {}.".format(chat_name),
                     )
                 else:
-                    await message.answer("Antiflood has been disabled.")
+                    await message.reply_text("Antiflood has been disabled.")
                 return (
                     "<b>{}:</b>"
                     "\n#SETFLOOD"
@@ -232,14 +232,14 @@ async def set_flood(message: Message, command: CommandObject):
             else:
                 sql.set_flood(chat_id, amount)
                 if conn:
-                    await message.answer(
+                    await message.reply_text(
                         "Antiflood limit has been set to {} in chat: {}".format(
                             amount,
                             chat_name,
                         ),
                     )
                 else:
-                    await message.answer(
+                    await message.reply_text(
                         "Successfully updated antiflood limit to {}!".format(amount),
                     )
                 return (
@@ -254,11 +254,11 @@ async def set_flood(message: Message, command: CommandObject):
                 )
 
         else:
-            await message.answer(
+            await message.reply_text(
                 "Invalid argument, please use a number, 'off', or 'no'."
             )
     else:
-        await message.answer(
+        await message.reply_text(
             (
                 "Use `/setflood number` to enable antiflood.\n"
                 "Or use `/setflood off` to disable antiflood."
@@ -275,7 +275,7 @@ async def flood(message: Message, command: CommandObject):
     conn = await connected(bot, message, chat, user.id, need_admin=False)
     if conn:
         chat_id = conn
-        chat_obj = await bot.get_chat(conn)
+        chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
         if message.chat.type == "private":
@@ -290,21 +290,21 @@ async def flood(message: Message, command: CommandObject):
     limit = sql.get_flood_limit(chat_id)
     if limit == 0:
         if conn:
-            await msg.answer(
+            await msg.reply_text(
                 "I'm not enforcing any flood control in {}!".format(chat_name),
             )
         else:
-            await msg.answer("I'm not enforcing any flood control here!")
+            await msg.reply_text("I'm not enforcing any flood control here!")
     else:
         if conn:
-            await msg.answer(
+            await msg.reply_text(
                 "I'm currently restricting members after {} consecutive messages in {}.".format(
                     limit,
                     chat_name,
                 ),
             )
         else:
-            await msg.answer(
+            await msg.reply_text(
                 "I'm currently restricting members after {} consecutive messages.".format(
                     limit,
                 ),
@@ -320,7 +320,7 @@ async def set_flood_mode(message: Message, command: CommandObject):
 
     conn = await connected(bot, message, chat, user.id, need_admin=True)
     if conn:
-        chat = await bot.get_chat(conn)
+        chat = await client.get_chat(conn)
         chat_id = conn
         chat_obj = chat
         chat_name = chat_obj.title
@@ -368,14 +368,14 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
             )
             return
         if conn:
-            await msg.answer(
+            await msg.reply_text(
                 "Exceeding consecutive flood limit will result in {} in {}!".format(
                     settypeflood,
                     chat_name,
                 ),
             )
         else:
-            await msg.answer(
+            await msg.reply_text(
                 "Exceeding consecutive flood limit will result in {}!".format(
                     settypeflood,
                 ),
@@ -402,14 +402,14 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
         elif getmode == 5:
             settypeflood = "tmute for {}".format(getvalue)
         if conn:
-            await msg.answer(
+            await msg.reply_text(
                 "Sending more messages than flood limit will result in {} in {}.".format(
                     settypeflood,
                     chat_name,
                 ),
             )
         else:
-            await msg.answer(
+            await msg.reply_text(
                 "Sending more messages than flood limit will result in {}.".format(
                     settypeflood,
                 ),
@@ -421,7 +421,7 @@ async def _flood_target(message, user):
     """(chat_id, chat_name) for a group command, honouring connections."""
     conn = await connected(bot, message, message.chat, user.id, need_admin=True)
     if conn:
-        chat_obj = await bot.get_chat(conn)
+        chat_obj = await client.get_chat(conn)
         return conn, chat_obj.title
     if message.chat.type == "private":
         await send_message(
@@ -478,13 +478,13 @@ async def set_flood_timer(message: Message, command: CommandObject):
 
     amount, seconds = sql.set_flood_timer(chat_id, int(args[0]), window)
     if chat_id != message.chat.id:
-        await msg.answer(
+        await msg.reply_text(
             "Timed antiflood is now set to {} messages within {} seconds in {}.".format(
                 amount, seconds, chat_name
             ),
         )
     else:
-        await msg.answer(
+        await msg.reply_text(
             "Timed antiflood is now set to {} messages within {} seconds.".format(
                 amount, seconds
             ),
@@ -529,11 +529,11 @@ async def clearflood(message: Message, command: CommandObject):
 
     sql.set_clearflood(chat_id, enabled)
     if chat_id != message.chat.id:
-        await msg.answer(
+        await msg.reply_text(
             "Clearflood is now {} in {}.".format("on" if enabled else "off", chat_name),
         )
     else:
-        await msg.answer("Clearflood is now {}.".format("on" if enabled else "off"))
+        await msg.reply_text("Clearflood is now {}.".format("on" if enabled else "off"))
 
     return (
         f"<b>{html.escape(chat_name)}:</b>\n"

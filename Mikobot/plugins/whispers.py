@@ -8,8 +8,8 @@
 from uuid import uuid4
 
 from aiogram import F
-from aiogram.enums import ButtonStyle
-from aiogram.types import (
+from pyrogram.enums import ButtonStyle
+from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -47,7 +47,7 @@ async def mainwhisper(query: InlineQuery):
     target_id = int(user) if user.isdigit() else None
     if target_id is not None:
         try:
-            chat = await bot.get_chat(target_id)
+            chat = await client.get_chat(target_id)
             display_user = f"@{chat.username}" if chat.username else chat.first_name
         except Exception:
             pass

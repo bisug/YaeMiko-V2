@@ -1,9 +1,9 @@
 # <============================================== IMPORTS =========================================================>
 import random
 
-from aiogram.enums import ParseMode
+from pyrogram.enums import ParseMode
 from aiogram.filters import CommandObject
-from aiogram.types import Message
+from pyrogram.types import Message
 
 import Mikobot.utils.fun_strings as fun_strings
 from Mikobot import dp
@@ -30,7 +30,7 @@ async def truth(message: Message):
         question = await make_request("https://api.truthordarebot.xyz/v1/truth")
     except Exception:
         question = "The truth service is unavailable. Please try again later."
-    await message.answer(question)
+    await message.reply_text(question)
 
 
 async def dare(message: Message):
@@ -38,25 +38,25 @@ async def dare(message: Message):
         question = await make_request("https://api.truthordarebot.xyz/v1/dare")
     except Exception:
         question = "The dare service is unavailable. Please try again later."
-    await message.answer(question)
+    await message.reply_text(question)
 
 
 async def joke(message: Message):
     from pyjokes import get_joke
 
-    await message.answer(get_joke())
+    await message.reply_text(get_joke())
 
 
 async def roll(message: Message):
-    await message.answer(random.choice(range(1, 7)))
+    await message.reply_text(random.choice(range(1, 7)))
 
 
 async def flirt(message: Message):
-    await message.answer(random.choice(fun_strings.FLIRT))
+    await message.reply_text(random.choice(fun_strings.FLIRT))
 
 
 async def toss(message: Message):
-    await message.answer(random.choice(fun_strings.TOSS))
+    await message.reply_text(random.choice(fun_strings.TOSS))
 
 
 async def shrug(message: Message):
@@ -80,7 +80,7 @@ async def rlg(message: Message):
 
     left, right = (eyes + [eyes[0]])[:2]
     repl = ears[0] + left + mouth[0] + right + ears[1]
-    await message.answer(repl)
+    await message.reply_text(repl)
 
 
 async def decide(message: Message):
@@ -156,7 +156,7 @@ async def webify(message: Message, command: CommandObject):
     if message.reply_to_message:
         text = message.reply_to_message.text
         if not text:
-            await message.answer("Reply to a text message to use /weebify.")
+            await message.reply_text("Reply to a text message to use /weebify.")
             return
         string = text.lower().replace(" ", "  ")
 
@@ -164,7 +164,7 @@ async def webify(message: Message, command: CommandObject):
         string = "  ".join(args).lower()
 
     if not string:
-        await message.answer(
+        await message.reply_text(
             "Usage is `/weebify <text>`", parse_mode=ParseMode.MARKDOWN
         )
         return
@@ -177,7 +177,7 @@ async def webify(message: Message, command: CommandObject):
     if message.reply_to_message:
         await message.reply_to_message.reply(string)
     else:
-        await message.answer(string)
+        await message.reply_text(string)
 
 
 # <=================================================== HELP ====================================================>

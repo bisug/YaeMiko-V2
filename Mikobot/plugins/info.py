@@ -5,10 +5,10 @@ import tempfile
 from html import escape
 from random import choice
 
-from aiogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
+from pyrogram.errors import RPCError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import (
+from pyrogram.types import (
     FSInputFile,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -33,7 +33,7 @@ async def info(message: Message, command: CommandObject):
     args = command.args.split() if command.args else []
 
     def reply_with_text(text):
-        return message.answer(text, parse_mode=ParseMode.HTML)
+        return message.reply_text(text, parse_mode=ParseMode.HTML)
 
     head = ""
     premium = False
@@ -50,9 +50,9 @@ async def info(message: Message, command: CommandObject):
 
         if not user_id:
             try:
-                chat_obj = await bot.get_chat(user_name)
+                chat_obj = await client.get_chat(user_name)
                 userid = chat_obj.id
-            except TelegramAPIError:
+            except RPCError:
                 await reply_with_text(
                     "I can't get information about this user/channel/group."
                 )
@@ -92,8 +92,8 @@ async def info(message: Message, command: CommandObject):
         return
 
     try:
-        chat_obj = await bot.get_chat(userid)
-    except TelegramAPIError, Exception:
+        chat_obj = await client.get_chat(userid)
+    except RPCError, Exception:
         await reply_with_text("I can't get information about this user/channel/group.")
         return
 
@@ -117,7 +117,7 @@ async def info(message: Message, command: CommandObject):
         if chat_obj.bio:
             head += f"\n\n<b>➲ Bio:</b> {chat_obj.bio}"
 
-        chat_member = await bot.get_chat_member(chat.id, chat_obj.id)
+        chat_member = await client.get_chat_member(chat.id, chat_obj.id)
         if chat_member.status == ChatMemberStatus.ADMINISTRATOR:
             head += f"\n➲ <b>Presence:</b> {chat_member.status}"
             if chat_member.custom_title:
@@ -195,10 +195,10 @@ async def info(message: Message, command: CommandObject):
             if chat_obj.photo:
                 with tempfile.TemporaryDirectory(prefix="yae-info-") as tempdir:
                     photo_path = os.path.join(tempdir, f"{chat_obj.id}.png")
-                    await bot.download(
+                    await client.download_media(
                         chat_obj.photo[-1].file_id, destination=photo_path
                     )
-                    await message.answer_photo(
+                    await message.reply_photo(
                         photo=FSInputFile(photo_path),
                         caption=head,
                         parse_mode=ParseMode.HTML,
@@ -206,12 +206,12 @@ async def info(message: Message, command: CommandObject):
                     await reply.delete()
             else:
                 await reply_with_text(head)
-        except TelegramAPIError, OSError, Exception:
+        except RPCError, OSError, Exception:
             # The photo path can fail on download, on the caption's HTML, or on
             # the temp file. Falling back to the text form still answers.
             try:
                 await reply_with_text(head)
-            except TelegramAPIError:
+            except RPCError:
                 await reply_with_text(escape(head))
 
 
@@ -236,7 +236,7 @@ async def stats(message: Message):
 
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-    await message.answer_photo(
+    await message.reply_photo(
         photo=str(choice(START_IMG)),
         caption=result,
         parse_mode=ParseMode.HTML,

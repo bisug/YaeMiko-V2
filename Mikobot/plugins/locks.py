@@ -3,10 +3,10 @@ import html
 import re
 import unicodedata
 
-from aiogram.enums import ChatMemberStatus, ChatType, ParseMode
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.enums import ChatMemberStatus, ChatType, ParseMode
+from pyrogram.errors import RPCError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import ChatPermissions, Message
+from pyrogram.types import ChatPermissions, Message
 
 import Database.sql.locks_sql as sql
 from Database.sql.approve_sql import is_approved
@@ -303,7 +303,7 @@ async def restr_members(
         ):
             continue
         try:
-            await bot.restrict_chat_member(
+            await client.restrict_chat_member(
                 chat_id,
                 mem.user,
                 permissions=ChatPermissions(
@@ -318,7 +318,7 @@ async def restr_members(
                     can_add_web_page_previews=previews,
                 ),
             )
-        except TelegramAPIError:
+        except RPCError:
             pass
 
 
@@ -334,7 +334,7 @@ async def unrestr_members(
 ):
     for mem in members:
         try:
-            await bot.restrict_chat_member(
+            await client.restrict_chat_member(
                 chat_id,
                 mem.user,
                 permissions=ChatPermissions(
@@ -349,12 +349,12 @@ async def unrestr_members(
                     can_add_web_page_previews=previews,
                 ),
             )
-        except TelegramAPIError:
+        except RPCError:
             pass
 
 
 async def locktypes(message: Message):
-    await message.answer(
+    await message.reply_text(
         "\n • ".join(
             ["Locks available: "]
             + sorted(list(LOCK_TYPES) + list(LOCK_CHAT_RESTRICTION)),
@@ -376,7 +376,7 @@ async def lock(message: Message, command: CommandObject) -> str:
             # Connection check
             conn = await connected(bot, message, chat, user.id, need_admin=True)
             if conn:
-                chat = await bot.get_chat(conn)
+                chat = await client.get_chat(conn)
                 chat_id = conn
                 chat_name = chat.title
                 text = "Locked {} for non-admins in {}!".format(ltype, chat_name)
@@ -406,7 +406,7 @@ async def lock(message: Message, command: CommandObject) -> str:
             # Connection check
             conn = await connected(bot, message, chat, user.id, need_admin=True)
             if conn:
-                chat = await bot.get_chat(conn)
+                chat = await client.get_chat(conn)
                 chat_id = conn
                 chat_name = chat.title
                 text = "Locked {} for all non-admins in {}!".format(
@@ -425,10 +425,10 @@ async def lock(message: Message, command: CommandObject) -> str:
                 chat_name = message.chat.title
                 text = "Locked {} for all non-admins!".format(ltype)
 
-            chat_obj = await bot.get_chat(chat_id)
+            chat_obj = await client.get_chat(chat_id)
             current_permission = chat_obj.permissions
             current_dict = current_permission.model_dump() if current_permission else {}
-            await bot.set_chat_permissions(
+            await client.set_chat_permissions(
                 chat_id=chat_id,
                 permissions=get_permission_list(
                     current_dict,
@@ -437,7 +437,7 @@ async def lock(message: Message, command: CommandObject) -> str:
             )
 
             try:
-                await bot.restrict_chat_member(
+                await client.restrict_chat_member(
                     chat.id,
                     int(ChatID.SERVICE_CHAT),
                     permissions=ChatPermissions(
@@ -452,11 +452,11 @@ async def lock(message: Message, command: CommandObject) -> str:
                         can_add_web_page_previews=True,
                     ),
                 )
-            except TelegramAPIError:
+            except RPCError:
                 pass
 
             try:
-                await bot.restrict_chat_member(
+                await client.restrict_chat_member(
                     chat.id,
                     int(ChatID.ANONYMOUS_ADMIN),
                     permissions=ChatPermissions(
@@ -471,7 +471,7 @@ async def lock(message: Message, command: CommandObject) -> str:
                         can_add_web_page_previews=True,
                     ),
                 )
-            except TelegramAPIError:
+            except RPCError:
                 pass
 
             await send_message(message, text, parse_mode=ParseMode.MARKDOWN)
@@ -512,7 +512,7 @@ async def unlock(message: Message, command: CommandObject) -> str:
             # Connection check
             conn = await connected(bot, message, chat, user.id, need_admin=True)
             if conn:
-                chat = await bot.get_chat(conn)
+                chat = await client.get_chat(conn)
                 chat_id = conn
                 chat_name = chat.title
                 text = "Unlocked {} for everyone in {}!".format(ltype, chat_name)
@@ -544,7 +544,7 @@ async def unlock(message: Message, command: CommandObject) -> str:
             # Connection check
             conn = await connected(bot, message, chat, user.id, need_admin=True)
             if conn:
-                chat = await bot.get_chat(conn)
+                chat = await client.get_chat(conn)
                 chat_id = conn
                 chat_name = chat.title
                 text = "Unlocked {} for everyone in {}!".format(ltype, chat_name)
@@ -560,7 +560,7 @@ async def unlock(message: Message, command: CommandObject) -> str:
                 chat_name = message.chat.title
                 text = "Unlocked {} for everyone!".format(ltype)
 
-            member = await bot.get_chat_member(chat.id, bot.id)
+            member = await client.get_chat_member(chat.id, client.id)
 
             if member.status == ChatMemberStatus.ADMINISTRATOR:
                 can_change_info = member.can_change_info
@@ -575,10 +575,10 @@ async def unlock(message: Message, command: CommandObject) -> str:
                 )
                 return
 
-            chat_obj = await bot.get_chat(chat_id)
+            chat_obj = await client.get_chat(chat_id)
             current_permission = chat_obj.permissions
             current_dict = current_permission.model_dump() if current_permission else {}
-            await bot.set_chat_permissions(
+            await client.set_chat_permissions(
                 chat_id=chat_id,
                 permissions=get_permission_list(
                     current_dict,
@@ -662,8 +662,8 @@ async def del_lockables(message: Message):
     ):
         return
     try:
-        bot_member = await bot.get_chat_member(chat.id, bot.id)
-    except TelegramAPIError:
+        bot_member = await client.get_chat_member(chat.id, client.id)
+    except RPCError:
         return
     if (
         bot_member.status != ChatMemberStatus.ADMINISTRATOR
@@ -682,7 +682,7 @@ async def del_lockables(message: Message):
                     if _has_arabic_script(message.caption):
                         try:
                             await message.delete()
-                        except TelegramAPIError as excp:
+                        except RPCError as excp:
                             if (
                                 "message to delete not found"
                                 in str(excp.message or excp).lower()
@@ -695,7 +695,7 @@ async def del_lockables(message: Message):
                     if _has_arabic_script(message.text):
                         try:
                             await message.delete()
-                        except TelegramAPIError as excp:
+                        except RPCError as excp:
                             if (
                                 "message to delete not found"
                                 in str(excp.message or excp).lower()
@@ -710,7 +710,7 @@ async def del_lockables(message: Message):
                 if message.reply_markup and message.reply_markup.inline_keyboard:
                     try:
                         await message.delete()
-                    except TelegramAPIError as excp:
+                    except RPCError as excp:
                         if (
                             "message to delete not found"
                             in str(excp.message or excp).lower()
@@ -728,7 +728,7 @@ async def del_lockables(message: Message):
                         continue
                     try:
                         await message.delete()
-                    except TelegramAPIError as excp:
+                    except RPCError as excp:
                         if (
                             "message to delete not found"
                             in str(excp.message or excp).lower()
@@ -744,7 +744,7 @@ async def del_lockables(message: Message):
                     if message.forward_from_chat.type == "channel":
                         try:
                             await message.delete()
-                        except TelegramAPIError as excp:
+                        except RPCError as excp:
                             if (
                                 "message to delete not found"
                                 in str(excp.message or excp).lower()
@@ -761,7 +761,7 @@ async def del_lockables(message: Message):
                     if message.forward_from.is_bot:
                         try:
                             await message.delete()
-                        except TelegramAPIError as excp:
+                        except RPCError as excp:
                             if (
                                 "message to delete not found"
                                 in str(excp.message or excp).lower()
@@ -784,7 +784,7 @@ async def del_lockables(message: Message):
                 if is_anon_channel:
                     try:
                         await message.delete()
-                    except TelegramAPIError as excp:
+                    except RPCError as excp:
                         if (
                             "message to delete not found"
                             in str(excp.message or excp).lower()
@@ -804,7 +804,7 @@ async def del_lockables(message: Message):
                 new_members = message.new_chat_members or []
                 for new_mem in new_members:
                     if new_mem.is_bot:
-                        if not await is_bot_admin(chat, bot.id):
+                        if not await is_bot_admin(chat, client.id):
                             await send_message(
                                 message,
                                 "I see a bot and I've been told to stop them from joining..."
@@ -812,7 +812,7 @@ async def del_lockables(message: Message):
                             )
                             return
 
-                        await bot.ban_chat_member(chat.id, new_mem.id)
+                        await client.ban_chat_member(chat.id, new_mem.id)
                         await send_message(
                             message,
                             "Only admins are allowed to add bots in this chat! Get outta here.",
@@ -821,7 +821,7 @@ async def del_lockables(message: Message):
             else:
                 try:
                     await message.delete()
-                except TelegramAPIError as excp:
+                except RPCError as excp:
                     if (
                         "message to delete not found"
                         in str(excp.message or excp).lower()
@@ -868,7 +868,7 @@ async def build_lock_message(chat_id):
             locklist.append("stickerpremium = `{}`".format(locks.stickerpremium))
             locklist.append("stickeranimated = `{}`".format(locks.stickeranimated))
 
-    permissions = await bot.get_chat(chat_id)
+    permissions = await client.get_chat(chat_id)
     permissions = getattr(permissions, "permissions", None)
     if permissions is not None:
         permslist.append("messages = `{}`".format(permissions.can_send_messages))
@@ -915,7 +915,7 @@ async def list_locks(message: Message):
     # Connection check
     conn = await connected(bot, message, chat, user.id, need_admin=True)
     if conn:
-        chat = await bot.get_chat(conn)
+        chat = await client.get_chat(conn)
         chat_name = chat.title
     else:
         if message.chat.type == ChatType.PRIVATE:
@@ -955,10 +955,10 @@ async def _allowlist_target(message: Message):
         bot, message, message.chat, message.from_user.id, need_admin=True
     )
     if conn:
-        chat = await bot.get_chat(conn)
+        chat = await client.get_chat(conn)
         return conn, chat
     if message.chat.type == ChatType.PRIVATE:
-        await message.reply("This command is meant to be used in a group.")
+        await message.reply_text("This command is meant to be used in a group.")
         return None, None
     return message.chat.id, message.chat
 
@@ -984,20 +984,20 @@ async def allowlist(message: Message, command: CommandObject) -> str:
     if not args:
         current = sql.list_allowed(chat_id)
         if not current:
-            await message.reply("There is nothing on the allowlist.")
+            await message.reply_text("There is nothing on the allowlist.")
             return ""
         lines = "\n".join(
             f" • <code>{html.escape(lockable)}</code>: <code>{html.escape(item)}</code>"
             for lockable, item in sorted(current)
         )
-        await message.reply(
+        await message.reply_text(
             f"Allowlisted items here:\n{lines}", parse_mode=ParseMode.HTML
         )
         return ""
 
     lockable, values = args[0].lower(), args[1:]
     if lockable not in ALLOWLIST_LOCKABLES:
-        await message.reply(
+        await message.reply_text(
             "That cannot be allowlisted. Supported: "
             f"<code>{', '.join(ALLOWLIST_LOCKABLES)}</code>",
             parse_mode=ParseMode.HTML,
@@ -1005,7 +1005,7 @@ async def allowlist(message: Message, command: CommandObject) -> str:
         return ""
 
     if not values:
-        await message.reply(f"Give me something to allow for <code>{lockable}</code>.")
+        await message.reply_text(f"Give me something to allow for <code>{lockable}</code>.")
         return ""
 
     added = []
@@ -1017,7 +1017,7 @@ async def allowlist(message: Message, command: CommandObject) -> str:
             replied = message.reply_to_message
             sticker = getattr(replied, "sticker", None) if replied else None
             if sticker is None or not sticker.set_name:
-                await message.reply("Reply to a sticker to use `<>`.")
+                await message.reply_text("Reply to a sticker to use `<>`.")
                 return ""
             value = sticker.set_name
         elif lockable in ("sticker", "emojicustom") and value.startswith(
@@ -1032,11 +1032,11 @@ async def allowlist(message: Message, command: CommandObject) -> str:
         added.append(item)
 
     if not added:
-        await message.reply("That value could not be read as an item.")
+        await message.reply_text("That value could not be read as an item.")
         return ""
 
     listed = ", ".join(f"<code>{html.escape(i)}</code>" for i in added)
-    await message.reply(
+    await message.reply_text(
         f"Allowlisted for <code>{lockable}</code>: {listed}",
         parse_mode=ParseMode.HTML,
     )
@@ -1059,12 +1059,12 @@ async def rmallowlist(message: Message, command: CommandObject) -> str:
     args = command.args.split() if command.args else []
     user = message.from_user
     if not args:
-        await message.reply("Give me the type and item to remove.")
+        await message.reply_text("Give me the type and item to remove.")
         return ""
 
     lockable, values = args[0].lower(), args[1:]
     if lockable not in ALLOWLIST_LOCKABLES:
-        await message.reply(
+        await message.reply_text(
             f"That cannot be allowlisted. Supported: <code>{', '.join(ALLOWLIST_LOCKABLES)}</code>",
             parse_mode=ParseMode.HTML,
         )
@@ -1077,7 +1077,7 @@ async def rmallowlist(message: Message, command: CommandObject) -> str:
         removed.append(item)
 
     listed = ", ".join(f"<code>{html.escape(i)}</code>" for i in removed)
-    await message.reply(
+    await message.reply_text(
         f"Removed from the <code>{lockable}</code> allowlist: {listed}",
         parse_mode=ParseMode.HTML,
     )
@@ -1099,7 +1099,7 @@ async def rmallowlistall(message: Message, command: CommandObject) -> str:
 
     sql.rmallow_all(chat_id)
     user = message.from_user
-    await message.reply("The allowlist is now empty.")
+    await message.reply_text("The allowlist is now empty.")
     return (
         f"<b>{html.escape(chat.title)}:</b>\n"
         f"#ALLOWLIST\n"

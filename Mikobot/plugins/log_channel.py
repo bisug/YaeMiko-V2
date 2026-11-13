@@ -2,10 +2,10 @@
 from datetime import datetime, timezone
 from functools import wraps
 
-from aiogram.enums import ChatType, ParseMode
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.enums import ChatType, ParseMode
+from pyrogram.errors import RPCError
 from aiogram.filters import Command
-from aiogram.types import LinkPreviewOptions, Message
+from pyrogram.types import LinkPreviewOptions, Message
 
 from Mikobot import dp
 from Mikobot.plugins.helper_funcs.misc import is_module_loaded
@@ -112,13 +112,13 @@ if is_module_loaded(FILENAME):
     async def send_log(log_chat_id: str, orig_chat_id: str, result: str):
         is_chat_log = log_chat_id == sql.get_chat_log_channel(orig_chat_id)
         try:
-            await bot.send_message(
+            await client.send_message(
                 log_chat_id,
                 result,
                 parse_mode=ParseMode.HTML,
                 link_preview_options=LinkPreviewOptions(is_disabled=True),
             )
-        except TelegramAPIError as excp:
+        except RPCError as excp:
             if "chat not found" in str(excp.message or excp).lower():
                 if not is_chat_log:
                     LOGGER.warning(
@@ -127,13 +127,13 @@ if is_module_loaded(FILENAME):
                     )
                     return
                 try:
-                    await bot.send_message(
+                    await client.send_message(
                         orig_chat_id,
                         "This log channel has been deleted - unsetting.",
                         message_thread_id=1,
                     )
-                except TelegramAPIError:
-                    await bot.send_message(
+                except RPCError:
+                    await client.send_message(
                         orig_chat_id,
                         "This log channel has been deleted - unsetting.",
                     )
@@ -145,12 +145,12 @@ if is_module_loaded(FILENAME):
                 )
 
                 try:
-                    await bot.send_message(
+                    await client.send_message(
                         log_chat_id,
                         result
                         + "\n\nFormatting has been disabled due to an unexpected error.",
                     )
-                except TelegramAPIError:
+                except RPCError:
                     LOGGER.warning(
                         "Unable to deliver unformatted audit log to channel %s",
                         log_chat_id,
@@ -161,20 +161,20 @@ if is_module_loaded(FILENAME):
     async def logging(message: Message):
         log_channel = sql.get_chat_log_channel(message.chat.id)
         if log_channel:
-            log_channel_info = await bot.get_chat(log_channel)
-            await message.answer(
+            log_channel_info = await client.get_chat(log_channel)
+            await message.reply_text(
                 f"This group has all its logs sent to: {escape_markdown(log_channel_info.title)} (`{log_channel}`)",
                 parse_mode=ParseMode.MARKDOWN,
             )
 
         else:
-            await message.answer("No log channel has been set for this group!")
+            await message.reply_text("No log channel has been set for this group!")
 
     @check_admin(is_user=True)
     async def setlog(message: Message):
         chat = message.chat
         if chat.type == ChatType.CHANNEL:
-            await bot.send_message(
+            await client.send_message(
                 chat.id,
                 "Now, forward the /setlog to the group you want to tie this channel to!",
             )
@@ -183,24 +183,24 @@ if is_module_loaded(FILENAME):
             sql.set_chat_log_channel(chat.id, message.forward_from_chat.id)
 
             try:
-                await bot.send_message(
+                await client.send_message(
                     message.forward_from_chat.id,
                     f"This channel has been set as the log channel for {html.escape(chat.title or chat.first_name)}.",
                 )
-            except TelegramAPIError:
+            except RPCError:
                 LOGGER.exception("Error in setting the log channel.")
 
             if chat.is_forum:
-                await bot.send_message(
+                await client.send_message(
                     chat.id,
                     "Successfully set log channel!",
                     message_thread_id=message.message_thread_id,
                 )
             else:
-                await bot.send_message(chat.id, "Successfully set log channel!")
+                await client.send_message(chat.id, "Successfully set log channel!")
 
         else:
-            await message.answer(
+            await message.reply_text(
                 "The steps to set a log channel are:\n"
                 " - Add bot to the desired channel (as an admin!)\n"
                 " - Send /setlog in the channel\n"
@@ -213,14 +213,14 @@ if is_module_loaded(FILENAME):
 
         log_channel = sql.stop_chat_logging(chat.id)
         if log_channel:
-            await bot.send_message(
+            await client.send_message(
                 log_channel,
                 f"Channel has been unlinked from {html.escape(chat.title)}",
             )
-            await message.answer("Log channel has been un-set.")
+            await message.reply_text("Log channel has been un-set.")
 
         else:
-            await message.answer("No log channel is set yet!")
+            await message.reply_text("No log channel is set yet!")
 
     def __stats__():
         return f"• {sql.num_logchannels()} log channels set."
@@ -231,7 +231,7 @@ if is_module_loaded(FILENAME):
     async def __chat_settings__(chat_id, user_id):
         log_channel = sql.get_chat_log_channel(chat_id)
         if log_channel:
-            log_channel_info = await bot.get_chat(log_channel)
+            log_channel_info = await client.get_chat(log_channel)
             return f"This group has all its logs sent to: {escape_markdown(log_channel_info.title)} (`{log_channel}`)"
         return "No log channel is set for this group!"
 

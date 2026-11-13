@@ -83,14 +83,14 @@ async def _vidstick(_, message):
     replied = message.reply_to_message
     if replied and replied.sticker:
         if not replied.sticker.is_video:
-            return await message.reply("Use /getsticker if sticker is not video.")
+            return await message.reply_text("Use /getsticker if sticker is not video.")
         file_id = replied.sticker.file_id
         with tempfile.TemporaryDirectory(prefix="yae-vidstick-") as tempdir:
             dest = os.path.join(tempdir, "sticker.mp4")
             new_file = await _.download_media(file_id, file_name=dest)
             await _.send_animation(chat_id, new_file)
     else:
-        await message.reply("Please reply to a video sticker to upload it's MP4.")
+        await message.reply_text("Please reply to a video sticker to upload it's MP4.")
 
 
 @app.on_message(filters.command("getvideo"), group=333)
@@ -104,7 +104,7 @@ async def _getvideo(_, message):
             new_file = await _.download_media(file_id, file_name=dest)
             await _.send_video(chat_id, video=new_file)
     else:
-        await message.reply("Please reply to a gif for me to get it's video.")
+        await message.reply_text("Please reply to a gif for me to get it's video.")
 
 
 @app.on_message(filters.command("stickerid", PREFIX_HANDLER) & filters.reply, group=444)
@@ -449,36 +449,36 @@ async def convert_video(filename: str) -> str:
 @app.on_message(filters.command("mmf"), group=777)
 async def handler(client, message):
     if not message.reply_to_message:
-        await message.reply("Reply to an image or a sticker to memify it!")
+        await message.reply_text("Reply to an image or a sticker to memify it!")
         return
 
     reply_message = message.reply_to_message
     if not reply_message.media:
-        await message.reply("Provide some text please.")
+        await message.reply_text("Provide some text please.")
         return
 
     text = " ".join(message.command[1:]).strip()
     if not text:
-        return await message.reply("You might want to try `/mmf text`")
+        return await message.reply_text("You might want to try `/mmf text`")
 
     if (
         reply_message.document
         and reply_message.document.file_size
         and reply_message.document.file_size > MAX_MEDIA_SIZE
     ):
-        return await message.reply("That document is too large.")
+        return await message.reply_text("That document is too large.")
     if (
         reply_message.photo
         and reply_message.photo.file_size
         and reply_message.photo.file_size > MAX_MEDIA_SIZE
     ):
-        return await message.reply("That photo is too large.")
+        return await message.reply_text("That photo is too large.")
     if (
         reply_message.video
         and reply_message.video.file_size
         and reply_message.video.file_size > MAX_MEDIA_SIZE
     ):
-        return await message.reply("That video is too large.")
+        return await message.reply_text("That video is too large.")
     with tempfile.TemporaryDirectory(prefix="yae-memify-") as temp_dir:
         source = os.path.join(
             temp_dir,
@@ -487,7 +487,7 @@ async def handler(client, message):
         output = os.path.join(temp_dir, f"{uuid.uuid4().hex}.webp")
         downloaded = await client.download_media(reply_message, file_name=source)
         if not downloaded:
-            return await message.reply("Unable to download that media.")
+            return await message.reply_text("Unable to download that media.")
         meme = await draw_text(downloaded, text, output)
         try:
             await client.send_document(message.chat.id, document=meme)
@@ -620,7 +620,7 @@ async def draw_text(image_path, text, output_path=None):
 @app.on_message(filters.command(["stickerinfo", "stinfo"]), group=888)
 async def give_st_info(c: app, m: Message):
     if not m.reply_to_message or not m.reply_to_message.sticker:
-        await m.reply("Reply to a sticker")
+        await m.reply_text("Reply to a sticker")
         return
     st_in = m.reply_to_message.sticker
     st_type = "Normal"
@@ -648,7 +648,7 @@ async def give_st_info(c: app, m: Message):
             ]
         ]
     )
-    await m.reply(st_to_gib, reply_markup=kb)
+    await m.reply_text(st_to_gib, reply_markup=kb)
     return
 
 

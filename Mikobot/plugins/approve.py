@@ -2,10 +2,10 @@ import asyncio
 import html
 
 from aiogram import F
-from aiogram.enums import ButtonStyle, ChatMemberStatus, ParseMode
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.enums import ButtonStyle, ChatMemberStatus, ParseMode
+from pyrogram.errors import RPCError
 from aiogram.filters import CommandObject
-from aiogram.types import (
+from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -34,27 +34,27 @@ async def approve(message: Message, command: CommandObject):
     user = message.from_user
     user_id = await extract_user(message, args)
     if not user_id:
-        await message.answer(
+        await message.reply_text(
             "I don't know who you're talking about, you're going to need to specify a user!",
         )
         return ""
     try:
-        member = await bot.get_chat_member(chat.chat_id, user_id)
-    except TelegramAPIError:
+        member = await client.get_chat_member(chat.chat_id, user_id)
+    except RPCError:
         return ""
     if member.status in ADMIN_OR_OWNER:
-        await message.answer(
+        await message.reply_text(
             "User is already admin - locks, blocklists, and antiflood already don't apply to them.",
         )
         return ""
     if sql.is_approved(message.chat_id, user_id):
-        await message.answer(
+        await message.reply_text(
             f"[{escape_markdown(member.user.first_name)}](tg://user?id={member.user.id}) is already approved in {escape_markdown(chat_title)}",
             parse_mode=ParseMode.MARKDOWN,
         )
         return ""
     sql.approve(message.chat_id, user_id)
-    await message.answer(
+    await message.reply_text(
         f"[{escape_markdown(member.user.first_name)}](tg://user?id={member.user.id}) has been approved in {escape_markdown(chat_title)}! They will now be ignored by automated admin actions like locks, blocklists, and antiflood.",
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -78,24 +78,24 @@ async def disapprove(message: Message, command: CommandObject):
     user = message.from_user
     user_id = await extract_user(message, args)
     if not user_id:
-        await message.answer(
+        await message.reply_text(
             "I don't know who you're talking about, you're going to need to specify a user!",
         )
         return ""
     try:
-        member = await bot.get_chat_member(chat.chat_id, user_id)
-    except TelegramAPIError:
+        member = await client.get_chat_member(chat.chat_id, user_id)
+    except RPCError:
         return ""
     if member.status in ADMIN_OR_OWNER:
-        await message.answer("This user is an admin, they can't be unapproved.")
+        await message.reply_text("This user is an admin, they can't be unapproved.")
         return ""
     if not sql.is_approved(message.chat_id, user_id):
-        await message.answer(
+        await message.reply_text(
             f"{html.escape(member.user.first_name)} isn't approved yet!"
         )
         return ""
     sql.disapprove(message.chat_id, user_id)
-    await message.answer(
+    await message.reply_text(
         f"{html.escape(member.user.first_name)} is no longer approved in {html.escape(chat_title)}.",
     )
     log_message = (
@@ -117,7 +117,7 @@ async def approved(message: Message):
     approved_users = sql.list_approved(message.chat_id)
 
     if not approved_users:
-        await message.answer(f"No users are approved in {chat_title}.")
+        await message.reply_text(f"No users are approved in {chat_title}.")
         return ""
 
     else:
@@ -126,7 +126,7 @@ async def approved(message: Message):
         # session's own leaky bucket paces the batch. A user who left is dropped
         # rather than failing the whole list, matching the lookups above.
         members = await asyncio.gather(
-            *(bot.get_chat_member(chat.id, int(i.user_id)) for i in approved_users),
+            *(client.get_chat_member(chat.id, int(i.user_id)) for i in approved_users),
             return_exceptions=True,
         )
         for i, member in zip(approved_users, members, strict=False):
@@ -134,7 +134,7 @@ async def approved(message: Message):
                 continue
             msg += f"- `{i.user_id}`: {escape_markdown(member.user.first_name)}\n"
 
-        await message.answer(msg, parse_mode=ParseMode.MARKDOWN)
+        await message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
 
 
 @check_admin(is_user=True)
@@ -144,17 +144,17 @@ async def approval(message: Message, command: CommandObject):
     user_id = await extract_user(message, args)
 
     if not user_id:
-        await message.answer(
+        await message.reply_text(
             "I don't know who you're talking about, you're going to need to specify a user!",
         )
         return ""
-    member = await bot.get_chat_member(chat.id, int(user_id))
+    member = await client.get_chat_member(chat.id, int(user_id))
     if sql.is_approved(message.chat_id, user_id):
-        await message.answer(
+        await message.reply_text(
             f"{html.escape(member.user.first_name)} is an approved user. Locks, antiflood, and blocklists won't apply to them.",
         )
     else:
-        await message.answer(
+        await message.reply_text(
             f"{html.escape(member.user.first_name)} is not an approved user. They are affected by normal commands.",
         )
 
@@ -162,15 +162,15 @@ async def approval(message: Message, command: CommandObject):
 async def unapproveall(message: Message):
     chat = message.chat
     user = message.from_user
-    member = await bot.get_chat_member(chat.id, user.id)
+    member = await client.get_chat_member(chat.id, user.id)
 
     approved_users = sql.list_approved(chat.id)
     if not approved_users:
-        await message.reply(f"No users are approved in {html.escape(chat.title)}.")
+        await message.reply_text(f"No users are approved in {html.escape(chat.title)}.")
         return
 
     if member.status != ChatMemberStatus.CREATOR and user.id not in DRAGONS:
-        await message.reply(
+        await message.reply_text(
             "Only the chat owner can unapprove all users at once.",
         )
     else:
@@ -192,7 +192,7 @@ async def unapproveall(message: Message):
                 ],
             ],
         )
-        await message.reply(
+        await message.reply_text(
             f"Are you sure you would like to unapprove ALL users in {escape_markdown(chat.title)}? This action cannot be undone.",
             reply_markup=buttons,
             parse_mode=ParseMode.MARKDOWN,
@@ -202,7 +202,7 @@ async def unapproveall(message: Message):
 async def unapproveall_btn(query: CallbackQuery):
     chat = query.message.chat
     message = query.message
-    member = await bot.get_chat_member(chat.id, query.from_user.id)
+    member = await client.get_chat_member(chat.id, query.from_user.id)
     if query.data == "unapproveall_user":
         if member.status == ChatMemberStatus.CREATOR or query.from_user.id in DRAGONS:
             approved_users = sql.list_approved(chat.id)

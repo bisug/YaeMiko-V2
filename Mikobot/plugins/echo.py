@@ -1,6 +1,6 @@
 """Echo text back through the bot, and broadcast it to every known chat.
 
-/echo and /say post the supplied text as the bot. Anyone who can do that can
+/echo and /say post the supplied text as the client. Anyone who can do that can
 make the bot appear to say something it never said, so both are limited to the
 bot's own owners and developers rather than group admins: in a group the bot
 is an authority, and a borrowed voice is a convincing forgery.
@@ -15,10 +15,10 @@ because a fan-out past a few hundred chats hits the rate limit by design.
 
 import asyncio
 
-from aiogram.enums import ParseMode
-from aiogram.exceptions import TelegramAPIError, TelegramRetryAfter
+from pyrogram.enums import ParseMode
+from pyrogram.errors import RPCError, FloodWait
 from aiogram.filters import Command, CommandObject
-from aiogram.types import Message
+from pyrogram.types import Message
 
 import Database.sql.users_sql as users_sql
 from Mikobot import DEV_USERS, LOGGER, OWNER_ID, bot, dp
@@ -35,13 +35,13 @@ def _is_bot_staff(user_id: int) -> bool:
 
 async def _send_echo(message: Message, command: CommandObject) -> None:
     if not message.from_user or not _is_bot_staff(message.from_user.id):
-        await message.reply("Only the bot owners can do that.")
+        await message.reply_text("Only the bot owners can do that.")
         return
 
     replied = message.reply_to_message
     text = command.args
     if not text and replied is None:
-        await message.reply("Give me something to say, or reply to a message.")
+        await message.reply_text("Give me something to say, or reply to a message.")
         return
 
     try:
@@ -49,14 +49,14 @@ async def _send_echo(message: Message, command: CommandObject) -> None:
             # Copying keeps the original entities, so markup and links survive.
             await replied.copy_to(message.chat.id)
         else:
-            await message.reply(text, parse_mode=ParseMode.HTML)
-    except TelegramAPIError as exc:
+            await message.reply_text(text, parse_mode=ParseMode.HTML)
+    except RPCError as exc:
         LOGGER.warning("Echo failed in %s: %s", message.chat.id, exc)
-        await message.reply("I could not send that here.")
+        await message.reply_text("I could not send that here.")
 
     try:
         await message.delete()
-    except TelegramAPIError:
+    except RPCError:
         # Not fatal: the command is gone from view either way, and an admin
         # may have deletes disabled.
         pass
@@ -64,21 +64,21 @@ async def _send_echo(message: Message, command: CommandObject) -> None:
 
 async def _broadcast(message: Message, command: CommandObject) -> None:
     if not message.from_user or not _is_bot_staff(message.from_user.id):
-        await message.reply("Only the bot owners can do that.")
+        await message.reply_text("Only the bot owners can do that.")
         return
 
     replied = message.reply_to_message
     text = command.args
     if not text and replied is None:
-        await message.reply("Give me something to broadcast, or reply to one.")
+        await message.reply_text("Give me something to broadcast, or reply to one.")
         return
 
     chats = await asyncio.to_thread(users_sql.get_all_chats) or []
     if not chats:
-        await message.reply("I am not in any chats yet.")
+        await message.reply_text("I am not in any chats yet.")
         return
 
-    status = await message.reply(
+    status = await message.reply_text(
         f"Broadcasting to <code>{len(chats)}</code> chats...", parse_mode=ParseMode.HTML
     )
 
@@ -89,18 +89,18 @@ async def _broadcast(message: Message, command: CommandObject) -> None:
                 if replied is not None:
                     await replied.copy_to(chat.chat_id)
                 else:
-                    await bot.send_message(
+                    await client.send_message(
                         chat.chat_id, text, parse_mode=ParseMode.HTML
                     )
                 sent += 1
                 break
-            except TelegramRetryAfter as exc:
+            except FloodWait as exc:
                 # The API named the wait; waiting is what this request needs.
                 if attempt == 2:
                     deferred += 1
                     break
                 await asyncio.sleep(exc.retry_after)
-            except TelegramAPIError:
+            except RPCError:
                 # A chat the bot was removed from, or one with posting disabled.
                 failed += 1
                 break
@@ -125,7 +125,7 @@ __help__ = """
 ➡ Bot owners only. These speak with the bot's authority, so leaving them
 open to group admins would let anyone put words in the bot's mouth.
 
-» /echo <text>: Send text as the bot. Reply to a message to copy it with
+» /echo <text>: Send text as the client. Reply to a message to copy it with
 its formatting intact.
 » /say <text>: The same as /echo.
 » /broadcast <text>: Send to every chat the bot is in. Reply to copy

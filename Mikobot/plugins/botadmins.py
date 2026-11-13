@@ -4,9 +4,9 @@
 
 # <============================================== IMPORTS =========================================================>
 
-from aiogram.enums import ParseMode
+from pyrogram.enums import ParseMode
 from aiogram.filters import Command
-from aiogram.types import Message
+from pyrogram.types import Message
 
 from Mikobot import DEMONS, DEV_USERS, DRAGONS, LOGGER, OWNER_ID, WOLVES, dp
 from Mikobot.plugins.helper_funcs.chat_status import support_plus
@@ -52,7 +52,7 @@ async def botstaff(message: Message):
         "\n".join(await get_users_list(WOLVES)) or "No additional whitelisted users"
     )
 
-    await message.answer(reply, parse_mode=ParseMode.HTML)
+    await message.reply_text(reply, parse_mode=ParseMode.HTML)
     LOGGER.info(f"{message.from_user.id} fetched botstaff in {message.chat.id}")
 
 

@@ -4,8 +4,8 @@ import html
 import re
 import time
 
-from aiogram.types import Message as AiogramMessage
-from aiogram.types import MessageEntity
+from pyrogram.types import Message as AiogramMessage
+from pyrogram.types import MessageEntity
 from emoji import unicode_codes
 
 
@@ -324,14 +324,14 @@ async def extract_time(message, time_val):
     # The error text below reports time_val[-1], which raises on empty input
     # such as "/ban @user " with the duration omitted.
     if not time_val:
-        await message.reply("Invalid time type specified. Expected m, h, d, or w.")
+        await message.reply_text("Invalid time type specified. Expected m, h, d, or w.")
         return None
 
     if any(time_val.endswith(unit) for unit in ("m", "h", "d", "w")):
         unit = time_val[-1]
         time_num = time_val[:-1]  # type: str
         if not time_num.isdigit():
-            await message.reply("Invalid time amount specified.")
+            await message.reply_text("Invalid time amount specified.")
             return None
 
         if unit == "m":
@@ -347,7 +347,7 @@ async def extract_time(message, time_val):
             return None
         return bantime
     else:
-        await message.reply(
+        await message.reply_text(
             "Invalid time type specified. Expected m, h, d, or w, got: {}".format(
                 time_val[-1],
             ),

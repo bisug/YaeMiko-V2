@@ -4,9 +4,9 @@ from functools import partial
 from urllib.parse import quote
 
 from aiogram import F
-from aiogram.enums import ButtonStyle, ParseMode
+from pyrogram.enums import ButtonStyle, ParseMode
 from aiogram.filters import Command, CommandObject
-from aiogram.types import (
+from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -100,34 +100,34 @@ async def _show_leagues(message: Message, sport: str) -> None:
     try:
         leagues = await get_leagues(sport)
         if not leagues:
-            await message.answer(f"No {sport} leagues are currently available.")
+            await message.reply_text(f"No {sport} leagues are currently available.")
             return
-        await message.answer(
+        await message.reply_text(
             f"Select a {sport} league:",
             reply_markup=_league_keyboard(sport, leagues),
         )
     except HTTPError:
-        await message.answer("TheSportsDB is unavailable. Please try again later.")
+        await message.reply_text("TheSportsDB is unavailable. Please try again later.")
     except ValueError, TypeError, KeyError:
-        await message.answer("TheSportsDB returned incomplete league data.")
+        await message.reply_text("TheSportsDB returned incomplete league data.")
 
 
 async def _send_league_message(message: Message, sport: str, league_id: str) -> None:
     try:
         matches = await get_matches(league_id)
         if not matches:
-            await message.answer(f"No upcoming {sport} matches found.")
+            await message.reply_text(f"No upcoming {sport} matches found.")
             return
         text = "\n\n".join(_format_match(match, sport) for match in matches[:10])
-        await message.answer(
+        await message.reply_text(
             text,
             parse_mode=ParseMode.HTML,
             reply_markup=_back_keyboard(sport),
         )
     except HTTPError:
-        await message.answer("TheSportsDB is unavailable. Please try again later.")
+        await message.reply_text("TheSportsDB is unavailable. Please try again later.")
     except ValueError, TypeError, KeyError:
-        await message.answer("TheSportsDB returned incomplete match data.")
+        await message.reply_text("TheSportsDB returned incomplete match data.")
 
 
 async def _send_league(query: CallbackQuery, sport: str, league_id: str) -> None:

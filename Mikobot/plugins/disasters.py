@@ -4,9 +4,9 @@ import json
 import os
 import tempfile
 
-from aiogram.enums import ChatType
+from pyrogram.enums import ChatType
 from aiogram.filters import Command, CommandObject
-from aiogram.types import Message
+from pyrogram.types import Message
 
 import Mikobot
 from Mikobot import bot, dp
@@ -98,9 +98,9 @@ async def add_disaster_level(
     user_id = await extract_user(message, args)
     reply = await check_user_id(user_id)
     if reply:
-        await message.answer(reply)
+        await message.reply_text(reply)
         return ""
-    if user_id == int(bot.id):
+    if user_id == int(client.id):
         return ""
     target_name = str(user_id)
     rt = ""
@@ -111,7 +111,7 @@ async def add_disaster_level(
 
         target_key = DISASTER_LEVELS[level]
         if user_id in data[target_key]:
-            await message.answer(f"This user is already a {level} Disaster.")
+            await message.reply_text(f"This user is already a {level} Disaster.")
             return ""
 
         for disaster_level, disaster_users in DISASTER_LEVELS.items():
@@ -123,7 +123,7 @@ async def add_disaster_level(
         update_elevated_users(data)
         apply_elevated_users(data)
 
-    await message.answer(
+    await message.reply_text(
         rt + f"\nSuccessfully set Disaster level of {target_name} to {level}!"
     )
 
@@ -136,7 +136,7 @@ async def add_disaster_level(
     if chat.type != ChatType.PRIVATE:
         log_message = f"<b>{html.escape(chat.title)}:</b>\n" + log_message
 
-    await message.answer(log_message)
+    await message.reply_text(log_message)
 
 
 @dev_plus

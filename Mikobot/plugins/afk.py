@@ -5,9 +5,9 @@ from datetime import datetime
 
 import humanize
 from aiogram import F
-from aiogram.enums import ParseMode
-from aiogram.exceptions import TelegramAPIError
-from aiogram.types import Message
+from pyrogram.enums import ParseMode
+from pyrogram.errors import RPCError
+from pyrogram.types import Message
 
 from Database.sql import afk_sql as sql
 from Mikobot import dp
@@ -45,13 +45,13 @@ async def afk(message: Message):
     fname = user.first_name
     try:
         if reason:
-            await message.answer(
+            await message.reply_text(
                 f"➲ {html.escape(fname or str(user.id))} is now away! \n\n➦ Reason: <code>{html.escape(reason)}</code> \n {notice}",
                 parse_mode=ParseMode.HTML,
             )
         else:
-            await message.answer("➲ {} is now away!{}".format(fname, notice))
-    except TelegramAPIError:
+            await message.reply_text("➲ {} is now away!{}".format(fname, notice))
+    except RPCError:
         pass
 
 
@@ -82,12 +82,12 @@ async def no_longer_afk(message: Message):
                 "➲ Welcome back! {}",
             ]
             chosen_option = random.choice(options)
-            await message.answer(
+            await message.reply_text(
                 chosen_option.format(firstname)
                 + f"\n\nYou were AFK for: <code>{time}</code>",
                 parse_mode=ParseMode.HTML,
             )
-        except TelegramAPIError:
+        except RPCError:
             return
 
 
@@ -156,7 +156,7 @@ async def check_afk(
                 fst_name,
                 time,
             )
-            await message.answer(res)
+            await message.reply_text(res)
         else:
             res = (
                 "➲ {} is afk.\n\n➦ Reason: <code>{}</code>\n➦ Last seen {} ago.".format(
@@ -165,7 +165,7 @@ async def check_afk(
                     time,
                 )
             )
-            await message.answer(res, parse_mode=ParseMode.HTML)
+            await message.reply_text(res, parse_mode=ParseMode.HTML)
 
 
 # <=================================================== HELP ====================================================>

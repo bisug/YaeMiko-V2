@@ -1,10 +1,10 @@
 import html
 from datetime import datetime, timezone
 
-from aiogram.enums import ChatType, ParseMode
-from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
+from pyrogram.enums import ChatType, ParseMode
+from pyrogram.errors import RPCError, RPCError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import (
+from pyrogram.types import (
     MenuButtonCommands,
     MenuButtonDefault,
     MenuButtonWebApp,
@@ -42,19 +42,19 @@ def _expiry(value: str | None) -> int | None:
 
 
 async def _reply_error(message: Message, error: Exception) -> None:
-    if isinstance(error, TelegramBadRequest):
-        await message.answer(f"Telegram rejected this request: {error.message}")
-    elif isinstance(error, TelegramAPIError):
-        await message.answer("Telegram could not complete this request.")
+    if isinstance(error, RPCError):
+        await message.reply_text(f"Telegram rejected this request: {error.message}")
+    elif isinstance(error, RPCError):
+        await message.reply_text("Telegram could not complete this request.")
     else:
-        await message.answer(f"Unable to complete the request: {error}")
+        await message.reply_text(f"Unable to complete the request: {error}")
 
 
 @connection_status
 async def chatinfo(message: Message, command: CommandObject) -> None:
-    chat = await bot.get_chat(message.chat.id)
-    count = await bot.get_chat_member_count(chat.id)
-    admins = await bot.get_chat_administrators(chat.id)
+    chat = await client.get_chat(message.chat.id)
+    count = await client.get_chat_members_count(chat.id)
+    admins = await client.get_chat_administrators(chat.id)
     description = html.escape(getattr(chat, "description", None) or "None")
     text = (
         f"<b>{html.escape(chat.title or chat.type.title())}</b>\n"
@@ -63,13 +63,13 @@ async def chatinfo(message: Message, command: CommandObject) -> None:
         f"Members: <code>{count}</code>\nAdministrators: <code>{len(admins)}</code>\n"
         f"Description: {description}\nForum: {'Yes' if getattr(chat, 'is_forum', False) else 'No'}"
     )
-    await message.answer(text, parse_mode=ParseMode.HTML)
+    await message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
 @connection_status
 async def members(message: Message, command: CommandObject) -> None:
-    count = await bot.get_chat_member_count(message.chat.id)
-    await message.answer(
+    count = await client.get_chat_members_count(message.chat.id)
+    await message.reply_text(
         f"This chat has <code>{count}</code> members.", parse_mode=ParseMode.HTML
     )
 
@@ -78,22 +78,22 @@ async def members(message: Message, command: CommandObject) -> None:
 @check_admin(permission="can_invite_users", is_both=True)
 async def invite_manage(message: Message, command: CommandObject) -> None:
     if not _group_only(message):
-        return await message.answer("Use this command in a group or supergroup.")
+        return await message.reply_text("Use this command in a group or supergroup.")
     chat_id, args = message.chat.id, command.args.split() if command.args else []
     if not args or args[0].lower() == "export":
-        await message.answer(await bot.export_chat_invite_link(chat_id))
+        await message.reply_text(await client.export_chat_invite_link(chat_id))
         return
     action = args[0].lower()
     try:
         if action == "create":
-            link = await bot.create_chat_invite_link(
+            link = await client.create_invite_link(
                 chat_id,
                 name=args[1] if len(args) > 1 else None,
                 member_limit=int(args[2]) if len(args) > 2 else None,
                 expire_date=_expiry(args[3] if len(args) > 3 else None),
             )
         elif action == "edit" and len(args) >= 2:
-            link = await bot.edit_chat_invite_link(
+            link = await client.edit_invite_link(
                 chat_id,
                 args[1],
                 name=args[2] if len(args) > 2 else None,
@@ -101,12 +101,12 @@ async def invite_manage(message: Message, command: CommandObject) -> None:
                 expire_date=_expiry(args[4] if len(args) > 4 else None),
             )
         elif action == "revoke" and len(args) >= 2:
-            link = await bot.revoke_chat_invite_link(chat_id, args[1])
+            link = await client.revoke_invite_link(chat_id, args[1])
         else:
-            await message.answer("Usage: /invitelink create|edit|revoke ...")
+            await message.reply_text("Usage: /invitelink create|edit|revoke ...")
             return
-        await message.answer(f"Invite link: {link.invite_link}")
-    except (ValueError, TelegramAPIError) as error:
+        await message.reply_text(f"Invite link: {link.invite_link}")
+    except (ValueError, RPCError) as error:
         await _reply_error(message, error)
 
 
@@ -115,17 +115,17 @@ async def invite_manage(message: Message, command: CommandObject) -> None:
 async def join_requests(message: Message, command: CommandObject) -> None:
     args = command.args.split() if command.args else []
     if len(args) != 2 or args[0].lower() not in {"approve", "decline"}:
-        return await message.answer("Usage: /joins approve|decline <user_id>")
+        return await message.reply_text("Usage: /joins approve|decline <user_id>")
     try:
         user_id, action = _user_id(args[1]), args[0].lower()
         method = (
-            bot.approve_chat_join_request
+            client.approve_chat_join_request
             if action == "approve"
-            else bot.decline_chat_join_request
+            else client.decline_chat_join_request
         )
         await method(message.chat.id, user_id)
-        await message.answer(f"Join request {action}d.")
-    except (ValueError, TelegramAPIError) as error:
+        await message.reply_text(f"Join request {action}d.")
+    except (ValueError, RPCError) as error:
         await _reply_error(message, error)
 
 
@@ -134,24 +134,24 @@ async def join_requests(message: Message, command: CommandObject) -> None:
 async def set_chat_metadata(message: Message, command: CommandObject) -> None:
     args = command.args.split() if command.args else []
     if not args:
-        return await message.answer(
+        return await message.reply_text(
             "Usage: /setchat <title|description|description-> [text]"
         )
     try:
         action = args[0].lower()
         if action == "title" and len(args) > 1:
-            await bot.set_chat_title(message.chat.id, " ".join(args[1:]))
+            await client.set_chat_title(message.chat.id, " ".join(args[1:]))
         elif action == "description" and len(args) > 1:
-            await bot.set_chat_description(message.chat.id, " ".join(args[1:]))
+            await client.set_chat_description(message.chat.id, " ".join(args[1:]))
         elif action == "description-":
-            await bot.set_chat_description(message.chat.id)
+            await client.set_chat_description(message.chat.id)
         else:
-            await message.answer(
+            await message.reply_text(
                 "Usage: /setchat <title|description|description-> [text]"
             )
             return
-        await message.answer("Chat metadata updated.")
-    except TelegramAPIError as error:
+        await message.reply_text("Chat metadata updated.")
+    except RPCError as error:
         await _reply_error(message, error)
 
 
@@ -159,18 +159,18 @@ async def set_chat_metadata(message: Message, command: CommandObject) -> None:
 @check_admin(permission="can_change_info", is_both=True)
 async def set_chat_photo(message: Message, command: CommandObject) -> None:
     if not message.reply_to_message or not message.reply_to_message.photo:
-        return await message.answer("Reply to a photo to set it as the chat photo.")
-    await bot.set_chat_photo(
+        return await message.reply_text("Reply to a photo to set it as the chat photo.")
+    await client.set_chat_photo(
         message.chat.id, message.reply_to_message.photo[-1].file_id
     )
-    await message.answer("Chat photo updated.")
+    await message.reply_text("Chat photo updated.")
 
 
 @connection_status
 @check_admin(permission="can_change_info", is_both=True)
 async def delete_chat_photo(message: Message, command: CommandObject) -> None:
-    await bot.delete_chat_photo(message.chat.id)
-    await message.answer("Chat photo deleted.")
+    await client.delete_chat_photo(message.chat.id)
+    await message.reply_text("Chat photo deleted.")
 
 
 @connection_status
@@ -178,18 +178,18 @@ async def delete_chat_photo(message: Message, command: CommandObject) -> None:
 async def topics(message: Message, command: CommandObject) -> None:
     chat, args = message.chat, command.args.split() if command.args else []
     if not chat.is_forum:
-        return await message.answer("This chat is not a forum.")
+        return await message.reply_text("This chat is not a forum.")
     if not args:
-        return await message.answer(
+        return await message.reply_text(
             "Usage: /topic create|edit|close|reopen|delete <name|thread_id>"
         )
     try:
         action = args[0].lower()
         if action == "create" and len(args) > 1:
-            topic = await bot.create_forum_topic(chat.id, " ".join(args[1:]))
+            topic = await client.create_forum_topic(chat.id, " ".join(args[1:]))
             result = f"Topic created: <code>{topic.name}</code>"
         elif action == "edit" and len(args) > 2:
-            await bot.edit_forum_topic(chat.id, int(args[1]), " ".join(args[2:]))
+            await client.edit_forum_topic(chat.id, int(args[1]), " ".join(args[2:]))
             result = "Topic updated."
         elif action in {"close", "reopen", "delete"} and len(args) > 1:
             await getattr(bot, f"{action}_forum_topic")(chat.id, int(args[1]))
@@ -201,17 +201,17 @@ async def topics(message: Message, command: CommandObject) -> None:
         ):
             action_name = args[1].lower()
             if action_name == "unpinall":
-                await bot.unpin_all_general_forum_topic_messages(chat.id)
+                await client.unpin_all_general_forum_topic_messages(chat.id)
             else:
                 await getattr(bot, f"{action_name}_general_forum_topic")(chat.id)
             result = f"General topic {action_name} completed."
         else:
-            await message.answer(
+            await message.reply_text(
                 "Usage: /topic create|edit|close|reopen|delete <name|thread_id>"
             )
             return
-        await message.answer(result, parse_mode=ParseMode.HTML)
-    except (ValueError, TelegramAPIError) as error:
+        await message.reply_text(result, parse_mode=ParseMode.HTML)
+    except (ValueError, RPCError) as error:
         await _reply_error(message, error)
 
 
@@ -220,18 +220,18 @@ async def menu_button(message: Message, command: CommandObject) -> None:
     chat_id = message.chat.id
     args = command.args.split() if command.args else []
     if not args:
-        button = await bot.get_chat_menu_button(chat_id)
-        await message.answer(
+        button = await client.get_chat_menu_button(chat_id)
+        await message.reply_text(
             f"Menu button: {button.model_dump() if button else 'None'}"
         )
         return
     action = args[0].lower()
     if action == "commands":
-        await bot.set_chat_menu_button(chat_id, MenuButtonCommands())
+        await client.set_chat_menu_button(chat_id, MenuButtonCommands())
     elif action == "default":
-        await bot.set_chat_menu_button(chat_id, MenuButtonDefault())
+        await client.set_chat_menu_button(chat_id, MenuButtonDefault())
     elif action == "webapp" and len(args) > 1:
-        await bot.set_chat_menu_button(
+        await client.set_chat_menu_button(
             chat_id,
             # aiogram requires text on MenuButtonWebApp; PTB defaulted it to
             # the URL, so keep that rather than inventing a label.
@@ -241,9 +241,9 @@ async def menu_button(message: Message, command: CommandObject) -> None:
             ),
         )
     else:
-        await message.answer("Usage: /menubutton [commands|default|webapp <url>]")
+        await message.reply_text("Usage: /menubutton [commands|default|webapp <url>]")
         return
-    await message.answer("Menu button updated.")
+    await message.reply_text("Menu button updated.")
 
 
 @connection_status
@@ -251,40 +251,40 @@ async def menu_button(message: Message, command: CommandObject) -> None:
 async def sticker_set(message: Message, command: CommandObject) -> None:
     args = command.args.split() if command.args else []
     if len(args) == 2 and args[0].lower() == "set":
-        await bot.set_chat_sticker_set(message.chat.id, args[1])
-        await message.answer("Sticker set updated.")
+        await client.set_chat_sticker_set(message.chat.id, args[1])
+        await message.reply_text("Sticker set updated.")
     elif args and args[0].lower() == "delete":
-        await bot.delete_chat_sticker_set(message.chat.id)
-        await message.answer("Sticker set deleted.")
+        await client.delete_chat_sticker_set(message.chat.id)
+        await message.reply_text("Sticker set deleted.")
     else:
-        await message.answer("Usage: /stickerset set <name> | /stickerset delete")
+        await message.reply_text("Usage: /stickerset set <name> | /stickerset delete")
 
 
 @connection_status
 @check_admin(permission="can_delete_messages", is_both=True)
 async def clear_reactions(message: Message, command: CommandObject) -> None:
     if not message.reply_to_message:
-        return await message.answer("Reply to a message to clear all reactions.")
+        return await message.reply_text("Reply to a message to clear all reactions.")
     try:
-        await bot.delete_all_message_reactions(
+        await client.delete_all_message_reactions(
             message.chat.id, message.reply_to_message.message_id
         )
-    except TelegramAPIError as error:
+    except RPCError as error:
         await _reply_error(message, error)
         return
-    await message.answer("All reactions were removed.")
+    await message.reply_text("All reactions were removed.")
 
 
 @connection_status
 @check_admin(permission="can_delete_messages", is_both=True)
 async def delete_reaction(message: Message, command: CommandObject) -> None:
     if not message.reply_to_message:
-        return await message.answer(
+        return await message.reply_text(
             "Reply to a message and optionally provide a user ID to remove their reaction."
         )
     args = command.args.split() if command.args else []
     if len(args) > 1:
-        return await message.answer("Usage: /deletereaction [user_id]")
+        return await message.reply_text("Usage: /deletereaction [user_id]")
     user_id = None
     if args:
         try:
@@ -293,16 +293,16 @@ async def delete_reaction(message: Message, command: CommandObject) -> None:
             await _reply_error(message, error)
             return
     try:
-        await bot.delete_message_reaction(
+        await client.delete_message_reaction(
             message.chat.id,
             message.reply_to_message.message_id,
             user_id=user_id,
         )
-    except TelegramAPIError as error:
+    except RPCError as error:
         await _reply_error(message, error)
         return
     target = f" for user `{user_id}`" if user_id is not None else ""
-    await message.answer(f"Reaction removed{target}.")
+    await message.reply_text(f"Reaction removed{target}.")
 
 
 @connection_status
@@ -310,13 +310,13 @@ async def delete_reaction(message: Message, command: CommandObject) -> None:
 async def member_tag(message: Message, command: CommandObject) -> None:
     args = command.args.split() if command.args else []
     if len(args) not in {1, 2}:
-        return await message.answer("Usage: /membertag <user_id> [tag|remove]")
+        return await message.reply_text("Usage: /membertag <user_id> [tag|remove]")
     try:
         user_id = _user_id(args[0])
         tag = None if len(args) == 1 or args[1].lower() == "remove" else args[1]
-        await bot.set_chat_member_tag(message.chat.id, user_id, tag)
-        await message.answer("Member tag updated.")
-    except (ValueError, TelegramAPIError) as error:
+        await client.set_chat_member_tag(message.chat.id, user_id, tag)
+        await message.reply_text("Member tag updated.")
+    except (ValueError, RPCError) as error:
         await _reply_error(message, error)
 
 

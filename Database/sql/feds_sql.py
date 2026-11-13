@@ -2,7 +2,7 @@ import ast
 import asyncio
 import threading
 
-from aiogram.exceptions import TelegramAPIError
+from pyrogram.errors import RPCError
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -860,8 +860,8 @@ async def get_fed_log(fed_id):
         return False
     elif fed_setting.get("flog"):
         try:
-            await bot.get_chat(fed_setting.get("flog"))
-        except TelegramAPIError:
+            await client.get_chat(fed_setting.get("flog"))
+        except RPCError:
             # Chat gone or the bot lost access: drop the stored log channel.
             await asyncio.to_thread(set_fed_log, fed_id, None)
             return False

@@ -1,9 +1,9 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
 
-from aiogram.enums import ParseMode
+from pyrogram.enums import ParseMode
 from aiogram.filters import CommandObject
-from aiogram.types import LinkPreviewOptions, Message
+from pyrogram.types import LinkPreviewOptions, Message
 from emoji import EMOJI_DATA
 
 from Mikobot import dp
@@ -30,7 +30,7 @@ async def echo(message: Message, command: CommandObject):
             link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     else:
-        await message.answer(
+        await message.reply_text(
             args[1],
             parse_mode=ParseMode.MARKDOWN,
             link_preview_options=LinkPreviewOptions(is_disabled=True),
@@ -58,7 +58,7 @@ async def totranslate(message: Message, command: CommandObject):
                 # A photo or sticker reply carries neither, and text stayed
                 # unbound for every later use, so the command died on NameError
                 # instead of saying why.
-                await message.answer("There is no text in the message you replied to.")
+                await message.reply_text("There is no text in the message you replied to.")
                 return
 
             try:
@@ -107,7 +107,7 @@ async def totranslate(message: Message, command: CommandObject):
         if source_lang is None:
             detection = await asyncio.to_thread(trl.detect, text)
             trans_str = await asyncio.to_thread(trl.translate, text, lang_tgt=dest_lang)
-            return await message.answer(
+            return await message.reply_text(
                 f"📒 *Translated from* `{detection[0]}` to `{dest_lang}`:\n`{trans_str}`",
                 parse_mode=ParseMode.MARKDOWN,
             )
@@ -115,13 +115,13 @@ async def totranslate(message: Message, command: CommandObject):
             trans_str = await asyncio.to_thread(
                 trl.translate, text, lang_tgt=dest_lang, lang_src=source_lang
             )
-            await message.answer(
+            await message.reply_text(
                 f"📒 *Translated from* `{source_lang}` to `{dest_lang}`:\n`{trans_str}`",
                 parse_mode=ParseMode.MARKDOWN,
             )
 
     except IndexError:
-        await message.answer(
+        await message.reply_text(
             "Reply to messages or write messages from other languages ​​for translating into the intended language\n\n"
             "Example: `/tr en-ta` to translate from English to Tamil\n"
             "Or use: `/tr ta` for automatic detection and translating it into Tamil.\n"
@@ -130,7 +130,7 @@ async def totranslate(message: Message, command: CommandObject):
             link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     except ValueError:
-        await message.answer("The intended language is not found!")
+        await message.reply_text("The intended language is not found!")
     else:
         return
 

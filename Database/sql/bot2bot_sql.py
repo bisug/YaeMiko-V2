@@ -26,7 +26,7 @@ MODE_ADMIN = "admin"
 MODE_ALL = "all"
 MODES = (MODE_OFF, MODE_ADMIN, MODE_ALL)
 
-#: Commands that change configuration, and so go through review when run by a bot.
+#: Commands that change configuration, and so go through review when run by a client.
 SETTING_COMMANDS = frozenset(
     {
         "lock",

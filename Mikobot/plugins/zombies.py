@@ -64,14 +64,14 @@ async def _remove_deleted(message, status):
 @app.on_message(filters.regex(r"^[!/]zombies(?:\s+(clean))?(?:@\S+)?$"), group=1)
 async def zombies(_, message):
     if message.chat.type not in {ChatType.GROUP, ChatType.SUPERGROUP}:
-        return await message.reply(
+        return await message.reply_text(
             "Zombies can only be checked in groups or supergroups."
         )
     clean = len(message.command or []) > 1 and message.command[1].lower() == "clean"
     if not clean:
         deleted = await _count_deleted(message)
         if not deleted:
-            return await message.reply("Group is clean; no deleted accounts found.")
+            return await message.reply_text("Group is clean; no deleted accounts found.")
         allowed = (
             bool(message.from_user)
             and await is_administrator(message.from_user.id, message)
@@ -79,7 +79,7 @@ async def zombies(_, message):
             and await has_ban_rights(message, message.from_user.id)
         )
         button = "Remove" if allowed else "Close"
-        return await message.reply(
+        return await message.reply_text(
             f"Found {deleted} deleted account(s).\n"
             + (
                 "You can remove them."
@@ -103,10 +103,10 @@ async def zombies(_, message):
     if not message.from_user or not await is_administrator(
         message.from_user.id, message
     ):
-        return await message.reply(
+        return await message.reply_text(
             "You need to be an admin to remove deleted accounts."
         )
-    status = await message.reply("Removing deleted accounts…")
+    status = await message.reply_text("Removing deleted accounts…")
     await _remove_deleted(message, status)
 
 

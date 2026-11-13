@@ -6,9 +6,9 @@
 import random
 import re
 
-from aiogram.enums import ParseMode
+from pyrogram.enums import ParseMode
 from aiogram.filters import Command, CommandObject
-from aiogram.types import LinkPreviewOptions, Message
+from pyrogram.types import LinkPreviewOptions, Message
 
 from Mikobot import dp
 
@@ -25,10 +25,10 @@ async def pick_winner(message: Message, command: CommandObject):
         winner = random.choice(participants)
 
         # Send the winner as a reply
-        await message.answer(f"🎉 The winner is: {winner}")
+        await message.reply_text(f"🎉 The winner is: {winner}")
     else:
         # If no participants are provided
-        await message.answer("Please provide a list of participants.")
+        await message.reply_text("Please provide a list of participants.")
 
 
 # Define the command handler for the "/hyperlink" command
@@ -38,7 +38,7 @@ async def hyperlink_command(message: Message, command: CommandObject):
         text = " ".join(args[:-1])
         link = args[-1]
         hyperlink = f"[{text}]({link})"
-        await message.answer(
+        await message.reply_text(
             text=hyperlink,
             parse_mode=ParseMode.MARKDOWN,
             link_preview_options=LinkPreviewOptions(is_disabled=True),
@@ -49,13 +49,13 @@ async def hyperlink_command(message: Message, command: CommandObject):
             text = match.group(1)
             link = match.group(2)
             hyperlink = f"[{text}]({link})"
-            await message.answer(
+            await message.reply_text(
                 text=hyperlink,
                 parse_mode=ParseMode.HTML,
                 link_preview_options=LinkPreviewOptions(is_disabled=True),
             )
         else:
-            await message.answer(
+            await message.reply_text(
                 "❌ Invalid format! Please use the format: /hyperlink <text> <link>."
             )
 
