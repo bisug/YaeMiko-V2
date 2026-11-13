@@ -3,10 +3,11 @@
 # PROVIDED BY https://t.me/ProjectCodeX
 
 # <============================================== IMPORTS =========================================================>
-from aiogram.filters import Command, CommandObject
+from pyrogram import filters
 from pyrogram.types import Message
 
-from Mikobot import LOGGER, dp
+from Mikobot import LOGGER
+from Mikobot.events import on_message
 from Mikobot.state import state
 
 # <=======================================================================================================>
@@ -18,8 +19,9 @@ API_URL = "https://karma-api2.vercel.app/instadl"  # Replace with your actual AP
 
 
 # <================================================ FUNCTION =======================================================>
-async def instadl_command_handler(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command(["ig", "instagram", "insta", "instadl"]), chained=True)
+async def instadl_command_handler(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     if len(args) < 1:
         await message.reply_text("Usage: /instadl [Instagram URL]")
         return
@@ -64,8 +66,6 @@ async def instadl_command_handler(message: Message, command: CommandObject):
                 pass
 
 
-dp.message.register(
-    instadl_command_handler,
-    Command(commands=["ig", "instagram", "insta", "instadl"]),
-)
+__mod_name__ = "INSTADL"
+__command_list__ = ["ig", "instagram", "insta", "instadl"]
 # <================================================ END =======================================================>

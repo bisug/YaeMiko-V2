@@ -1,12 +1,11 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
 
-from pyrogram.enums import ParseMode
-from aiogram.filters import CommandObject
-from pyrogram.types import LinkPreviewOptions, Message
 from emoji import EMOJI_DATA
+from pyrogram.enums import ParseMode
+from pyrogram.types import LinkPreviewOptions, Message
 
-from Mikobot import dp
+from Mikobot.events import on_message
 from Mikobot.plugins.anime import (
     LANGUAGES,
     google_translator,
@@ -14,17 +13,20 @@ from Mikobot.plugins.anime import (
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.utils.filters import GROUPS
-from Mikobot.utils.gate import chain
 
 # <=======================================================================================================>
 
 
+@on_message(GROUPS, *disableable("echo"), chained=True)
 @check_admin(is_user=True)
-async def echo(message: Message, command: CommandObject):
+async def echo(client, message: Message):
     args = (message.text or "").split(None, 1)
 
+    if len(args) < 2:
+        return
+
     if message.reply_to_message:
-        await message.reply_to_message.answer(
+        await message.reply_to_message.reply_text(
             args[1],
             parse_mode=ParseMode.MARKDOWN,
             link_preview_options=LinkPreviewOptions(is_disabled=True),
@@ -38,7 +40,8 @@ async def echo(message: Message, command: CommandObject):
     await message.delete()
 
 
-async def totranslate(message: Message, command: CommandObject):
+@on_message(*disableable(["tr", "tl"]), chained=True)
+async def totranslate(client, message: Message):
     problem_lang_code = []
     for key in LANGUAGES:
         if "-" in key:
@@ -58,7 +61,9 @@ async def totranslate(message: Message, command: CommandObject):
                 # A photo or sticker reply carries neither, and text stayed
                 # unbound for every later use, so the command died on NameError
                 # instead of saying why.
-                await message.reply_text("There is no text in the message you replied to.")
+                await message.reply_text(
+                    "There is no text in the message you replied to."
+                )
                 return
 
             try:
@@ -149,9 +154,6 @@ __help__ = """
 
 » /echo < text >: echos the message.
 """
-
-dp.message.register(chain(totranslate), *disableable(["tr", "tl"]))
-dp.message.register(chain(echo), GROUPS, *disableable("echo"))
 
 __mod_name__ = "TRANSLATOR"
 __command_list__ = ["tr", "tl", "echo"]

@@ -1,22 +1,19 @@
 import html
 import os
-from functools import partial
 from urllib.parse import quote
 
-from aiogram import F
+from httpx import HTTPError
+from pyrogram import filters
 from pyrogram.enums import ButtonStyle, ParseMode
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
 )
-from httpx import HTTPError
 
-from Mikobot import dp
+from Mikobot.events import on_callback, on_message
 from Mikobot.state import state
-from Mikobot.utils.gate import chain
 
 SPORTDB_KEY = os.getenv("SPORTDB_API_KEY", "123")
 SPORTDB_URL = f"https://www.thesportsdb.com/api/v1/json/{SPORTDB_KEY}"
@@ -172,17 +169,26 @@ async def _show_menu(query: CallbackQuery, sport: str) -> None:
         await query.message.edit_text("TheSportsDB returned incomplete league data.")
 
 
-async def get_sport_matches(
-    message: Message, command: CommandObject, sport: str
-) -> None:
-    args = command.args.split() if command.args else []
+@on_message(filters.command("cricket"), chained=True)
+async def cricket_matches(client, message: Message) -> None:
+    args = message.command[1:] if len(message.command) > 1 else []
     if len(args) == 1 and args[0].isdigit():
-        await _send_league_message(message, sport, args[0])
+        await _send_league_message(message, "cricket", args[0])
     else:
-        await _show_leagues(message, sport)
+        await _show_leagues(message, "cricket")
 
 
-async def sport_callback(query: CallbackQuery) -> None:
+@on_message(filters.command("football"), chained=True)
+async def football_matches(client, message: Message) -> None:
+    args = message.command[1:] if len(message.command) > 1 else []
+    if len(args) == 1 and args[0].isdigit():
+        await _send_league_message(message, "football", args[0])
+    else:
+        await _show_leagues(message, "football")
+
+
+@on_callback(filters.regex(r"^sport_(?:league|menu):"), chained=True)
+async def sport_callback(client, query: CallbackQuery) -> None:
     if not query.data.startswith("sport_"):
         return
     parts = query.data.split(":")
@@ -194,12 +200,6 @@ async def sport_callback(query: CallbackQuery) -> None:
     except IndexError, ValueError:
         await query.answer("Invalid selection.", show_alert=True)
 
-
-dp.message.register(partial(get_sport_matches, sport="cricket"), Command("cricket"))
-dp.message.register(partial(get_sport_matches, sport="football"), Command("football"))
-dp.callback_query.register(
-    chain(sport_callback), F.data.regexp(r"^sport_(?:league|menu):")
-)
 
 __help__ = """
 🏅 <b>Sports schedules</b>
@@ -214,3 +214,4 @@ Data: TheSportsDB
 """
 
 __mod_name__ = "SPORTS"
+__command_list__ = ["cricket", "football"]

@@ -1,20 +1,11 @@
 from urllib.parse import urlparse
 
 import httpx
-
-# SOURCE https://github.com/Team-ProjectCodeX
-# CREATED BY https://t.me/O_okarma
-# API BY https://www.github.com/SOME-1HING
-# PROVIDED BY https://t.me/ProjectCodeX
-# <============================================== IMPORTS =========================================================>
-from aiogram.filters import Command
+from pyrogram import filters
 from pyrogram.types import Message
 
-from Mikobot import dp
+from Mikobot.events import on_message
 from Mikobot.state import state
-
-# <=======================================================================================================>
-
 
 # <================================================ FUNCTIONS =====================================================>
 COSPLAY_API_URL = "https://sugoi-api.vercel.app/cosplay"
@@ -38,7 +29,8 @@ async def get_cosplay_data() -> str:
     return photo_url
 
 
-async def cosplay(message: Message):
+@on_message(filters.command("cosplay"), chained=True)
+async def cosplay(client, message: Message):
     status = await message.reply_text("Fetching a cosplay photo...")
     try:
         photo_url = await get_cosplay_data()
@@ -55,6 +47,6 @@ async def cosplay(message: Message):
             pass
 
 
-# <================================================ HANDLER =======================================================>
-dp.message.register(cosplay, Command("cosplay"))
+__mod_name__ = "COSPLAY"
+__command_list__ = ["cosplay"]
 # <================================================ END =======================================================>

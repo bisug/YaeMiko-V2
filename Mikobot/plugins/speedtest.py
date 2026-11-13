@@ -1,7 +1,7 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
 
-from aiogram import F
+from pyrogram import filters
 from pyrogram.enums import ButtonStyle, ParseMode
 from pyrogram.types import (
     CallbackQuery,
@@ -10,7 +10,8 @@ from pyrogram.types import (
     Message,
 )
 
-from Mikobot import DEV_USERS, dp
+from Mikobot import DEV_USERS
+from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 
@@ -22,8 +23,9 @@ def convert(speed):
     return round(int(speed) / 1048576, 2)
 
 
+@on_message(*disableable("speedtest"), chained=True)
 @check_admin(only_dev=True)
-async def speedtestxyz(message: Message):
+async def speedtestxyz(client, message: Message):
     buttons = [
         [
             InlineKeyboardButton(
@@ -40,7 +42,8 @@ async def speedtestxyz(message: Message):
     )
 
 
-async def speedtestxyz_callback(query: CallbackQuery):
+@on_callback(filters.regex(r"^speedtest_"), chained=True)
+async def speedtestxyz_callback(client, query: CallbackQuery):
     if query.data not in {"speedtest_image", "speedtest_text"}:
         await query.answer("Invalid selection.", show_alert=True)
         return
@@ -71,10 +74,6 @@ async def speedtestxyz_callback(query: CallbackQuery):
     else:
         await query.answer("You are required to join Black Bulls to use this command.")
 
-
-# <================================================ HANDLER =======================================================>
-dp.message.register(speedtestxyz, *disableable("speedtest"))
-dp.callback_query.register(speedtestxyz_callback, F.data.regexp(r"^speedtest_"))
 
 __mod_name__ = "SpeedTest"
 __command_list__ = ["speedtest"]

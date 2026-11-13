@@ -4,8 +4,8 @@ import uuid
 from html import escape
 from urllib.parse import urlparse
 
+from pyrogram import filters
 from pyrogram.enums import ButtonStyle, ParseMode
-from aiogram.filters import Command
 from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -13,7 +13,7 @@ from pyrogram.types import (
     Message,
 )
 
-from Mikobot import bot, dp
+from Mikobot.events import on_message
 from Mikobot.state import state
 
 ENDPOINT = "https://sasta-api.vercel.app/googleImageSearch"
@@ -35,7 +35,8 @@ def _valid_url(value):
     return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
 
 
-async def reverse_image_search(message: Message):
+@on_message(filters.command(["reverse", "pp", "p", "grs", "sauce"]), chained=True)
+async def reverse_image_search(client, message: Message):
     args = message.text.split(None, 1)
     if len(args) > 1:
         image_url = args[1]
@@ -66,7 +67,7 @@ async def reverse_image_search(message: Message):
                     if reply.sticker
                     else reply.document.file_id
                 )
-                await client.download_media(file_id, destination=file_path)
+                await client.download_media(file_id, file_name=file_path)
                 await status_msg.edit_text(STRINGS.UPLOADING_TO_API_SERVER)
                 with open(file_path, "rb") as image_file:
                     response = await state.post(
@@ -115,7 +116,6 @@ async def reverse_image_search(message: Message):
     await status_msg.delete()
 
 
-dp.message.register(
-    reverse_image_search,
-    Command(commands=["reverse", "pp", "p", "grs", "sauce"]),
-)
+__mod_name__ = "REVERSE"
+__command_list__ = ["reverse", "pp", "p", "grs", "sauce"]
+# <================================================ END =======================================================>

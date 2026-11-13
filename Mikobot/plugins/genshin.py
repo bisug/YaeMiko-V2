@@ -4,12 +4,12 @@ import logging
 from dataclasses import dataclass
 
 import httpx
-from aiogram import F
+from pyrogram import filters
 from pyrogram.enums import ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import (
     CallbackQuery,
+    InlineKeyboardButton,
     InlineKeyboardMarkup,
     InputMediaPhoto,
     InputRichBlockDivider,
@@ -28,9 +28,9 @@ from pyrogram.types import (
     RichTextItalic,
     RichTextUnderline,
 )
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from Mikobot import bot, dp
+from Mikobot import app
+from Mikobot.events import on_callback, on_message
 from Mikobot.state import state
 
 # <=======================================================================================================>
@@ -157,9 +157,9 @@ def _rarity(value) -> str:
         return ""
 
 
-def _lang_arg(command: CommandObject) -> str:
+def _lang_arg(args_str: str) -> str:
     """Read an optional trailing `-fr` from the arguments."""
-    args = (command.args or "").split()
+    args = (args_str or "").split()
     # The language is a suffix on the last token, so `/gchar albedo-fr` and
     # `/gchar hu tao fr` both resolve. Splitting on hyphens alone would break
     # the two-word names that already contain one.
@@ -170,9 +170,9 @@ def _lang_arg(command: CommandObject) -> str:
     return "en"
 
 
-def _strip_lang(command: CommandObject) -> str:
+def _strip_lang(args_str: str) -> str:
     """The query with any `-xx` language suffix removed."""
-    args = (command.args or "").split()
+    args = (args_str or "").split()
     if args and "-" in args[-1]:
         head, _, tail = args[-1].rpartition("-")
         if tail.lower() in LANGS and head:
@@ -853,12 +853,17 @@ def _list_keyboard(kind: str, query: str, page: int, lang: str) -> InlineKeyboar
     def data(step: int) -> str:
         return f"genshin|{kind}|{step}|{lang}|{query}"[:64]
 
-    builder = InlineKeyboardBuilder()
-    builder.button(text="◁", callback_data=data(page - 1))
-    builder.button(text="✕", callback_data=f"genshin_close|{kind}"[:64])
-    builder.button(text="▷", callback_data=data(page + 1))
-    builder.adjust(3)
-    return builder.as_markup()
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(text="◁", callback_data=data(page - 1)),
+                InlineKeyboardButton(
+                    text="✕", callback_data=f"genshin_close|{kind}"[:64]
+                ),
+                InlineKeyboardButton(text="▷", callback_data=data(page + 1)),
+            ]
+        ]
+    )
 
 
 # <=======================================================================================================>
@@ -877,7 +882,7 @@ async def _send_rich(
     """
     rich = InputRichMessage(blocks=blocks)
     try:
-        return await client.send_rich_message(
+        return await app.send_rich_message(
             chat_id,
             rich,
             reply_markup=reply_markup,
@@ -886,7 +891,7 @@ async def _send_rich(
     except RPCError as err:
         LOGGER.debug("Rich message unavailable (%s), falling back to text", err)
         try:
-            return await client.send_message(
+            return await app.send_message(
                 chat_id, _blocks_to_text(blocks), reply_markup=reply_markup
             )
         except RPCError:
@@ -952,10 +957,12 @@ def _flatten(node) -> str:
 
 
 # <================================================= COMMANDS ================================================>
-async def _lookup(message: Message, command: CommandObject, kind: str):
+async def _lookup(message: Message, kind: str):
     entity = ENTITY_TYPES[kind]
-    lang = _lang_arg(command)
-    query = _strip_lang(command)
+    parts = (message.text or "").split(None, 1)
+    args_str = parts[1] if len(parts) > 1 else ""
+    lang = _lang_arg(args_str)
+    query = _strip_lang(args_str)
 
     if not query:
         listing = "\n".join(
@@ -1040,40 +1047,58 @@ async def _replace(status: Message, text: str):
         await status.edit_text(text, parse_mode=None)
     except RPCError:
         try:
-            await status.answer(text, parse_mode=None)
+            await status.reply_text(text, parse_mode=None)
         except RPCError:
             LOGGER.debug("Could not deliver a genshin notice", exc_info=True)
 
 
-# One thin handler per collection keeps the gate and the help text honest: a
-# command exists only for a type the API actually serves.
-def _make_handler(kind: str):
-    """One thin handler per collection.
-
-    This must be a plain `def`: an `async def` factory returns the coroutine
-    object rather than the inner function, and aiogram then registers a
-    coroutine where it expects a callable.
-    """
-
-    async def handler(message: Message, command: CommandObject):
-        await _lookup(message, command, kind)
-
-    handler.__name__ = f"genshin_{ENTITY_TYPES[kind].handler}"
-    return handler
+@on_message(filters.command(["gchar", "gcharlist"]), chained=True)
+async def genshin_character(client, message: Message):
+    await _lookup(message, "characters")
 
 
-genshin_character = _make_handler("characters")
-genshin_weapon = _make_handler("weapons")
-genshin_artifact = _make_handler("artifacts")
-genshin_consumable = _make_handler("consumables")
-genshin_material = _make_handler("materials")
-genshin_enemy = _make_handler("enemies")
-genshin_domain = _make_handler("domains")
-genshin_nation = _make_handler("nations")
-genshin_element = _make_handler("elements")
+@on_message(filters.command("gweapon"), chained=True)
+async def genshin_weapon(client, message: Message):
+    await _lookup(message, "weapons")
 
 
-async def genshin_page(query: CallbackQuery):
+@on_message(filters.command(["gartifact", "gset"]), chained=True)
+async def genshin_artifact(client, message: Message):
+    await _lookup(message, "artifacts")
+
+
+@on_message(filters.command(["gconsumable", "gfood"]), chained=True)
+async def genshin_consumable(client, message: Message):
+    await _lookup(message, "consumables")
+
+
+@on_message(filters.command("gmaterial"), chained=True)
+async def genshin_material(client, message: Message):
+    await _lookup(message, "materials")
+
+
+@on_message(filters.command("genemy"), chained=True)
+async def genshin_enemy(client, message: Message):
+    await _lookup(message, "enemies")
+
+
+@on_message(filters.command("gdomain"), chained=True)
+async def genshin_domain(client, message: Message):
+    await _lookup(message, "domains")
+
+
+@on_message(filters.command("gnation"), chained=True)
+async def genshin_nation(client, message: Message):
+    await _lookup(message, "nations")
+
+
+@on_message(filters.command("gelement"), chained=True)
+async def genshin_element(client, message: Message):
+    await _lookup(message, "elements")
+
+
+@on_callback(filters.regex(r"^genshin\|"), chained=True)
+async def genshin_page(client, query: CallbackQuery):
     """Advance a result list.
 
     There is no edit_rich_message in the Bot API, so a page turn cannot rewrite
@@ -1122,7 +1147,8 @@ async def genshin_page(query: CallbackQuery):
     await query.answer()
 
 
-async def genshin_close(query: CallbackQuery):
+@on_callback(filters.regex(r"^genshin_close\|"), chained=True)
+async def genshin_close(client, query: CallbackQuery):
     try:
         await query.message.delete()
     except RPCError:
@@ -1156,16 +1182,4 @@ __help__ = """
 
 __mod_name__ = "Genshin"
 
-# <================================================ HANDLER =================================================>
-dp.message.register(genshin_character, Command("gchar", "gcharlist"))
-dp.message.register(genshin_weapon, Command("gweapon"))
-dp.message.register(genshin_artifact, Command("gartifact", "gset"))
-dp.message.register(genshin_consumable, Command("gconsumable", "gfood"))
-dp.message.register(genshin_material, Command("gmaterial"))
-dp.message.register(genshin_enemy, Command("genemy"))
-dp.message.register(genshin_domain, Command("gdomain"))
-dp.message.register(genshin_nation, Command("gnation"))
-dp.message.register(genshin_element, Command("gelement"))
-dp.callback_query.register(genshin_page, F.data.startswith("genshin|"))
-dp.callback_query.register(genshin_close, F.data.startswith("genshin_close|"))
 # <================================================== END ====================================================>
