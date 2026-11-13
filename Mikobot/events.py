@@ -14,6 +14,7 @@ matching one.
 Handlers are called the kurigram way, ``handler(client, update)``.
 """
 
+import inspect
 import logging
 
 from pyrogram import filters
@@ -46,7 +47,11 @@ class Registration:
 
     async def matches(self, client, update) -> bool:
         for one in self.filters:
-            if not await one(client, update):
+            result = one(client, update)
+            # A kurigram filter is a coroutine, a plain predicate is not.
+            if inspect.isawaitable(result):
+                result = await result
+            if not result:
                 return False
         return True
 
@@ -82,7 +87,9 @@ class Registry:
                 # session is thread-local, so whatever is left would otherwise
                 # be committed by an unrelated later call.
                 end_unit_of_work()
-            if not registration.chained:
+            if not (
+                registration.chained or getattr(registration.handler, "chained", False)
+            ):
                 return
 
 
@@ -230,6 +237,8 @@ def install() -> None:
     app.add_handler(InlineQueryHandler(_dispatch_inline_queries))
     app.add_handler(ChatJoinRequestHandler(_dispatch_join_requests))
     app.add_handler(ChatMemberUpdatedHandler(_dispatch_chat_member_updates))
+
+
 # <=======================================================================================================>
 
 
