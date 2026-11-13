@@ -3,26 +3,28 @@ import html
 import re
 import unicodedata
 
+from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus, ChatType, ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import ChatPermissions, Message
 
 import Database.sql.locks_sql as sql
 from Database.sql.approve_sql import is_approved
-from Mikobot import DRAGONS, LOGGER, bot, dp
+from Mikobot import DRAGONS, LOGGER
+from Mikobot import app as client
+from Mikobot.events import on_message
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.alternate import send_message, typing_action
 from Mikobot.plugins.helper_funcs.chat_status import (
     check_admin,
+    granted,
     is_bot_admin,
     is_user_admin,
 )
 from Mikobot.plugins.log_channel import loggable
 from Mikobot.utils.consts import ChatID
 from Mikobot.utils.filters import GROUPS
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 
@@ -287,7 +289,7 @@ REST_GROUP = 2
 
 # NOT ASYNC
 async def restr_members(
-    bot,
+    client,
     chat_id,
     members,
     messages=False,
@@ -324,7 +326,7 @@ async def restr_members(
 
 # NOT ASYNC
 async def unrestr_members(
-    bot,
+    client,
     chat_id,
     members,
     messages=True,
@@ -353,7 +355,8 @@ async def unrestr_members(
             pass
 
 
-async def locktypes(message: Message):
+@on_message(*disableable("locktypes"), chained=True)
+async def locktypes(client, message: Message):
     await message.reply_text(
         "\n • ".join(
             ["Locks available: "]
@@ -362,11 +365,12 @@ async def locktypes(message: Message):
     )
 
 
+@on_message(filters.command("lock"), chained=True)
 @check_admin(permission="can_delete_messages", is_both=True)
 @loggable
 @typing_action
-async def lock(message: Message, command: CommandObject) -> str:
-    args = command.args.split() if command.args else []
+async def lock(client, message: Message) -> str:
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
 
@@ -374,7 +378,7 @@ async def lock(message: Message, command: CommandObject) -> str:
         ltype = args[0].lower()
         if ltype in LOCK_TYPES:
             # Connection check
-            conn = await connected(bot, message, chat, user.id, need_admin=True)
+            conn = await connected(client, message, chat, user.id, need_admin=True)
             if conn:
                 chat = await client.get_chat(conn)
                 chat_id = conn
@@ -404,7 +408,7 @@ async def lock(message: Message, command: CommandObject) -> str:
 
         elif ltype in LOCK_CHAT_RESTRICTION:
             # Connection check
-            conn = await connected(bot, message, chat, user.id, need_admin=True)
+            conn = await connected(client, message, chat, user.id, need_admin=True)
             if conn:
                 chat = await client.get_chat(conn)
                 chat_id = conn
@@ -427,7 +431,15 @@ async def lock(message: Message, command: CommandObject) -> str:
 
             chat_obj = await client.get_chat(chat_id)
             current_permission = chat_obj.permissions
-            current_dict = current_permission.model_dump() if current_permission else {}
+            current_dict = (
+                {
+                    k: v
+                    for k, v in vars(current_permission).items()
+                    if not k.startswith("_")
+                }
+                if current_permission
+                else {}
+            )
             await client.set_chat_permissions(
                 chat_id=chat_id,
                 permissions=get_permission_list(
@@ -497,20 +509,20 @@ async def lock(message: Message, command: CommandObject) -> str:
     return ""
 
 
+@on_message(filters.command("unlock"), chained=True)
 @check_admin(permission="can_delete_messages", is_both=True)
 @loggable
 @typing_action
-async def unlock(message: Message, command: CommandObject) -> str:
-    args = command.args.split() if command.args else []
+async def unlock(client, message: Message) -> str:
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
-    message = message
 
     if len(args) >= 1:
         ltype = args[0].lower()
         if ltype in LOCK_TYPES:
             # Connection check
-            conn = await connected(bot, message, chat, user.id, need_admin=True)
+            conn = await connected(client, message, chat, user.id, need_admin=True)
             if conn:
                 chat = await client.get_chat(conn)
                 chat_id = conn
@@ -542,7 +554,7 @@ async def unlock(message: Message, command: CommandObject) -> str:
 
         elif ltype in UNLOCK_CHAT_RESTRICTION:
             # Connection check
-            conn = await connected(bot, message, chat, user.id, need_admin=True)
+            conn = await connected(client, message, chat, user.id, need_admin=True)
             if conn:
                 chat = await client.get_chat(conn)
                 chat_id = conn
@@ -563,7 +575,7 @@ async def unlock(message: Message, command: CommandObject) -> str:
             member = await client.get_chat_member(chat.id, client.id)
 
             if member.status == ChatMemberStatus.ADMINISTRATOR:
-                can_change_info = member.can_change_info
+                can_change_info = granted(member, "can_change_info")
             else:
                 can_change_info = True
 
@@ -577,7 +589,15 @@ async def unlock(message: Message, command: CommandObject) -> str:
 
             chat_obj = await client.get_chat(chat_id)
             current_permission = chat_obj.permissions
-            current_dict = current_permission.model_dump() if current_permission else {}
+            current_dict = (
+                {
+                    k: v
+                    for k, v in vars(current_permission).items()
+                    if not k.startswith("_")
+                }
+                if current_permission
+                else {}
+            )
             await client.set_chat_permissions(
                 chat_id=chat_id,
                 permissions=get_permission_list(
@@ -644,7 +664,8 @@ def _message_matches_lock(lockable, filter, locks, message) -> bool:
     return False
 
 
-async def del_lockables(message: Message):
+@on_message(GROUPS, chained=True)
+async def del_lockables(client, message: Message):
     chat = message.chat
     user = message.from_user
     # Both reads run on a worker thread: this handler fires on every group
@@ -906,14 +927,15 @@ async def build_lock_message(chat_id):
     return res
 
 
+@on_message(filters.command("locks"), chained=True)
 @typing_action
 @check_admin(is_user=True)
-async def list_locks(message: Message):
+async def list_locks(client, message: Message):
     chat = message.chat
     user = message.from_user
 
     # Connection check
-    conn = await connected(bot, message, chat, user.id, need_admin=True)
+    conn = await connected(client, message, chat, user.id, need_admin=True)
     if conn:
         chat = await client.get_chat(conn)
         chat_name = chat.title
@@ -952,7 +974,7 @@ ALLOWLIST_LOCKABLES = (
 async def _allowlist_target(message: Message):
     """(chat_id, chat) for an allowlist command, honouring connections."""
     conn = await connected(
-        bot, message, message.chat, message.from_user.id, need_admin=True
+        client, message, message.chat, message.from_user.id, need_admin=True
     )
     if conn:
         chat = await client.get_chat(conn)
@@ -970,15 +992,16 @@ def _normalise_item(lockable: str, value: str) -> str:
     return value.strip().lstrip("@").lower()
 
 
+@on_message(filters.command("allowlist"), chained=True)
 @check_admin(permission="can_delete_messages", is_both=True)
 @typing_action
-async def allowlist(message: Message, command: CommandObject) -> str:
+async def allowlist(client, message: Message) -> str:
     """Exempt specific items from a lock, eg /allowlist missrose.xyz."""
     chat_id, chat = await _allowlist_target(message)
     if chat_id is None:
         return ""
 
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
     user = message.from_user
 
     if not args:
@@ -1005,7 +1028,9 @@ async def allowlist(message: Message, command: CommandObject) -> str:
         return ""
 
     if not values:
-        await message.reply_text(f"Give me something to allow for <code>{lockable}</code>.")
+        await message.reply_text(
+            f"Give me something to allow for <code>{lockable}</code>."
+        )
         return ""
 
     added = []
@@ -1048,15 +1073,16 @@ async def allowlist(message: Message, command: CommandObject) -> str:
     )
 
 
+@on_message(filters.command("rmallowlist"), chained=True)
 @check_admin(permission="can_delete_messages", is_both=True)
 @typing_action
-async def rmallowlist(message: Message, command: CommandObject) -> str:
+async def rmallowlist(client, message: Message) -> str:
     """Remove one or more entries from the allowlist."""
     chat_id, chat = await _allowlist_target(message)
     if chat_id is None:
         return ""
 
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
     user = message.from_user
     if not args:
         await message.reply_text("Give me the type and item to remove.")
@@ -1089,9 +1115,10 @@ async def rmallowlist(message: Message, command: CommandObject) -> str:
     )
 
 
+@on_message(filters.command("rmallowlistall"), chained=True)
 @check_admin(only_owner=True)
 @typing_action
-async def rmallowlistall(message: Message, command: CommandObject) -> str:
+async def rmallowlistall(client, message: Message) -> str:
     """Clear the whole allowlist. Owner only, since it is all-or-nothing."""
     chat_id, chat = await _allowlist_target(message)
     if chat_id is None:
@@ -1189,14 +1216,3 @@ Locking anonchannel will stop anonymous channel from messaging in your group.
 """
 
 __mod_name__ = "LOCKS"
-
-# del_lockables is registered first: in PTB it ran in group 1 ahead of the
-# commands, so a locked message was still deleted when it was also a command.
-dp.message.register(chain(del_lockables), GROUPS)
-dp.message.register(chain(lock), Command("lock"))
-dp.message.register(chain(unlock), Command("unlock"))
-dp.message.register(chain(locktypes), *disableable("locktypes"))
-dp.message.register(chain(list_locks), Command("locks"))
-dp.message.register(chain(allowlist), Command("allowlist"))
-dp.message.register(chain(rmallowlist), Command("rmallowlist"))
-dp.message.register(chain(rmallowlistall), Command("rmallowlistall"))

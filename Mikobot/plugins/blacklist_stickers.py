@@ -1,12 +1,14 @@
 import html
+from datetime import datetime, timezone
 
+from pyrogram import filters
 from pyrogram.enums import ChatType, ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import ChatPermissions, Message
 
 import Database.sql.blsticker_sql as sql
-from Mikobot import LOGGER, bot, dp
+from Mikobot import LOGGER
+from Mikobot.events import on_message
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.alternate import send_message
@@ -16,15 +18,15 @@ from Mikobot.plugins.helper_funcs.string_handling import extract_time
 from Mikobot.plugins.log_channel import loggable
 from Mikobot.plugins.warns import warn
 from Mikobot.utils.filters import GROUPS
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html, mention_markdown
 
 
-async def blackliststicker(message: Message, command: CommandObject):
+@on_message(*disableable("blsticker", admin_ok=True), chained=True)
+async def blackliststicker(client, message: Message):
     chat = message.chat
     user = message.from_user
-    args = command.args.split() if command.args else []
-    conn = await connected(bot, message, chat, user.id, need_admin=False)
+    args = message.command[1:] if len(message.command) > 1 else []
+    conn = await connected(client, message, chat, user.id, need_admin=False)
     if conn:
         chat_id = conn
         chat_obj = await client.get_chat(conn)
@@ -37,8 +39,7 @@ async def blackliststicker(message: Message, command: CommandObject):
 
     # The header goes into an HTML payload sent below, so the title is escaped
     # here and the emptiness check compares against this same header rather than
-    # rebuilding it. It used to re-run .format() on an already-formatted string,
-    # which is a no-op, so the two sides only matched by accident.
+    # rebuilding it.
     header = "<b>List blacklisted stickers currently in {}:</b>\n".format(
         html.escape(chat_name),
     )
@@ -71,13 +72,14 @@ async def blackliststicker(message: Message, command: CommandObject):
         )
 
 
+@on_message(*disableable("addblsticker"), chained=True)
 @check_admin(is_user=True)
-async def add_blackliststicker(message: Message, command: CommandObject):
+async def add_blackliststicker(client, message: Message):
     msg = message
     chat = message.chat
     user = message.from_user
     words = (msg.text or "").split(None, 1)
-    conn = await connected(bot, message, chat, user.id)
+    conn = await connected(client, message, chat, user.id)
     if conn:
         chat_id = conn
         chat_obj = await client.get_chat(conn)
@@ -129,7 +131,7 @@ async def add_blackliststicker(message: Message, command: CommandObject):
                 ),
                 parse_mode=ParseMode.HTML,
             )
-    elif msg.reply_to_message:
+    elif msg.reply_to_message and msg.reply_to_message.sticker:
         added = 0
         trigger = msg.reply_to_message.sticker.set_name
         if trigger is None:
@@ -167,13 +169,14 @@ async def add_blackliststicker(message: Message, command: CommandObject):
         )
 
 
+@on_message(filters.command(["unblsticker", "rmblsticker"]), chained=True)
 @check_admin(is_user=True)
-async def unblackliststicker(message: Message, command: CommandObject):
+async def unblackliststicker(client, message: Message):
     msg = message
     chat = message.chat
     user = message.from_user
     words = (msg.text or "").split(None, 1)
-    conn = await connected(bot, message, chat, user.id)
+    conn = await connected(client, message, chat, user.id)
     if conn:
         chat_id = conn
         chat_obj = await client.get_chat(conn)
@@ -239,7 +242,7 @@ async def unblackliststicker(message: Message, command: CommandObject):
                 ),
                 parse_mode=ParseMode.HTML,
             )
-    elif msg.reply_to_message:
+    elif msg.reply_to_message and msg.reply_to_message.sticker:
         trigger = msg.reply_to_message.sticker.set_name
         if trigger is None:
             await send_message(
@@ -270,20 +273,21 @@ async def unblackliststicker(message: Message, command: CommandObject):
         )
 
 
+@on_message(filters.command("blstickermode"), chained=True)
 @loggable
 @check_admin(is_user=True)
-async def blacklist_mode(message: Message, command: CommandObject):
+async def blacklist_mode(client, message: Message):
     chat = message.chat
     user = message.from_user
-    args = command.args.split() if command.args else []
-    conn = await connected(bot, message, chat, user.id, need_admin=True)
+    args = message.command[1:] if len(message.command) > 1 else []
+    conn = await connected(client, message, chat, user.id, need_admin=True)
     if conn:
         chat = await client.get_chat(conn)
         chat_id = conn
         chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
-        if message.chat.type == "private":
+        if message.chat.type == ChatType.PRIVATE:
             await send_message(
                 message,
                 "You can do this command in groups, not PM",
@@ -321,7 +325,7 @@ async def blacklist_mode(message: Message, command: CommandObject):
                     teks,
                     parse_mode=ParseMode.MARKDOWN,
                 )
-                return
+                return ""
             settypeblacklist = "temporary banned for {}".format(args[1])
             sql.set_blacklist_strength(chat_id, 6, str(args[1]))
         elif args[0].lower() == "tmute":
@@ -333,7 +337,7 @@ async def blacklist_mode(message: Message, command: CommandObject):
                     teks,
                     parse_mode=ParseMode.MARKDOWN,
                 )
-                return
+                return ""
             settypeblacklist = "temporary muted for {}".format(args[1])
             sql.set_blacklist_strength(chat_id, 7, str(args[1]))
         else:
@@ -341,7 +345,7 @@ async def blacklist_mode(message: Message, command: CommandObject):
                 message,
                 "I only understand off/del/warn/ban/kick/mute/tban/tmute!",
             )
-            return
+            return ""
         if conn:
             text = "Blacklist sticker mode changed, users will be `{}` at *{}*!".format(
                 settypeblacklist,
@@ -400,8 +404,9 @@ async def blacklist_mode(message: Message, command: CommandObject):
     return ""
 
 
+@on_message(GROUPS & filters.sticker, chained=True)
 @user_not_admin
-async def del_blackliststicker(message: Message):
+async def del_blackliststicker(client, message: Message):
     chat = message.chat
     user = message.from_user
     to_match = message.sticker
@@ -430,7 +435,6 @@ async def del_blackliststicker(message: Message):
                         ),
                         message,
                         user,
-                        # conn=False,
                     )
                     return
                 elif getmode == 3:
@@ -454,8 +458,6 @@ async def del_blackliststicker(message: Message):
                     return
                 elif getmode == 4:
                     await message.delete()
-                    # PTB's chat.unban_member returned a truthy result; aiogram
-                    # raises, so the kick has to be awaited for it to happen.
                     await client.unban_chat_member(chat.id, user.id)
                     await client.send_message(
                         chat.id,
@@ -489,7 +491,8 @@ async def del_blackliststicker(message: Message):
                     bantime = await extract_time(message, value)
                     if not bantime:
                         return
-                    await client.ban_chat_member(chat.id, user.id, until_date=bantime)
+                    ban_until = datetime.fromtimestamp(bantime, timezone.utc)
+                    await client.ban_chat_member(chat.id, user.id, until_date=ban_until)
                     await client.send_message(
                         chat.id,
                         "{} banned for {} because using '{}' which in blacklist stickers".format(
@@ -508,11 +511,12 @@ async def del_blackliststicker(message: Message):
                     mutetime = await extract_time(message, value)
                     if not mutetime:
                         return
+                    mute_until = datetime.fromtimestamp(mutetime, timezone.utc)
                     await client.restrict_chat_member(
                         chat.id,
                         user.id,
                         permissions=ChatPermissions(can_send_messages=False),
-                        until_date=mutetime,
+                        until_date=mute_until,
                     )
                     await client.send_message(
                         chat.id,
@@ -557,12 +561,3 @@ def __stats__():
 
 
 __mod_name__ = "Stickers Blacklist"
-
-# The deleter watches every group sticker, so it registers first.
-dp.message.register(chain(del_blackliststicker), GROUPS)
-dp.message.register(chain(blackliststicker), *disableable("blsticker", admin_ok=True))
-dp.message.register(chain(add_blackliststicker), *disableable("addblsticker"))
-dp.message.register(
-    chain(unblackliststicker), Command(commands=["unblsticker", "rmblsticker"])
-)
-dp.message.register(chain(blacklist_mode), Command("blstickermode"))

@@ -3,31 +3,32 @@ import asyncio
 import html
 import re
 import time
+from datetime import datetime, timezone
 
-from aiogram import F
+from pyrogram import filters
 from pyrogram.enums import ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import CallbackQuery, ChatPermissions, Message
 
 from Database.sql import antiflood_sql as sql
 from Database.sql.approve_sql import is_approved
-from Mikobot import bot, dp
+from Mikobot import app as client
+from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.helper_funcs.alternate import send_message
 from Mikobot.plugins.helper_funcs.chat_status import check_admin, is_user_admin
 from Mikobot.plugins.helper_funcs.string_handling import extract_time
 from Mikobot.plugins.log_channel import loggable
 from Mikobot.utils.filters import GROUPS
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 # <=======================================================================================================>
 
 
 # <================================================ FUNCTION =======================================================>
+@on_message(GROUPS, chained=True)
 @loggable
-async def check_flood(message: Message):
+async def check_flood(client, message: Message):
     user = message.from_user
     chat = message.chat
     msg = message
@@ -44,11 +45,11 @@ async def check_flood(message: Message):
 
     timed = sql.get_flood_timer(chat.id) > 0
     if timed:
-        should_ban = sql.update_flood_timer(chat.id, user.id, message.message_id)
+        should_ban = sql.update_flood_timer(chat.id, user.id, message.id)
     else:
         should_ban = sql.update_flood(chat.id, user.id)
         if should_ban and sql.get_clearflood(chat.id):
-            sql.track_message(chat.id, user.id, message.message_id)
+            sql.track_message(chat.id, user.id, message.id)
     if not should_ban:
         return ""
 
@@ -64,7 +65,6 @@ async def check_flood(message: Message):
             execstrings = "BANNED"
             tag = "BANNED"
         elif getmode == 2:
-            await client.ban_chat_member(chat.id, user.id)
             await client.unban_chat_member(chat.id, user.id)
             execstrings = "KICKED"
             tag = "KICKED"
@@ -79,25 +79,28 @@ async def check_flood(message: Message):
         elif getmode == 4:
             bantime = await extract_time(msg, getvalue)
             if not bantime:
-                return
-            await client.ban_chat_member(chat.id, user.id, until_date=bantime)
+                return ""
+            until_dt = datetime.fromtimestamp(bantime, timezone.utc)
+            await client.ban_chat_member(chat.id, user.id, until_date=until_dt)
             execstrings = "BANNED for {}".format(getvalue)
             tag = "TBAN"
         elif getmode == 5:
             mutetime = await extract_time(msg, getvalue)
             if not mutetime:
-                return
+                return ""
+            until_dt = datetime.fromtimestamp(mutetime, timezone.utc)
             await client.restrict_chat_member(
                 chat.id,
                 user.id,
-                until_date=mutetime,
+                until_date=until_dt,
                 permissions=ChatPermissions(can_send_messages=False),
             )
             execstrings = "MUTED for {}".format(getvalue)
             tag = "TMUTE"
-        # Timed mode remembers every message in the window, so the offender's
-        # spam is removed with them. Consecutive mode only has the message that
-        # tripped the limit, unless clearflood is on and the burst was tracked.
+        else:
+            execstrings = "MUTED"
+            tag = "MUTED"
+
         if timed or sql.get_clearflood(chat.id):
             tracked = sql.take_flooded_messages(chat.id, user.id)
             for message_id in tracked:
@@ -131,8 +134,9 @@ async def check_flood(message: Message):
         )
 
 
+@on_callback(filters.regex(r"^unmute_flooder\(-?\d+\)$"), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True, no_reply=True)
-async def flood_button(query: CallbackQuery):
+async def flood_button(client, query: CallbackQuery):
     message = query.message
     user = query.from_user
     match = re.fullmatch(r"unmute_flooder\((-?\d+)\)", query.data)
@@ -159,7 +163,7 @@ async def flood_button(query: CallbackQuery):
         )
         await message.edit_text(
             f"Unmuted by {mention_html(user.id, user.first_name)}.",
-            parse_mode="HTML",
+            parse_mode=ParseMode.HTML,
         )
     except Exception:
         await query.answer("Unable to unmute this user.", show_alert=True)
@@ -168,15 +172,15 @@ async def flood_button(query: CallbackQuery):
     await query.answer("User unmuted.")
 
 
+@on_message(GROUPS, filters.command("setflood"), chained=True)
 @loggable
 @check_admin(is_user=True)
-async def set_flood(message: Message, command: CommandObject):
+async def set_flood(client, message: Message):
     chat = message.chat
     user = message.from_user
-    message = message
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
 
-    conn = await connected(bot, message, chat, user.id, need_admin=True)
+    conn = await connected(client, message, chat, user.id, need_admin=True)
     if conn:
         chat_id = conn
         chat_obj = await client.get_chat(conn)
@@ -268,11 +272,12 @@ async def set_flood(message: Message, command: CommandObject):
     return ""
 
 
-async def flood(message: Message, command: CommandObject):
+@on_message(GROUPS, filters.command("flood"), chained=True)
+async def flood(client, message: Message):
     chat = message.chat
     user = message.from_user
     msg = message
-    conn = await connected(bot, message, chat, user.id, need_admin=False)
+    conn = await connected(client, message, chat, user.id, need_admin=False)
     if conn:
         chat_id = conn
         chat_obj = await client.get_chat(conn)
@@ -311,14 +316,15 @@ async def flood(message: Message, command: CommandObject):
             )
 
 
+@on_message(filters.command("setfloodmode"), chained=True)
 @check_admin(is_user=True)
-async def set_flood_mode(message: Message, command: CommandObject):
+async def set_flood_mode(client, message: Message):
     user = message.from_user
     msg = message
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
 
-    conn = await connected(bot, message, chat, user.id, need_admin=True)
+    conn = await connected(client, message, chat, user.id, need_admin=True)
     if conn:
         chat = await client.get_chat(conn)
         chat_id = conn
@@ -331,7 +337,6 @@ async def set_flood_mode(message: Message, command: CommandObject):
                 "This command is meant to use in a group, not in PM.",
             )
             return ""
-        chat = message.chat
         chat_id = message.chat.id
         chat_name = message.chat.title
 
@@ -350,7 +355,7 @@ async def set_flood_mode(message: Message, command: CommandObject):
                 teks = """It looks like you tried to set time value for antiflood but you didn't specified time; Try, `/setfloodmode tban <timevalue>`.
 Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
                 await send_message(message, teks, parse_mode=ParseMode.MARKDOWN)
-                return
+                return ""
             settypeflood = "tban for {}".format(args[1])
             sql.set_flood_strength(chat_id, 4, str(args[1]))
         elif args[0].lower() == "tmute":
@@ -358,7 +363,7 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
                 teks = """It looks like you tried to set time value for antiflood but you didn't specified time; Try, `/setfloodmode tmute <timevalue>`.
 Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
                 await send_message(message, teks, parse_mode=ParseMode.MARKDOWN)
-                return
+                return ""
             settypeflood = "tmute for {}".format(args[1])
             sql.set_flood_strength(chat_id, 5, str(args[1]))
         else:
@@ -366,7 +371,7 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
                 message,
                 "I only understand ban/kick/mute/tban/tmute!",
             )
-            return
+            return ""
         if conn:
             await msg.reply_text(
                 "Exceeding consecutive flood limit will result in {} in {}!".format(
@@ -401,6 +406,8 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
             settypeflood = "tban for {}".format(getvalue)
         elif getmode == 5:
             settypeflood = "tmute for {}".format(getvalue)
+        else:
+            settypeflood = "ban"
         if conn:
             await msg.reply_text(
                 "Sending more messages than flood limit will result in {} in {}.".format(
@@ -419,7 +426,7 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
 
 async def _flood_target(message, user):
     """(chat_id, chat_name) for a group command, honouring connections."""
-    conn = await connected(bot, message, message.chat, user.id, need_admin=True)
+    conn = await connected(client, message, message.chat, user.id, need_admin=True)
     if conn:
         chat_obj = await client.get_chat(conn)
         return conn, chat_obj.title
@@ -431,13 +438,14 @@ async def _flood_target(message, user):
     return message.chat.id, message.chat.title
 
 
+@on_message(filters.command("setfloodtimer"), chained=True)
 @loggable
 @check_admin(is_user=True)
-async def set_flood_timer(message: Message, command: CommandObject):
+async def set_flood_timer(client, message: Message):
     """Act on N messages sent within a window, rather than N in a row."""
     user = message.from_user
     msg = message
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
 
     chat_id, chat_name = await _flood_target(message, user)
     if chat_id is None:
@@ -470,7 +478,6 @@ async def set_flood_timer(message: Message, command: CommandObject):
         await send_message(msg, "The message limit must be a number greater than 0.")
         return ""
 
-    # Reuse extract_time so the documented m/h/d/w units all work here too.
     expiry = await extract_time(msg, args[1])
     if not expiry:
         return ""
@@ -498,13 +505,14 @@ async def set_flood_timer(message: Message, command: CommandObject):
     )
 
 
+@on_message(filters.command("clearflood"), chained=True)
 @loggable
 @check_admin(is_user=True)
-async def clearflood(message: Message, command: CommandObject):
+async def clearflood(client, message: Message):
     """Toggle deleting the whole flooding burst instead of only the excess."""
     user = message.from_user
     msg = message
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
 
     chat_id, chat_name = await _flood_target(message, user)
     if chat_id is None:
@@ -575,17 +583,3 @@ __help__ = """
 """
 
 __mod_name__ = "ANTI-FLOOD"
-
-# <================================================ HANDLER =======================================================>
-# Registered before the command handlers: in PTB this ran in group 3 and saw
-# every group message, including commands, so antiflood counted them too.
-dp.message.register(chain(check_flood), GROUPS)
-dp.callback_query.register(
-    chain(flood_button), F.data.regexp(r"^unmute_flooder\(-?\d+\)$")
-)
-dp.message.register(chain(set_flood), GROUPS, Command("setflood"))
-dp.message.register(chain(set_flood_mode), Command("setfloodmode"))
-dp.message.register(chain(flood), GROUPS, Command("flood"))
-dp.message.register(chain(set_flood_timer), Command("setfloodtimer"))
-dp.message.register(chain(clearflood), Command("clearflood"))
-# <================================================ END =======================================================>

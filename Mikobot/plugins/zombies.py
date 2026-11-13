@@ -71,7 +71,9 @@ async def zombies(_, message):
     if not clean:
         deleted = await _count_deleted(message)
         if not deleted:
-            return await message.reply_text("Group is clean; no deleted accounts found.")
+            return await message.reply_text(
+                "Group is clean; no deleted accounts found."
+            )
         allowed = (
             bool(message.from_user)
             and await is_administrator(message.from_user.id, message)

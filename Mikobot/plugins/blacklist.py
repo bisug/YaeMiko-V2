@@ -2,17 +2,18 @@ import asyncio
 import html
 import re
 import unicodedata
+from datetime import datetime, timezone
 
-from aiogram import F
+from pyrogram import filters
 from pyrogram.enums import ChatType, ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import ChatPermissions, Message
 
 import Database.sql.blacklist_sql as sql
 import Database.sql.log_channel_sql as sql_log
 from Database.sql.approve_sql import is_approved
-from Mikobot import LOGGER, bot, dp
+from Mikobot import LOGGER
+from Mikobot.events import on_message
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.alternate import send_message, typing_action
@@ -23,7 +24,6 @@ from Mikobot.plugins.helper_funcs.string_handling import extract_time
 from Mikobot.plugins.log_channel import loggable
 from Mikobot.plugins.warns import warn
 from Mikobot.utils.filters import GROUPS
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 
@@ -220,14 +220,15 @@ def _pack_match(message: Message, payload: str, kind: str) -> bool:
     )
 
 
+@on_message(*disableable("blacklist", admin_ok=True), chained=True)
 @check_admin(is_user=True)
 @typing_action
-async def blacklist(message: Message, command: CommandObject):
+async def blacklist(client, message: Message):
     chat = message.chat
     user = message.from_user
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
 
-    conn = await connected(bot, message, chat, user.id, need_admin=False)
+    conn = await connected(client, message, chat, user.id, need_admin=False)
     if conn:
         chat_id = conn
         chat_obj = await client.get_chat(conn)
@@ -249,9 +250,6 @@ async def blacklist(message: Message, command: CommandObject):
         for trigger in all_blacklisted:
             filter_list += " - <code>{}</code>\n".format(html.escape(trigger))
 
-    # for trigger in all_blacklisted:
-    #     filter_list += " - <code>{}</code>\n".format(html.escape(trigger))
-
     split_text = split_message(filter_list)
     for text in split_text:
         if filter_list == "Current blacklisted words in <b>{}</b>:\n".format(
@@ -266,15 +264,16 @@ async def blacklist(message: Message, command: CommandObject):
         await send_message(message, text, parse_mode=ParseMode.HTML)
 
 
+@on_message(filters.command("addblacklist"), chained=True)
 @check_admin(is_user=True)
 @typing_action
-async def add_blacklist(message: Message, command: CommandObject):
+async def add_blacklist(client, message: Message):
     msg = message
     chat = message.chat
     user = message.from_user
     words = msg.text.split(None, 1)
 
-    conn = await connected(bot, message, chat, user.id)
+    conn = await connected(client, message, chat, user.id)
     if conn:
         chat_id = conn
         chat_obj = await client.get_chat(conn)
@@ -321,15 +320,16 @@ async def add_blacklist(message: Message, command: CommandObject):
         )
 
 
+@on_message(filters.command("unblacklist"), chained=True)
 @check_admin(is_user=True)
 @typing_action
-async def unblacklist(message: Message, command: CommandObject):
+async def unblacklist(client, message: Message):
     msg = message
     chat = message.chat
     user = message.from_user
     words = msg.text.split(None, 1)
 
-    conn = await connected(bot, message, chat, user.id)
+    conn = await connected(client, message, chat, user.id)
     if conn:
         chat_id = conn
         chat_obj = await client.get_chat(conn)
@@ -402,16 +402,16 @@ async def unblacklist(message: Message, command: CommandObject):
         )
 
 
+@on_message(filters.command("blacklistmode"), chained=True)
 @loggable
 @check_admin(is_user=True)
 @typing_action
-async def blacklist_mode(message: Message, command: CommandObject):
+async def blacklist_mode(client, message: Message):
     chat = message.chat
     user = message.from_user
-    msg = message
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
 
-    conn = await connected(bot, message, chat, user.id, need_admin=True)
+    conn = await connected(client, message, chat, user.id, need_admin=True)
     if conn:
         chat = await client.get_chat(conn)
         chat_id = conn
@@ -449,38 +449,32 @@ async def blacklist_mode(message: Message, command: CommandObject):
             sql.set_blacklist_strength(chat_id, 5, "0")
         elif args[0].lower() == "tban":
             if len(args) == 1:
-                teks = """It looks like you tried to set time value for blacklist but you didn't specified time; Try, `/blacklistmode tban <timevalue>`.
-
-Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
-                await send_message(message, teks, parse_mode=ParseMode.MARKDOWN)
-                return ""
-            restime = await extract_time(msg, args[1])
-            if not restime:
-                teks = """Invalid time value!
-Example of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
-                await send_message(message, teks, parse_mode=ParseMode.MARKDOWN)
+                teks = """It looks like you are trying to set a temporary value to blacklist, but has not determined the time; use `/blacklistmode tban <timevalue>`.
+                                          Examples of time values: 4m = 4 minute, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
+                await send_message(
+                    message,
+                    teks,
+                    parse_mode=ParseMode.MARKDOWN,
+                )
                 return ""
             settypeblacklist = "temporarily ban for {}".format(args[1])
             sql.set_blacklist_strength(chat_id, 6, str(args[1]))
         elif args[0].lower() == "tmute":
             if len(args) == 1:
-                teks = """It looks like you tried to set time value for blacklist but you didn't specified  time; try, `/blacklistmode tmute <timevalue>`.
-
-Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
-                await send_message(message, teks, parse_mode=ParseMode.MARKDOWN)
-                return ""
-            restime = await extract_time(msg, args[1])
-            if not restime:
-                teks = """Invalid time value!
-Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
-                await send_message(message, teks, parse_mode=ParseMode.MARKDOWN)
+                teks = """It looks like you are trying to set a temporary value to blacklist, but has not determined the time; use `/blacklistmode tmute <timevalue>`.
+                                          Examples of time values: 4m = 4 minute, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
+                await send_message(
+                    message,
+                    teks,
+                    parse_mode=ParseMode.MARKDOWN,
+                )
                 return ""
             settypeblacklist = "temporarily mute for {}".format(args[1])
             sql.set_blacklist_strength(chat_id, 7, str(args[1]))
         else:
             await send_message(
                 message,
-                "I only understand: off/del/warn/ban/kick/mute/tban/tmute!",
+                "I only understand off/del/warn/ban/kick/mute/tban/tmute!",
             )
             return ""
         if conn:
@@ -490,13 +484,15 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
             )
         else:
             text = "Changed blacklist mode: `{}`!".format(settypeblacklist)
-        await send_message(message, text, parse_mode=ParseMode.MARKDOWN)
+        await send_message(
+            message,
+            text,
+            parse_mode=ParseMode.MARKDOWN,
+        )
         return (
-            "<b>{}:</b>\n<b>Admin:</b> {}\nChanged the blacklist mode. will {}.".format(
-                html.escape(chat.title),
-                mention_html(user.id, user.first_name),
-                settypeblacklist,
-            )
+            f"<b>{html.escape(chat.title)}:</b>\n"
+            f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
+            f"Changed the blacklist mode. will {settypeblacklist}."
         )
     else:
         getmode, getvalue = sql.get_blacklist_setting(chat.id)
@@ -517,13 +513,17 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
         elif getmode == 7:
             settypeblacklist = "temporarily mute for {}".format(getvalue)
         if conn:
-            text = "Current blacklistmode: *{}* in *{}*.".format(
+            text = "Current blacklist mode: *{}* in *{}*.".format(
                 settypeblacklist,
                 chat_name,
             )
         else:
-            text = "Current blacklistmode: *{}*.".format(settypeblacklist)
-        await send_message(message, text, parse_mode=ParseMode.MARKDOWN)
+            text = "Current blacklist mode: *{}*.".format(settypeblacklist)
+        await send_message(
+            message,
+            text,
+            parse_mode=ParseMode.MARKDOWN,
+        )
     return ""
 
 
@@ -531,9 +531,10 @@ Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks.
 _BL_MODE_NAMES = {3: "mute", 4: "kick", 5: "ban", 6: "tban", 7: "tmute"}
 
 
+@on_message(filters.command("silentactions"), chained=True)
 @check_admin(only_owner=True)
 @typing_action
-async def silent_actions(message: Message, command: CommandObject):
+async def silent_actions(client, message: Message):
     """Owner-only switch for quietly applying blacklist and antiflood actions.
 
     Enabling only arms the feature; each mode still has to be marked silent
@@ -541,9 +542,9 @@ async def silent_actions(message: Message, command: CommandObject):
     """
     chat = message.chat
     user = message.from_user
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
 
-    conn = await connected(bot, message, chat, user.id, need_admin=True)
+    conn = await connected(client, message, chat, user.id, need_admin=True)
     if conn:
         chat = await client.get_chat(conn)
         chat_id = conn
@@ -638,15 +639,16 @@ async def silent_actions(message: Message, command: CommandObject):
     return ""
 
 
+@on_message(filters.command("blocklistdelete"), chained=True)
 @check_admin(is_user=True)
 @typing_action
-async def blocklist_delete(message: Message, command: CommandObject):
+async def blocklist_delete(client, message: Message):
     """Toggle whether a matched message is deleted, separately from the action."""
     chat = message.chat
     user = message.from_user
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
 
-    conn = await connected(bot, message, chat, user.id, need_admin=True)
+    conn = await connected(client, message, chat, user.id, need_admin=True)
     if conn:
         chat = await client.get_chat(conn)
         chat_id = conn
@@ -703,8 +705,11 @@ class _QuietMessage:
     async def reply(self, *_args, **_kwargs):
         return None
 
+    async def reply_text(self, *_args, **_kwargs):
+        return None
 
-async def _silent_action(chat, user, getmode, value, trigger) -> None:
+
+async def _silent_action(client, chat, user, getmode, value, trigger) -> None:
     """Apply a blacklist punishment without announcing it in the chat."""
     try:
         if getmode == 3:
@@ -723,15 +728,17 @@ async def _silent_action(chat, user, getmode, value, trigger) -> None:
             bantime = await extract_time(_QuietMessage(), value)
             if not bantime:
                 return
-            await client.ban_chat_member(chat.id, user.id, until_date=bantime)
+            ban_until = datetime.fromtimestamp(bantime, timezone.utc)
+            await client.ban_chat_member(chat.id, user.id, until_date=ban_until)
         elif getmode == 7:
             mutetime = await extract_time(_QuietMessage(), value)
             if not mutetime:
                 return
+            mute_until = datetime.fromtimestamp(mutetime, timezone.utc)
             await client.restrict_chat_member(
                 chat.id,
                 user.id,
-                until_date=mutetime,
+                until_date=mute_until,
                 permissions=ChatPermissions(can_send_messages=False),
             )
     except RPCError:
@@ -745,8 +752,12 @@ def findall(p, s):
         i = s.find(p, i + 1)
 
 
+@on_message(
+    GROUPS & (filters.text | filters.command | filters.sticker | filters.photo),
+    chained=True,
+)
 @user_not_admin
-async def del_blacklist(message: Message):
+async def del_blacklist(client, message: Message):
     chat = message.chat
     user = message.from_user
     chat_filters = sql.get_chat_blacklist(chat.id)
@@ -793,7 +804,9 @@ async def del_blacklist(message: Message):
                     # Silent mode still logs to the channel, so the group
                     # stays quiet without admins losing the audit trail.
                     if getmode in (3, 4, 5, 6, 7):
-                        await _silent_action(chat, user, getmode, value, trigger)
+                        await _silent_action(
+                            client, chat, user, getmode, value, trigger
+                        )
                     return
                 elif getmode == 1:
                     try:
@@ -857,7 +870,8 @@ async def del_blacklist(message: Message):
                     bantime = await extract_time(message, value)
                     if not bantime:
                         return
-                    await client.ban_chat_member(chat.id, user.id, until_date=bantime)
+                    ban_until = datetime.fromtimestamp(bantime, timezone.utc)
+                    await client.ban_chat_member(chat.id, user.id, until_date=ban_until)
                     await client.send_message(
                         chat.id,
                         f"Banned {html.escape(user.first_name)} until '{html.escape(value)}' for using Blacklisted word: {html.escape(trigger)}!",
@@ -871,10 +885,11 @@ async def del_blacklist(message: Message):
                     mutetime = await extract_time(message, value)
                     if not mutetime:
                         return
+                    mute_until = datetime.fromtimestamp(mutetime, timezone.utc)
                     await client.restrict_chat_member(
                         chat.id,
                         user.id,
-                        until_date=mutetime,
+                        until_date=mute_until,
                         permissions=ChatPermissions(can_send_messages=False),
                     )
                     await client.send_message(
@@ -953,14 +968,3 @@ Note:
 » <sticker link> can be https://t.me/addstickers/<sticker> or just <sticker> or reply to the sticker message
 
 """
-# The deleter watches every group message including commands and stickers,
-# so it registers ahead of the /blacklist commands, as PTB group 11 did.
-dp.message.register(
-    chain(del_blacklist), GROUPS, F.text | F.command | F.sticker | F.photo
-)
-dp.message.register(chain(blacklist), *disableable("blacklist", admin_ok=True))
-dp.message.register(chain(add_blacklist), Command("addblacklist"))
-dp.message.register(chain(unblacklist), Command("unblacklist"))
-dp.message.register(chain(blacklist_mode), Command("blacklistmode"))
-dp.message.register(chain(blocklist_delete), Command("blocklistdelete"))
-dp.message.register(chain(silent_actions), Command("silentactions"))

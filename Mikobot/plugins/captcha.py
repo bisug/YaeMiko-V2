@@ -18,11 +18,11 @@ import html
 import random
 import string
 import time
+from datetime import datetime, timezone
 
-from aiogram import F
+from pyrogram import filters
 from pyrogram.enums import ChatType, ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import (
     CallbackQuery,
     ChatJoinRequest,
@@ -35,13 +35,14 @@ from pyrogram.types import (
 import Database.sql.captcha_sql as sql
 import Database.sql.rules_sql as rules_sql
 import Database.sql.welcome_sql as welcome_sql
-from Mikobot import LOGGER, bot, dp
+from Mikobot import LOGGER
+from Mikobot import app as client
+from Mikobot.events import on_callback, on_chat_join_request, on_message
 from Mikobot.plugins.helper_funcs.alternate import typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.plugins.helper_funcs.string_handling import extract_time
 from Mikobot.utils.consts import ChatID
 from Mikobot.utils.filters import GROUPS
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 # Pending delayed kicks. Holding the task keeps it from being garbage collected
@@ -217,9 +218,10 @@ async def _fail(chat_id, user_id, message: Message = None) -> None:
     """A wrong answer is a short ban, not a mute."""
     _drop_challenge(chat_id, user_id)
     try:
-        await client.ban_chat_member(
-            chat_id, user_id, until_date=int(time.time()) + FAIL_BAN_SECONDS
+        until_dt = datetime.fromtimestamp(
+            int(time.time()) + FAIL_BAN_SECONDS, timezone.utc
         )
+        await client.ban_chat_member(chat_id, user_id, until_date=until_dt)
     except RPCError:
         LOGGER.exception("Captcha ban failed for %s in %s", user_id, chat_id)
         return
@@ -259,7 +261,8 @@ def _should_challenge(chat_id, user_id, settings) -> bool:
     return not sql.has_solved(chat_id, user_id)
 
 
-async def on_join(message: Message) -> str:
+@on_message(GROUPS, filters.new_chat_members, chained=True)
+async def on_join(client, message: Message) -> str:
     """Mute a new member and attach the captcha prompt.
 
     Registered before the welcome handlers, because the challenge has to be
@@ -280,15 +283,18 @@ async def on_join(message: Message) -> str:
         if not _should_challenge(chat.id, member.id, settings):
             continue
         try:
+            until_dt = (
+                datetime.fromtimestamp(
+                    int(time.time()) + settings["mute_time"], timezone.utc
+                )
+                if settings["mute_time"]
+                else None
+            )
             await client.restrict_chat_member(
                 chat.id,
                 member.id,
                 permissions=ChatPermissions(can_send_messages=False),
-                until_date=(
-                    int(time.time()) + settings["mute_time"]
-                    if settings["mute_time"]
-                    else None
-                ),
+                until_date=until_dt,
             )
         except RPCError:
             LOGGER.exception("Captcha mute failed for %s in %s", member.id, chat.id)
@@ -398,7 +404,8 @@ async def _send_private_challenge(user, chat_id, settings) -> bool:
             body += f"\n\n<b>Rules</b>\n{html.escape(rules)}"
 
     try:
-        await user.send_message(
+        await client.send_message(
+            user.id,
             body,
             parse_mode=ParseMode.HTML,
             reply_markup=keyboard,
@@ -442,7 +449,8 @@ def _report_kick_outcome(task: asyncio.Task) -> None:
         )
 
 
-async def button_callback(message, query: CallbackQuery) -> str:
+@on_callback(filters.regex(r"^captcha_(?:pass|pm)_-?\d+_-?\d+$"), chained=True)
+async def button_callback(client, query: CallbackQuery) -> str:
     parts = query.data.split("_")
     if parts[1] == "pass":
         chat_id, user_id = int(parts[2]), int(parts[3])
@@ -478,7 +486,8 @@ async def button_callback(message, query: CallbackQuery) -> str:
     return ""
 
 
-async def answer_callback(message, query: CallbackQuery) -> str:
+@on_callback(filters.regex(r"^captcha_ans_-?\d+_-?\d+_\d+$"), chained=True)
+async def answer_callback(client, query: CallbackQuery) -> str:
     _, _, chat_raw, user_raw, index_raw = query.data.split("_")
     chat_id, user_id, index = int(chat_raw), int(user_raw), int(index_raw)
     if query.from_user.id != user_id:
@@ -508,7 +517,8 @@ async def answer_callback(message, query: CallbackQuery) -> str:
     return ""
 
 
-async def on_join_request(join_request: ChatJoinRequest) -> str:
+@on_chat_join_request(chained=True)
+async def on_join_request(client, join_request: ChatJoinRequest) -> str:
     """A join request is answered in private before the user is admitted."""
     chat = join_request.chat
     user = join_request.from_user
@@ -524,7 +534,8 @@ async def on_join_request(join_request: ChatJoinRequest) -> str:
 
     _store_challenge(chat.id, user.id, "", settings["mode"])
     try:
-        await user.send_message(
+        await client.send_message(
+            user.id,
             f"You asked to join <b>{html.escape(chat.title or 'a group')}</b>."
             f"\nPress the button to prove you are human, and you will be admitted.",
             parse_mode=ParseMode.HTML,
@@ -544,7 +555,8 @@ async def on_join_request(join_request: ChatJoinRequest) -> str:
     return ""
 
 
-async def join_button(message, query: CallbackQuery) -> str:
+@on_callback(filters.regex(r"^captcha_join_-?\d+_-?\d+$"), chained=True)
+async def join_button(client, query: CallbackQuery) -> str:
     _, _, chat_raw, user_raw = query.data.split("_")
     chat_id, user_id = int(chat_raw), int(user_raw)
     if query.from_user.id != user_id:
@@ -571,7 +583,8 @@ async def join_button(message, query: CallbackQuery) -> str:
     return ""
 
 
-async def math_answer(message: Message) -> str:
+@on_message(filters.private, filters.text, chained=True)
+async def math_answer(client, message: Message) -> str:
     """Read a typed answer for the math mode, which has no buttons.
 
     Private only: a challenge answered in the group would be visible to
@@ -608,12 +621,13 @@ async def math_answer(message: Message) -> str:
     return ""
 
 
+@on_message(GROUPS, filters.command("captcha"), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True)
 @typing_action
-async def captcha(message: Message, command: CommandObject) -> str:
+async def captcha(client, message: Message) -> str:
     chat = message.chat
     user = message.from_user
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
 
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, chat.id)
@@ -669,10 +683,11 @@ def _fmt(seconds: int) -> str:
     return f"{seconds}s"
 
 
+@on_message(GROUPS, filters.command("captchamode"), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True)
 @typing_action
-async def captcha_mode(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+async def captcha_mode(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, message.chat.id)
         await message.reply_text(
@@ -696,11 +711,15 @@ async def captcha_mode(message: Message, command: CommandObject):
     )
 
 
+@on_message(GROUPS, filters.command("captchabuttons"), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True)
 @typing_action
-async def captcha_buttons(message: Message, command: CommandObject):
-    args = command.args if command.args else ""
-    text = args.strip()
+async def captcha_buttons(client, message: Message):
+    text = (
+        message.text.split(None, 1)[1].strip()
+        if len(message.text.split(None, 1)) > 1
+        else ""
+    )
     if not text:
         settings = await asyncio.to_thread(sql.get_settings, message.chat.id)
         await message.reply_text(
@@ -714,9 +733,10 @@ async def captcha_buttons(message: Message, command: CommandObject):
     await message.reply_text("Button text updated.")
 
 
+@on_message(GROUPS, filters.command("resetcaptchatext"), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True)
 @typing_action
-async def captcha_reset_text(message: Message, command: CommandObject):
+async def captcha_reset_text(client, message: Message):
     await asyncio.to_thread(sql.set_button_text, message.chat.id, sql.DEF_BUTTON_TEXT)
     await message.reply_text(
         f"Button text reset to <code>{html.escape(sql.DEF_BUTTON_TEXT)}</code>.",
@@ -724,10 +744,11 @@ async def captcha_reset_text(message: Message, command: CommandObject):
     )
 
 
+@on_message(GROUPS, filters.command("captchakick"), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True)
 @typing_action
-async def captcha_kick(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+async def captcha_kick(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, chat.id)
@@ -749,10 +770,11 @@ async def captcha_kick(message: Message, command: CommandObject):
         await message.reply_text("Use `on` or `off`.")
 
 
+@on_message(GROUPS, filters.command("captchakicktime"), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True)
 @typing_action
-async def captcha_kick_time(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+async def captcha_kick_time(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, chat.id)
@@ -781,10 +803,11 @@ async def captcha_kick_time(message: Message, command: CommandObject):
     )
 
 
+@on_message(GROUPS, filters.command("captcharules"), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True)
 @typing_action
-async def captcha_rules(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+async def captcha_rules(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, chat.id)
@@ -804,10 +827,11 @@ async def captcha_rules(message: Message, command: CommandObject):
         await message.reply_text("Use `on` or `off`.")
 
 
+@on_message(GROUPS, filters.command("captchamutetime"), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True)
 @typing_action
-async def captcha_mute_time(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+async def captcha_mute_time(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     if not args:
         settings = await asyncio.to_thread(sql.get_settings, chat.id)
@@ -838,11 +862,12 @@ async def captcha_mute_time(message: Message, command: CommandObject):
     )
 
 
+@on_message(GROUPS, filters.command("resetcaptcha"), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True)
 @typing_action
-async def captcha_reset(message: Message, command: CommandObject):
+async def captcha_reset(client, message: Message):
     """Forget who has already solved, so everyone is asked again."""
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     if not args:
         await message.reply_text(
@@ -901,25 +926,3 @@ left sitting muted and are asked again when they rejoin.
 \u27a1 With a join-request link, the CAPTCHA is sent in private and the user is
 admitted once they pass. The bot needs the add users permission.
 """
-
-dp.message.register(chain(on_join), GROUPS, F.new_chat_members)
-dp.message.register(chain(math_answer), F.chat.type == "private", F.text)
-dp.message.register(chain(captcha), GROUPS, Command("captcha"))
-dp.message.register(chain(captcha_mode), GROUPS, Command("captchamode"))
-dp.message.register(chain(captcha_buttons), GROUPS, Command("captchabuttons"))
-dp.message.register(chain(captcha_reset_text), GROUPS, Command("resetcaptchatext"))
-dp.message.register(chain(captcha_kick), GROUPS, Command("captchakick"))
-dp.message.register(chain(captcha_kick_time), GROUPS, Command("captchakicktime"))
-dp.message.register(chain(captcha_mute_time), GROUPS, Command("captchamutetime"))
-dp.message.register(chain(captcha_rules), GROUPS, Command("captcharules"))
-dp.message.register(chain(captcha_reset), GROUPS, Command("resetcaptcha"))
-dp.callback_query.register(
-    chain(button_callback), F.data.regexp(r"^captcha_(?:pass|pm)_-?\d+_-?\d+$")
-)
-dp.callback_query.register(
-    chain(answer_callback), F.data.regexp(r"^captcha_ans_-?\d+_-?\d+_\d+$")
-)
-dp.callback_query.register(
-    chain(join_button), F.data.regexp(r"^captcha_join_-?\d+_-?\d+$")
-)
-dp.chat_join_request.register(chain(on_join_request))

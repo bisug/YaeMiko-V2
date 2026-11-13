@@ -5,8 +5,9 @@ from pathlib import Path
 
 from pyrogram import filters
 
-from Database.sql.toggle_sql import is_nsfw_on, nsfw_off, nsfw_on
-from Mikobot import BOT_USERNAME, DRAGONS, app
+import Database.sql.toggle_sql as sql
+from Mikobot import BOT_USERNAME, DRAGONS
+from Mikobot.events import on_message
 from Mikobot.utils.can_restrict import can_restrict
 from Mikobot.utils.errors import capture_err
 
@@ -111,7 +112,7 @@ async def prepare_scan_file(client, message, temp_dir):
     return str(output)
 
 
-@app.on_message(
+@on_message(
     (
         filters.document
         | filters.photo
@@ -121,18 +122,18 @@ async def prepare_scan_file(client, message, temp_dir):
         | filters.video_note
     )
     & ~filters.private,
-    group=8,
+    chained=True,
 )
 @capture_err
-async def detect_nsfw(_, message):
-    if not is_nsfw_on(message.chat.id):
+async def detect_nsfw(client, message):
+    if not sql.is_nsfw_on(message.chat.id):
         return
     if not message.from_user:
         return
     if not get_media_from_message(message)[0]:
         return
     with tempfile.TemporaryDirectory(prefix="yae-nsfw-") as temp_dir:
-        file = await prepare_scan_file(_, message, temp_dir)
+        file = await prepare_scan_file(client, message, temp_dir)
         if not file:
             return
         try:
@@ -168,11 +169,16 @@ async def detect_nsfw(_, message):
     )
 
 
-@app.on_message(filters.command(["nsfwscan", f"nsfwscan@{BOT_USERNAME}"]))
+@on_message(
+    filters.command(["nsfwscan", f"nsfwscan@{BOT_USERNAME}"]),
+    chained=True,
+)
 @capture_err
-async def nsfw_scan_command(_, message):
+async def nsfw_scan_command(client, message):
     if not message.reply_to_message:
-        await message.reply_text("Reply to an image/document/sticker/animation to scan it.")
+        await message.reply_text(
+            "Reply to an image/document/sticker/animation to scan it."
+        )
         return
     reply = message.reply_to_message
     if (
@@ -183,13 +189,15 @@ async def nsfw_scan_command(_, message):
         and not reply.video
         and not reply.video_note
     ):
-        await message.reply_text("Reply to an image/document/sticker/animation to scan it.")
+        await message.reply_text(
+            "Reply to an image/document/sticker/animation to scan it."
+        )
         return
     m = await message.reply_text("Scanning")
     if not get_media_from_message(reply)[0]:
         return await m.edit("Something wrong happened.")
     with tempfile.TemporaryDirectory(prefix="yae-nsfw-") as temp_dir:
-        file = await prepare_scan_file(_, reply, temp_dir)
+        file = await prepare_scan_file(client, reply, temp_dir)
         if not file:
             return await m.edit("The media could not be converted for scanning.")
         try:
@@ -203,30 +211,30 @@ async def nsfw_scan_command(_, message):
     )
 
 
-@app.on_message(
-    filters.command(["antinsfw", f"antinsfw@{BOT_USERNAME}"]) & ~filters.private
+@on_message(
+    filters.command(["antinsfw", f"antinsfw@{BOT_USERNAME}"]) & ~filters.private,
+    chained=True,
 )
 @can_restrict
-async def nsfw_enable_disable(_, message):
+async def nsfw_enable_disable(client, message):
     if len(message.command) != 2:
         await message.reply_text("Usage: /antinsfw [on/off]")
         return
-    status = message.text.split(None, 1)[1].strip()
-    status = status.lower()
+    status = message.text.split(None, 1)[1].strip().lower()
     chat_id = message.chat.id
     if status in ("on", "yes"):
-        if is_nsfw_on(chat_id):
+        if sql.is_nsfw_on(chat_id):
             await message.reply_text("Antinsfw is already enabled.")
             return
-        nsfw_on(chat_id)
+        sql.nsfw_on(chat_id)
         await message.reply_text(
             "Enabled AntiNSFW System. I will Delete Messages Containing Inappropriate Content."
         )
     elif status in ("off", "no"):
-        if not is_nsfw_on(chat_id):
+        if not sql.is_nsfw_on(chat_id):
             await message.reply_text("Antinsfw is already disabled.")
             return
-        nsfw_off(chat_id)
+        sql.nsfw_off(chat_id)
         await message.reply_text("Disabled AntiNSFW System.")
     else:
         await message.reply_text("Unknown Suffix, Use /antinsfw [on/off]")

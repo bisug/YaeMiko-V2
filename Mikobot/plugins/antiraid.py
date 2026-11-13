@@ -1,23 +1,27 @@
 import asyncio
 import html
 import time
+from datetime import datetime, timezone
 
-from aiogram import F
+from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus, ChatType, ParseMode
-from aiogram.filters import CommandObject
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from pyrogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 import Database.sql.raid_sql as sql
 from Database.sql.approve_sql import is_approved
-from Mikobot import LOGGER, bot, dp
+from Mikobot import LOGGER
+from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.connection import connected
-from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.alternate import typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.plugins.helper_funcs.string_handling import extract_time
 from Mikobot.plugins.log_channel import loggable
 from Mikobot.utils.consts import ChatID
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 ON_WORDS = ("on", "yes", "true", "enable", "1")
@@ -33,13 +37,13 @@ def format_duration(seconds: int) -> str:
     return f"{seconds}s"
 
 
-async def _resolve(message: Message, command: CommandObject):
+async def _resolve(client, message: Message):
     """Return (chat, chat_id) for the target group, honouring connections.
 
     Returns (None, None) after replying when there is no group to act on.
     """
     user = message.from_user
-    conn = await connected(bot, message, message.chat, user.id, need_admin=True)
+    conn = await connected(client, message, message.chat, user.id, need_admin=True)
     if conn:
         return await client.get_chat(conn), conn
     if message.chat.type == ChatType.PRIVATE:
@@ -48,16 +52,17 @@ async def _resolve(message: Message, command: CommandObject):
     return message.chat, message.chat.id
 
 
+@on_message(filters.command("antiraid"), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True)
 @loggable
 @typing_action
-async def antiraid(message: Message, command: CommandObject) -> str:
-    chat, chat_id = await _resolve(message, command)
+async def antiraid(client, message: Message) -> str:
+    chat, chat_id = await _resolve(client, message)
     if chat is None:
         return ""
 
     user = message.from_user
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
 
     if not args:
         active, raid_time, action_time, auto = await asyncio.to_thread(
@@ -119,16 +124,17 @@ async def antiraid(message: Message, command: CommandObject) -> str:
     )
 
 
+@on_message(filters.command("raidtime"), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True)
 @loggable
 @typing_action
-async def raidtime(message: Message, command: CommandObject) -> str:
-    chat, chat_id = await _resolve(message, command)
+async def raidtime(client, message: Message) -> str:
+    chat, chat_id = await _resolve(client, message)
     if chat is None:
         return ""
 
     user = message.from_user
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
 
     if not args:
         _active, raid_time, *_ = await asyncio.to_thread(sql.get_raid_setting, chat_id)
@@ -155,16 +161,17 @@ async def raidtime(message: Message, command: CommandObject) -> str:
     )
 
 
+@on_message(filters.command("raidactiontime"), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True)
 @loggable
 @typing_action
-async def raidactiontime(message: Message, command: CommandObject) -> str:
-    chat, chat_id = await _resolve(message, command)
+async def raidactiontime(client, message: Message) -> str:
+    chat, chat_id = await _resolve(client, message)
     if chat is None:
         return ""
 
     user = message.from_user
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
 
     if not args:
         _active, _raid_time, action_time, _auto = await asyncio.to_thread(
@@ -193,16 +200,17 @@ async def raidactiontime(message: Message, command: CommandObject) -> str:
     )
 
 
+@on_message(filters.command("autoantiraid"), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True)
 @loggable
 @typing_action
-async def autoantiraid(message: Message, command: CommandObject) -> str:
-    chat, chat_id = await _resolve(message, command)
+async def autoantiraid(client, message: Message) -> str:
+    chat, chat_id = await _resolve(client, message)
     if chat is None:
         return ""
 
     user = message.from_user
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
 
     if not args:
         _active, _raid_time, _action_time, auto = await asyncio.to_thread(
@@ -247,21 +255,16 @@ async def autoantiraid(message: Message, command: CommandObject) -> str:
     )
 
 
-async def _raid_join(message: Message) -> str:
+@on_message(filters.group & filters.new_chat_members, chained=True)
+@loggable
+async def _raid_join(client, message: Message) -> str:
     """Ban a newly joined member while the raid window is open.
 
     Admins, approved users, bots and anonymous admins are skipped: a raid punishes
     drive-by joins, and an admin cannot be banned by a bot anyway.
     """
     chat = message.chat
-    member = message.new_chat_member
-    if member is None or chat.type == ChatType.PRIVATE:
-        return ""
-
-    new_user = member.user
-    if new_user is None or new_user.is_bot:
-        return ""
-    if new_user.id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN, client.id):
+    if not message.new_chat_members or chat.type == ChatType.PRIVATE:
         return ""
 
     active, _raid_time, action_time, auto = await asyncio.to_thread(
@@ -279,43 +282,58 @@ async def _raid_join(message: Message) -> str:
             )
     if not active:
         return ""
-    if await asyncio.to_thread(is_approved, chat.id, new_user.id):
-        return ""
 
-    try:
-        status = await client.get_chat_member(chat.id, new_user.id)
-    except Exception:
-        LOGGER.warning(
-            "AntiRaid could not read membership of %s in %s", new_user.id, chat.id
-        )
-        return ""
-    if status.status in (ChatMemberStatus.CREATOR, ChatMemberStatus.ADMINISTRATOR):
-        return ""
-
-    try:
-        await client.ban_chat_member(
-            chat.id, new_user.id, until_date=int(time.time()) + int(action_time)
-        )
-    except Exception:
-        LOGGER.exception("AntiRaid could not ban a raider in %s", chat.id)
-        return ""
-
-    shown = format_duration(action_time)
-    await message.reply_text(
-        f"\U0001f512 <b>AntiRaid:</b> {mention_html(new_user.id, new_user.first_name)}"
-        f" was banned for {shown} while AntiRaid is active.",
-        parse_mode=ParseMode.HTML,
+    log_entries = []
+    my_id = (
+        (await client.get_me()).id
+        if getattr(client, "me", None) is None
+        else client.me.id
     )
-    return (
-        f"<b>{html.escape(chat.title)}:</b>\n"
-        f"#ANTIRAID\n"
-        f"<b>Banned:</b> {mention_html(new_user.id, new_user.first_name)}"
-        f" [<code>{new_user.id}</code>]\n"
-        f"<b>Reason:</b> Joined during an active AntiRaid."
-    )
+    for new_user in message.new_chat_members:
+        if new_user is None or new_user.is_bot:
+            continue
+        if new_user.id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN, my_id):
+            continue
+        if await asyncio.to_thread(is_approved, chat.id, new_user.id):
+            continue
+
+        try:
+            status = await client.get_chat_member(chat.id, new_user.id)
+        except Exception:
+            LOGGER.warning(
+                "AntiRaid could not read membership of %s in %s", new_user.id, chat.id
+            )
+            continue
+        if status.status in (ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR):
+            continue
+
+        try:
+            ban_until = datetime.fromtimestamp(
+                int(time.time()) + int(action_time), timezone.utc
+            )
+            await client.ban_chat_member(chat.id, new_user.id, until_date=ban_until)
+        except Exception:
+            LOGGER.exception("AntiRaid could not ban a raider in %s", chat.id)
+            continue
+
+        shown = format_duration(action_time)
+        await message.reply_text(
+            f"\U0001f512 <b>AntiRaid:</b> {mention_html(new_user.id, new_user.first_name)}"
+            f" was banned for {shown} while AntiRaid is active.",
+            parse_mode=ParseMode.HTML,
+        )
+        log_entries.append(
+            f"<b>{html.escape(chat.title)}:</b>\n"
+            f"#ANTIRAID\n"
+            f"<b>Banned:</b> {mention_html(new_user.id, new_user.first_name)}"
+            f" [<code>{new_user.id}</code>]\n"
+            f"<b>Reason:</b> Joined during an active AntiRaid."
+        )
+    return "\n\n".join(log_entries)
 
 
-async def antiraid_button(message, query) -> str:
+@on_callback(filters.regex(r"^antiraid_-?\d+_(?:on|off)$"), chained=True)
+async def antiraid_button(client, query: CallbackQuery) -> str:
     """Toggle the raid from the /antiraid inline button."""
     chat_id = int(query.data.split("_")[1])
     action = query.data.rsplit("_", 1)[1]
@@ -325,7 +343,7 @@ async def antiraid_button(message, query) -> str:
     except Exception:
         await query.answer("I can't see that chat anymore.", show_alert=True)
         return ""
-    if status.status not in (ChatMemberStatus.CREATOR, ChatMemberStatus.ADMINISTRATOR):
+    if status.status not in (ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR):
         await query.answer("You need to be an admin to do this.", show_alert=True)
         return ""
 
@@ -381,12 +399,3 @@ users join within a minute.
 
 \u27a1 Durations accept `m`, `h`, `d` or `w` (eg `90m`, `12h`, `3d`, `2w`).
 """
-
-dp.message.register(chain(antiraid), *disableable("antiraid"))
-dp.message.register(chain(raidtime), *disableable("raidtime"))
-dp.message.register(chain(raidactiontime), *disableable("raidactiontime"))
-dp.message.register(chain(autoantiraid), *disableable("autoantiraid"))
-dp.message.register(chain(_raid_join), F.new_chat_member)
-dp.callback_query.register(
-    chain(antiraid_button), F.data.regexp(r"^antiraid_-?\d+_(?:on|off)$")
-)
