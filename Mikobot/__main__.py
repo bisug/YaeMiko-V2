@@ -842,7 +842,6 @@ async def gitsource_callback(client, query: CallbackQuery):
             f"*Here is the link for the public source repo*:\n\n{source_link}"
         )
 
-        # Adding the inline button
         keyboard = [
             [
                 InlineKeyboardButton(

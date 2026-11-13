@@ -786,13 +786,6 @@ async def fed_ban(client, message: Message):
 
     fed_name = info["fname"]
 
-    # starting = "Starting a federation ban for {} in the Federation <b>{}</b>.".format(
-    #    user_target, fed_name)
-    # await message.reply_text(starting, parse_mode=ParseMode.HTML)
-
-    # if reason == "":
-    #    reason = "No reason given."
-
     x = sql.fban_user(
         fed_id,
         fban_user_id,
@@ -1654,7 +1647,6 @@ async def fed_import_bans(client, message: Message):
                 except KeyError, ValueError:
                     failed += 1
                     continue
-                # Checking user
                 if int(import_userid) == client.id:
                     failed += 1
                     continue
@@ -1734,7 +1726,6 @@ async def fed_import_bans(client, message: Message):
                 except IndexError, ValueError:
                     failed += 1
                     continue
-                # Checking user
                 if int(import_userid) == client.id:
                     failed += 1
                     continue

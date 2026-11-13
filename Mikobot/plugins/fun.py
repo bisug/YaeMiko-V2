@@ -58,7 +58,6 @@ async def toss(client, message: Message):
 
 
 async def shrug(client, message: Message):
-    # A reply to a message answers that message, otherwise this one.
     target = message.reply_to_message or message
     await target.reply_text(r"¯\_(ツ)_/¯")
 
