@@ -9,18 +9,22 @@ rather than failing silently.
 import asyncio
 import html
 
-from aiogram import F
-from pyrogram.enums import ParseMode
+from pyrogram import filters
+from pyrogram.enums import ChatMemberStatus, ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import Command, CommandObject
-from pyrogram.types import Message
+from pyrogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 import Database.sql.topics_sql as sql
-from Mikobot import app, bot, dp
+from Mikobot import app
+from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.helper_funcs.alternate import typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.utils.filters import GROUPS
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 
@@ -50,14 +54,16 @@ async def _forum_or_reply(message: Message):
     return None
 
 
+@on_message(GROUPS & filters.command("newtopic"), chained=True)
 @check_admin(permission="can_manage_topics", is_both=True)
 @typing_action
-async def new_topic(message: Message, command: CommandObject):
+async def new_topic(client, message: Message):
     chat = await _forum_or_reply(message)
     if chat is None:
         return ""
 
-    name = command.args.strip() if command.args else ""
+    parts = message.text.split(None, 1)
+    name = parts[1].strip() if len(parts) > 1 else ""
     if not name:
         await message.reply_text("Give the topic a name.")
         return ""
@@ -81,14 +87,16 @@ async def new_topic(message: Message, command: CommandObject):
     )
 
 
+@on_message(GROUPS & filters.command("renametopic"), chained=True)
 @check_admin(permission="can_manage_topics", is_both=True)
 @typing_action
-async def rename_topic(message: Message, command: CommandObject):
+async def rename_topic(client, message: Message):
     chat = await _forum_or_reply(message)
     if chat is None:
         return ""
 
-    name = command.args.strip() if command.args else ""
+    parts = message.text.split(None, 1)
+    name = parts[1].strip() if len(parts) > 1 else ""
     if not name:
         await message.reply_text("Give the topic a new name.")
         return ""
@@ -114,9 +122,10 @@ async def rename_topic(message: Message, command: CommandObject):
     )
 
 
+@on_message(GROUPS & filters.command("closetopic"), chained=True)
 @check_admin(permission="can_manage_topics", is_both=True)
 @typing_action
-async def close_topic(message: Message, command: CommandObject):
+async def close_topic(client, message: Message):
     chat = await _forum_or_reply(message)
     if chat is None:
         return ""
@@ -143,9 +152,10 @@ async def close_topic(message: Message, command: CommandObject):
     )
 
 
+@on_message(GROUPS & filters.command("reopentopic"), chained=True)
 @check_admin(permission="can_manage_topics", is_both=True)
 @typing_action
-async def reopen_topic(message: Message, command: CommandObject):
+async def reopen_topic(client, message: Message):
     chat = await _forum_or_reply(message)
     if chat is None:
         return ""
@@ -168,9 +178,26 @@ async def reopen_topic(message: Message, command: CommandObject):
     )
 
 
+def _confirm_markup(chat_id, thread_id):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Yes, delete it",
+                    callback_data=f"deltopic_{chat_id}_{thread_id}",
+                ),
+                InlineKeyboardButton(
+                    text="Cancel", callback_data=f"deltopic_cancel_{chat_id}"
+                ),
+            ]
+        ]
+    )
+
+
+@on_message(GROUPS & filters.command("deletetopic"), chained=True)
 @check_admin(permission="can_manage_topics", is_both=True)
 @typing_action
-async def delete_topic(message: Message, command: CommandObject):
+async def delete_topic(client, message: Message):
     chat = await _forum_or_reply(message)
     if chat is None:
         return ""
@@ -188,32 +215,17 @@ async def delete_topic(message: Message, command: CommandObject):
     return ""
 
 
-def _confirm_markup(chat_id, thread_id):
-    from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="Yes, delete it",
-                    callback_data=f"deltopic_{chat_id}_{thread_id}",
-                ),
-                InlineKeyboardButton(
-                    text="Cancel", callback_data=f"deltopic_cancel_{chat_id}"
-                ),
-            ]
-        ]
-    )
-
-
-async def delete_topic_button(message, query) -> str:
-    _, chat_id, thread_id = query.data.split("_")
+@on_callback(filters.regex(r"^deltopic(?:_cancel)?_-?\d+_?\d*$"), chained=True)
+async def delete_topic_button(client, query: CallbackQuery) -> str:
+    if query.data.startswith("deltopic_cancel_"):
+        chat_id = query.data.split("_")[2]
+        thread_id = None
+    else:
+        _, chat_id, thread_id = query.data.split("_")
 
     try:
-        from pyrogram.enums import ChatMemberStatus
-
         member = await client.get_chat_member(int(chat_id), query.from_user.id)
-        if member.status != ChatMemberStatus.CREATOR and not getattr(
+        if member.status != ChatMemberStatus.OWNER and not getattr(
             member, "can_manage_topics", False
         ):
             await query.answer("You cannot manage topics here.", show_alert=True)
@@ -239,15 +251,17 @@ async def delete_topic_button(message, query) -> str:
     return ""
 
 
+@on_message(GROUPS & filters.command("actiontopic"), chained=True)
 @check_admin(permission="can_manage_topics", is_both=True)
 @typing_action
-async def action_topic(message: Message, command: CommandObject):
+async def action_topic(client, message: Message):
     """Show or set where automated messages are sent."""
     chat = await _forum_or_reply(message)
     if chat is None:
         return ""
 
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
+
     if not args:
         current = await asyncio.to_thread(sql.get_action_topic, chat.id)
         await message.reply_text(
@@ -278,9 +292,10 @@ async def action_topic(message: Message, command: CommandObject):
     return ""
 
 
+@on_message(GROUPS & filters.command("setactiontopic"), chained=True)
 @check_admin(permission="can_manage_topics", is_both=True)
 @typing_action
-async def set_action_topic(message: Message, command: CommandObject):
+async def set_action_topic(client, message: Message):
     chat = await _forum_or_reply(message)
     if chat is None:
         return ""
@@ -327,14 +342,3 @@ notices there instead of to General.
 » /deletetopic: Delete the topic you are in, after a confirmation. This
 removes every message in it and cannot be undone.
 """
-
-dp.message.register(chain(new_topic), GROUPS, Command("newtopic"))
-dp.message.register(chain(rename_topic), GROUPS, Command("renametopic"))
-dp.message.register(chain(close_topic), GROUPS, Command("closetopic"))
-dp.message.register(chain(reopen_topic), GROUPS, Command("reopentopic"))
-dp.message.register(chain(delete_topic), GROUPS, Command("deletetopic"))
-dp.message.register(chain(action_topic), GROUPS, Command("actiontopic"))
-dp.message.register(chain(set_action_topic), GROUPS, Command("setactiontopic"))
-dp.callback_query.register(
-    chain(delete_topic_button), F.data.regexp(r"^deltopic(?:_cancel)?_-?\d+_?\d*$")
-)

@@ -2,22 +2,15 @@
 import ast
 import csv
 import json
-import os
 import re
 import time
 import uuid
 from io import BytesIO
 
-from aiogram import F
-from pyrogram.enums import ButtonStyle, ParseMode
-from pyrogram.errors import (
-    RPCError,
-    RPCError,
-    RPCError,
-)
-from aiogram.filters import Command, CommandObject
+from pyrogram import filters
+from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
+from pyrogram.errors import RPCError
 from pyrogram.types import (
-    BufferedInputFile,
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -33,10 +26,9 @@ from Mikobot import (
     LOGGER,
     OWNER_ID,
     SUPPORT_CHAT,
-    bot,
     chat_data,
-    dp,
 )
+from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.alternate import send_message
 from Mikobot.plugins.helper_funcs.chat_status import is_user_admin
@@ -46,7 +38,6 @@ from Mikobot.plugins.helper_funcs.extraction import (
     extract_user_fban,
 )
 from Mikobot.plugins.helper_funcs.string_handling import markdown_parser
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html, mention_markdown
 
 # <=======================================================================================================>
@@ -80,21 +71,23 @@ UNFBAN_ERRORS = {
 
 
 # <================================================ FUNCTION =======================================================>
-async def new_fed(message: Message, command: CommandObject):
+@on_message(filters.command("newfed"), chained=True)
+async def new_fed(client, message: Message):
     chat = message.chat
     user = message.from_user
-    if chat.type != "private":
+    if chat.type != ChatType.PRIVATE and chat.type != "private":
         await message.reply_text(
             "Federations can only be created by privately messaging me.",
         )
         return
-    if not command.args:
+    raw_args = message.text.split(None, 1)
+    if len(raw_args) < 2 or not raw_args[1].strip():
         await send_message(
             message,
             "Please write the name of the federation!",
         )
         return
-    fednam = command.args.strip()
+    fednam = raw_args[1].strip()
     if fednam != "":
         fed_id = str(uuid.uuid4())
         fed_name = fednam
@@ -132,11 +125,12 @@ async def new_fed(message: Message, command: CommandObject):
         )
 
 
-async def del_fed(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("delfed"), chained=True)
+async def del_fed(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
-    if chat.type != "private":
+    if chat.type != ChatType.PRIVATE and chat.type != "private":
         await message.reply_text(
             "Federations can only be deleted by privately messaging me.",
         )
@@ -185,7 +179,8 @@ async def del_fed(message: Message, command: CommandObject):
     )
 
 
-async def rename_fed(message: Message, command: CommandObject):
+@on_message(filters.command("renamefed"), chained=True)
+async def rename_fed(client, message: Message):
     user = message.from_user
     msg = message
     args = msg.text.split(None, 2)
@@ -206,7 +201,8 @@ async def rename_fed(message: Message, command: CommandObject):
         await msg.reply_text("Only federation owner can do this!")
 
 
-async def fed_chat(message: Message, command: CommandObject):
+@on_message(filters.command("chatfed"), chained=True)
+async def fed_chat(client, message: Message):
     chat = message.chat
     fed_id = sql.get_fed_id(chat.id)
 
@@ -230,34 +226,32 @@ async def fed_chat(message: Message, command: CommandObject):
     await message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
-async def join_fed(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("joinfed"), chained=True)
+async def join_fed(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
         )
         return
 
-    administrators = await chat.get_administrators()
     fed_id = sql.get_fed_id(chat.id)
 
-    if user.id in DRAGONS:
-        pass
-    else:
-        for admin in administrators:
-            status = admin.status
-            if status == "creator":
-                if str(admin.user.id) == str(user.id):
-                    pass
-                else:
-                    await message.reply_text(
-                        "Only group creators can use this command!",
-                    )
-                    return
+    if user.id not in DRAGONS:
+        try:
+            member = await client.get_chat_member(chat.id, user.id)
+            is_owner = member.status in (ChatMemberStatus.OWNER, "creator")
+        except RPCError:
+            is_owner = False
+        if not is_owner:
+            await message.reply_text(
+                "Only group creators can use this command!",
+            )
+            return
     if fed_id:
         await message.reply_text("You cannot join two federations from one chat")
         return
@@ -295,11 +289,12 @@ async def join_fed(message: Message, command: CommandObject):
         )
 
 
-async def leave_fed(message: Message, command: CommandObject):
+@on_message(filters.command("leavefed"), chained=True)
+async def leave_fed(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our PM!",
@@ -315,7 +310,7 @@ async def leave_fed(message: Message, command: CommandObject):
         getuser = member.status
     except RPCError:
         getuser = None
-    if getuser == "creator" or user.id in DRAGONS:
+    if getuser in (ChatMemberStatus.OWNER, "creator") or user.id in DRAGONS:
         if sql.chat_leave_fed(chat.id) is True:
             get_fedlog = await sql.get_fed_log(fed_id)
             if get_fedlog:
@@ -343,13 +338,14 @@ async def leave_fed(message: Message, command: CommandObject):
         await message.reply_text("Only group creators can use this command!")
 
 
-async def user_join_fed(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("fpromote"), chained=True)
+async def user_join_fed(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
     msg = message
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -402,12 +398,13 @@ async def user_join_fed(message: Message, command: CommandObject):
         await message.reply_text("Only federation owners can do this!")
 
 
-async def user_demote_fed(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("fdemote"), chained=True)
+async def user_demote_fed(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -455,15 +452,16 @@ async def user_demote_fed(message: Message, command: CommandObject):
         return
 
 
-async def fed_info(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("fedinfo"), chained=True)
+async def fed_info(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
     if args:
         fed_id = args[0]
         info = sql.get_fed_info(fed_id)
     else:
-        if chat.type == "private":
+        if chat.type == ChatType.PRIVATE or chat.type == "private":
             await send_message(
                 message,
                 "You need to provide me a fedid to check fedinfo in my pm.",
@@ -509,11 +507,12 @@ async def fed_info(message: Message, command: CommandObject):
     await message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
-async def fed_admin(message: Message, command: CommandObject):
+@on_message(filters.command("fedadmins"), chained=True)
+async def fed_admin(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -555,12 +554,13 @@ async def fed_admin(message: Message, command: CommandObject):
     await message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
-async def fed_ban(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(*disableable("fban"), chained=True)
+async def fed_ban(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -738,8 +738,6 @@ async def fed_ban(message: Message, command: CommandObject):
                     LOGGER.warning(
                         "Could not fban on {} because: {}".format(chat, excp.message),
                     )
-            except RPCError:
-                pass
         # Also do not spam all fed admins
         """
 		send_to_list(bot, FEDADMIN,
@@ -783,8 +781,6 @@ async def fed_ban(message: Message, command: CommandObject):
                                     excp.message,
                                 ),
                             )
-                    except RPCError:
-                        pass
         # await send_message(message, "Fedban Reason has been updated.")
         return
 
@@ -891,8 +887,6 @@ async def fed_ban(message: Message, command: CommandObject):
                 LOGGER.warning(
                     "Could not fban on {} because: {}".format(chat, excp.message),
                 )
-        except RPCError:
-            pass
 
         # Also do not spamming all fed admins
         """
@@ -937,16 +931,15 @@ async def fed_ban(message: Message, command: CommandObject):
                                     excp.message,
                                 ),
                             )
-                    except RPCError:
-                        pass
 
 
-async def unfban(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("unfban"), chained=True)
+async def unfban(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1057,8 +1050,6 @@ async def unfban(message: Message, command: CommandObject):
                 LOGGER.warning(
                     "Could not fban on {} because: {}".format(chat, excp.message),
                 )
-        except RPCError:
-            pass
 
     try:
         x = sql.un_fban_user(fed_id, user_id)
@@ -1103,8 +1094,6 @@ async def unfban(message: Message, command: CommandObject):
                                 excp.message,
                             ),
                         )
-                except RPCError:
-                    pass
 
     if unfbanned_in_chats == 0:
         await send_message(
@@ -1135,12 +1124,13 @@ async def unfban(message: Message, command: CommandObject):
 	"""
 
 
-async def set_frules(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("setfrules"), chained=True)
+async def set_frules(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1193,10 +1183,11 @@ async def set_frules(message: Message, command: CommandObject):
         await message.reply_text("Please write rules to set this up!")
 
 
-async def get_frules(message: Message, command: CommandObject):
+@on_message(filters.command("frules"), chained=True)
+async def get_frules(client, message: Message):
     chat = message.chat
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1214,13 +1205,14 @@ async def get_frules(message: Message, command: CommandObject):
     await message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
 
-async def fed_broadcast(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("fbroadcast"), chained=True)
+async def fed_broadcast(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     msg = message
     user = message.from_user
     chat = message.chat
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1278,12 +1270,13 @@ async def fed_broadcast(message: Message, command: CommandObject):
         await message.reply_text(send_text)
 
 
-async def fed_ban_list(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("fbanlist"), chained=True)
+async def fed_ban_list(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1352,9 +1345,8 @@ async def fed_ban_list(message: Message, command: CommandObject):
             with BytesIO(str.encode(backups)) as output:
                 output.name = "mikobot_fbanned_users.json"
                 await message.reply_document(
-                    document=BufferedInputFile(
-                        output.read(), filename="mikobot_fbanned_users.json"
-                    ),
+                    document=output,
+                    file_name="mikobot_fbanned_users.json",
                     caption="Total {} User are blocked by the Federation {}.".format(
                         len(getfban),
                         info["fname"],
@@ -1400,9 +1392,8 @@ async def fed_ban_list(message: Message, command: CommandObject):
             with BytesIO(str.encode(backups)) as output:
                 output.name = "mikobot_fbanned_users.csv"
                 await message.reply_document(
-                    document=BufferedInputFile(
-                        output.read(), filename="mikobot_fbanned_users.csv"
-                    ),
+                    document=output,
+                    file_name="mikobot_fbanned_users.csv",
                     caption="Total {} User are blocked by Federation {}.".format(
                         len(getfban),
                         info["fname"],
@@ -1460,15 +1451,17 @@ async def fed_ban_list(message: Message, command: CommandObject):
         with BytesIO(str.encode(cleantext)) as output:
             output.name = "fbanlist.txt"
             await message.reply_document(
-                document=BufferedInputFile(output.read(), filename="fbanlist.txt"),
+                document=output,
+                file_name="fbanlist.txt",
                 caption="The following is a list of users who are currently fbanned in the Federation {}.".format(
                     info["fname"],
                 ),
             )
 
 
-async def fed_notif(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("fednotif"), chained=True)
+async def fed_notif(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
     msg = message
@@ -1492,7 +1485,9 @@ async def fed_notif(message: Message, command: CommandObject):
                 "Reporting Federation has stopped! Every user who is fban / unfban you will not be notified via PM.",
             )
         else:
-            await msg.reply_text("Please enter `on`/`off`", parse_mode=ParseMode.MARKDOWN)
+            await msg.reply_text(
+                "Please enter `on`/`off`", parse_mode=ParseMode.MARKDOWN
+            )
     else:
         getreport = sql.user_feds_report(user.id)
         await msg.reply_text(
@@ -1501,11 +1496,12 @@ async def fed_notif(message: Message, command: CommandObject):
         )
 
 
-async def fed_chats(message: Message, command: CommandObject):
+@on_message(filters.command("fedchats"), chained=True)
+async def fed_chats(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1558,20 +1554,22 @@ async def fed_chats(message: Message, command: CommandObject):
         with BytesIO(str.encode(cleantext)) as output:
             output.name = "fedchats.txt"
             await message.reply_document(
-                document=BufferedInputFile(output.read(), filename="fedchats.txt"),
+                document=output,
+                file_name="fedchats.txt",
                 caption="Here is a list of all the chats that joined the federation {}.".format(
                     info["fname"],
                 ),
             )
 
 
-async def fed_import_bans(message: Message, command: CommandObject):
+@on_message(filters.command("importfbans"), chained=True)
+async def fed_import_bans(client, message: Message):
     # chat_data is the module-level store; PTB passed it per-context
     chat = message.chat
     user = message.from_user
     msg = message
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1614,14 +1612,15 @@ async def fed_import_bans(message: Message, command: CommandObject):
         else:
             if user.id not in DRAGONS:
                 put_chat(chat.id, new_jam, chat_data)
-        # if int(int(msg.reply_to_message.document.file_size)/1024) >= 200:
-        # 	msg.reply_text("This file is too big!")
-        # 	return
         success = 0
         failed = 0
         try:
-            file_info = await client.get_file(msg.reply_to_message.document.file_id)
-        except RPCError:
+            downloaded = await client.download_media(
+                msg.reply_to_message.document, in_memory=True
+            )
+            if not downloaded:
+                raise RPCError
+        except Exception:
             await msg.reply_text(
                 "Try downloading and re-uploading the file, this one seems broken!",
             )
@@ -1635,63 +1634,61 @@ async def fed_import_bans(message: Message, command: CommandObject):
             multi_import_lastname = []
             multi_import_username = []
             multi_import_reason = []
-            with BytesIO() as file:
-                file_info.download_to_object(out=file)
-                file.seek(0)
-                reading = file.read().decode("UTF-8")
-                splitting = reading.split("\n")
-                for x in splitting:
-                    if x == "":
-                        continue
-                    try:
-                        data = json.loads(x)
-                    except json.decoder.JSONDecodeError:
-                        failed += 1
-                        continue
-                    try:
-                        import_userid = int(data["user_id"])  # Make sure it int
-                        import_firstname = str(data["first_name"])
-                        import_lastname = str(data["last_name"])
-                        import_username = str(data["user_name"])
-                        import_reason = str(data["reason"])
-                    except ValueError:
-                        failed += 1
-                        continue
-                    # Checking user
-                    if int(import_userid) == client.id:
-                        failed += 1
-                        continue
-                    if is_user_fed_owner(fed_id, import_userid) is True:
-                        failed += 1
-                        continue
-                    if is_user_fed_admin(fed_id, import_userid) is True:
-                        failed += 1
-                        continue
-                    if str(import_userid) == str(OWNER_ID):
-                        failed += 1
-                        continue
-                    if int(import_userid) in DRAGONS:
-                        failed += 1
-                        continue
-                    multi_fed_id.append(fed_id)
-                    multi_import_userid.append(str(import_userid))
-                    multi_import_firstname.append(import_firstname)
-                    multi_import_lastname.append(import_lastname)
-                    multi_import_username.append(import_username)
-                    multi_import_reason.append(import_reason)
-                    success += 1
-                imported = sql.multi_fban_user(
-                    multi_fed_id,
-                    multi_import_userid,
-                    multi_import_firstname,
-                    multi_import_lastname,
-                    multi_import_username,
-                    multi_import_reason,
-                )
-                if imported is False:
-                    import_failed = True
-                    failed += success
-                    success = 0
+            downloaded.seek(0)
+            reading = downloaded.read().decode("UTF-8")
+            splitting = reading.split("\n")
+            for x in splitting:
+                if x == "":
+                    continue
+                try:
+                    data = json.loads(x)
+                except json.decoder.JSONDecodeError:
+                    failed += 1
+                    continue
+                try:
+                    import_userid = int(data["user_id"])  # Make sure it int
+                    import_firstname = str(data["first_name"])
+                    import_lastname = str(data["last_name"])
+                    import_username = str(data["user_name"])
+                    import_reason = str(data["reason"])
+                except KeyError, ValueError:
+                    failed += 1
+                    continue
+                # Checking user
+                if int(import_userid) == client.id:
+                    failed += 1
+                    continue
+                if is_user_fed_owner(fed_id, import_userid) is True:
+                    failed += 1
+                    continue
+                if is_user_fed_admin(fed_id, import_userid) is True:
+                    failed += 1
+                    continue
+                if str(import_userid) == str(OWNER_ID):
+                    failed += 1
+                    continue
+                if int(import_userid) in DRAGONS:
+                    failed += 1
+                    continue
+                multi_fed_id.append(fed_id)
+                multi_import_userid.append(str(import_userid))
+                multi_import_firstname.append(import_firstname)
+                multi_import_lastname.append(import_lastname)
+                multi_import_username.append(import_username)
+                multi_import_reason.append(import_reason)
+                success += 1
+            imported = sql.multi_fban_user(
+                multi_fed_id,
+                multi_import_userid,
+                multi_import_firstname,
+                multi_import_lastname,
+                multi_import_username,
+                multi_import_reason,
+            )
+            if imported is False:
+                import_failed = True
+                failed += success
+                success = 0
             text = (
                 "Block import failed."
                 if import_failed
@@ -1724,64 +1721,55 @@ async def fed_import_bans(message: Message, command: CommandObject):
             multi_import_lastname = []
             multi_import_username = []
             multi_import_reason = []
-            file_info.download_to_drive(
-                "fban_{}.csv".format(msg.reply_to_message.document.file_id),
-            )
-            with open(
-                "fban_{}.csv".format(msg.reply_to_message.document.file_id),
-                encoding="utf8",
-            ) as csvFile:
-                reader = csv.reader(csvFile)
-                for data in reader:
-                    try:
-                        import_userid = int(data[0])  # Make sure it int
-                        import_firstname = str(data[1])
-                        import_lastname = str(data[2])
-                        import_username = str(data[3])
-                        import_reason = str(data[4])
-                    except ValueError:
-                        failed += 1
-                        continue
-                    # Checking user
-                    if int(import_userid) == client.id:
-                        failed += 1
-                        continue
-                    if is_user_fed_owner(fed_id, import_userid) is True:
-                        failed += 1
-                        continue
-                    if is_user_fed_admin(fed_id, import_userid) is True:
-                        failed += 1
-                        continue
-                    if str(import_userid) == str(OWNER_ID):
-                        failed += 1
-                        continue
-                    if int(import_userid) in DRAGONS:
-                        failed += 1
-                        continue
+            downloaded.seek(0)
+            csv_text = downloaded.read().decode("utf8")
+            reader = csv.reader(csv_text.splitlines())
+            for data in reader:
+                try:
+                    import_userid = int(data[0])  # Make sure it int
+                    import_firstname = str(data[1])
+                    import_lastname = str(data[2])
+                    import_username = str(data[3])
+                    import_reason = str(data[4])
+                except IndexError, ValueError:
+                    failed += 1
+                    continue
+                # Checking user
+                if int(import_userid) == client.id:
+                    failed += 1
+                    continue
+                if is_user_fed_owner(fed_id, import_userid) is True:
+                    failed += 1
+                    continue
+                if is_user_fed_admin(fed_id, import_userid) is True:
+                    failed += 1
+                    continue
+                if str(import_userid) == str(OWNER_ID):
+                    failed += 1
+                    continue
+                if int(import_userid) in DRAGONS:
+                    failed += 1
+                    continue
 
-                    multi_fed_id.append(fed_id)
-                    multi_import_userid.append(str(import_userid))
-                    multi_import_firstname.append(import_firstname)
-                    multi_import_lastname.append(import_lastname)
-                    multi_import_username.append(import_username)
-                    multi_import_reason.append(import_reason)
-                    success += 1
-                    # t = ThreadWithReturnValue(target=sql.fban_user, args=(fed_id, str(import_userid), import_firstname, import_lastname, import_username, import_reason,))
-                    # t.start()
-                imported = sql.multi_fban_user(
-                    multi_fed_id,
-                    multi_import_userid,
-                    multi_import_firstname,
-                    multi_import_lastname,
-                    multi_import_username,
-                    multi_import_reason,
-                )
-                if imported is False:
-                    import_failed = True
-                    failed += success
-                    success = 0
-            csvFile.close()
-            os.remove("fban_{}.csv".format(msg.reply_to_message.document.file_id))
+                multi_fed_id.append(fed_id)
+                multi_import_userid.append(str(import_userid))
+                multi_import_firstname.append(import_firstname)
+                multi_import_lastname.append(import_lastname)
+                multi_import_username.append(import_username)
+                multi_import_reason.append(import_reason)
+                success += 1
+            imported = sql.multi_fban_user(
+                multi_fed_id,
+                multi_import_userid,
+                multi_import_firstname,
+                multi_import_lastname,
+                multi_import_username,
+                multi_import_reason,
+            )
+            if imported is False:
+                import_failed = True
+                failed += success
+                success = 0
             text = (
                 "Block import failed."
                 if import_failed
@@ -1813,7 +1801,8 @@ async def fed_import_bans(message: Message, command: CommandObject):
         await send_message(message, text)
 
 
-async def del_fed_button(query: CallbackQuery):
+@on_callback(filters.regex(r"^rmfed_"), chained=True)
+async def del_fed_button(client, query: CallbackQuery):
     if query.data == "rmfed_cancel":
         await query.message.edit_text("Federation deletion cancelled")
         await query.answer()
@@ -1856,8 +1845,9 @@ async def del_fed_button(query: CallbackQuery):
         )
 
 
-async def fed_stat_user(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(*disableable(["fedstat", "fbanstat"]), chained=True)
+async def fed_stat_user(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     msg = message
 
     if len(args) >= 2 and args[0].isdigit():
@@ -1909,12 +1899,13 @@ async def fed_stat_user(message: Message, command: CommandObject):
     await send_message(msg, text, parse_mode=ParseMode.MARKDOWN)
 
 
-async def set_fed_log(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("setfedlog"), chained=True)
+async def set_fed_log(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1950,12 +1941,13 @@ async def set_fed_log(message: Message, command: CommandObject):
         )
 
 
-async def unset_fed_log(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("unsetfedlog"), chained=True)
+async def unset_fed_log(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1991,12 +1983,13 @@ async def unset_fed_log(message: Message, command: CommandObject):
         )
 
 
-async def subs_feds(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("subfed"), chained=True)
+async def subs_feds(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -2062,12 +2055,13 @@ async def subs_feds(message: Message, command: CommandObject):
         )
 
 
-async def unsubs_feds(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(filters.command("unsubfed"), chained=True)
+async def unsubs_feds(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -2133,11 +2127,12 @@ async def unsubs_feds(message: Message, command: CommandObject):
         )
 
 
-async def get_myfedsubs(message: Message, command: CommandObject):
+@on_message(filters.command("fedsubs"), chained=True)
+async def get_myfedsubs(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == "private":
+    if chat.type == ChatType.PRIVATE or chat.type == "private":
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -2182,7 +2177,8 @@ async def get_myfedsubs(message: Message, command: CommandObject):
         await send_message(message, listfed, parse_mode=ParseMode.MARKDOWN)
 
 
-async def get_myfeds_list(message: Message, command: CommandObject):
+@on_message(filters.command("myfeds"), chained=True)
+async def get_myfeds_list(client, message: Message):
     user = message.from_user
 
     fedowner = sql.get_user_owner_fed_full(user.id)
@@ -2216,7 +2212,7 @@ def is_user_fed_owner(fed_id, user_id):
 # There's no handler for this yet, but updating for v12 in case its used
 
 
-async def welcome_fed(message: Message, command: CommandObject):
+async def welcome_fed(client, message: Message):
     chat = message.chat
     user = message.from_user
     fed_id = sql.get_fed_id(chat.id)
@@ -2281,7 +2277,8 @@ def get_chat(chat_id, chat_data):
         return {"status": False, "value": False}
 
 
-async def fed_owner_help(message: Message, command: CommandObject):
+@on_message(filters.command("fedownerhelp"), chained=True)
+async def fed_owner_help(client, message: Message):
     await message.reply_text(
         """*👑 Fed Owner Only:*
  » `/newfed <fed_name>`*:* Creates a Federation, One allowed per user
@@ -2299,7 +2296,8 @@ async def fed_owner_help(message: Message, command: CommandObject):
     )
 
 
-async def fed_admin_help(message: Message, command: CommandObject):
+@on_message(filters.command("fedadminhelp"), chained=True)
+async def fed_admin_help(client, message: Message):
     await message.reply_text(
         """*🔱 Fed Admins:*
  » `/fban <user> <reason>`*:* Fed bans a user
@@ -2316,7 +2314,8 @@ async def fed_admin_help(message: Message, command: CommandObject):
     )
 
 
-async def fed_user_help(message: Message, command: CommandObject):
+@on_message(filters.command("feduserhelp"), chained=True)
+async def fed_user_help(client, message: Message):
     await message.reply_text(
         """*🎩 Any user:*
  » `/fbanstat`*:* Shows if you/or the user you are replying to or their username is fbanned somewhere or not
@@ -2347,39 +2346,6 @@ __help__ = """
 » /feduserhelp: Provides help for commands anyone can use.
 
 """
-
-# <================================================ HANDLER =======================================================>
-dp.message.register(chain(new_fed), Command("newfed"))
-dp.message.register(chain(del_fed), Command("delfed"))
-dp.message.register(chain(rename_fed), Command("renamefed"))
-dp.message.register(chain(join_fed), Command("joinfed"))
-dp.message.register(chain(leave_fed), Command("leavefed"))
-dp.message.register(chain(user_join_fed), Command("fpromote"))
-dp.message.register(chain(user_demote_fed), Command("fdemote"))
-dp.message.register(chain(fed_info), Command("fedinfo"))
-dp.message.register(chain(fed_ban), *disableable("fban"))
-dp.message.register(chain(unfban), Command("unfban"))
-dp.message.register(chain(fed_broadcast), Command("fbroadcast"))
-dp.message.register(chain(set_frules), Command("setfrules"))
-dp.message.register(chain(get_frules), Command("frules"))
-dp.message.register(chain(fed_chat), Command("chatfed"))
-dp.message.register(chain(fed_admin), Command("fedadmins"))
-dp.message.register(chain(fed_ban_list), Command("fbanlist"))
-dp.message.register(chain(fed_notif), Command("fednotif"))
-dp.message.register(chain(fed_chats), Command("fedchats"))
-dp.message.register(chain(fed_import_bans), Command("importfbans"))
-dp.message.register(chain(fed_stat_user), *disableable("fedstat"))
-dp.message.register(chain(fed_stat_user), *disableable("fbanstat"))
-dp.message.register(chain(set_fed_log), Command("setfedlog"))
-dp.message.register(chain(unset_fed_log), Command("unsetfedlog"))
-dp.message.register(chain(subs_feds), Command("subfed"))
-dp.message.register(chain(unsubs_feds), Command("unsubfed"))
-dp.message.register(chain(get_myfedsubs), Command("fedsubs"))
-dp.message.register(chain(get_myfeds_list), Command("myfeds"))
-dp.callback_query.register(chain(del_fed_button), F.data.startswith("rmfed_"))
-dp.message.register(chain(fed_owner_help), Command("fedownerhelp"))
-dp.message.register(chain(fed_admin_help), Command("fedadminhelp"))
-dp.message.register(chain(fed_user_help), Command("feduserhelp"))
 
 
 def __migrate__(old_chat_id, new_chat_id):

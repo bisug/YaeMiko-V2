@@ -12,23 +12,22 @@ from datetime import datetime
 from functools import partial
 
 import unidecode
-from aiogram import F
+from cachetools import TTLCache
+from PIL import Image, ImageChops, ImageDraw, ImageFont
+from pyrogram import filters
+from pyrogram import filters as ft
 from pyrogram.enums import ButtonStyle, ChatType, ParseMode
+from pyrogram.enums import ButtonStyle as KButtonStyle
 from pyrogram.errors import RPCError
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import (
     CallbackQuery,
+    ChatMemberUpdated,
     ChatPermissions,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     LinkPreviewOptions,
     Message,
 )
-from cachetools import TTLCache
-from PIL import Image, ImageChops, ImageDraw, ImageFont
-from pyrogram import filters as ft
-from pyrogram.enums import ButtonStyle as KButtonStyle
-from pyrogram.types import ChatMemberUpdated
 from pyrogram.types import InlineKeyboardButton as IB
 from pyrogram.types import InlineKeyboardMarkup as IM
 
@@ -46,9 +45,9 @@ from Mikobot import (
     OWNER_ID,
     SUPPORT_STAFF,
     app,
-    bot,
-    dp,
 )
+from Mikobot import app as client
+from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.helper_funcs.alternate import typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin, is_user_ban_protected
@@ -57,7 +56,6 @@ from Mikobot.plugins.helper_funcs.msg_types import get_welcome_type
 from Mikobot.plugins.helper_funcs.string_handling import escape_invalid_curly_brackets
 from Mikobot.plugins.log_channel import loggable
 from Mikobot.utils.can_restrict import can_restrict
-from Mikobot.utils.gate import chain
 from Mikobot.utils.jobs import job_queue
 from Mikobot.utils.parser import escape_markdown, mention_html, mention_markdown
 
@@ -74,17 +72,15 @@ VALID_WELCOME_FORMATTERS = [
     "mention",
 ]
 
-# Late-bound: aiogram builds Bot methods as instance attributes, so a module
-# -level dict cannot capture them at import time.
 ENUM_FUNC_MAP = {
-    sql.Types.TEXT.value: "send_message",
-    sql.Types.BUTTON_TEXT.value: "send_message",
-    sql.Types.STICKER.value: "send_sticker",
-    sql.Types.DOCUMENT.value: "send_document",
-    sql.Types.PHOTO.value: "send_photo",
-    sql.Types.AUDIO.value: "send_audio",
-    sql.Types.VOICE.value: "send_voice",
-    sql.Types.VIDEO.value: "send_video",
+    sql.Types.TEXT.value: client.send_message,
+    sql.Types.BUTTON_TEXT.value: client.send_message,
+    sql.Types.STICKER.value: client.send_sticker,
+    sql.Types.DOCUMENT.value: client.send_document,
+    sql.Types.PHOTO.value: client.send_photo,
+    sql.Types.AUDIO.value: client.send_audio,
+    sql.Types.VOICE.value: client.send_voice,
+    sql.Types.VIDEO.value: client.send_video,
 }
 
 VERIFIED_USER_WAITLIST = TTLCache(maxsize=5000, ttl=600)
@@ -218,28 +214,32 @@ async def member_has_joined(client, member: ChatMemberUpdated):
                 )
 
 
-@app.on_message(ft.command("dwelcome on"))
+@on_message(filters.command("dwelcome"), chained=True)
 @can_restrict
-async def enable_welcome(_, message: Message):
+async def toggle_dwelcome(client, message: Message):
     chat_id = message.chat.id
-    welcome_enabled = is_dwelcome_on(chat_id)
-    if welcome_enabled:
-        await message.reply_text("Default welcome is already enabled")
+    args = message.command[1:] if len(message.command) > 1 else []
+    if not args:
+        welcome_enabled = is_dwelcome_on(chat_id)
+        await message.reply_text(
+            f"Default welcome is currently {'enabled' if welcome_enabled else 'disabled'}."
+        )
         return
-    dwelcome_on(chat_id)
-    await message.reply_text("New default welcome message enabled for this chat.")
-
-
-@app.on_message(ft.command("dwelcome off"))
-@can_restrict
-async def disable_welcome(_, message: Message):
-    chat_id = message.chat.id
-    welcome_enabled = is_dwelcome_on(chat_id)
-    if not welcome_enabled:
-        await message.reply_text("Default welcome is already disabled")
-        return
-    dwelcome_off(chat_id)
-    await message.reply_text("New default welcome disabled for this chat.")
+    arg = args[0].lower()
+    if arg in ("on", "yes"):
+        if is_dwelcome_on(chat_id):
+            await message.reply_text("Default welcome is already enabled")
+            return
+        dwelcome_on(chat_id)
+        await message.reply_text("New default welcome message enabled for this chat.")
+    elif arg in ("off", "no"):
+        if not is_dwelcome_on(chat_id):
+            await message.reply_text("Default welcome is already disabled")
+            return
+        dwelcome_off(chat_id)
+        await message.reply_text("New default welcome disabled for this chat.")
+    else:
+        await message.reply_text("Usage: /dwelcome [on/off]")
 
 
 # <=======================================================================================================>
@@ -398,8 +398,9 @@ async def send(source_message, message, keyboard, backup_message):
     return msg
 
 
+@on_message(filters.group & filters.new_chat_members, chained=True)
 @loggable
-async def new_member(message: Message, command: CommandObject):
+async def new_member(client, message: Message):
     chat = message.chat
     user = message.from_user
     msg = message
@@ -416,7 +417,9 @@ async def new_member(message: Message, command: CommandObject):
         if new_mem.id == client.id and not ALLOW_CHATS:
             with suppress(RPCError):
                 await message.reply_text(
-                    "Groups are disabled for {}, I'm outta here.".format(client.first_name)
+                    "Groups are disabled for {}, I'm outta here.".format(
+                        client.first_name
+                    )
                 )
             await client.leave_chat(message.chat.id)
             return
@@ -542,7 +545,7 @@ async def new_member(message: Message, command: CommandObject):
                         )
                     else:
                         fullname = escape_markdown(first_name)
-                    count = await chat.get_member_count()
+                    count = await client.get_chat_members_count(chat.id)
                     mention = mention_markdown(new_mem.id, first_name)
                     if new_mem.username:
                         username = "@{}".format(escape_markdown(new_mem.username))
@@ -584,7 +587,7 @@ async def new_member(message: Message, command: CommandObject):
 
         if (
             await is_user_ban_protected(
-                chat, new_mem.id, await chat.get_member(new_mem.id)
+                chat, new_mem.id, await client.get_chat_member(chat.id, new_mem.id)
             )
             or human_checks
         ):
@@ -700,7 +703,7 @@ async def new_member(message: Message, command: CommandObject):
 
         if welcome_bool:
             if media_wel:
-                sent = await getattr(bot, ENUM_FUNC_MAP[welc_type])(
+                sent = await ENUM_FUNC_MAP[welc_type](
                     chat.id,
                     cust_content,
                     caption=res,
@@ -782,7 +785,8 @@ async def check_not_bot(member, chat_id, message_id):
             )
 
 
-async def left_member(message: Message):
+@on_message(filters.group & filters.left_chat_member, chained=True)
+async def left_member(client, message: Message):
     chat = message.chat
     user = message.from_user
     should_goodbye, cust_goodbye, goodbye_type = await asyncio.to_thread(
@@ -838,7 +842,7 @@ async def left_member(message: Message):
                     fullname = "{} {}".format(first_name, left_mem.last_name)
                 else:
                     fullname = first_name
-                count = await chat.get_member_count()
+                count = await client.get_chat_members_count(chat.id)
                 mention = mention_markdown(left_mem.id, first_name)
                 if left_mem.username:
                     username = "@{}".format(left_mem.username)
@@ -878,9 +882,10 @@ async def left_member(message: Message):
             )
 
 
+@on_message(filters.group & filters.command("welcome"), chained=True)
 @check_admin(is_user=True)
-async def welcome(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+async def welcome(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     if not args or args[0].lower() == "noformat":
         noformat = True
@@ -893,7 +898,7 @@ async def welcome(message: Message, command: CommandObject):
             parse_mode=ParseMode.MARKDOWN,
         )
 
-        if welcome_type == sql.Types.BUTTON_TEXT or welcome_type == sql.Types.TEXT:
+        if welcome_type in (sql.Types.BUTTON_TEXT, sql.Types.TEXT):
             buttons = await asyncio.to_thread(sql.get_welc_buttons, chat.id)
             if noformat:
                 welcome_m += revert_buttons(buttons)
@@ -912,7 +917,7 @@ async def welcome(message: Message, command: CommandObject):
             else:
                 keyb = build_keyboard(buttons)
                 keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
-                ENUM_FUNC_MAP[welcome_type](
+                await ENUM_FUNC_MAP[welcome_type](
                     chat.id,
                     cust_content,
                     caption=welcome_m,
@@ -940,9 +945,10 @@ async def welcome(message: Message, command: CommandObject):
             )
 
 
+@on_message(filters.group & filters.command("goodbye"), chained=True)
 @check_admin(is_user=True)
-async def goodbye(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+async def goodbye(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
 
     if not args or args[0] == "noformat":
@@ -991,9 +997,10 @@ async def goodbye(message: Message, command: CommandObject):
             )
 
 
+@on_message(filters.group & filters.command("setwelcome"), chained=True)
 @check_admin(is_user=True)
 @loggable
-async def set_welcome(message: Message, command: CommandObject):
+async def set_welcome(client, message: Message):
     chat = message.chat
     user = message.from_user
     msg = message
@@ -1017,9 +1024,10 @@ async def set_welcome(message: Message, command: CommandObject):
     )
 
 
+@on_message(filters.group & filters.command("resetwelcome"), chained=True)
 @check_admin(is_user=True)
 @loggable
-async def reset_welcome(message: Message, command: CommandObject):
+async def reset_welcome(client, message: Message):
     chat = message.chat
     user = message.from_user
 
@@ -1040,9 +1048,10 @@ async def reset_welcome(message: Message, command: CommandObject):
     )
 
 
+@on_message(filters.group & filters.command("setgoodbye"), chained=True)
 @check_admin(is_user=True)
 @loggable
-async def set_goodbye(message: Message, command: CommandObject):
+async def set_goodbye(client, message: Message):
     chat = message.chat
     user = message.from_user
     msg = message
@@ -1064,9 +1073,10 @@ async def set_goodbye(message: Message, command: CommandObject):
     )
 
 
+@on_message(filters.group & filters.command("resetgoodbye"), chained=True)
 @check_admin(is_user=True)
 @loggable
-async def reset_goodbye(message: Message, command: CommandObject) -> str:
+async def reset_goodbye(client, message: Message) -> str:
     chat = message.chat
     user = message.from_user
 
@@ -1085,10 +1095,11 @@ async def reset_goodbye(message: Message, command: CommandObject) -> str:
     )
 
 
+@on_message(filters.group & filters.command("welcomemute"), chained=True)
 @check_admin(is_user=True)
 @loggable
-async def welcomemute(message: Message, command: CommandObject) -> str:
-    args = command.args.split() if command.args else []
+async def welcomemute(client, message: Message) -> str:
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
     msg = message
@@ -1141,10 +1152,11 @@ async def welcomemute(message: Message, command: CommandObject) -> str:
         return ""
 
 
+@on_message(filters.group & filters.command("cleanwelcome"), chained=True)
 @check_admin(is_user=True)
 @loggable
-async def clean_welcome(message: Message, command: CommandObject) -> str:
-    args = command.args.split() if command.args else []
+async def clean_welcome(client, message: Message) -> str:
+    args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
 
@@ -1186,11 +1198,11 @@ async def clean_welcome(message: Message, command: CommandObject) -> str:
 
 
 @check_admin(is_user=True)
-async def _service_target(message: Message, command: CommandObject):
+async def _service_target(client, message: Message):
     """(chat_id, chat) for a service-cleaning command, honouring connections."""
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
     conn = await connected(
-        bot, message, message.chat, message.from_user.id, need_admin=True
+        client, message, message.chat, message.from_user.id, need_admin=True
     )
     if conn:
         chat = await client.get_chat(conn)
@@ -1201,11 +1213,12 @@ async def _service_target(message: Message, command: CommandObject):
     return message.chat.id, message.chat, args
 
 
+@on_message(filters.group & filters.command("cleanservice"), chained=True)
 @check_admin(permission="can_delete_messages", is_both=True)
 @typing_action
-async def cleanservice(message: Message, command: CommandObject) -> str:
+async def cleanservice(client, message: Message) -> str:
     """Enable service-message cleaning, optionally for specific types only."""
-    chat_id, chat, args = await _service_target(message, command)
+    chat_id, chat, args = await _service_target(client, message)
     if chat_id is None:
         return ""
 
@@ -1287,11 +1300,12 @@ async def cleanservice(message: Message, command: CommandObject) -> str:
     )
 
 
+@on_message(filters.group & filters.command("nocleanservice"), chained=True)
 @check_admin(permission="can_delete_messages", is_both=True)
 @typing_action
-async def nocleanservice(message: Message, command: CommandObject) -> str:
+async def nocleanservice(client, message: Message) -> str:
     """Stop deleting specific service types without clearing the rest."""
-    chat_id, chat, args = await _service_target(message, command)
+    chat_id, chat, args = await _service_target(client, message)
     if chat_id is None:
         return ""
 
@@ -1325,9 +1339,10 @@ async def nocleanservice(message: Message, command: CommandObject) -> str:
     )
 
 
+@on_message(filters.group & filters.command("cleanservicetypes"), chained=True)
 @check_admin(permission="can_delete_messages", is_both=True)
 @typing_action
-async def cleanservicetypes(message: Message, command: CommandObject) -> str:
+async def cleanservicetypes(client, message: Message) -> str:
     """List the service types this chat can clean."""
     await message.reply_text(
         "Service types you can use:\n"
@@ -1349,7 +1364,8 @@ async def cleanservicetypes(message: Message, command: CommandObject) -> str:
     return ""
 
 
-async def user_button(query: CallbackQuery):
+@on_callback(filters.regex(r"^user_join_\(-?\d+\)$"), chained=True)
+async def user_button(client, query: CallbackQuery):
     match = re.fullmatch(r"user_join_\((-?\d+)\)", query.data)
     if not match:
         await query.answer("Invalid callback data.", show_alert=True)
@@ -1397,7 +1413,7 @@ async def user_button(query: CallbackQuery):
             ),
         )
         try:
-            await client.delete_messages(chat.id, message.message_id)
+            await client.delete_messages(chat.id, message.id)
         except RPCError:
             # Needs delete rights and a message under 48h old. Failing to
             # remove the join notice is cosmetic, so it must not abort the
@@ -1432,7 +1448,9 @@ async def user_button(query: CallbackQuery):
 
                 if sent:
                     await asyncio.to_thread(
-                        sql.set_clean_welcome, chat.id, sent.message_id
+                        sql.set_clean_welcome,
+                        chat.id,
+                        getattr(sent, "id", getattr(sent, "message_id", None)),
                     )
 
     else:
@@ -1449,8 +1467,9 @@ WELC_MUTE_HELP_TXT = (
 )
 
 
+@on_message(filters.command("welcomehelp"), chained=True)
 @check_admin(is_user=True)
-async def welcome_help(message: Message, command: CommandObject):
+async def welcome_help(client, message: Message):
     WELC_HELP_TXT = (
         "Your group's welcome/goodbye messages can be personalized in multiple ways. If you want the messages"
         " to be individually generated, like the default welcome message is, you can use these variables:\n"
@@ -1476,8 +1495,9 @@ async def welcome_help(message: Message, command: CommandObject):
     await message.reply_text(WELC_HELP_TXT, parse_mode=ParseMode.MARKDOWN)
 
 
+@on_message(filters.command("welcomemutehelp"), chained=True)
 @check_admin(is_user=True)
-async def welcome_mute_help(message: Message, command: CommandObject):
+async def welcome_mute_help(client, message: Message):
     await message.reply_text(
         WELC_MUTE_HELP_TXT,
         parse_mode=ParseMode.MARKDOWN,
@@ -1530,34 +1550,6 @@ User joined chat, user left chat.
 ➠ *Welcome Markdown:*
 » /welcomehelp: View more formatting information for custom welcome/goodbye messages.
 """
-
-# <================================================ HANDLER =======================================================>
-dp.message.register(chain(new_member), F.new_chat_members)
-dp.message.register(chain(left_member), F.left_chat_member)
-
-# The preference commands were group-only in PTB via filters.ChatType.GROUPS.
-for _name, _handler in (
-    ("welcome", welcome),
-    ("goodbye", goodbye),
-    ("setwelcome", set_welcome),
-    ("setgoodbye", set_goodbye),
-    ("resetwelcome", reset_welcome),
-    ("resetgoodbye", reset_goodbye),
-    ("welcomemute", welcomemute),
-    ("cleanservice", cleanservice),
-    ("nocleanservice", nocleanservice),
-    ("cleanservicetypes", cleanservicetypes),
-    ("cleanwelcome", clean_welcome),
-):
-    dp.message.register(
-        chain(_handler),
-        Command(_name),
-        F.chat.type.in_({ChatType.GROUP, ChatType.SUPERGROUP}),
-    )
-
-dp.message.register(chain(welcome_help), Command("welcomehelp"))
-dp.message.register(chain(welcome_mute_help), Command("welcomemutehelp"))
-dp.callback_query.register(chain(user_button), F.data.regexp(r"^user_join_\(-?\d+\)$"))
 
 __mod_name__ = "WELCOME"
 __command_list__ = []

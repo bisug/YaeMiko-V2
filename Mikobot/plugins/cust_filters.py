@@ -3,11 +3,10 @@ import random
 import re
 from html import escape
 
-from aiogram import F
-from aiogram.dispatcher.event.bases import SkipHandler
+from pyrate_limiter import Duration, InMemoryBucket, Limiter, Rate
+from pyrogram import filters
 from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import Command
 from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -15,10 +14,11 @@ from pyrogram.types import (
     LinkPreviewOptions,
     Message,
 )
-from pyrate_limiter import Duration, InMemoryBucket, Limiter, Rate
 
 from Database.sql import cust_filters_sql as sql
-from Mikobot import DEV_USERS, DRAGONS, LOGGER, bot, dp
+from Mikobot import DEV_USERS, DRAGONS, LOGGER
+from Mikobot import app as client
+from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.alternate import send_message, typing_action
@@ -33,9 +33,8 @@ from Mikobot.plugins.helper_funcs.string_handling import (
     markdown_to_html,
     split_quotes,
 )
-from Mikobot.utils.consts import ChatID, MessageLimit
+from Mikobot.utils.consts import ChatID
 from Mikobot.utils.filters import GROUPS
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import escape_markdown, mention_html
 
 # <=======================================================================================================>
@@ -55,11 +54,10 @@ ENUM_FUNC_MAP = {
 class AntiSpam:
     def __init__(self):
         self.whitelist = (DEV_USERS or []) + (DRAGONS or [])
-        # Values are HIGHLY experimental, its recommended you pay attention to our commits as we will be adjusting the values over time with what suits best.
-        self.sec_limit = Rate(6, Duration.SECOND * 15)  # 6 / Per 15 Seconds
-        self.min_limit = Rate(20, Duration.MINUTE)  # 20 / Per minute
-        self.hour_limit = Rate(100, Duration.HOUR)  # 100 / Per hour
-        self.daily_limit = Rate(1000, Duration.DAY)  # 1000 / Per day
+        self.sec_limit = Rate(6, Duration.SECOND * 15)
+        self.min_limit = Rate(20, Duration.MINUTE)
+        self.hour_limit = Rate(100, Duration.HOUR)
+        self.daily_limit = Rate(1000, Duration.DAY)
         self.limiter = Limiter(
             InMemoryBucket(
                 [self.sec_limit, self.min_limit, self.hour_limit, self.daily_limit]
@@ -67,9 +65,6 @@ class AntiSpam:
         )
 
     def check_user(self, user):
-        """
-        Return True if user is to be ignored else False
-        """
         if user in self.whitelist:
             return False
         return not self.limiter.try_acquire(user, blocking=False)
@@ -79,12 +74,13 @@ MessageHandlerChecker = AntiSpam()
 
 
 # <================================================ FUNCTION =======================================================>
+@on_message(*disableable("filters", admin_ok=True), chained=True)
 @typing_action
-async def list_handlers(message: Message):
+async def list_handlers(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    conn = await connected(bot, message, chat, user.id, need_admin=False)
+    conn = await connected(client, message, chat, user.id, need_admin=False)
     if conn is not False:
         chat_id = conn
         chat_obj = await client.get_chat(conn)
@@ -104,16 +100,14 @@ async def list_handlers(message: Message):
     if not all_handlers:
         await send_message(
             message,
-            "No filters saved in {}!".format(chat_name),
+            f"No filters saving in {escape_markdown(chat_name)}!",
+            parse_mode=ParseMode.MARKDOWN,
         )
         return
 
-    # The trigger is whatever an admin typed between quotes, so it can contain
-    # braces. Substituting the header first keeps a "{...}" keyword from being
-    # read as a format field, which raised KeyError and broke /filters outright.
     for keyword in all_handlers:
-        entry = " • `{}`\n".format(escape_markdown(keyword))
-        if len(entry) + len(filter_list) > MessageLimit.MAX_TEXT_LENGTH:
+        entry = f" • `{escape_markdown(keyword)}`\n"
+        if len(entry) + len(filter_list) > 4096:
             await send_message(
                 message,
                 filter_list,
@@ -130,18 +124,17 @@ async def list_handlers(message: Message):
     )
 
 
+@on_message(filters.command("filter"), chained=True)
 @typing_action
 @check_admin(is_user=True)
-async def filters(message: Message):
+async def filter_cmd(client, message: Message):
     chat = message.chat
     user = message.from_user
     msg = message
-    args = msg.text.split(
-        None, 1
-    )  # use python's maxsplit to separate Cmd, keyword, and reply_text
+    args = msg.text.split(None, 1)
 
     buttons = None
-    conn = await connected(bot, message, chat, user.id)
+    conn = await connected(client, message, chat, user.id)
     if conn is not False:
         chat_id = conn
         chat_obj = await client.get_chat(conn)
@@ -173,18 +166,11 @@ async def filters(message: Message):
         extracted = split_quotes(args[1])
         if len(extracted) < 1:
             return
-        # set trigger -> lower, so as to avoid adding duplicate filters with different cases
         keyword = extracted[0].lower()
-
-    # Replacing an existing filter: aiogram has no per-handler removal, and the
-    # filter table is the source of truth, so a new trigger overwrites the old
-    # one at send time and nothing needs unregistering here.
 
     text, file_type, file_id, media_spoiler = get_filter_type(msg)
     if not msg.reply_to_message and len(extracted) >= 2:
-        offset = len(extracted[1]) - len(
-            msg.text,
-        )  # set correct offset relative to command + notename
+        offset = len(extracted[1]) - len(msg.text)
         text, buttons = button_markdown_parser(
             extracted[1],
             entities=entities_map(msg),
@@ -224,9 +210,7 @@ async def filters(message: Message):
             text_to_parsing = msg.reply_to_message.caption
         else:
             text_to_parsing = ""
-        offset = len(
-            text_to_parsing,
-        )  # set correct offset relative to command + notename
+        offset = len(text_to_parsing)
         text, buttons = button_markdown_parser(
             text_to_parsing,
             entities=entities_map(msg),
@@ -251,9 +235,7 @@ async def filters(message: Message):
             text_to_parsing = msg.reply_to_message.caption
         else:
             text_to_parsing = ""
-        offset = len(
-            text_to_parsing,
-        )  # set correct offset relative to command + notename
+        offset = len(text_to_parsing)
         text, buttons = button_markdown_parser(
             text_to_parsing,
             entities=entities_map(msg),
@@ -274,8 +256,6 @@ async def filters(message: Message):
     add = await addnew_filter(
         message, chat_id, keyword, text, file_type, file_id, buttons, media_spoiler
     )
-    # This is an old method
-    # sql.add_filter(chat_id, keyword, content, is_sticker, is_document, is_image, is_audio, is_voice, is_video, buttons)
 
     if add is True:
         await send_message(
@@ -283,17 +263,17 @@ async def filters(message: Message):
             "Saved filter '{}' in *{}*!".format(keyword, chat_name),
             parse_mode=ParseMode.MARKDOWN,
         )
-    raise SkipHandler()
 
 
+@on_message(filters.command("stop"), chained=True)
 @typing_action
 @check_admin(is_user=True)
-async def stop_filter(message: Message):
+async def stop_filter(client, message: Message):
     chat = message.chat
     user = message.from_user
     args = (message.text or message.caption or "").split(None, 1)
 
-    conn = await connected(bot, message, chat, user.id)
+    conn = await connected(client, message, chat, user.id)
     if conn is not False:
         chat_id = conn
         chat_obj = await client.get_chat(conn)
@@ -323,7 +303,7 @@ async def stop_filter(message: Message):
                 "Okay, I'll stop replying to that filter in *{}*.".format(chat_name),
                 parse_mode=ParseMode.MARKDOWN,
             )
-            raise SkipHandler()
+            return
 
     await send_message(
         message,
@@ -331,7 +311,8 @@ async def stop_filter(message: Message):
     )
 
 
-async def reply_filter(message: Message):
+@on_message(filters.text, chained=True)
+async def reply_filter(client, message: Message):
     chat = message.chat
 
     if not message.from_user or message.from_user.id == ChatID.SERVICE_CHAT:
@@ -347,9 +328,6 @@ async def reply_filter(message: Message):
             if MessageHandlerChecker.check_user(message.from_user.id):
                 return
             filt = sql.get_filter(chat.id, keyword)
-            # A filter saved in the newer format carries its text in
-            # reply_text. The old format put a placeholder in reply and left
-            # reply_text empty, and that placeholder was the only marker.
             if filt.reply_text is not None:
                 buttons = sql.get_buttons(chat.id, filt.keyword)
                 keyb = build_keyboard_parser(chat.id, buttons)
@@ -379,7 +357,7 @@ async def reply_filter(message: Message):
                             await client.send_sticker(
                                 chat.id,
                                 sticker_id,
-                                reply_to_message_id=message.message_id,
+                                reply_to_message_id=message.id,
                                 message_thread_id=(
                                     message.message_thread_id if chat.is_forum else None
                                 ),
@@ -438,7 +416,7 @@ async def reply_filter(message: Message):
                             ),
                             chatname=(
                                 escape(message.chat.title)
-                                if message.chat.type != "private"
+                                if message.chat.type != ChatType.PRIVATE
                                 else escape(message.from_user.first_name)
                             ),
                             id=message.from_user.id,
@@ -477,7 +455,7 @@ async def reply_filter(message: Message):
                                 chat.id,
                                 filt.file_id,
                                 reply_markup=keyboard,
-                                reply_to_message_id=message.message_id,
+                                reply_to_message_id=message.id,
                                 message_thread_id=(
                                     message.message_thread_id if chat.is_forum else None
                                 ),
@@ -488,7 +466,7 @@ async def reply_filter(message: Message):
                                 filt.file_id,
                                 reply_markup=keyboard,
                                 caption=filt.reply_text,
-                                reply_to_message_id=message.message_id,
+                                reply_to_message_id=message.id,
                                 message_thread_id=(
                                     message.message_thread_id if chat.is_forum else None
                                 ),
@@ -566,7 +544,6 @@ async def reply_filter(message: Message):
                             )
 
                 else:
-                    # LEGACY - all new filters will have has_markdown set to True.
                     try:
                         await client.send_message(
                             chat.id,
@@ -580,11 +557,12 @@ async def reply_filter(message: Message):
                 break
 
 
-async def rmall_filters(message: Message):
+@on_message(GROUPS & filters.command("removeallfilters"), chained=True)
+async def rmall_filters(client, message: Message):
     chat = message.chat
     user = message.from_user
     member = await client.get_chat_member(chat.id, user.id)
-    if member.status != ChatMemberStatus.CREATOR and user.id not in DRAGONS:
+    if member.status != ChatMemberStatus.OWNER and user.id not in DRAGONS:
         await message.reply_text(
             "Only the chat owner can clear all notes at once.",
         )
@@ -614,12 +592,13 @@ async def rmall_filters(message: Message):
         )
 
 
-async def rmall_callback(query: CallbackQuery):
+@on_callback(filters.regex(r"^filters_.*"), chained=True)
+async def rmall_callback(client, query: CallbackQuery):
     chat = query.message.chat
     msg = query.message
     member = await client.get_chat_member(chat.id, query.from_user.id)
     if query.data == "filters_rmall":
-        if member.status == ChatMemberStatus.CREATOR or query.from_user.id in DRAGONS:
+        if member.status == ChatMemberStatus.OWNER or query.from_user.id in DRAGONS:
             allfilters = sql.get_chat_triggers(chat.id)
             if not allfilters:
                 await msg.edit_text("No filters in this chat, nothing to stop!")
@@ -644,16 +623,16 @@ async def rmall_callback(query: CallbackQuery):
         if member.status == ChatMemberStatus.MEMBER:
             await query.answer("You need to be admin to do this.")
     elif query.data == "filters_cancel":
-        if member.status == ChatMemberStatus.CREATOR or query.from_user.id in DRAGONS:
+        if member.status == ChatMemberStatus.OWNER or query.from_user.id in DRAGONS:
             await msg.edit_text("Clearing of all filters has been cancelled.")
-            return await query.answer()
+            await query.answer()
+            return
         if member.status == ChatMemberStatus.ADMINISTRATOR:
             await query.answer("Only owner of the chat can do this.")
         if member.status == ChatMemberStatus.MEMBER:
             await query.answer("You need to be admin to do this.")
 
 
-# NOT ASYNC NOT A HANDLER
 def get_exception(excp, filt, chat):
     if "unsupported url protocol" in str(excp.message or excp).lower():
         return "You seem to be trying to use the URL protocol which is not supported. Telegram does not support key for multiple protocols, such as tg: //. Please try again!"
@@ -669,13 +648,12 @@ def get_exception(excp, filt, chat):
         return "This data could not be sent because it is incorrectly formatted."
 
 
-# NOT ASYNC NOT A HANDLER
 async def addnew_filter(
     message, chat_id, keyword, text, file_type, file_id, buttons, has_spoiler
 ):
     msg = message
     totalfilt = sql.get_chat_triggers(chat_id)
-    if len(totalfilt) >= 150:  # Idk why i made this like function....
+    if len(totalfilt) >= 150:
         await msg.reply_text("This group has reached its max filters limit of 150.")
         return False
     else:
@@ -690,9 +668,8 @@ def __stats__():
 
 
 async def __import_data__(chat_id, data, message):
-    # set chat filters
-    filters = data.get("filters", {})
-    for trigger in filters:
+    filters_data = data.get("filters", {})
+    for trigger in filters_data:
         sql.add_to_blacklist(chat_id, trigger)
 
 
@@ -738,14 +715,3 @@ doin?
 """
 
 __mod_name__ = "FILTERS"
-
-# <================================================ HANDLER =======================================================>
-# reply_filter watched every text message, so it registers ahead of the
-# commands exactly as PTB's group 10 ordering did.
-dp.message.register(chain(reply_filter), F.text)
-dp.message.register(chain(filters), Command("filter"))
-dp.message.register(chain(stop_filter), Command("stop"))
-dp.message.register(chain(list_handlers), *disableable("filters", admin_ok=True))
-dp.message.register(chain(rmall_filters), GROUPS, Command("removeallfilters"))
-dp.callback_query.register(chain(rmall_callback), F.data.regexp(r"^filters_.*"))
-# <================================================ END =======================================================>

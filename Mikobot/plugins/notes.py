@@ -4,10 +4,9 @@ import random
 import re
 from io import BytesIO
 
-from aiogram import F
-from pyrogram.enums import ButtonStyle, ChatMemberStatus, ParseMode
+from pyrogram import filters
+from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -17,7 +16,9 @@ from pyrogram.types import (
 )
 
 import Database.sql.notes_sql as sql
-from Mikobot import DRAGONS, LOGGER, SUPPORT_CHAT, bot, dp
+from Mikobot import DRAGONS, LOGGER, SUPPORT_CHAT
+from Mikobot import app as client
+from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.chat_status import check_admin, connection_status
 from Mikobot.plugins.helper_funcs.misc import build_keyboard, revert_buttons
@@ -27,7 +28,6 @@ from Mikobot.plugins.helper_funcs.string_handling import (
     markdown_to_html,
 )
 from Mikobot.utils.consts import MessageLimit
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import escape_markdown, mention_markdown
 
 from .cust_filters import MessageHandlerChecker
@@ -47,6 +47,7 @@ MYVIDEONOTE_MATCHER = re.compile(r"^###video_note(!photo)?###:")
 
 # <================================================ FUNCTION =======================================================>
 async def get(
+    client,
     message: Message,
     notename,
     show_none=True,
@@ -66,9 +67,9 @@ async def get(
             message.reply_to_message
             and not message.reply_to_message.forum_topic_created
         ):
-            reply_id = message.reply_to_message.message_id
+            reply_id = message.reply_to_message.id
         else:
-            reply_id = message.message_id
+            reply_id = message.id
         VALID_NOTE_FORMATTERS = [
             "first",
             "last",
@@ -119,7 +120,9 @@ async def get(
                 mention_markdown(from_user.id, first_name) if from_user else first_name
             )
             chatname = (
-                message.chat.title if message.chat.type != "private" else first_name
+                message.chat.title
+                if message.chat.type != ChatType.PRIVATE
+                else first_name
             )
             user_id = (
                 from_user.id
@@ -206,11 +209,14 @@ async def get(
         await message.reply_text("This note doesn't exist")
 
 
+@on_message(filters.command("get"), chained=True)
 @connection_status
-async def cmd_get(message: Message, command: CommandObject, connected_chat=None):
-    args = command.args.split() if command.args else []
+async def cmd_get(client, message: Message):
+    connected_chat = getattr(message, "connected_chat", None)
+    args = message.command[1:] if len(message.command) > 1 else []
     if len(args) >= 2 and args[1].lower() == "noformat":
         await get(
+            client,
             message,
             args[0].lower(),
             show_none=True,
@@ -219,21 +225,29 @@ async def cmd_get(message: Message, command: CommandObject, connected_chat=None)
         )
     elif len(args) >= 1:
         await get(
-            message, args[0].lower(), show_none=True, connected_chat=connected_chat
+            client,
+            message,
+            args[0].lower(),
+            show_none=True,
+            connected_chat=connected_chat,
         )
     else:
         await message.reply_text("Get rekt")
 
 
+@on_message(filters.regex(r"^#[^\s]+"), chained=True)
 @connection_status
-async def hash_get(msg: Message, connected_chat=None):
+async def hash_get(client, msg: Message):
+    connected_chat = getattr(msg, "connected_chat", None)
     fst_word = (msg.text or "").split()[0]
     no_hash = fst_word[1:].lower()
-    await get(msg, no_hash, show_none=False, connected_chat=connected_chat)
+    await get(client, msg, no_hash, show_none=False, connected_chat=connected_chat)
 
 
+@on_message(filters.regex(r"^/\d+$"), chained=True)
 @connection_status
-async def slash_get(msg: Message, connected_chat=None):
+async def slash_get(client, msg: Message):
+    connected_chat = getattr(msg, "connected_chat", None)
     text, chat_id = msg.text or "", msg.chat.id
     no_slash = text[1:]
     note_list = sql.get_all_chat_notes(chat_id)
@@ -241,16 +255,20 @@ async def slash_get(msg: Message, connected_chat=None):
     try:
         noteid = note_list[int(no_slash) - 1]
         note_name = str(noteid).strip(">").split()[1]
-        await get(msg, note_name, show_none=False, connected_chat=connected_chat)
+        await get(
+            client, msg, note_name, show_none=False, connected_chat=connected_chat
+        )
     except IndexError:
         await msg.reply_text("Wrong Note ID 😾")
 
 
+@on_message(filters.command("save"), chained=True)
 @connection_status
 @check_admin(is_user=True)
-async def save(msg: Message, command: CommandObject):
+async def save(client, msg: Message):
     chat_id = msg.chat.id
-    if len(command.args.split() if command.args else []) < 1:
+    args = msg.command[1:] if len(msg.command) > 1 else []
+    if len(args) < 1:
         await msg.reply_text("You should give the note a name.")
         return
 
@@ -297,10 +315,11 @@ async def save(msg: Message, command: CommandObject):
         return
 
 
+@on_message(filters.command("clear"), chained=True)
 @connection_status
 @check_admin(is_user=True)
-async def clear(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+async def clear(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat_id = message.chat.id
     if len(args) >= 1:
         notename = args[0].lower()
@@ -311,11 +330,12 @@ async def clear(message: Message, command: CommandObject):
             await message.reply_text("That's not a note in my database!")
 
 
-async def clearall(message: Message):
+@on_message(*disableable("removeallnotes"), chained=True)
+async def clearall(client, message: Message):
     chat = message.chat
     user = message.from_user
     member = await client.get_chat_member(chat.id, user.id)
-    if member.status != ChatMemberStatus.CREATOR and user.id not in DRAGONS:
+    if member.status != ChatMemberStatus.OWNER and user.id not in DRAGONS:
         await message.reply_text(
             "Only the chat owner can clear all notes at once.",
         )
@@ -345,12 +365,13 @@ async def clearall(message: Message):
         )
 
 
-async def clearall_btn(query: CallbackQuery):
+@on_callback(filters.regex(r"^notes_.*"), chained=True)
+async def clearall_btn(client, query: CallbackQuery):
     chat = query.message.chat
     message = query.message
     member = await client.get_chat_member(chat.id, query.from_user.id)
     if query.data == "notes_rmall":
-        if member.status == ChatMemberStatus.CREATOR or query.from_user.id in DRAGONS:
+        if member.status == ChatMemberStatus.OWNER or query.from_user.id in DRAGONS:
             note_list = sql.get_all_chat_notes(chat.id)
             try:
                 for notename in note_list:
@@ -367,7 +388,7 @@ async def clearall_btn(query: CallbackQuery):
         if member.status == ChatMemberStatus.MEMBER:
             await query.answer("You need to be admin to do this.")
     elif query.data == "notes_cancel":
-        if member.status == ChatMemberStatus.CREATOR or query.from_user.id in DRAGONS:
+        if member.status == ChatMemberStatus.OWNER or query.from_user.id in DRAGONS:
             await message.edit_text("Clearing of all notes has been cancelled.")
             await query.answer()
             return
@@ -377,8 +398,9 @@ async def clearall_btn(query: CallbackQuery):
             await query.answer("You need to be admin to do this.")
 
 
+@on_message(*disableable(["notes", "saved"], admin_ok=True), chained=True)
 @connection_status
-async def list_notes(message: Message):
+async def list_notes(client, message: Message):
     chat_id = message.chat.id
     note_list = sql.get_all_chat_notes(chat_id)
     notes = len(note_list) + 1
@@ -531,7 +553,7 @@ async def __import_data__(chat_id, data, message: Message):
             await client.send_document(
                 chat_id,
                 document=output,
-                filename="failed_imports.txt",
+                file_name="failed_imports.txt",
                 caption="These files/photos failed to import due to originating "
                 "from another client. This is a telegram API restriction, and can't "
                 "be avoided. Sorry for the inconvenience!",
@@ -598,19 +620,4 @@ be useful when updating a current note
 """
 
 __mod_name__ = "NOTES"
-
-# <================================================ HANDLER =======================================================>
-# #notename and /<number> are registered before /get so a note reply wins
-# over the command path, as PTB's registration order did.
-dp.message.register(chain(cmd_get), Command("get"))
-# connected_chat is injected by the connection_status gate in chat_status.py;
-# aiogram fills a declared parameter only when the gate supplied it, so the
-# None default is the unconnected case.
-dp.message.register(chain(hash_get), F.text.regexp(r"^#[^\s]+"))
-dp.message.register(chain(slash_get), F.text.regexp(r"^/\d+$"))
-dp.message.register(chain(save), Command("save"))
-dp.message.register(chain(clear), Command("clear"))
-dp.message.register(chain(list_notes), *disableable(["notes", "saved"], admin_ok=True))
-dp.message.register(chain(clearall), *disableable("removeallnotes"))
-dp.callback_query.register(chain(clearall_btn), F.data.regexp(r"^notes_.*"))
 # <================================================ END =======================================================>
