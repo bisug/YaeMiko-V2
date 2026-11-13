@@ -1,12 +1,13 @@
 import html
+from datetime import datetime, timezone
 
-from aiogram import Bot
+from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus, ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import Chat, ChatPermissions, Message
 
-from Mikobot import LOGGER, bot, dp
+from Mikobot import LOGGER
+from Mikobot.events import on_message
 from Mikobot.plugins.helper_funcs.chat_status import (
     check_admin,
     connection_status,
@@ -15,20 +16,22 @@ from Mikobot.plugins.helper_funcs.chat_status import (
 from Mikobot.plugins.helper_funcs.extraction import extract_user, extract_user_and_text
 from Mikobot.plugins.helper_funcs.string_handling import extract_time
 from Mikobot.plugins.log_channel import loggable
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 RESTRICTED_OR_MEMBER = (ChatMemberStatus.RESTRICTED, ChatMemberStatus.MEMBER)
 LEFT_OR_BANNED = ("left", "kicked")
 
 
-async def check_user(user_id: int, bot: Bot, chat: Chat) -> str | None:
+async def check_user(user_id: int, client, chat: Chat) -> str | None:
     if not user_id:
-        reply = "You don't seem to be referring to a user or the ID specified is incorrect.."
+        reply = (
+            "You don't seem to be referring to a user or the ID specified is"
+            " incorrect.."
+        )
         return reply
 
     try:
-        member = await client.get_chat_member(chat.id, user_id)
+        await client.get_chat_member(chat.id, user_id)
     except RPCError:
         return "I can't seem to find this user"
 
@@ -36,20 +39,21 @@ async def check_user(user_id: int, bot: Bot, chat: Chat) -> str | None:
         reply = "I'm not gonna MUTE myself, How high are you?"
         return reply
 
-    if await is_user_admin(chat, user_id, member):
+    if await is_user_admin(chat, user_id):
         reply = "Sorry can't do that, this user is admin here."
         return reply
 
     return None
 
 
-async def _delete_replied(message: Message, command: CommandObject) -> None:
+async def _delete_replied(message: Message) -> None:
     """Remove the offending message for the /d-prefixed variants.
 
     These are reply-only shortcuts, so without a reply there is nothing to
     delete and the caller should stop before acting on the wrong message.
     """
-    if not command.command or not command.command.startswith("d"):
+    cmd = message.command[0].lower() if message.command else ""
+    if not cmd.startswith("d"):
         return
     if not message.reply_to_message:
         await message.reply_text("Reply to the message you want deleted with that.")
@@ -64,22 +68,22 @@ class _StopCommand(Exception):
     """Raised to abandon a command once its precondition fails."""
 
 
+@on_message(filters.command(["mute", "dmute"]), chained=True)
 @connection_status
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
-async def mute(message: Message, command: CommandObject) -> str:
+async def mute(client, message: Message) -> str:
     chat = message.chat
     user = message.from_user
 
     try:
-        await _delete_replied(message, command)
+        await _delete_replied(message)
     except _StopCommand:
         return ""
 
-    user_id, reason = await extract_user_and_text(
-        message, command.args.split() if command.args else []
-    )
-    reply = await check_user(user_id, bot, chat)
+    args = message.command[1:] if len(message.command) > 1 else []
+    user_id, reason = await extract_user_and_text(message, args)
+    reply = await check_user(user_id, client, chat)
 
     if reply:
         await message.reply_text(reply)
@@ -102,7 +106,8 @@ async def mute(message: Message, command: CommandObject) -> str:
         await client.restrict_chat_member(chat.id, user_id, chat_permissions)
         await client.send_message(
             chat.id,
-            f"Muted <b>{html.escape(member.user.first_name)}</b> with no expiration date!",
+            f"Muted <b>{html.escape(member.user.first_name)}</b> with no expiration"
+            " date!",
             parse_mode=ParseMode.HTML,
             message_thread_id=message.message_thread_id if chat.is_forum else None,
         )
@@ -114,17 +119,20 @@ async def mute(message: Message, command: CommandObject) -> str:
     return ""
 
 
+@on_message(filters.command("unmute"), chained=True)
 @connection_status
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
-async def unmute(message: Message, command: CommandObject) -> str:
+async def unmute(client, message: Message) -> str:
     chat = message.chat
     user = message.from_user
 
-    user_id = await extract_user(message, command.args.split() if command.args else [])
+    args = message.command[1:] if len(message.command) > 1 else []
+    user_id = await extract_user(message, args)
     if not user_id:
         await message.reply_text(
-            "You'll need to either give me a username to unmute, or reply to someone to be unmuted.",
+            "You'll need to either give me a username to unmute, or reply to someone"
+            " to be unmuted.",
         )
         return ""
 
@@ -149,7 +157,9 @@ async def unmute(message: Message, command: CommandObject) -> str:
                 can_add_web_page_previews=True,
             )
             try:
-                await client.restrict_chat_member(chat.id, int(user_id), chat_permissions)
+                await client.restrict_chat_member(
+                    chat.id, int(user_id), chat_permissions
+                )
             except RPCError:
                 pass
             await client.send_message(
@@ -166,29 +176,29 @@ async def unmute(message: Message, command: CommandObject) -> str:
             )
     else:
         await message.reply_text(
-            "This user isn't even in the chat, unmuting them won't make them talk more than they "
-            "already do!",
+            "This user isn't even in the chat, unmuting them won't make them talk"
+            " more than they already do!",
         )
 
     return ""
 
 
+@on_message(filters.command(["tmute", "tempmute", "dtmute"]), chained=True)
 @connection_status
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
-async def temp_mute(message: Message, command: CommandObject) -> str:
+async def temp_mute(client, message: Message) -> str:
     chat = message.chat
     user = message.from_user
 
     try:
-        await _delete_replied(message, command)
+        await _delete_replied(message)
     except _StopCommand:
         return ""
 
-    user_id, reason = await extract_user_and_text(
-        message, command.args.split() if command.args else []
-    )
-    reply = await check_user(user_id, bot, chat)
+    args = message.command[1:] if len(message.command) > 1 else []
+    user_id, reason = await extract_user_and_text(message, args)
+    reply = await check_user(user_id, client, chat)
 
     if reply:
         await message.reply_text(reply)
@@ -226,11 +236,12 @@ async def temp_mute(message: Message, command: CommandObject) -> str:
     try:
         if member.status in RESTRICTED_OR_MEMBER:
             chat_permissions = ChatPermissions(can_send_messages=False)
+            until_dt = datetime.fromtimestamp(mutetime, timezone.utc)
             await client.restrict_chat_member(
                 chat.id,
                 user_id,
                 chat_permissions,
-                until_date=mutetime,
+                until_date=until_dt,
             )
             await client.send_message(
                 chat.id,
@@ -271,9 +282,5 @@ __help__ = """
 
 » /unmute <userhandle>: unmutes a user. Can also be used as a reply, muting the replied to user.
 """
-
-dp.message.register(chain(mute), Command(commands=["mute", "dmute"]))
-dp.message.register(chain(unmute), Command("unmute"))
-dp.message.register(chain(temp_mute), Command(commands=["tmute", "tempmute", "dtmute"]))
 
 __mod_name__ = "MUTE"

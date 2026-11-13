@@ -1,26 +1,28 @@
 import os
 from asyncio import sleep
 
+from pyrogram import filters
 from pyrogram.enums import ChatMembersFilter, ChatMemberStatus, ChatType
 from pyrogram.errors import UserNotParticipant
-from pyrogram.types import ChatPermissions
+from pyrogram.types import ChatPermissions, Message
 
-from Mikobot import LOGGER, app
-from Mikobot.events import register
+from Mikobot import LOGGER
+from Mikobot import app as client
+from Mikobot.events import on_message
 from Mikobot.utils.can_restrict import has_restrict_rights
 from Mikobot.utils.errors import FLOOD_WAIT_ERRORS, flood_wait_seconds
 
 
 async def is_admin(chat_id, user_id):
     try:
-        member = await app.get_chat_member(chat_id, user_id)
+        member = await client.get_chat_member(chat_id, user_id)
     except UserNotParticipant:
         return False
     return member.status in {ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR}
 
 
-@register(pattern=r"^/(?:unbanall|unmuteall)(?:@\S+)?$")
-async def bulk_moderation(message):
+@on_message(filters.command(["unbanall", "unmuteall"]), chained=True)
+async def bulk_moderation(client, message: Message):
     if message.chat.type not in {ChatType.GROUP, ChatType.SUPERGROUP}:
         return await message.reply_text(
             "This command can be used in groups and supergroups only."
@@ -30,22 +32,24 @@ async def bulk_moderation(message):
         message.chat.id, message.from_user.id
     ):
         return await message.reply_text("Only admins can use this command.")
-    bot_member = await app.get_chat_member(message.chat.id, (await app.get_me()).id)
+    bot_member = await client.get_chat_member(
+        message.chat.id, (await client.get_me()).id
+    )
     if not has_restrict_rights(bot_member):
         return await message.reply_text("I need permission to restrict members.")
     member_filter = (
         ChatMembersFilter.BANNED
-        if command == "/unbanall"
+        if command in {"/unbanall", "unbanall"}
         else ChatMembersFilter.RESTRICTED
     )
     status = await message.reply_text("Searching participant list...")
     count = 0
-    async for member in app.get_chat_members(message.chat.id, filter=member_filter):
+    async for member in client.get_chat_members(message.chat.id, filter=member_filter):
         try:
-            if command == "/unbanall":
-                await app.unban_chat_member(message.chat.id, member.user.id)
+            if command in {"/unbanall", "unbanall"}:
+                await client.unban_chat_member(message.chat.id, member.user.id)
             else:
-                await app.restrict_chat_member(
+                await client.restrict_chat_member(
                     message.chat.id,
                     member.user.id,
                     ChatPermissions(can_send_messages=True),
@@ -58,17 +62,17 @@ async def bulk_moderation(message):
     await status.edit(f"Successfully updated {count} users.")
 
 
-@register(pattern=r"^/users(?:@\S+)?$")
-async def get_users(message):
+@on_message(filters.command("users"), chained=True)
+async def get_users(client, message: Message):
     if message.chat.type not in {ChatType.GROUP, ChatType.SUPERGROUP}:
         return
     if not message.from_user or not await is_admin(
         message.chat.id, message.from_user.id
     ):
         return
-    chat = await app.get_chat(message.chat.id)
+    chat = await client.get_chat(message.chat.id)
     lines = [f"Users in {chat.title or 'this chat'}:"]
-    async for member in app.get_chat_members(message.chat.id):
+    async for member in client.get_chat_members(message.chat.id):
         user = member.user
         if user.is_deleted:
             lines.append(f"Deleted Account {user.id}")

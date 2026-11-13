@@ -2,11 +2,9 @@ import asyncio
 import html
 import re
 
-from aiogram import F
-from aiogram.dispatcher.event.bases import SkipHandler
+from pyrogram import filters
 from pyrogram.enums import ButtonStyle, ChatMemberStatus, ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import Command, CommandObject
 from pyrogram.types import (
     CallbackQuery,
     Chat,
@@ -18,7 +16,9 @@ from pyrogram.types import (
 
 from Database.sql import warns_sql as sql
 from Database.sql.approve_sql import is_approved
-from Mikobot import BAN_STICKER, bot, dp
+from Mikobot import BAN_STICKER
+from Mikobot import app as client
+from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.chat_status import check_admin, is_user_admin
 from Mikobot.plugins.helper_funcs.extraction import (
@@ -31,7 +31,6 @@ from Mikobot.plugins.helper_funcs.string_handling import split_quotes
 from Mikobot.plugins.log_channel import loggable
 from Mikobot.utils.consts import MessageLimit
 from Mikobot.utils.filters import GROUPS
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 CURRENT_WARNING_FILTER_STRING = "<b>Current warning filters in this chat:</b>\n"
@@ -59,8 +58,6 @@ async def warn(
     if num_warns >= limit:
         sql.reset_warns(user.id, chat.id)
         if soft_warn:  # punch
-            # PTB's chat.unban_member returned a truthy result and was not
-            # awaited; aiogram raises, so this has to be awaited to actually kick.
             await client.unban_chat_member(chat.id, user.id)
             reply = (
                 f"<code>❕</code><b>Kick Event</b>\n"
@@ -121,7 +118,9 @@ async def warn(
         )
 
     try:
-        await message.reply_text(reply, reply_markup=keyboard, parse_mode=ParseMode.HTML)
+        await message.reply_text(
+            reply, reply_markup=keyboard, parse_mode=ParseMode.HTML
+        )
     except RPCError as excp:
         if "reply message not found" in str(excp.message or excp).lower():
             # Do not reply
@@ -135,8 +134,9 @@ async def warn(
     return log_reason
 
 
+@on_callback(filters.regex(r"^rm_warn\(-?\d+\)$"), chained=True)
 @loggable
-async def button(query: CallbackQuery) -> str:
+async def button(client, query: CallbackQuery) -> str:
     user: User | None = query.from_user
     match = re.fullmatch(r"rm_warn\((-?\d+)\)", query.data)
     if not match:
@@ -149,7 +149,7 @@ async def button(query: CallbackQuery) -> str:
         return
     chat: Chat | None = query.message.chat
     chat_member = await client.get_chat_member(chat.id, user.id)
-    if chat_member.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR):
+    if chat_member.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER):
         pass
     else:
         await query.answer("You need to be admin to do this!")
@@ -178,10 +178,11 @@ async def button(query: CallbackQuery) -> str:
     return ""
 
 
+@on_message(GROUPS, filters.command(["warn", "dwarn"]), chained=True)
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
-async def warn_user(message: Message, command: CommandObject) -> str:
-    args = command.args.split() if command.args else []
+async def warn_user(client, message: Message) -> str:
+    args = message.command[1:] if len(message.command) > 1 else []
     chat: Chat | None = message.chat
     warner: User | None = message.from_user
 
@@ -213,10 +214,11 @@ async def warn_user(message: Message, command: CommandObject) -> str:
     return ""
 
 
+@on_message(GROUPS, filters.command(["resetwarn", "resetwarns"]), chained=True)
 @loggable
 @check_admin(is_both=True)
-async def reset_warns(message: Message, command: CommandObject) -> str:
-    args = command.args.split() if command.args else []
+async def reset_warns(client, message: Message) -> str:
+    args = message.command[1:] if len(message.command) > 1 else []
     chat: Chat | None = message.chat
     user: User | None = message.from_user
 
@@ -244,8 +246,9 @@ async def reset_warns(message: Message, command: CommandObject) -> str:
     return ""
 
 
-async def warns(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+@on_message(GROUPS, *disableable("warns"), chained=True)
+async def warns(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat: Chat | None = message.chat
     user_id = await extract_user(message, args) or (
         message.from_user.id if message.from_user else None
@@ -276,16 +279,16 @@ async def warns(message: Message, command: CommandObject):
         await message.reply_text("This user doesn't have any warns!")
 
 
-# Dispatcher handler stop - do not async
+@on_message(GROUPS, filters.command("addwarn"), chained=True)
 @check_admin(is_user=True)
-async def add_warn_filter(message: Message, command: CommandObject):
+async def add_warn_filter(client, message: Message):
     chat: Chat | None = message.chat
     msg: Message | None = message
 
     args = msg.text.split(
         None,
         1,
-    )  # use python's maxsplit to separate Cmd, keyword, and reply_text
+    )
 
     if len(args) < 2:
         return
@@ -293,30 +296,25 @@ async def add_warn_filter(message: Message, command: CommandObject):
     extracted = split_quotes(args[1])
 
     if len(extracted) >= 2:
-        # set trigger -> lower, so as to avoid adding duplicate filters with different cases
         keyword = extracted[0].lower()
         content = extracted[1]
-
     else:
         return
 
-    # aiogram has no per-handler removal, and the filter table is the source of
-    # truth, so re-adding a keyword overwrites the previous reply at send time.
     sql.add_warn_filter(chat.id, keyword, content)
-
     await message.reply_text(f"Warn handler added for '{keyword}'!")
-    raise SkipHandler()
 
 
+@on_message(GROUPS, filters.command(["nowarn", "stopwarn"]), chained=True)
 @check_admin(is_user=True)
-async def remove_warn_filter(message: Message, command: CommandObject):
+async def remove_warn_filter(client, message: Message):
     chat: Chat | None = message.chat
     msg: Message | None = message
 
     args = msg.text.split(
         None,
         1,
-    )  # use python's maxsplit to separate Cmd, keyword, and reply_text
+    )
 
     if len(args) < 2:
         return
@@ -338,14 +336,19 @@ async def remove_warn_filter(message: Message, command: CommandObject):
         if filt == to_remove:
             sql.remove_warn_filter(chat.id, to_remove)
             await msg.reply_text("Okay, I'll stop warning people for that.")
-            raise SkipHandler()
+            return
 
     await msg.reply_text(
         "That's not a current warning filter - run /warnlist for all active warning filters.",
     )
 
 
-async def list_warn_filters(message: Message, command: CommandObject):
+@on_message(
+    GROUPS,
+    *disableable(["warnlist", "warnfilters"], admin_ok=True),
+    chained=True,
+)
+async def list_warn_filters(client, message: Message):
     chat: Chat | None = message.chat
     all_handlers = sql.get_chat_warn_triggers(chat.id)
 
@@ -366,10 +369,10 @@ async def list_warn_filters(message: Message, command: CommandObject):
         await message.reply_text(filter_list, parse_mode=ParseMode.HTML)
 
 
+@on_message(GROUPS, filters.text, chained=True)
 @loggable
-async def reply_filter(message: Message) -> str:
+async def reply_filter(client, message: Message) -> str:
     chat: Chat | None = message.chat
-    message: Message | None = message
     user: User | None = message.from_user
 
     if not user:  # Ignore channel
@@ -403,10 +406,11 @@ async def reply_filter(message: Message) -> str:
     return await warn(user, chat, warn_filter.reply, message)
 
 
+@on_message(GROUPS, filters.command("warnlimit"), chained=True)
 @check_admin(is_user=True)
 @loggable
-async def set_warn_limit(message: Message, command: CommandObject) -> str:
-    args = command.args.split() if command.args else []
+async def set_warn_limit(client, message: Message) -> str:
+    args = message.command[1:] if len(message.command) > 1 else []
     chat: Chat | None = message.chat
     user: User | None = message.from_user
     msg: Message | None = message
@@ -433,9 +437,10 @@ async def set_warn_limit(message: Message, command: CommandObject) -> str:
     return ""
 
 
+@on_message(GROUPS, filters.command("strongwarn"), chained=True)
 @check_admin(is_user=True)
-async def set_warn_strength(message: Message, command: CommandObject):
-    args = command.args.split() if command.args else []
+async def set_warn_strength(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
     chat: Chat | None = message.chat
     user: User | None = message.from_user
     msg: Message | None = message
@@ -526,24 +531,3 @@ be a sentence, encompass it with quotes, as such: `/addwarn "very angry" This is
 
 » /strongwarn <on/yes/off/no>: If set to on, exceeding the warn limit will result in a ban. Else, will just kick.
 """
-
-# The filter matcher sees every group text message, so it registers first,
-# matching PTB's group 9 ordering.
-dp.message.register(chain(reply_filter), GROUPS, F.text)
-dp.message.register(chain(warn_user), GROUPS, Command(commands=["warn", "dwarn"]))
-dp.message.register(
-    chain(reset_warns), GROUPS, Command(commands=["resetwarn", "resetwarns"])
-)
-dp.message.register(chain(warns), GROUPS, *disableable("warns"))
-dp.message.register(chain(add_warn_filter), GROUPS, Command("addwarn"))
-dp.message.register(
-    chain(remove_warn_filter), GROUPS, Command(commands=["nowarn", "stopwarn"])
-)
-dp.message.register(
-    chain(list_warn_filters),
-    GROUPS,
-    *disableable(["warnlist", "warnfilters"], admin_ok=True),
-)
-dp.message.register(chain(set_warn_limit), GROUPS, Command("warnlimit"))
-dp.message.register(chain(set_warn_strength), GROUPS, Command("strongwarn"))
-dp.callback_query.register(chain(button), F.data.regexp(r"^rm_warn\(-?\d+\)$"))

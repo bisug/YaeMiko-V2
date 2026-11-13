@@ -1,10 +1,10 @@
 import html
+from datetime import datetime, timezone
 from uuid import uuid4
 
-from aiogram import F
+from pyrogram import filters
 from pyrogram.enums import ButtonStyle, ChatMemberStatus, ParseMode
 from pyrogram.errors import RPCError
-from aiogram.filters import CommandObject
 from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -18,16 +18,16 @@ from Mikobot import (
     DRAGONS,
     LOGGER,
     OWNER_ID,
-    bot,
     chat_data,
-    dp,
     store,
 )
+from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.chat_status import (
     can_delete,
     check_admin,
     connection_status,
+    granted,
     is_user_admin,
     is_user_ban_protected,
     is_user_in_chat,
@@ -38,27 +38,27 @@ from Mikobot.plugins.helper_funcs.string_handling import extract_time
 from Mikobot.plugins.log_channel import gloggable, loggable
 from Mikobot.utils.consts import ChatID
 from Mikobot.utils.filters import GROUPS
-from Mikobot.utils.gate import chain
 from Mikobot.utils.parser import mention_html
 
 __mod_name__ = "BAN"
 
 
+@on_message(*disableable(["ban", "sban", "dban"]))
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
-async def ban(message: Message, command: CommandObject) -> str:
+async def ban(client, message: Message) -> str:
     chat = message.chat
     user = message.from_user
     log_message = ""
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
     user_id, reason = await extract_user_and_text(message, args)
     if user_id is None:
         return await message.reply_text("That looks like an invalid User ID to me.")
 
     member = await client.get_chat_member(chat.id, user.id)
-    SILENT = bool(bool(message.text.startswith("/s")))
+    SILENT = bool(message.text.startswith("/s"))
     # /dban is the delete-then-act shortcut: the offending message goes too.
-    DELETE_MESSAGE = bool(bool(message.text.startswith("/d")))
+    DELETE_MESSAGE = bool(message.text.startswith("/d"))
     if DELETE_MESSAGE and not message.reply_to_message:
         await message.reply_text("Reply to the message you want deleted with that.")
         return ""
@@ -98,9 +98,9 @@ async def ban(message: Message, command: CommandObject) -> str:
         not (
             (
                 member.status == ChatMemberStatus.ADMINISTRATOR
-                and member.can_restrict_members
+                and granted(member, "can_restrict_members")
             )
-            or member.status == ChatMemberStatus.CREATOR
+            or member.status == ChatMemberStatus.OWNER
         )
         and user.id not in DRAGONS
     ):
@@ -171,7 +171,7 @@ async def ban(message: Message, command: CommandObject) -> str:
 
     try:
         if CHAT_SENDER:
-            await client.ban_chat_sender_chat(chat.id, chat_sender.id)
+            await client.ban_chat_member(chat.id, chat_sender.id)
         else:
             await client.ban_chat_member(chat.id, user_id)
 
@@ -223,14 +223,15 @@ async def ban(message: Message, command: CommandObject) -> str:
     return log_message
 
 
+@on_message(*disableable(["tban"]))
 @connection_status
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
-async def temp_ban(message: Message, command: CommandObject) -> str:
+async def temp_ban(client, message: Message) -> str:
     chat = message.chat
     user = message.from_user
     log_message = ""
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
     user_id, reason = await extract_user_and_text(message, args)
     if user_id is None:
         return await message.reply_text("That looks like an invalid User ID to me.")
@@ -278,7 +279,8 @@ async def temp_ban(message: Message, command: CommandObject) -> str:
         log += "\n<b>Reason:</b> {}".format(reason)
 
     try:
-        await chat.ban_member(user_id, until_date=bantime)
+        until_dt = datetime.fromtimestamp(bantime, timezone.utc)
+        await client.ban_chat_member(chat.id, user_id, until_date=until_dt)
         await client.send_sticker(
             chat.id,
             BAN_STICKER,
@@ -313,15 +315,16 @@ async def temp_ban(message: Message, command: CommandObject) -> str:
     return log_message
 
 
+@on_message(*disableable(["kick", "dkick"]))
 @connection_status
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
-async def kick(message: Message, command: CommandObject) -> str:
+async def kick(client, message: Message) -> str:
     chat = message.chat
     user = message.from_user
     log_message = ""
-    args = command.args.split() if command.args else []
-    DELETE_MESSAGE = bool(bool(message.text.startswith("/d")))
+    args = message.command[1:] if len(message.command) > 1 else []
+    DELETE_MESSAGE = bool(message.text.startswith("/d"))
     if DELETE_MESSAGE and not message.reply_to_message:
         await message.reply_text("Reply to the message you want deleted with that.")
         return ""
@@ -349,10 +352,7 @@ async def kick(message: Message, command: CommandObject) -> str:
         await message.reply_text("I really wish I could kick this user....")
         return log_message
 
-    # Unban on the current user = kick. This must be awaited: aiogram returns
-    # a coroutine, so the un-awaited call left `res` permanently truthy and
-    # the failure branch below was unreachable, reporting every kick as a
-    # success even when Telegram refused it.
+    # Unban on the current user = kick.
     try:
         await client.unban_chat_member(chat.id, user_id)
         res = True
@@ -394,8 +394,9 @@ async def kick(message: Message, command: CommandObject) -> str:
     return log_message
 
 
+@on_message(GROUPS, *disableable("kickme"))
 @check_admin(permission="can_restrict_members", is_bot=True)
-async def kickme(message: Message):
+async def kickme(client, message: Message):
     user_id = message.from_user.id
     if await is_user_admin(message.chat, user_id):
         await message.reply_text("I wish I could... but you're an admin.")
@@ -414,15 +415,15 @@ async def kickme(message: Message):
     )
 
 
+@on_message(*disableable("unban"))
 @connection_status
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
-async def unban(message: Message, command: CommandObject) -> str:
-    message = message
+async def unban(client, message: Message) -> str:
     user = message.from_user
     chat = message.chat
     log_message = ""
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
     user_id, reason = await extract_user_and_text(message, args)
     if user_id is None:
         return await message.reply_text("That looks like an invalid User ID to me.")
@@ -474,7 +475,9 @@ async def unban(message: Message, command: CommandObject) -> str:
             member = await client.get_chat_member(chat.id, user_id)
 
             if member.status == ChatMemberStatus.ADMINISTRATOR:
-                await message.reply_text("This person is an admin here, Are you drunk???")
+                await message.reply_text(
+                    "This person is an admin here, Are you drunk???"
+                )
                 return log_message
 
         except RPCError as excp:
@@ -498,7 +501,7 @@ async def unban(message: Message, command: CommandObject) -> str:
         )
         target_id = chat_sender.id if chat_sender else user_id
         log += f"<b>User:</b> {mention_username(target_id, target_name)}"
-        await client.unban_chat_sender_chat(chat.id, target_id)
+        await client.unban_chat_member(chat.id, target_id)
         await message.reply_text("Yeah, this channel can speak again.")
     else:
         log += f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
@@ -511,13 +514,13 @@ async def unban(message: Message, command: CommandObject) -> str:
     return log
 
 
+@on_message(*disableable("roar"))
 @connection_status
 @gloggable
 @check_admin(permission="can_restrict_members", is_bot=True)
-async def selfunban(message: Message, command: CommandObject) -> str:
-    message = message
+async def selfunban(client, message: Message) -> str:
     user = message.from_user
-    args = command.args.split() if command.args else []
+    args = message.command[1:] if len(message.command) > 1 else []
     if not user or user.id not in DRAGONS:
         return
 
@@ -554,8 +557,9 @@ async def selfunban(message: Message, command: CommandObject) -> str:
     return log
 
 
+@on_callback(filters.regex(r"^bans_-?\d+=(?:ban|unban)=-?\d+=[0-9a-f]{8}$"))
 @loggable
-async def bans_callback(query: CallbackQuery):
+async def bans_callback(client, query: CallbackQuery):
     message = query.message
     chat = message.chat
     log_message = ""
@@ -576,9 +580,9 @@ async def bans_callback(query: CallbackQuery):
     if (
         (
             member.status == ChatMemberStatus.ADMINISTRATOR
-            and member.can_restrict_members
+            and granted(member, "can_restrict_members")
         )
-        or member.status == ChatMemberStatus.CREATOR
+        or member.status == ChatMemberStatus.OWNER
         or admin_user.id in DRAGONS
     ):
         pass
@@ -592,7 +596,6 @@ async def bans_callback(query: CallbackQuery):
     chat_data.pop(f"anon_ban_{parts[3]}", None)
     store.save()
     if action == "ban":
-        # workaround for checking user admin status
         try:
             user_id = int(parts[2])
         except ValueError:
@@ -667,7 +670,7 @@ async def bans_callback(query: CallbackQuery):
 
         try:
             if CHAT_SENDER:
-                await client.ban_chat_sender_chat(chat.id, user_id)
+                await client.ban_chat_member(chat.id, user_id)
             else:
                 await client.ban_chat_member(chat.id, user_id)
 
@@ -746,7 +749,7 @@ async def bans_callback(query: CallbackQuery):
 
         if CHAT_SENDER:
             log += f"<b>User:</b> {html.escape(chat_title)}"
-            await client.unban_chat_sender_chat(chat.id, user_id)
+            await client.unban_chat_member(chat.id, user_id)
             await message.reply_text("Yeah, this channel can speak again.")
         else:
             log += (
@@ -783,13 +786,3 @@ __help__ = """
 ➠ NOTE:
     Banning or UnBanning channels only work if you reply to their message, so don't use their username to ban/unban.
 """
-
-dp.message.register(chain(ban), *disableable(["ban", "sban", "dban"]))
-dp.message.register(chain(temp_ban), *disableable(["tban"]))
-dp.message.register(chain(kick), *disableable(["kick", "dkick"]))
-dp.message.register(chain(unban), *disableable("unban"))
-dp.message.register(chain(selfunban), *disableable("roar"))
-dp.message.register(chain(kickme), GROUPS, *disableable("kickme"))
-dp.callback_query.register(
-    chain(bans_callback), F.data.regexp(r"^bans_-?\d+=(?:ban|unban)=-?\d+=[0-9a-f]{8}$")
-)
