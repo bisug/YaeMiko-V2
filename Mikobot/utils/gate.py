@@ -10,7 +10,7 @@ list order matches the source order.
 
 import asyncio
 import logging
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager, suppress
 
 from pyrogram.enums import ChatAction, ChatMemberStatus, ChatType
 from pyrogram.errors import RPCError
@@ -100,9 +100,7 @@ def end_unit_of_work() -> None:
         LOGGER.exception("Could not clear staged database state")
 
 
-@asynccontextmanager
-async def _repeat_action(client, chat_id, action):
-    """Keep the chat action alive while the handler runs."""
+async def _action_loop(client, chat_id, action):
     try:
         while True:
             await asyncio.sleep(CHAT_ACTION_INTERVAL)
@@ -114,7 +112,18 @@ async def _repeat_action(client, chat_id, action):
         return
 
 
-@staticmethod
+@asynccontextmanager
+async def _repeat_action(client, chat_id, action):
+    """Keep the chat action alive while the handler runs."""
+    task = asyncio.create_task(_action_loop(client, chat_id, action))
+    try:
+        yield
+    finally:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+
 def _chat_id(event):
     chat = getattr(event, "chat", None)
     if chat is not None:
@@ -124,7 +133,6 @@ def _chat_id(event):
     return chat.id if chat is not None else None
 
 
-@staticmethod
 def _thread_id(event):
     """The forum topic to show the action in, when the chat has topics.
 
@@ -142,7 +150,6 @@ def _thread_id(event):
     return None
 
 
-@staticmethod
 def _is_private(event):
     chat = getattr(event, "chat", None) or getattr(
         getattr(event, "message", None), "chat", None
@@ -151,7 +158,6 @@ def _is_private(event):
     return getattr(chat, "type", None) in (ChatType.PRIVATE, ChatType.BOT)
 
 
-@staticmethod
 def _event_parts(event):
     message = getattr(event, "message", None)
     chat = getattr(event, "chat", None) or getattr(message, "chat", None)
@@ -191,7 +197,7 @@ async def enforce(client, event, handler) -> bool:
                     await client.send_chat_action(
                         chat_id, CHAT_ACTIONS.get(action, ChatAction.TYPING)
                     )
-                    stack.enter_async_context(
+                    await stack.enter_async_context(
                         _repeat_action(
                             client,
                             chat_id,
@@ -424,7 +430,6 @@ async def _denial(client, event, spec, status):
     return None
 
 
-@staticmethod
 async def _member(client, chat, user_id):
     if chat is None or user_id is None:
         return None

@@ -127,3 +127,24 @@ def test_the_requirement_decorator_keeps_the_source_order():
         return None
 
     assert [spec["kind"] for spec in handler.requirements] == ["admin", "sudo_plus"]
+
+
+async def test_gate_chat_action_runs_and_cancels():
+    from Mikobot.utils import gate
+
+    sent_actions = []
+
+    async def fake_send_chat_action(chat_id, action):
+        sent_actions.append((chat_id, action))
+
+    client = make_client()
+    client.send_chat_action = fake_send_chat_action
+    message = make_message()
+
+    @requirement(chat_action="typing")
+    async def handler(c, m):
+        pass
+
+    assert await gate.enforce(client, message, handler) is True
+    assert len(sent_actions) >= 1
+    assert sent_actions[0][0] == message.chat.id
