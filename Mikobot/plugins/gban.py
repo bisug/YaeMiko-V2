@@ -238,7 +238,7 @@ async def gban(client, message: Message):
 
     if reason:
         if chat.type == ChatType.SUPERGROUP and chat.username:
-            log_message += f'\n<b>Reason:</b> <a href="https://telegram.me/{chat.username}/{message.message_id}">{html.escape(reason)}</a>'
+            log_message += f'\n<b>Reason:</b> <a href="https://telegram.me/{chat.username}/{message.id}">{html.escape(reason)}</a>'
         else:
             log_message += f"\n<b>Reason:</b> <code>{html.escape(reason)}</code>"
 

@@ -304,10 +304,10 @@ async def _should_clean(chat_id, message: Message) -> bool:
 async def send(source_message: Message, text: str, keyboard, backup_message):
     chat = source_message.chat
     cleanserv = await _should_clean(chat.id, source_message)
-    reply = source_message.message_id
+    reply = source_message.id
     if cleanserv:
         try:
-            await client.delete_messages(chat.id, source_message.message_id)
+            await client.delete_messages(chat.id, source_message.id)
         except RPCError:
             pass
         reply = None
@@ -447,11 +447,11 @@ async def new_member(client, message: Message):
             return
 
         if should_welc:
-            reply = message.message_id
+            reply = message.id
             cleanserv = await _should_clean(chat.id, message)
             if cleanserv:
                 try:
-                    await client.delete_messages(chat.id, message.message_id)
+                    await client.delete_messages(chat.id, message.id)
                 except RPCError:
                     pass
                 reply = None
@@ -708,7 +708,7 @@ async def new_member(client, message: Message):
                         ),
                     )
                     job_queue.run_once(
-                        partial(check_not_bot, new_mem, chat.id, message.message_id),
+                        partial(check_not_bot, new_mem, chat.id, message.id),
                         120,
                         name="welcomemute",
                     )
@@ -735,7 +735,7 @@ async def new_member(client, message: Message):
 
                 if sent:
                     await asyncio.to_thread(
-                        sql.set_clean_welcome, chat.id, sent.message_id
+                        sql.set_clean_welcome, chat.id, sent.id
                     )
 
         if welcome_log:
@@ -809,11 +809,11 @@ async def left_member(client, message: Message):
         return
 
     if should_goodbye:
-        reply = message.message_id
+        reply = message.id
         cleanserv = await _should_clean(chat.id, message)
         if cleanserv:
             try:
-                await client.delete_messages(chat.id, message.message_id)
+                await client.delete_messages(chat.id, message.id)
             except RPCError:
                 pass
             reply = None

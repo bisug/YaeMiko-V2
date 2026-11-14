@@ -98,9 +98,7 @@ async def logs(client, message: Message):
         )
 
         # Store the message ID for later reference
-        user_data.setdefault(message.from_user.id, {})["log_message_id"] = (
-            sent.id if hasattr(sent, "id") else sent.message_id
-        )
+        user_data.setdefault(message.from_user.id, {})["log_message_id"] = sent.id
         store.save()
 
 

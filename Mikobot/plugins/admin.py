@@ -494,7 +494,7 @@ async def pin(client, message: Message) -> None:
                     [
                         InlineKeyboardButton(
                             text="Click to prove admin.",
-                            callback_data=f"admin_=pin={prev_message.message_id}={int(is_silent)}",
+                            callback_data=f"admin_=pin={prev_message.id}={int(is_silent)}",
                             style=ButtonStyle.PRIMARY,
                         ),
                     ],
@@ -508,7 +508,7 @@ async def pin(client, message: Message) -> None:
         try:
             await client.pin_chat_message(
                 chat.id,
-                prev_message.message_id,
+                prev_message.id,
                 disable_notification=is_silent,
             )
         except RPCError as excp:
