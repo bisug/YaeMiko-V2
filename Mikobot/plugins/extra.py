@@ -58,11 +58,7 @@ async def _id(client, message: Message):
     if forward_chat is None:
         forward_chat = getattr(message, "forward_from_chat", None)
 
-    if (
-        not getattr(reply, "empty", True)
-        and not forward_chat
-        and not reply.sender_chat
-    ):
+    if not getattr(reply, "empty", True) and not forward_chat and not reply.sender_chat:
         text += f"**๏ [ʀᴇᴘʟɪᴇᴅ ᴍᴇssᴀɢᴇ ɪᴅ]({reply.link})** » `{message.reply_to_message.id}`\n"
         text += f"**๏ [ʀᴇᴘʟɪᴇᴅ ᴜsᴇʀ ɪᴅ](tg://user?id={reply.from_user.id})** » `{reply.from_user.id}`\n\n"
 

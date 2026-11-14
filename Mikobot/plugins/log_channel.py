@@ -5,7 +5,7 @@ from functools import wraps
 from pyrogram import filters
 from pyrogram.enums import ChatType, ParseMode
 from pyrogram.errors import RPCError
-from pyrogram.types import Message
+from pyrogram.types import LinkPreviewOptions, Message
 
 from Mikobot.events import on_message
 from Mikobot.plugins.helper_funcs.misc import is_module_loaded
@@ -105,7 +105,7 @@ if is_module_loaded(FILENAME):
                 log_chat_id,
                 result,
                 parse_mode=ParseMode.HTML,
-                disable_web_page_preview=True,
+                link_preview_options=LinkPreviewOptions(is_disabled=True),
             )
         except RPCError as excp:
             if "chat not found" in str(excp.message or excp).lower():

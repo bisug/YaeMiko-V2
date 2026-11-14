@@ -154,9 +154,7 @@ async def get(
         keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
 
         try:
-            reply_params = (
-                ReplyParameters(message_id=reply_id) if reply_id else None
-            )
+            reply_params = ReplyParameters(message_id=reply_id) if reply_id else None
             if note.msgtype in (sql.Types.BUTTON_TEXT, sql.Types.TEXT):
                 await client.send_message(
                     chat_id,

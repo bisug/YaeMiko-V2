@@ -726,9 +726,7 @@ async def new_member(client, message: Message):
                         pass
 
                 if sent:
-                    await asyncio.to_thread(
-                        sql.set_clean_welcome, chat.id, sent.id
-                    )
+                    await asyncio.to_thread(sql.set_clean_welcome, chat.id, sent.id)
 
         if welcome_log:
             return welcome_log
