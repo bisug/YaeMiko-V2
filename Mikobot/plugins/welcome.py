@@ -301,16 +301,16 @@ async def _should_clean(chat_id, message: Message) -> bool:
 
 
 # <================================================ NORMAL WELCOME FUNCTION =======================================================>
-async def send(source_message, message, keyboard, backup_message):
+async def send(source_message: Message, text: str, keyboard, backup_message):
     chat = source_message.chat
-    cleanserv = await _should_clean(chat.id, message)
-    reply = message.message_id
+    cleanserv = await _should_clean(chat.id, source_message)
+    reply = source_message.message_id
     if cleanserv:
         try:
-            await client.delete_messages(chat.id, message.message_id)
+            await client.delete_messages(chat.id, source_message.message_id)
         except RPCError:
             pass
-        reply = False
+        reply = None
     # In a forum a greeting has to name a topic, otherwise it lands in General
     # regardless of where the rest of the conversation is.
     thread = await asyncio.to_thread(topics_sql.get_action_topic, chat.id)
@@ -320,26 +320,27 @@ async def send(source_message, message, keyboard, backup_message):
         try:
             msg = await client.send_message(
                 chat.id,
-                message,
+                text,
                 parse_mode=ParseMode.HTML,
                 reply_markup=keyboard,
                 message_thread_id=thread,
             )
         except RPCError:
-            msg = await message.reply_text(
-                message,
+            msg = await source_message.reply_text(
+                text,
                 parse_mode=ParseMode.HTML,
                 reply_markup=keyboard,
                 reply_to_message_id=reply,
             )
     except RPCError as excp:
-        if excp.message == "Reply message not found":
-            msg = await message.reply_text(
-                message,
+        err_str = str(getattr(excp, "message", None) or excp).lower()
+        if "reply message not found" in err_str or "reply_message_not_found" in err_str:
+            msg = await source_message.reply_text(
+                text,
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=keyboard,
             )
-        elif excp.message == "Button_url_invalid":
+        elif "button_url_invalid" in err_str or "url_invalid" in err_str:
             try:
                 msg = await client.send_message(
                     chat.id,
@@ -348,13 +349,13 @@ async def send(source_message, message, keyboard, backup_message):
                     parse_mode=ParseMode.MARKDOWN,
                 )
             except RPCError:
-                msg = await message.reply_text(
+                msg = await source_message.reply_text(
                     backup_message
                     + "\nNote: The current message has an invalid URL in one of its buttons. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
                     reply_to_message_id=reply,
                 )
-        elif excp.message == "Unsupported URL protocol":
+        elif "unsupported url protocol" in err_str:
             try:
                 msg = await client.send_message(
                     chat.id,
@@ -363,13 +364,13 @@ async def send(source_message, message, keyboard, backup_message):
                     parse_mode=ParseMode.MARKDOWN,
                 )
             except RPCError:
-                msg = await message.reply_text(
+                msg = await source_message.reply_text(
                     backup_message
                     + "\nNote: The current message has buttons which use URL protocols that are unsupported by Telegram. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
                     reply_to_message_id=reply,
                 )
-        elif excp.message == "Wrong URL host":
+        elif "wrong url host" in err_str:
             try:
                 msg = await client.send_message(
                     chat.id,
@@ -378,14 +379,17 @@ async def send(source_message, message, keyboard, backup_message):
                     parse_mode=ParseMode.MARKDOWN,
                 )
             except RPCError:
-                msg = await message.reply_text(
+                msg = await source_message.reply_text(
                     backup_message
                     + "\nNote: The current message has some bad URLs. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
                     reply_to_message_id=reply,
                 )
             LOGGER.exception("Could not parse welcome message with invalid URL host")
-        elif excp.message == "Have no rights to send a message":
+        elif (
+            "have no rights to send a message" in err_str
+            or "chat_write_forbidden" in err_str
+        ):
             return
         else:
             try:
@@ -396,7 +400,7 @@ async def send(source_message, message, keyboard, backup_message):
                     parse_mode=ParseMode.MARKDOWN,
                 )
             except RPCError:
-                msg = await message.reply_text(
+                msg = await source_message.reply_text(
                     backup_message
                     + "\nNote: An error occurred when sending the custom message. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
@@ -450,7 +454,7 @@ async def new_member(client, message: Message):
                     await client.delete_messages(chat.id, message.message_id)
                 except RPCError:
                     pass
-                reply = False
+                reply = None
 
             if new_mem.id == OWNER_ID:
                 await message.reply_text(
@@ -812,7 +816,7 @@ async def left_member(client, message: Message):
                 await client.delete_messages(chat.id, message.message_id)
             except RPCError:
                 pass
-            reply = False
+            reply = None
 
         left_mem = message.left_chat_member
         if left_mem:

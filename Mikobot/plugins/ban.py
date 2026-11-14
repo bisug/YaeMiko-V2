@@ -619,9 +619,10 @@ async def bans_callback(client, query: CallbackQuery):
             try:
                 member = await client.get_chat_member(chat.id, user_id)
             except RPCError as excp:
-                if excp.message == "User not found.":
+                err_msg = str(getattr(excp, "message", None) or excp).lower()
+                if "user not found" in err_msg:
                     raise
-                elif "invalid user_id" in str(excp.message or excp).lower():
+                elif "invalid user_id" in err_msg or "user_id_invalid" in err_msg:
                     await message.edit_text("I Doubt that's a user.")
                 await message.edit_text("Can't find this person here.")
 

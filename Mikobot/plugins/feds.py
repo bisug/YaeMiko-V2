@@ -49,31 +49,59 @@ from Mikobot.utils.parser import mention_html, mention_markdown
 # <=======================================================================================================>
 
 FBAN_ERRORS = {
-    "User is an administrator of the chat",
-    "Chat not found",
-    "Not enough rights to restrict/unrestrict chat member",
-    "User_not_participant",
-    "Peer_id_invalid",
-    "Group chat was deactivated",
-    "Need to be inviter of a user to kick it from a basic group",
-    "Chat_admin_required",
-    "Only the creator of a basic group can kick group administrators",
-    "Channel_private",
-    "Not in the chat",
-    "Have no rights to send a message",
+    "user is an administrator of the chat",
+    "user_admin_invalid",
+    "chat not found",
+    "chat_not_found",
+    "not enough rights to restrict/unrestrict chat member",
+    "chat_admin_required",
+    "right_forbidden",
+    "user_not_participant",
+    "peer_id_invalid",
+    "group chat was deactivated",
+    "group_deactivated",
+    "need to be inviter of a user to kick it from a basic group",
+    "only the creator of a basic group can kick group administrators",
+    "channel_private",
+    "not in the chat",
+    "have no rights to send a message",
+    "chat_write_forbidden",
 }
 
 UNFBAN_ERRORS = {
-    "User is an administrator of the chat",
-    "Chat not found",
-    "Not enough rights to restrict/unrestrict chat member",
-    "User_not_participant",
-    "Method is available for supergroup and channel chats only",
-    "Not in the chat",
-    "Channel_private",
-    "Chat_admin_required",
-    "Have no rights to send a message",
+    "user is an administrator of the chat",
+    "user_admin_invalid",
+    "chat not found",
+    "chat_not_found",
+    "not enough rights to restrict/unrestrict chat member",
+    "chat_admin_required",
+    "right_forbidden",
+    "user_not_participant",
+    "method is available for supergroup and channel chats only",
+    "channel_invalid",
+    "not in the chat",
+    "channel_private",
+    "have no rights to send a message",
+    "chat_write_forbidden",
 }
+
+
+def _matches_fed_error(excp: Exception, error_set: set[str]) -> bool:
+    err_str = str(
+        getattr(excp, "message", None) or getattr(excp, "value", None) or excp
+    ).lower()
+    return any(err in err_str for err in error_set)
+
+
+def _is_user_id_invalid(excp: Exception) -> bool:
+    err_str = str(
+        getattr(excp, "message", None) or getattr(excp, "value", None) or excp
+    ).lower()
+    return (
+        "user_id_invalid" in err_str
+        or "invalid user_id" in err_str
+        or "user not found" in err_str
+    )
 
 
 # <================================================ FUNCTION =======================================================>
@@ -732,7 +760,7 @@ async def fed_ban(client, message: Message):
 				"""
                 await client.ban_chat_member(fedschat, fban_user_id)
             except RPCError as excp:
-                if excp.message in FBAN_ERRORS:
+                if _matches_fed_error(excp, FBAN_ERRORS):
                     try:
                         await client.get_chat(fedschat)
                     except RPCError:
@@ -744,11 +772,11 @@ async def fed_ban(client, message: Message):
                             ),
                         )
                         continue
-                elif excp.message == "User_id_invalid":
+                elif _is_user_id_invalid(excp):
                     break
                 else:
                     LOGGER.warning(
-                        "Could not fban on {} because: {}".format(chat, excp.message),
+                        "Could not fban on {} because: {}".format(fedschat, excp),
                     )
         # Also do not spam all fed admins
         """
@@ -771,7 +799,7 @@ async def fed_ban(client, message: Message):
                     try:
                         await client.ban_chat_member(fedschat, fban_user_id)
                     except RPCError as excp:
-                        if excp.message in FBAN_ERRORS:
+                        if _matches_fed_error(excp, FBAN_ERRORS):
                             try:
                                 await client.get_chat(fedschat)
                             except RPCError:
@@ -784,13 +812,13 @@ async def fed_ban(client, message: Message):
                                     ),
                                 )
                                 continue
-                        elif excp.message == "User_id_invalid":
+                        elif _is_user_id_invalid(excp):
                             break
                         else:
                             LOGGER.warning(
                                 "Unable to fban on {} because: {}".format(
                                     fedschat,
-                                    excp.message,
+                                    excp,
                                 ),
                             )
         # await send_message(message, "Fedban Reason has been updated.")
@@ -884,13 +912,13 @@ async def fed_ban(client, message: Message):
 			"""
             await client.ban_chat_member(fedschat, fban_user_id)
         except RPCError as excp:
-            if excp.message in FBAN_ERRORS:
+            if _matches_fed_error(excp, FBAN_ERRORS):
                 pass
-            elif excp.message == "User_id_invalid":
+            elif _is_user_id_invalid(excp):
                 break
             else:
                 LOGGER.warning(
-                    "Could not fban on {} because: {}".format(chat, excp.message),
+                    "Could not fban on {} because: {}".format(fedschat, excp),
                 )
 
         # Also do not spamming all fed admins
@@ -914,7 +942,7 @@ async def fed_ban(client, message: Message):
                     try:
                         await client.ban_chat_member(fedschat, fban_user_id)
                     except RPCError as excp:
-                        if excp.message in FBAN_ERRORS:
+                        if _matches_fed_error(excp, FBAN_ERRORS):
                             try:
                                 await client.get_chat(fedschat)
                             except RPCError:
@@ -927,13 +955,13 @@ async def fed_ban(client, message: Message):
                                     ),
                                 )
                                 continue
-                        elif excp.message == "User_id_invalid":
+                        elif _is_user_id_invalid(excp):
                             break
                         else:
                             LOGGER.warning(
                                 "Unable to fban on {} because: {}".format(
                                     fedschat,
-                                    excp.message,
+                                    excp,
                                 ),
                             )
 
@@ -1047,13 +1075,13 @@ async def unfban(client, message: Message):
 						 "\n<b>User ID:</b> <code>{}</code>".format(info['fname'], mention_html(user.id, user.first_name), user_target, fban_user_id), parse_mode="HTML")
 			"""
         except RPCError as excp:
-            if excp.message in UNFBAN_ERRORS:
+            if _matches_fed_error(excp, UNFBAN_ERRORS):
                 pass
-            elif excp.message == "User_id_invalid":
+            elif _is_user_id_invalid(excp):
                 break
             else:
                 LOGGER.warning(
-                    "Could not fban on {} because: {}".format(chat, excp.message),
+                    "Could not unfban on {} because: {}".format(fedchats, excp),
                 )
 
     try:
@@ -1075,9 +1103,9 @@ async def unfban(client, message: Message):
             all_fedschat = sql.all_fed_chats(fedsid)
             for fedschat in all_fedschat:
                 try:
-                    await client.unban_chat_member(fedchats, user_id)
+                    await client.unban_chat_member(fedschat, user_id)
                 except RPCError as excp:
-                    if excp.message in FBAN_ERRORS:
+                    if _matches_fed_error(excp, UNFBAN_ERRORS):
                         try:
                             await client.get_chat(fedschat)
                         except RPCError:
@@ -1090,13 +1118,13 @@ async def unfban(client, message: Message):
                                 ),
                             )
                             continue
-                    elif excp.message == "User_id_invalid":
+                    elif _is_user_id_invalid(excp):
                         break
                     else:
                         LOGGER.warning(
-                            "Unable to fban on {} because: {}".format(
+                            "Unable to unfban on {} because: {}".format(
                                 fedschat,
-                                excp.message,
+                                excp,
                             ),
                         )
 

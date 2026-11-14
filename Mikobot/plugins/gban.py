@@ -39,32 +39,48 @@ from Mikobot.utils.parser import mention_html
 # <=======================================================================================================>
 
 GBAN_ERRORS = {
-    "User is an administrator of the chat",
-    "Chat not found",
-    "Not enough rights to restrict/unrestrict chat member",
-    "User_not_participant",
-    "Peer_id_invalid",
-    "Group chat was deactivated",
-    "Need to be inviter of a user to kick it from a basic group",
-    "Chat_admin_required",
-    "Only the creator of a basic group can kick group administrators",
-    "Channel_private",
-    "Not in the chat",
-    "Can't remove chat owner",
+    "user is an administrator of the chat",
+    "user_admin_invalid",
+    "chat not found",
+    "chat_not_found",
+    "not enough rights to restrict/unrestrict chat member",
+    "chat_admin_required",
+    "right_forbidden",
+    "user_not_participant",
+    "peer_id_invalid",
+    "group chat was deactivated",
+    "group_deactivated",
+    "need to be inviter of a user to kick it from a basic group",
+    "only the creator of a basic group can kick group administrators",
+    "channel_private",
+    "not in the chat",
+    "can't remove chat owner",
 }
 
 UNGBAN_ERRORS = {
-    "User is an administrator of the chat",
-    "Chat not found",
-    "Not enough rights to restrict/unrestrict chat member",
-    "User_not_participant",
-    "Method is available for supergroup and channel chats only",
-    "Not in the chat",
-    "Channel_private",
-    "Chat_admin_required",
-    "Peer_id_invalid",
-    "User not found",
+    "user is an administrator of the chat",
+    "user_admin_invalid",
+    "chat not found",
+    "chat_not_found",
+    "not enough rights to restrict/unrestrict chat member",
+    "chat_admin_required",
+    "right_forbidden",
+    "user_not_participant",
+    "method is available for supergroup and channel chats only",
+    "channel_invalid",
+    "not in the chat",
+    "channel_private",
+    "peer_id_invalid",
+    "user not found",
+    "user_id_invalid",
 }
+
+
+def _matches_gban_error(excp: Exception, error_set: set[str]) -> bool:
+    err_str = str(
+        getattr(excp, "message", None) or getattr(excp, "value", None) or excp
+    ).lower()
+    return any(err in err_str for err in error_set)
 
 
 # <================================================ FUNCTION =======================================================>
@@ -258,7 +274,7 @@ async def gban(client, message: Message):
             gbanned_chats += 1
 
         except RPCError as excp:
-            if excp.message in GBAN_ERRORS:
+            if _matches_gban_error(excp, GBAN_ERRORS):
                 pass
             else:
                 await message.reply_text(f"Could not gban due to: {excp.message}")
@@ -389,7 +405,7 @@ async def ungban(client, message: Message):
                 ungbanned_chats += 1
 
         except RPCError as excp:
-            if excp.message in UNGBAN_ERRORS:
+            if _matches_gban_error(excp, UNGBAN_ERRORS):
                 pass
             else:
                 await message.reply_text(f"Could not un-gban due to: {excp.message}")

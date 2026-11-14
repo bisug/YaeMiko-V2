@@ -119,7 +119,10 @@ async def promote(client, message: Message):
                 privileges=privs,
             )
         except RPCError as err:
-            if err.message == "User_not_mutual_contact":
+            if (
+                "user_not_mutual_contact"
+                in str(getattr(err, "message", None) or err).lower()
+            ):
                 await message.reply_text(
                     "I can't promote someone who isn't in the group."
                 )
@@ -226,7 +229,10 @@ async def fullpromote(client, message: Message):
                 privileges=privs,
             )
         except RPCError as err:
-            if err.message == "User_not_mutual_contact":
+            if (
+                "user_not_mutual_contact"
+                in str(getattr(err, "message", None) or err).lower()
+            ):
                 await message.reply_text(
                     "I can't promote someone who isn't in the group."
                 )
@@ -506,7 +512,10 @@ async def pin(client, message: Message) -> None:
                 disable_notification=is_silent,
             )
         except RPCError as excp:
-            if excp.message == "Chat_not_modified":
+            if (
+                "chat_not_modified"
+                in str(getattr(excp, "message", None) or excp).lower()
+            ):
                 pass
             else:
                 raise
@@ -545,9 +554,10 @@ async def unpin(client, message: Message):
     try:
         await client.unpin_chat_message(chat.id)
     except RPCError as excp:
-        if excp.message == "Chat_not_modified":
+        err_msg = str(getattr(excp, "message", None) or excp).lower()
+        if "chat_not_modified" in err_msg:
             pass
-        elif excp.message == "Message to unpin not found":
+        elif "message to unpin not found" in err_msg or "message_not_found" in err_msg:
             await message.reply_text("No pinned message found")
             return
         else:
@@ -599,7 +609,7 @@ async def unpinall(client, message: Message):
         else:
             await client.unpin_all_chat_messages(chat.id)
     except RPCError as excp:
-        if excp.message == "Chat_not_modified":
+        if "chat_not_modified" in str(getattr(excp, "message", None) or excp).lower():
             pass
         else:
             raise
@@ -836,7 +846,10 @@ async def admin_callback(client, query: CallbackQuery):
                     privileges=privs,
                 )
             except RPCError as err:
-                if err.message == "User_not_mutual_contact":
+                if (
+                    "user_not_mutual_contact"
+                    in str(getattr(err, "message", None) or err).lower()
+                ):
                     await message.edit_text(
                         "I can't promote someone who isn't in the group"
                     )
@@ -1047,7 +1060,10 @@ async def admin_callback(client, query: CallbackQuery):
                     disable_notification=is_silent,
                 )
             except RPCError as excp:
-                if excp.message == "Chat_not_modified":
+                if (
+                    "chat_not_modified"
+                    in str(getattr(excp, "message", None) or excp).lower()
+                ):
                     pass
                 else:
                     raise
@@ -1082,9 +1098,14 @@ async def admin_callback(client, query: CallbackQuery):
         try:
             await client.unpin_chat_message(chat.id)
         except RPCError as excp:
-            if excp.message == "Chat_not_modified":
+            err_msg = str(getattr(excp, "message", None) or excp).lower()
+            if "chat_not_modified" in err_msg:
                 pass
-            elif excp.message == "Message_to_unpin_not_found":
+            elif (
+                "message_to_unpin_not_found" in err_msg
+                or "message to unpin not found" in err_msg
+                or "message_not_found" in err_msg
+            ):
                 await message.edit_text("No pinned message found")
                 return
             else:
@@ -1117,7 +1138,10 @@ async def admin_callback(client, query: CallbackQuery):
             else:
                 await client.unpin_all_chat_messages(chat.id)
         except RPCError as excp:
-            if excp.message == "Chat_not_modified":
+            if (
+                "chat_not_modified"
+                in str(getattr(excp, "message", None) or excp).lower()
+            ):
                 pass
             else:
                 raise

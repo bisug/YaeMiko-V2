@@ -180,7 +180,10 @@ async def get(
                 )
 
         except RPCError as excp:
-            if excp.message == "Entity_mention_user_invalid":
+            if (
+                "entity_mention_user_invalid"
+                in str(getattr(excp, "message", None) or excp).lower()
+            ):
                 await message.reply_text(
                     "Looks like you tried to mention someone I've never seen before. If you really "
                     "want to mention them, forward one of their messages to me, and I'll be able "

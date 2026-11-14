@@ -27,6 +27,17 @@ if hasattr(sys, "set_lazy_imports"):
         sys.set_lazy_imports_filter(_lazy_imports_filter)
 
 from pyrogram import Client
+from pyrogram.errors import RPCError
+
+if not hasattr(RPCError, "message"):
+    RPCError.message = property(
+        lambda self: (
+            getattr(self, "value", None)
+            or getattr(self, "MESSAGE", None)
+            or getattr(self, "ID", None)
+            or str(self)
+        )
+    )
 from pyrogram.enums import ParseMode
 
 from Mikobot.utils.persistence import open_store
