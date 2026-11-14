@@ -292,8 +292,6 @@ def is_locked(chat_id, lock_type):
 @unit_of_work_guard
 def is_restr_locked(chat_id, lock_type):
     curr_restr = SESSION.get(Restrictions, str(chat_id))
-    SESSION.close()
-
     if not curr_restr:
         return False
 

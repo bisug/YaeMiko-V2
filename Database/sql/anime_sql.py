@@ -77,18 +77,15 @@ class AnimeToken(BASE):
 
 @unit_of_work_guard
 def exists(collection: str, chat_id) -> bool:
-    try:
-        return (
-            SESSION.scalars(
-                select(AnimeGroupSetting).where(
-                    AnimeGroupSetting.collection == collection,
-                    AnimeGroupSetting.chat_id == str(chat_id),
-                )
-            ).first()
-            is not None
-        )
-    finally:
-        SESSION.close()
+    return (
+        SESSION.scalars(
+            select(AnimeGroupSetting).where(
+                AnimeGroupSetting.collection == collection,
+                AnimeGroupSetting.chat_id == str(chat_id),
+            )
+        ).first()
+        is not None
+    )
 
 
 @unit_of_work_guard

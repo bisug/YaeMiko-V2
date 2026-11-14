@@ -205,7 +205,6 @@ class UnitOfWorkSession:
         "delete",
         "merge",
         "flush",
-        "close",
         "expunge",
         "expunge_all",
         "refresh",
@@ -280,11 +279,16 @@ class UnitOfWorkSession:
         finally:
             self.end_unit_of_work()
 
+    def _close(self):
+        self.end_unit_of_work()
+
     def __getattr__(self, name):
         if name == "commit":
             return self._commit
         if name == "rollback":
             return self._rollback
+        if name == "close":
+            return self._close
         if name in self._PASSTHROUGH:
             return getattr(self._current(), name)
         return getattr(self._scoped, name)
