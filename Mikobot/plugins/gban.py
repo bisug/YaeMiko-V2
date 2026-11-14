@@ -102,6 +102,8 @@ async def check_and_ban(client, message: Message, user_id, should_message=True):
 
 @on_message(GROUPS, chained=True)
 async def enforce_gban(client, message: Message):
+    if not STRICT_GBAN:
+        return
     chat = message.chat
     if not sql.does_chat_gban(chat.id):
         return
@@ -143,11 +145,6 @@ async def enforce_gban(client, message: Message):
     if reply_user and sql.is_user_gbanned(reply_user.id):
         if not await is_user_admin(chat, reply_user.id):
             await check_and_ban(client, message, reply_user.id, should_message=False)
-
-
-# The enforcer watches every group message, so it registers ahead of the commands.
-if STRICT_GBAN:  # enforce GBANS if this is set
-    on_message(GROUPS, chained=True)(enforce_gban)
 
 
 @support_plus

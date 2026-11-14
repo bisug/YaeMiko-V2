@@ -169,3 +169,21 @@ async def test_app_client_parser_hook():
     assert res["message"] == "bold from p.parse"
     assert len(res["entities"]) == 1
     assert isinstance(res["entities"][0], raw.types.MessageEntityBold)
+
+
+@pytest.mark.asyncio
+async def test_extraction_with_caption():
+    from unittest.mock import MagicMock
+
+    from Mikobot.plugins.helper_funcs.extraction import extract_user_and_text
+
+    msg = MagicMock()
+    msg.text = None
+    msg.caption = "/ban 12345 spamming"
+    msg.entities = None
+    msg.caption_entities = None
+    msg.reply_to_message = None
+
+    user_id, reason = await extract_user_and_text(msg, ["12345", "spamming"])
+    assert user_id == 12345
+    assert reason == "spamming"

@@ -25,7 +25,8 @@ async def id_from_reply(message: Message):
         user_id = prev_message.sender_chat.id
     else:
         return None, None
-    res = message.text.split(None, 1)
+    raw_text = message.text or message.caption or ""
+    res = raw_text.split(None, 1)
     if len(res) < 2:
         return user_id, ""
     return user_id, res[1]
@@ -45,7 +46,8 @@ async def _resolve_target(message: Message, args: list[str]) -> tuple:
     @username is unknown; the callers add their own wording to that case.
     """
     prev_message = message.reply_to_message
-    split_text = message.text.split(None, 1)
+    raw_text = message.text or message.caption or ""
+    split_text = raw_text.split(None, 1)
 
     if len(split_text) < 2:
         return await id_from_reply(message)  # only option possible
@@ -56,19 +58,19 @@ async def _resolve_target(message: Message, args: list[str]) -> tuple:
     entities = list(entities_map(message, [TEXT_MENTION]))
     ent = entities[0] if entities else None
     # if entity offset matches (command end/text start) then all good
-    if entities and ent and ent.offset == len(message.text) - len(text_to_parse):
+    if entities and ent and ent.offset == len(raw_text) - len(text_to_parse):
         user_id = ent.user.id
-        text = message.text[ent.offset + ent.length :]
+        text = raw_text[ent.offset + ent.length :]
     elif len(args) >= 1 and args[0][0] == "@":
         user_id = await get_user_id(args[0])
         if not user_id:
             return None, None
-        res = message.text.split(None, 2)
+        res = raw_text.split(None, 2)
         if len(res) >= 3:
             text = res[2]
     elif len(args) >= 1 and args[0].isdigit():
         user_id = int(args[0])
-        res = message.text.split(None, 2)
+        res = raw_text.split(None, 2)
         if len(res) >= 3:
             text = res[2]
     elif prev_message:

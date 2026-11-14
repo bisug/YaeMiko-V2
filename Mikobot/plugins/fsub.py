@@ -56,7 +56,7 @@ async def force_subscribe(message):
             await message.reply_text("Force subscribe is disabled in this chat.")
         else:
             await message.reply_text(
-                f"Force subscribe is currently enabled. Users are forced to join @{chat_db.channel} to speak here."
+                f"Force subscribe is currently enabled. Users are forced to join @{chat_db['channel']} to speak here."
             )
         return
     if channel.lower() in FORCESUBSCRIBE_ON:
