@@ -232,16 +232,17 @@ class Quotly:
         media_file = None
         try:
             if getattr(event, "photo", None) or getattr(event, "sticker", None):
-                media_file = await event.download_media()
-            elif (
-                getattr(event, "document", None)
-                and getattr(event.document, "thumbs", None)
-                or getattr(event, "video", None)
-                and getattr(event.video, "thumbs", None)
-                or getattr(event, "animation", None)
-                and getattr(event.animation, "thumbs", None)
+                media_file = await event.download()
+            elif getattr(event, "document", None) and getattr(
+                event.document, "thumbs", None
             ):
-                media_file = await event.download_media(thumb=-1)
+                media_file = await app.download_media(event.document.thumbs[-1])
+            elif getattr(event, "video", None) and getattr(event.video, "thumbs", None):
+                media_file = await app.download_media(event.video.thumbs[-1])
+            elif getattr(event, "animation", None) and getattr(
+                event.animation, "thumbs", None
+            ):
+                media_file = await app.download_media(event.animation.thumbs[-1])
         except Exception as err:
             LOGGER.warning("Failed to download quote media: %s", err)
             media_file = None
