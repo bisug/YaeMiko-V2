@@ -18,7 +18,14 @@ class JobQueue:
         if not self._scheduler.running:
             self._scheduler.start()
 
-    def run_once(self, callback, delay: float, *args, **kwargs) -> str:
+    def run_once(
+        self,
+        callback,
+        delay: float,
+        *args,
+        name: str | None = None,
+        **kwargs,
+    ) -> str:
         """Run ``callback(*args, **kwargs)`` once, ``delay`` seconds from now."""
         self.start()
         run_date = datetime.now(UTC) + timedelta(seconds=delay)
@@ -26,6 +33,7 @@ class JobQueue:
             self._call,
             trigger=DateTrigger(run_date=run_date),
             args=(callback, args, kwargs),
+            name=name,
         )
         return job.id
 

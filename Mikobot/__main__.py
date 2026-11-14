@@ -196,7 +196,9 @@ async def start(client, message: Message):
                     await send_settings(match.group(1), message.from_user.id, True)
 
             elif args[0][1:].isdigit() and "rules" in IMPORTED:
-                await IMPORTED["rules"].send_rules(message, args[0], from_pm=True)
+                await IMPORTED["rules"].send_rules(
+                    client, message, args[0], from_pm=True
+                )
 
         else:
             first_name = message.from_user.first_name
@@ -224,41 +226,6 @@ async def start(client, message: Message):
             ),
             parse_mode=ParseMode.HTML,
         )
-
-
-async def extra_command_handlered(client, message: Message):
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                text="MANAGEMENT", callback_data="help_back", style=ButtonStyle.PRIMARY
-            ),
-            InlineKeyboardButton(
-                text="ANIME",
-                callback_data="anime_command_handler",
-                style=ButtonStyle.PRIMARY,
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text="GENSHIN",
-                callback_data="genshin_command_handler",
-                style=ButtonStyle.PRIMARY,
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text="HOME", callback_data="Miko_back", style=ButtonStyle.PRIMARY
-            ),
-        ],
-    ]
-
-    reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-
-    await message.reply_text(
-        "𝙎𝙡𝙲𝙤𝙩 𝙝𝙚 [𝙨𝙡𝙤𝙤𝙥𝙞𝙤𝙣](https://telegra.ph/file/8c092f4e9d303f9497c83.jpg) 𝙝𝙚 𝙘𝙥𝙣𝙚 𝙤𝙥𝙣𝙚",
-        reply_markup=reply_markup,
-        parse_mode=ParseMode.MARKDOWN,
-    )
 
 
 async def extra_command_callback(client, query: CallbackQuery):
@@ -908,7 +875,6 @@ def register_core_handlers():
     load_plugins()
 
     add_message(chain(start), filters.command("start"))
-    add_message(chain(extra_command_handlered), filters.command("help"))
     add_message(chain(get_help), filters.command("help"))
     add_message(chain(get_settings), filters.command("settings"))
     add_message(chain(repo), filters.command("repo"))

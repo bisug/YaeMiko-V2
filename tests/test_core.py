@@ -123,3 +123,20 @@ async def test_safe_resolve_peer_converts_numeric_strings(monkeypatch):
 
     await Client.resolve_peer(client, "@valid_username")
     assert resolved[-1] == "@valid_username"
+
+
+async def test_job_queue_run_once_name_kwarg():
+    import asyncio
+
+    from Mikobot.utils.jobs import JobQueue
+
+    queue = JobQueue()
+    called = []
+
+    def callback(x, y):
+        called.append((x, y))
+
+    queue.run_once(callback, 0.01, 1, 2, name="test_job")
+    await asyncio.sleep(0.05)
+    queue.shutdown()
+    assert called == [(1, 2)]
