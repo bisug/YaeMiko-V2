@@ -134,16 +134,15 @@ async def is_user_admin(chat, user_id: int, member=None) -> bool:
                 # keyerror happend means cache is deleted,
                 # so query telegram again and return user status
                 # while saving it in cache for future usage...
+                admin_list = []
                 try:
-                    chat_admins = await app.get_chat_members(
+                    async for admin in app.get_chat_members(
                         chat.id, filter=ChatMembersFilter.ADMINISTRATORS
-                    )
+                    ):
+                        if admin.user is not None:
+                            admin_list.append(admin.user.id)
                 except RPCError:
                     return False
-                admin_list = []
-                async for admin in chat_admins:
-                    if admin.user is not None:
-                        admin_list.append(admin.user.id)
                 ADMIN_CACHE[chat.id] = admin_list
 
                 return user_id in admin_list
