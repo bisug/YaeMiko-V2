@@ -491,7 +491,7 @@ async def new_member(client, message: Message):
             elif new_mem.id == client.id:
                 creator = None
                 for x in await client.get_chat_administrators(message.chat.id):
-                    if x.status in (ChatMemberStatus.OWNER, "creator"):
+                    if x.status == ChatMemberStatus.OWNER:
                         creator = x.user
                         break
                 if creator:

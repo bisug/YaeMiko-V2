@@ -109,7 +109,7 @@ def _is_user_id_invalid(excp: Exception) -> bool:
 async def new_fed(client, message: Message):
     chat = message.chat
     user = message.from_user
-    if chat.type != ChatType.PRIVATE and chat.type != "private":
+    if chat.type != ChatType.PRIVATE:
         await message.reply_text(
             "Federations can only be created by privately messaging me.",
         )
@@ -164,7 +164,7 @@ async def del_fed(client, message: Message):
     args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
     user = message.from_user
-    if chat.type != ChatType.PRIVATE and chat.type != "private":
+    if chat.type != ChatType.PRIVATE:
         await message.reply_text(
             "Federations can only be deleted by privately messaging me.",
         )
@@ -266,7 +266,7 @@ async def join_fed(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -278,7 +278,7 @@ async def join_fed(client, message: Message):
     if user.id not in DRAGONS:
         try:
             member = await client.get_chat_member(chat.id, user.id)
-            is_owner = member.status in (ChatMemberStatus.OWNER, "creator")
+            is_owner = member.status == ChatMemberStatus.OWNER
         except RPCError:
             is_owner = False
         if not is_owner:
@@ -328,7 +328,7 @@ async def leave_fed(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our PM!",
@@ -338,13 +338,12 @@ async def leave_fed(client, message: Message):
     fed_id = sql.get_fed_id(chat.id)
     fed_info = sql.get_fed_info(fed_id)
 
-    # administrators = await chat.get_administrators().status
     try:
         member = await client.get_chat_member(chat.id, user.id)
         getuser = member.status
     except RPCError:
         getuser = None
-    if getuser in (ChatMemberStatus.OWNER, "creator") or user.id in DRAGONS:
+    if getuser == ChatMemberStatus.OWNER or user.id in DRAGONS:
         if sql.chat_leave_fed(chat.id) is True:
             get_fedlog = await sql.get_fed_log(fed_id)
             if get_fedlog:
@@ -379,7 +378,7 @@ async def user_join_fed(client, message: Message):
     user = message.from_user
     msg = message
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -441,7 +440,7 @@ async def user_demote_fed(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -501,7 +500,7 @@ async def fed_info(client, message: Message):
         fed_id = args[0]
         info = sql.get_fed_info(fed_id)
     else:
-        if chat.type == ChatType.PRIVATE or chat.type == "private":
+        if chat.type == ChatType.PRIVATE:
             await send_message(
                 message,
                 "You need to provide me a fedid to check fedinfo in my pm.",
@@ -552,7 +551,7 @@ async def fed_admin(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -600,7 +599,7 @@ async def fed_ban(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -972,7 +971,7 @@ async def unfban(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1064,7 +1063,7 @@ async def unfban(client, message: Message):
         unfbanned_in_chats += 1
         try:
             member = await client.get_chat_member(fedchats, user_id)
-            if member.status in (ChatMemberStatus.BANNED, "kicked"):
+            if member.status == ChatMemberStatus.BANNED:
                 await client.unban_chat_member(fedchats, user_id)
             # Do not spamming all fed chats
             """
@@ -1163,7 +1162,7 @@ async def set_frules(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1220,7 +1219,7 @@ async def set_frules(client, message: Message):
 async def get_frules(client, message: Message):
     chat = message.chat
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1245,7 +1244,7 @@ async def fed_broadcast(client, message: Message):
     user = message.from_user
     chat = message.chat
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1309,7 +1308,7 @@ async def fed_ban_list(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1534,7 +1533,7 @@ async def fed_chats(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1601,7 +1600,7 @@ async def fed_import_bans(client, message: Message):
     user = message.from_user
     msg = message
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1938,7 +1937,7 @@ async def set_fed_log(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -1980,7 +1979,7 @@ async def unset_fed_log(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -2022,7 +2021,7 @@ async def subs_feds(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -2094,7 +2093,7 @@ async def unsubs_feds(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",
@@ -2165,7 +2164,7 @@ async def get_myfedsubs(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if chat.type == ChatType.PRIVATE or chat.type == "private":
+    if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
             "This command is specific to the group, not to our pm!",

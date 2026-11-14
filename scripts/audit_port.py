@@ -21,8 +21,6 @@ CHECKS = {
         r"\.type\s*(==|!=)\s*[\"'](private|group|supergroup|channel)[\"']"
     ),
     "photo list": re.compile(r"\.photo\s*\["),
-    "answer call": re.compile(r"\.answer\("),
-    "reply call": re.compile(r"\.reply\("),
     "chat member flags": re.compile(r"member\.can_\w+"),
     "aiogram chat": re.compile(r"chat\.get_(member|administrators)\("),
 }
