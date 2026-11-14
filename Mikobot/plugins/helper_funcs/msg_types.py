@@ -70,7 +70,8 @@ def get_note_type(msg: Message):
             data_type = Types.DOCUMENT
 
         elif msg.reply_to_message.photo:
-            content = msg.reply_to_message.photo[-1].file_id  # last elem = best quality
+            photo = msg.reply_to_message.photo
+            content = photo[-1].file_id if isinstance(photo, list) else photo.file_id
             text, buttons = button_markdown_parser(msgtext, entities=entities)
             data_type = Types.PHOTO
 
@@ -124,7 +125,8 @@ def get_welcome_type(msg: Message):
             data_type = Types.DOCUMENT
 
         elif msg.reply_to_message.photo:
-            content = msg.reply_to_message.photo[-1].file_id  # last elem = best quality
+            photo = msg.reply_to_message.photo
+            content = photo[-1].file_id if isinstance(photo, list) else photo.file_id
             text = msg.reply_to_message.caption
             data_type = Types.PHOTO
 
@@ -210,7 +212,8 @@ def get_filter_type(msg: Message):
             media_spoiler = None
 
         elif msg.reply_to_message.photo:
-            content = msg.reply_to_message.photo[-1].file_id  # last elem = best quality
+            photo = msg.reply_to_message.photo
+            content = photo[-1].file_id if isinstance(photo, list) else photo.file_id
             text = msg.reply_to_message.caption
             data_type = Types.PHOTO
             media_spoiler = msg.reply_to_message.has_media_spoiler

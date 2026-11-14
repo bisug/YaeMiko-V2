@@ -60,9 +60,10 @@ async def reverse_image_search(client, message: Message):
         with tempfile.TemporaryDirectory(prefix="yae-reverse-") as temp_dir:
             file_path = os.path.join(temp_dir, uuid.uuid4().hex)
             try:
+                photo = reply.photo
                 file_id = (
-                    reply.photo[-1].file_id
-                    if reply.photo
+                    (photo[-1].file_id if isinstance(photo, list) else photo.file_id)
+                    if photo
                     else reply.sticker.file_id
                     if reply.sticker
                     else reply.document.file_id
