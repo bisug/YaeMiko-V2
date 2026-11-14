@@ -754,7 +754,7 @@ async def del_lockables(client, message: Message):
         if lockable == "forwardchannel":
             if getattr(locks, lockable, False):
                 if message.forward_from_chat:
-                    if message.forward_from_chat.type == "channel":
+                    if message.forward_from_chat.type == ChatType.CHANNEL:
                         try:
                             await message.delete()
                         except RPCError as excp:

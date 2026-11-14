@@ -16,7 +16,7 @@ from cachetools import TTLCache
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 from pyrogram import filters
 from pyrogram import filters as ft
-from pyrogram.enums import ButtonStyle, ChatType, ParseMode
+from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
 from pyrogram.enums import ButtonStyle as KButtonStyle
 from pyrogram.errors import RPCError
 from pyrogram.types import (
@@ -141,7 +141,15 @@ async def welcomepic(pic, user, chat, user_id, output_path=None):
 async def member_has_joined(client, member: ChatMemberUpdated):
     if (
         not member.new_chat_member
-        or member.new_chat_member.status in {"banned", "left", "restricted"}
+        or member.new_chat_member.status
+        in {
+            ChatMemberStatus.BANNED,
+            ChatMemberStatus.LEFT,
+            ChatMemberStatus.RESTRICTED,
+            "banned",
+            "left",
+            "restricted",
+        }
         or member.old_chat_member
     ):
         return
@@ -479,7 +487,7 @@ async def new_member(client, message: Message):
             elif new_mem.id == client.id:
                 creator = None
                 for x in await client.get_chat_administrators(message.chat.id):
-                    if x.status == "creator":
+                    if x.status in (ChatMemberStatus.OWNER, "creator"):
                         creator = x.user
                         break
                 if creator:

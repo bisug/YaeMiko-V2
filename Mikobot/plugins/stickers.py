@@ -226,7 +226,7 @@ async def kang_sticker(self: Client, ctx: Message, strings):
             (
                 ctx.text[y.offset : (y.offset + y.length)]
                 for y in ctx.entities
-                if y.type == "url"
+                if y.type in (enums.MessageEntityType.URL, "url")
             ),
             None,
         )

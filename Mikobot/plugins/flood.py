@@ -6,7 +6,7 @@ import time
 from datetime import datetime, timezone
 
 from pyrogram import filters
-from pyrogram.enums import ParseMode
+from pyrogram.enums import ChatType, ParseMode
 from pyrogram.errors import RPCError
 from pyrogram.types import CallbackQuery, ChatPermissions, Message
 
@@ -186,7 +186,7 @@ async def set_flood(client, message: Message):
         chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
-        if message.chat.type == "private":
+        if message.chat.type in (ChatType.PRIVATE, "private"):
             await send_message(
                 message,
                 "This command is meant to use in a group, not in PM.",
@@ -283,7 +283,7 @@ async def flood(client, message: Message):
         chat_obj = await client.get_chat(conn)
         chat_name = chat_obj.title
     else:
-        if message.chat.type == "private":
+        if message.chat.type in (ChatType.PRIVATE, "private"):
             await send_message(
                 message,
                 "This command is meant to use in a group, not in PM.",
@@ -331,7 +331,7 @@ async def set_flood_mode(client, message: Message):
         chat_obj = chat
         chat_name = chat_obj.title
     else:
-        if message.chat.type == "private":
+        if message.chat.type in (ChatType.PRIVATE, "private"):
             await send_message(
                 message,
                 "This command is meant to use in a group, not in PM.",
@@ -430,7 +430,7 @@ async def _flood_target(message, user):
     if conn:
         chat_obj = await client.get_chat(conn)
         return conn, chat_obj.title
-    if message.chat.type == "private":
+    if message.chat.type in (ChatType.PRIVATE, "private"):
         await send_message(
             message, "This command is meant to use in a group, not in PM."
         )

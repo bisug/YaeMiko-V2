@@ -8,7 +8,13 @@ import uuid
 from io import BytesIO
 
 from pyrogram import filters
-from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
+from pyrogram.enums import (
+    ButtonStyle,
+    ChatMemberStatus,
+    ChatType,
+    MessageEntityType,
+    ParseMode,
+)
 from pyrogram.errors import RPCError
 from pyrogram.types import (
     CallbackQuery,
@@ -364,7 +370,10 @@ async def user_join_fed(client, message: Message):
                 len(args) >= 1
                 and not args[0].startswith("@")
                 and not args[0].isdigit()
-                and not any(e.type == "text_mention" for e in (msg.entities or ()))
+                and not any(
+                    e.type in (MessageEntityType.TEXT_MENTION, "text_mention")
+                    for e in (msg.entities or ())
+                )
             )
         ):
             await msg.reply_text("I cannot extract user from this message")
@@ -424,7 +433,10 @@ async def user_demote_fed(client, message: Message):
                 len(args) >= 1
                 and not args[0].startswith("@")
                 and not args[0].isdigit()
-                and not any(e.type == "text_mention" for e in (msg.entities or ()))
+                and not any(
+                    e.type in (MessageEntityType.TEXT_MENTION, "text_mention")
+                    for e in (msg.entities or ())
+                )
             )
         ):
             await msg.reply_text("I cannot extract user from this message")
@@ -1024,7 +1036,7 @@ async def unfban(client, message: Message):
         unfbanned_in_chats += 1
         try:
             member = await client.get_chat_member(fedchats, user_id)
-            if member.status == "kicked":
+            if member.status in (ChatMemberStatus.BANNED, "kicked"):
                 await client.unban_chat_member(fedchats, user_id)
             # Do not spamming all fed chats
             """
@@ -1805,7 +1817,10 @@ async def del_fed_button(client, query: CallbackQuery):
         await query.answer("This deletion request is invalid.", show_alert=True)
         return
 
-    if query.message.chat.type != "private" or query.from_user.id != requested_by:
+    if (
+        query.message.chat.type not in (ChatType.PRIVATE, "private")
+        or query.from_user.id != requested_by
+    ):
         await query.answer(
             "This deletion request belongs to another user.", show_alert=True
         )
