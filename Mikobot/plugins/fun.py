@@ -201,6 +201,8 @@ __help__ = """
 » /joke: tells a random joke.
 """
 
+__mod_name__ = "FUN"
+
 # <================================================ HANDLER =======================================================>
 # Eleven single-purpose commands; the loop keeps them from needing eleven
 # near-identical registration lines.

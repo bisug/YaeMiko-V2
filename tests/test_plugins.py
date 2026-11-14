@@ -279,3 +279,22 @@ def test_entities_mapping_and_markdown_parser():
 
     parsed_md = markdown_parser(msg.text, entities=mapped)
     assert parsed_md == "Hello `code` world"
+
+
+def test_every_helpable_plugin_defines_mod_name(monkeypatch):
+    import Mikobot
+    from Mikobot.plugins import ALL_MODULES
+
+    monkeypatch.setattr(
+        Mikobot, "_BOT_INFO", (123456789, "YaeMikoTest", "YaeMikoTestBot")
+    )
+
+    bad = []
+    for name in ALL_MODULES:
+        mod = importlib.import_module(f"Mikobot.plugins.{name}")
+        if getattr(mod, "__help__", None):
+            mod_name = getattr(mod, "__mod_name__", None)
+            if not mod_name or mod_name.startswith("Mikobot.plugins"):
+                bad.append(name)
+
+    assert not bad, f"Plugins with __help__ missing explicit valid __mod_name__: {bad}"
