@@ -164,18 +164,26 @@ if is_module_loaded(FILENAME):
     @check_admin(is_user=True)
     async def setlog(client, message: Message):
         chat = message.chat
+        f_chat = None
+        if getattr(message, "forward_origin", None):
+            f_chat = getattr(message.forward_origin, "chat", None) or getattr(
+                message.forward_origin, "sender_chat", None
+            )
+        if f_chat is None:
+            f_chat = getattr(message, "forward_from_chat", None)
+
         if chat.type == ChatType.CHANNEL:
             await client.send_message(
                 chat.id,
                 "Now, forward the /setlog to the group you want to tie this channel to!",
             )
 
-        elif message.forward_from_chat:
-            sql.set_chat_log_channel(chat.id, message.forward_from_chat.id)
+        elif f_chat:
+            sql.set_chat_log_channel(chat.id, f_chat.id)
 
             try:
                 await client.send_message(
-                    message.forward_from_chat.id,
+                    f_chat.id,
                     f"This channel has been set as the log channel for {html.escape(chat.title or chat.first_name)}.",
                 )
             except RPCError:

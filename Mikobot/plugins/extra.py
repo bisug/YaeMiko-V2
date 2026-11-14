@@ -50,16 +50,32 @@ async def _id(client, message: Message):
 
     text += f"**๏ [ᴄʜᴀᴛ ɪᴅ ](https://t.me/{chat.username})** » `{chat.id}`\n\n"
 
+    forward_chat = None
+    if getattr(message, "forward_origin", None):
+        forward_chat = getattr(message.forward_origin, "chat", None) or getattr(
+            message.forward_origin, "sender_chat", None
+        )
+    if forward_chat is None:
+        forward_chat = getattr(message, "forward_from_chat", None)
+
     if (
         not getattr(reply, "empty", True)
-        and not message.forward_from_chat
+        and not forward_chat
         and not reply.sender_chat
     ):
         text += f"**๏ [ʀᴇᴘʟɪᴇᴅ ᴍᴇssᴀɢᴇ ɪᴅ]({reply.link})** » `{message.reply_to_message.id}`\n"
         text += f"**๏ [ʀᴇᴘʟɪᴇᴅ ᴜsᴇʀ ɪᴅ](tg://user?id={reply.from_user.id})** » `{reply.from_user.id}`\n\n"
 
-    if reply and reply.forward_from_chat:
-        text += f"๏ ᴛʜᴇ ғᴏʀᴡᴀʀᴅᴇᴅ ᴄʜᴀɴɴᴇʟ, {reply.forward_from_chat.title}, ʜᴀs ᴀɴ ɪᴅ ᴏғ `{reply.forward_from_chat.id}`\n\n"
+    reply_forward_chat = None
+    if reply and getattr(reply, "forward_origin", None):
+        reply_forward_chat = getattr(reply.forward_origin, "chat", None) or getattr(
+            reply.forward_origin, "sender_chat", None
+        )
+    if reply and reply_forward_chat is None:
+        reply_forward_chat = getattr(reply, "forward_from_chat", None)
+
+    if reply_forward_chat:
+        text += f"๏ ᴛʜᴇ ғᴏʀᴡᴀʀᴅᴇᴅ ᴄʜᴀɴɴᴇʟ, {reply_forward_chat.title}, ʜᴀs ᴀɴ ɪᴅ ᴏғ `{reply_forward_chat.id}`\n\n"
 
     if reply and reply.sender_chat:
         text += f"๏ ID ᴏғ ᴛʜᴇ ʀᴇᴘʟɪᴇᴅ ᴄʜᴀᴛ/ᴄʜᴀɴɴᴇʟ, ɪs `{reply.sender_chat.id}`"

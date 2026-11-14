@@ -161,7 +161,18 @@ def matches_metadata(trigger: str, message: Message) -> bool:
                 return True
         return False
     if kind == "forward":
-        origin = message.forward_from_chat or message.forward_from_user
+        forward_origin = getattr(message, "forward_origin", None)
+        origin = None
+        if forward_origin:
+            origin = (
+                getattr(forward_origin, "sender_user", None)
+                or getattr(forward_origin, "chat", None)
+                or getattr(forward_origin, "sender_chat", None)
+            )
+        if origin is None:
+            origin = getattr(message, "forward_from_chat", None) or getattr(
+                message, "forward_from", None
+            )
         if origin is None:
             return False
         identifier = str(origin.id)

@@ -75,7 +75,9 @@ LOCK_TYPES = {
     "photo": lambda m: bool(m.photo),
     "url": lambda m: _has_entity(m, "url"),
     "bots": "bots",
-    "forward": lambda m: m.forward_date is not None,
+    "forward": lambda m: bool(
+        getattr(m, "forward_origin", None) or getattr(m, "forward_date", None)
+    ),
     "game": lambda m: bool(m.game),
     "location": lambda m: bool(m.location),
     "egame": lambda m: bool(m.dice),
@@ -192,7 +194,18 @@ def _is_allowlisted(message, lockable: str) -> bool:
         ):
             candidate = message.sticker.set_name or ""
         elif lockable == "forward":
-            origin = message.forward_from_chat or message.forward_from_user
+            forward_origin = getattr(message, "forward_origin", None)
+            origin = None
+            if forward_origin:
+                origin = (
+                    getattr(forward_origin, "sender_user", None)
+                    or getattr(forward_origin, "chat", None)
+                    or getattr(forward_origin, "sender_chat", None)
+                )
+            if origin is None:
+                origin = getattr(message, "forward_from_chat", None) or getattr(
+                    message, "forward_from", None
+                )
             if origin is not None:
                 candidate = str(origin.id)
         elif lockable == "invitelink":
@@ -637,14 +650,21 @@ def _message_matches_lock(lockable, filter, locks, message) -> bool:
             return not _is_allowlisted(message, "inline")
         return False
     if lockable == "forwardchannel":
+        forward_origin = getattr(message, "forward_origin", None)
+        if forward_origin:
+            chat = getattr(forward_origin, "chat", None)
+            return bool(chat and getattr(chat, "type", None) == ChatType.CHANNEL)
+        f_chat = getattr(message, "forward_from_chat", None)
         return bool(
-            message.forward_from_chat
-            and getattr(message.forward_from_chat, "type", None) == "channel"
+            f_chat and getattr(f_chat, "type", None) in (ChatType.CHANNEL, "channel")
         )
     if lockable == "forwardbot":
-        return bool(
-            message.forward_from and getattr(message.forward_from, "is_bot", False)
-        )
+        forward_origin = getattr(message, "forward_origin", None)
+        if forward_origin:
+            user = getattr(forward_origin, "sender_user", None)
+            return bool(user and getattr(user, "is_bot", False))
+        f_user = getattr(message, "forward_from", None)
+        return bool(f_user and getattr(f_user, "is_bot", False))
     if lockable == "anonchannel":
         return bool(
             (message.from_user and message.from_user.id == ChatID.FAKE_CHANNEL)
@@ -753,36 +773,52 @@ async def del_lockables(client, message: Message):
             continue
         if lockable == "forwardchannel":
             if getattr(locks, lockable, False):
-                if message.forward_from_chat:
-                    if message.forward_from_chat.type == ChatType.CHANNEL:
-                        try:
-                            await message.delete()
-                        except RPCError as excp:
-                            if (
-                                "message to delete not found"
-                                in str(excp.message or excp).lower()
-                            ):
-                                pass
-                            else:
-                                LOGGER.exception("ERROR in lockables - forwardchannel")
-                        break
-                continue
+                is_chan = False
+                forward_origin = getattr(message, "forward_origin", None)
+                if forward_origin:
+                    f_chat = getattr(forward_origin, "chat", None)
+                    is_chan = bool(
+                        f_chat and getattr(f_chat, "type", None) == ChatType.CHANNEL
+                    )
+                elif message.forward_from_chat:
+                    is_chan = (
+                        getattr(message.forward_from_chat, "type", None)
+                        == ChatType.CHANNEL
+                    )
+                if is_chan:
+                    try:
+                        await message.delete()
+                    except RPCError as excp:
+                        if (
+                            "message to delete not found"
+                            in str(excp.message or excp).lower()
+                        ):
+                            pass
+                        else:
+                            LOGGER.exception("ERROR in lockables - forwardchannel")
+                    break
             continue
         if lockable == "forwardbot":
             if getattr(locks, lockable, False):
-                if message.forward_from:
-                    if message.forward_from.is_bot:
-                        try:
-                            await message.delete()
-                        except RPCError as excp:
-                            if (
-                                "message to delete not found"
-                                in str(excp.message or excp).lower()
-                            ):
-                                pass
-                            else:
-                                LOGGER.exception("ERROR in lockables - forwardbot")
-                        break
+                is_bot = False
+                forward_origin = getattr(message, "forward_origin", None)
+                if forward_origin:
+                    f_user = getattr(forward_origin, "sender_user", None)
+                    is_bot = bool(f_user and getattr(f_user, "is_bot", False))
+                elif message.forward_from:
+                    is_bot = getattr(message.forward_from, "is_bot", False)
+                if is_bot:
+                    try:
+                        await message.delete()
+                    except RPCError as excp:
+                        if (
+                            "message to delete not found"
+                            in str(excp.message or excp).lower()
+                        ):
+                            pass
+                        else:
+                            LOGGER.exception("ERROR in lockables - forwardbot")
+                    break
                 continue
             continue
         if lockable == "anonchannel":
