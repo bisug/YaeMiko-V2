@@ -68,14 +68,22 @@ def _lock_state(chat_id):
     row = locks_sql.get_locks(chat_id)
     if row is None:
         return []
-    return [name for name in vars(row) if name != "chat_id" and getattr(row, name)]
+    return [
+        name
+        for name in vars(row)
+        if not name.startswith("_") and name != "chat_id" and getattr(row, name)
+    ]
 
 
 def _restriction_state(chat_id):
     row = locks_sql.get_restr(chat_id)
     if row is None:
         return []
-    return [name for name in vars(row) if name != "chat_id" and getattr(row, name)]
+    return [
+        name
+        for name in vars(row)
+        if not name.startswith("_") and name != "chat_id" and getattr(row, name)
+    ]
 
 
 def __export_data__(chat_id):

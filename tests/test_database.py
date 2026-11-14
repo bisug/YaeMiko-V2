@@ -211,3 +211,17 @@ def test_index_names_are_unique():
                 names.append(node.args[0].value)
     duplicates = {name for name in names if names.count(name) > 1}
     assert not duplicates, f"index names used twice: {sorted(duplicates)}"
+
+
+def test_notes_url_constraint_includes_name():
+    notes_sql = (ROOT / "Database" / "sql" / "notes_sql.py").read_text(encoding="utf-8")
+    assert (
+        'ensure_index("note_urls_uc", "note_urls", "chat_id, note_name, name", unique=True)'
+        in notes_sql
+    )
+
+
+def test_sangmata_get_userdata_empty():
+    from Database.sql.sangmata_sql import get_userdata
+
+    assert get_userdata(-999999) is None

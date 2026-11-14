@@ -388,7 +388,6 @@ def create_all_tables() -> None:
             blsticker_sql,
             bot2bot_sql,
             captcha_sql,
-            cleaner_sql,
             connection_sql,
             cust_filters_sql,
             disable_sql,
@@ -401,7 +400,6 @@ def create_all_tables() -> None:
             log_channel_sql,
             notes_sql,
             raid_sql,
-            remind_sql,
             rules_sql,
             sangmata_sql,
             toggle_sql,
@@ -420,25 +418,24 @@ def create_all_tables() -> None:
 
             # Populate caches now that all tables exist in the database
             afk_sql.__load_afk_users()
-        antiflood_sql.__load_flood_settings()
-        blacklist_sql.__load_chat_blacklists()
-        blacklist_sql.__load_chat_settings_blacklists()
-        blsticker_sql.__load_CHAT_STICKERS()
-        blsticker_sql.__load_chat_stickerset_blacklists()
-        cleaner_sql.__load_cleaner_list()
-        connection_sql.__load_user_history()
-        cust_filters_sql.__load_chat_filters()
-        disable_sql.__load_disabled_commands()
-        feds_sql.__load_all_feds()
-        feds_sql.__load_all_feds_chats()
-        feds_sql.__load_all_feds_banned()
-        feds_sql.__load_all_feds_settings()
-        feds_sql.__load_feds_subscriber()
-        global_bans_sql.__load_gbanned_userid_list()
-        global_bans_sql.__load_gban_stat_list()
-        locks_sql.__load_locks_cache()
-        log_channel_sql.__load_log_channels()
-        warns_sql.__load_chat_warn_filters()
+            antiflood_sql.__load_flood_settings()
+            blacklist_sql.__load_chat_blacklists()
+            blacklist_sql.__load_chat_settings_blacklists()
+            blsticker_sql.__load_CHAT_STICKERS()
+            blsticker_sql.__load_chat_stickerset_blacklists()
+            connection_sql.__load_user_history()
+            cust_filters_sql.__load_chat_filters()
+            disable_sql.__load_disabled_commands()
+            feds_sql.__load_all_feds()
+            feds_sql.__load_all_feds_chats()
+            feds_sql.__load_all_feds_banned()
+            feds_sql.__load_all_feds_settings()
+            feds_sql.__load_feds_subscriber()
+            global_bans_sql.__load_gbanned_userid_list()
+            global_bans_sql.__load_gban_stat_list()
+            locks_sql.__load_locks_cache()
+            log_channel_sql.__load_log_channels()
+            warns_sql.__load_chat_warn_filters()
     except Exception:
         log.exception("[PostgreSQL] Failed to create tables")
 

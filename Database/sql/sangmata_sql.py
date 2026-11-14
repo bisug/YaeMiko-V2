@@ -50,6 +50,8 @@ def get_userdata(user_id):
     """Return the (username, first_name, last_name) triple the plugin unpacks."""
     try:
         row = SESSION.get(SangmataUser, user_id)
+        if not row:
+            return None
         return row.username, row.first_name, row.last_name
     finally:
         SESSION.close()

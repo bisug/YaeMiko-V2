@@ -3,7 +3,6 @@ from pyrogram.types import Message, ReplyParameters
 
 from Database.sql.sangmata_sql import (
     add_userdata,
-    cek_userdata,
     get_userdata,
     is_sangmata_on,
     sangmata_off,
@@ -24,14 +23,15 @@ from Mikobot.utils.localization import use_chat_lang
 async def cek_mataa(_, ctx: Message, strings):
     if ctx.sender_chat or not is_sangmata_on(ctx.chat.id):
         return
-    if not cek_userdata(ctx.from_user.id):
+    data = get_userdata(ctx.from_user.id)
+    if not data:
         return add_userdata(
             ctx.from_user.id,
             ctx.from_user.username,
             ctx.from_user.first_name,
             ctx.from_user.last_name,
         )
-    usernamebefore, first_name, lastname_before = get_userdata(ctx.from_user.id)
+    usernamebefore, first_name, lastname_before = data
     msg = ""
     if (
         usernamebefore != ctx.from_user.username

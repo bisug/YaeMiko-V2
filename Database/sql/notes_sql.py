@@ -84,7 +84,7 @@ ensure_index("notes_name_lower_idx", "notes", "chat_id, lower(name)")
 
 # The buttons of a note are replaced as a set, so one note cannot hold two
 # buttons with the same name.
-ensure_index("note_urls_uc", "note_urls", "chat_id, note_name", unique=True)
+ensure_index("note_urls_uc", "note_urls", "chat_id, note_name, name", unique=True)
 
 NOTES_INSERTION_LOCK = threading.RLock()
 BUTTONS_INSERTION_LOCK = threading.RLock()
