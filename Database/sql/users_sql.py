@@ -34,6 +34,7 @@ from sqlalchemy import (
     func,
     select,
 )
+from sqlalchemy.exc import IntegrityError
 
 from Database.sql import BASE, SESSION, ensure_index, unit_of_work_guard
 
@@ -114,38 +115,42 @@ def ensure_bot_in_db():
 
 @unit_of_work_guard
 def update_user(user_id, username, chat_id=None, chat_name=None):
-    with INSERTION_LOCK:
-        user = SESSION.get(Users, user_id)
-        if not user:
-            user = Users(user_id, username)
-            SESSION.add(user)
-            SESSION.flush()
-        else:
-            user.username = username
+    uid = int(user_id)
+    user = SESSION.get(Users, uid)
+    if not user:
+        user = Users(uid, username)
+        SESSION.add(user)
+    else:
+        user.username = username
 
-        if not chat_id or not chat_name:
+    if not chat_id or not chat_name:
+        try:
             SESSION.commit()
-            return
+        except IntegrityError:
+            SESSION.rollback()
+        return
 
-        chat = SESSION.get(Chats, str(chat_id))
-        if not chat:
-            chat = Chats(str(chat_id), chat_name)
-            SESSION.add(chat)
-            SESSION.flush()
+    cid = str(chat_id)
+    chat = SESSION.get(Chats, cid)
+    if not chat:
+        chat = Chats(cid, chat_name)
+        SESSION.add(chat)
+    else:
+        chat.chat_name = chat_name
 
-        else:
-            chat.chat_name = chat_name
+    member = SESSION.scalars(
+        select(ChatMembers.priv_chat_id).where(
+            ChatMembers.chat == cid, ChatMembers.user == uid
+        )
+    ).first()
+    if not member:
+        chat_member = ChatMembers(cid, uid)
+        SESSION.add(chat_member)
 
-        member = SESSION.scalars(
-            select(ChatMembers).where(
-                ChatMembers.chat == chat.chat_id, ChatMembers.user == user.user_id
-            )
-        ).first()
-        if not member:
-            chat_member = ChatMembers(chat.chat_id, user.user_id)
-            SESSION.add(chat_member)
-
+    try:
         SESSION.commit()
+    except IntegrityError:
+        SESSION.rollback()
 
 
 @unit_of_work_guard
