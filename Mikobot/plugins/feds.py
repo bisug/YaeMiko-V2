@@ -420,7 +420,7 @@ async def user_join_fed(client, message: Message):
                 "I cannot promote users who are already federation admins! Can remove them if you want!",
             )
             return
-        if user_id == client.id:
+        if user_id == client.me.id:
             await message.reply_text(
                 "I already am a federation admin in all federations!",
             )
@@ -469,7 +469,7 @@ async def user_demote_fed(client, message: Message):
             await msg.reply_text("I cannot extract user from this message")
             return
 
-        if user_id == client.id:
+        if user_id == client.me.id:
             await message.reply_text(
                 "The thing you are trying to demote me from will fail to work without me! Just saying.",
             )
@@ -629,7 +629,7 @@ async def fed_ban(client, message: Message):
 
     fban, fbanreason, fbantime = sql.get_fban_user(fed_id, user_id)
 
-    if user_id == client.id:
+    if user_id == client.me.id:
         await message.reply_text(
             "What is funnier than kicking the group creator? Self sacrifice.",
         )
@@ -1685,7 +1685,7 @@ async def fed_import_bans(client, message: Message):
                 except KeyError, ValueError:
                     failed += 1
                     continue
-                if int(import_userid) == client.id:
+                if int(import_userid) == client.me.id:
                     failed += 1
                     continue
                 if is_user_fed_owner(fed_id, import_userid) is True:
@@ -1764,7 +1764,7 @@ async def fed_import_bans(client, message: Message):
                 except IndexError, ValueError:
                     failed += 1
                     continue
-                if int(import_userid) == client.id:
+                if int(import_userid) == client.me.id:
                     failed += 1
                     continue
                 if is_user_fed_owner(fed_id, import_userid) is True:

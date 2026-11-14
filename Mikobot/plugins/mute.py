@@ -35,7 +35,7 @@ async def check_user(user_id: int, client, chat: Chat) -> str | None:
     except RPCError:
         return "I can't seem to find this user"
 
-    if user_id == client.id:
+    if user_id == client.me.id:
         reply = "I'm not gonna MUTE myself, How high are you?"
         return reply
 

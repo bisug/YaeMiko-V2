@@ -580,7 +580,7 @@ async def unlock(client, message: Message) -> str:
                 chat_name = message.chat.title
                 text = "Unlocked {} for everyone!".format(ltype)
 
-            member = await client.get_chat_member(chat.id, client.id)
+            member = await client.get_chat_member(chat.id, client.me.id)
 
             if member.status == ChatMemberStatus.ADMINISTRATOR:
                 can_change_info = granted(member, "can_change_info")
@@ -698,7 +698,7 @@ async def del_lockables(client, message: Message):
     ):
         return
     try:
-        bot_member = await client.get_chat_member(chat.id, client.id)
+        bot_member = await client.get_chat_member(chat.id, client.me.id)
     except RPCError:
         return
     if not granted(bot_member, "can_delete_messages"):
@@ -853,7 +853,7 @@ async def del_lockables(client, message: Message):
                 new_members = message.new_chat_members or []
                 for new_mem in new_members:
                     if new_mem.is_bot:
-                        if not await is_bot_admin(chat, client.id):
+                        if not await is_bot_admin(chat, client.me.id):
                             await send_message(
                                 message,
                                 "I see a bot and I've been told to stop them from joining..."

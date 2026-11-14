@@ -16,7 +16,13 @@ from cachetools import TTLCache
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 from pyrogram import filters
 from pyrogram import filters as ft
-from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
+from pyrogram.enums import (
+    ButtonStyle,
+    ChatMembersFilter,
+    ChatMemberStatus,
+    ChatType,
+    ParseMode,
+)
 from pyrogram.enums import ButtonStyle as KButtonStyle
 from pyrogram.errors import RPCError
 from pyrogram.types import (
@@ -420,11 +426,11 @@ async def new_member(client, message: Message):
     new_members = message.new_chat_members or []
 
     for new_mem in new_members:
-        if new_mem.id == client.id and not ALLOW_CHATS:
+        if new_mem.id == client.me.id and not ALLOW_CHATS:
             with suppress(RPCError):
                 await message.reply_text(
                     "Groups are disabled for {}, I'm outta here.".format(
-                        client.first_name
+                        client.me.first_name
                     )
                 )
             await client.leave_chat(message.chat.id)
@@ -479,9 +485,11 @@ async def new_member(client, message: Message):
                 )
                 continue
 
-            elif new_mem.id == client.id:
+            elif new_mem.id == client.me.id:
                 creator = None
-                for x in await client.get_chat_administrators(message.chat.id):
+                async for x in client.get_chat_members(
+                    message.chat.id, filter=ChatMembersFilter.ADMINISTRATORS
+                ):
                     if x.status == ChatMemberStatus.OWNER:
                         creator = x.user
                         break
@@ -807,7 +815,7 @@ async def left_member(client, message: Message):
         sql.get_gdbye_pref, chat.id
     )
 
-    if user.id == client.id:
+    if user.id == client.me.id:
         return
 
     if should_goodbye:
@@ -823,7 +831,7 @@ async def left_member(client, message: Message):
             if is_user_gbanned(left_mem.id):
                 return
 
-            if left_mem.id == client.id:
+            if left_mem.id == client.me.id:
                 return
 
             if left_mem.id == OWNER_ID:

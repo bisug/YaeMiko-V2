@@ -55,7 +55,6 @@ async def ban(client, message: Message) -> str:
     if user_id is None:
         return await message.reply_text("That looks like an invalid User ID to me.")
 
-    member = await client.get_chat_member(chat.id, user.id)
     SILENT = bool(message.text.startswith("/s"))
     # /dban is the delete-then-act shortcut: the offending message goes too.
     DELETE_MESSAGE = bool(message.text.startswith("/d"))
@@ -94,7 +93,9 @@ async def ban(client, message: Message) -> str:
         )
 
         return log_message
-    elif (
+
+    member = await client.get_chat_member(chat.id, user.id)
+    if (
         not (
             (
                 member.status == ChatMemberStatus.ADMINISTRATOR
@@ -109,7 +110,7 @@ async def ban(client, message: Message) -> str:
         )
         return log_message
 
-    if user_id == client.id:
+    if user_id == client.me.id:
         await message.reply_text("Oh yeah, ban myself, noob!")
         return log_message
 
@@ -145,7 +146,7 @@ async def ban(client, message: Message) -> str:
 
     if SILENT:
         silent = True
-        if not await can_delete(chat, client.id):
+        if not await can_delete(chat, client.me.id):
             return ""
     else:
         silent = False
@@ -247,7 +248,7 @@ async def temp_ban(client, message: Message) -> str:
             raise
         await message.reply_text("I can't seem to find this user.")
         return log_message
-    if user_id == client.id:
+    if user_id == client.me.id:
         await message.reply_text("I'm not gonna BAN myself, are you crazy?")
         return log_message
 
@@ -344,7 +345,7 @@ async def kick(client, message: Message) -> str:
 
         await message.reply_text("I can't seem to find this user.")
         return log_message
-    if user_id == client.id:
+    if user_id == client.me.id:
         await message.reply_text("Yeahhh I'm not gonna do that.")
         return log_message
 
@@ -460,7 +461,7 @@ async def unban(client, message: Message) -> str:
         await message.reply_text("I doubt that's a user.")
         return log_message
 
-    if user_id == client.id:
+    if user_id == client.me.id:
         await message.reply_text("How would I unban myself if I wasn't here...?")
         return log_message
 
@@ -604,7 +605,7 @@ async def bans_callback(client, query: CallbackQuery):
         reason = pending.get("reason", "")
         chat_name = pending.get("chat_title")
 
-        if user_id == client.id:
+        if user_id == client.me.id:
             await message.edit_text("Oh yeah, ban myself, noob!")
             return log_message
 
@@ -720,7 +721,7 @@ async def bans_callback(client, query: CallbackQuery):
             await message.edit_text("I doubt that's a user.")
             return log_message
 
-        if user_id == client.id:
+        if user_id == client.me.id:
             await message.edit_text("How would i unban myself if i wasn't here...?")
             return log_message
 
