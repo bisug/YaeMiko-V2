@@ -188,7 +188,7 @@ def __load_CHAT_STICKERS():
         chats = (
             SESSION.execute(select(StickersFilters.chat_id).distinct()).scalars().all()
         )
-        for (chat_id,) in chats:  # remove tuple by ( ,)
+        for chat_id in chats:
             CHAT_STICKERS[chat_id] = []
 
         all_filters = SESSION.scalars(select(StickersFilters)).all()

@@ -317,7 +317,7 @@ def __load_chat_blacklists():
         chats = (
             SESSION.execute(select(BlackListFilters.chat_id).distinct()).scalars().all()
         )
-        for (chat_id,) in chats:  # remove tuple by ( ,)
+        for chat_id in chats:
             CHAT_BLACKLISTS[chat_id] = []
 
         all_filters = SESSION.scalars(select(BlackListFilters)).all()

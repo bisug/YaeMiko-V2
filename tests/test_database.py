@@ -225,3 +225,11 @@ def test_sangmata_get_userdata_empty():
     from Database.sql.sangmata_sql import get_userdata
 
     assert get_userdata(-999999) is None
+
+
+def test_no_tuple_unpacking_on_scalar_chat_ids():
+    for path in sorted((ROOT / "Database" / "sql").glob("*_sql.py")):
+        content = path.read_text(encoding="utf-8")
+        assert "for (chat_id,) in" not in content, (
+            f"found tuple unpacking in {path.name}"
+        )

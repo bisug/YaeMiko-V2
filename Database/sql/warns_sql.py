@@ -119,9 +119,7 @@ def warn_user(user_id, chat_id, reason=None):
 
         warned_user.num_warns += 1
         if reason:
-            warned_user.reasons = warned_user.reasons + [
-                reason,
-            ]  # TODO:: double check this wizardry
+            warned_user.reasons = (warned_user.reasons or []) + [reason]
 
         reasons = warned_user.reasons
         num = warned_user.num_warns
@@ -325,7 +323,7 @@ def __load_chat_warn_filters():
         return
     try:
         chats = SESSION.execute(select(WarnFilters.chat_id).distinct()).scalars().all()
-        for (chat_id,) in chats:  # remove tuple by ( ,)
+        for chat_id in chats:
             WARN_FILTERS[chat_id] = []
 
         all_filters = SESSION.scalars(select(WarnFilters)).all()

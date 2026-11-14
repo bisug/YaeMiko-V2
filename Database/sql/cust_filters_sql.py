@@ -370,7 +370,7 @@ def __load_chat_filters():
         chats = (
             SESSION.execute(select(CustomFilters.chat_id).distinct()).scalars().all()
         )
-        for (chat_id,) in chats:  # remove tuple by ( ,)
+        for chat_id in chats:
             CHAT_FILTERS[chat_id] = []
 
         all_filters = SESSION.scalars(select(CustomFilters)).all()
