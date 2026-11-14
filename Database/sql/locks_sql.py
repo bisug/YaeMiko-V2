@@ -179,6 +179,8 @@ def _cache_permissions(chat_id, locks):
 @unit_of_work_guard
 def init_permissions(chat_id, reset=False):
     curr_perm = SESSION.get(Permissions, str(chat_id))
+    if curr_perm and not reset:
+        return _cache_permissions(chat_id, ChatLocks.from_row(curr_perm))
     if reset and curr_perm:
         SESSION.delete(curr_perm)
         SESSION.flush()
@@ -193,6 +195,8 @@ def init_permissions(chat_id, reset=False):
 @unit_of_work_guard
 def init_restrictions(chat_id, reset=False):
     curr_restr = SESSION.get(Restrictions, str(chat_id))
+    if curr_restr and not reset:
+        return curr_restr
     if reset and curr_restr:
         SESSION.delete(curr_restr)
         SESSION.flush()

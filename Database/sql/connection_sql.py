@@ -37,7 +37,7 @@ class ChatAccessConnectionSettings(BASE):
 
     def __init__(self, chat_id, allow_connect_to_chat):
         self.chat_id = str(chat_id)
-        self.allow_connect_to_chat = str(allow_connect_to_chat)
+        self.allow_connect_to_chat = bool(allow_connect_to_chat)
 
     def __repr__(self):
         return "<ᴄʜᴀᴛ ᴀᴄᴄᴇss sᴇᴛᴛɪɴɢs ({}) is {}>".format(

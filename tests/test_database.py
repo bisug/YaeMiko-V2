@@ -233,3 +233,10 @@ def test_no_tuple_unpacking_on_scalar_chat_ids():
         assert "for (chat_id,) in" not in content, (
             f"found tuple unpacking in {path.name}"
         )
+
+
+def test_connection_settings_boolean():
+    from Database.sql.connection_sql import ChatAccessConnectionSettings
+
+    setting = ChatAccessConnectionSettings(12345, False)
+    assert setting.allow_connect_to_chat is False
