@@ -1,5 +1,6 @@
 import ast
 import asyncio
+import json
 import threading
 
 from pyrogram.errors import RPCError
@@ -128,6 +129,9 @@ ensure_index("feds_owner_uc", "feds", "owner_id", unique=True)
 # primary key starts with the federation id.
 ensure_index("feds_subs_sub_idx", "feds_subs", "fed_subs")
 
+# bans_feds filters and deletes by user_id across federations.
+ensure_index("bans_feds_user_idx", "bans_feds", "user_id")
+
 
 def _widen_user_id_column(table: str, column: str) -> None:
     """Turn a text user id column into a BIGINT one.
@@ -208,29 +212,74 @@ MYFEDS_SUBSCRIBER = {}
 
 
 def _fed_members(raw):
-    """The member list from a federation's stored fusers blob, or [].
-
-    fusers is str(dict) with the member list itself str()'d inside it, so reading
-    it needs two literal_eval passes. A row that does not parse used to raise
-    ValueError out of whatever handler happened to read it, taking down a chat's
-    whole federation view for one bad record; an unreadable row now reads as
-    having no members.
-    """
-    try:
-        members = ast.literal_eval(ast.literal_eval(raw)["members"])
-    except ValueError, SyntaxError, KeyError, TypeError:
-        LOGGER.warning("Unreadable federation member list, treating it as empty")
+    """The member list from a federation's stored fusers blob, or []."""
+    if not raw:
         return []
-    return members if isinstance(members, list) else []
+    if isinstance(raw, dict):
+        members = raw.get("members", [])
+    else:
+        try:
+            data = json.loads(raw) if raw.startswith("{") else ast.literal_eval(raw)
+        except Exception:
+            try:
+                data = ast.literal_eval(raw)
+            except ValueError, SyntaxError, KeyError, TypeError:
+                LOGGER.warning(
+                    "Unreadable federation member list, treating it as empty"
+                )
+                return []
+        if not isinstance(data, dict):
+            return []
+        members = data.get("members", [])
+
+    if isinstance(members, str):
+        try:
+            members = (
+                json.loads(members)
+                if members.startswith("[")
+                else ast.literal_eval(members)
+            )
+        except Exception:
+            try:
+                members = ast.literal_eval(members)
+            except ValueError, SyntaxError, KeyError, TypeError:
+                return []
+
+    if not isinstance(members, (list, set, tuple)):
+        return []
+
+    res = []
+    for m in members:
+        try:
+            res.append(int(m))
+        except ValueError, TypeError:
+            continue
+    return res
 
 
 def _fed_owner(raw, default=None):
     """The owner id from a federation's stored fusers blob, or default."""
-    try:
-        return ast.literal_eval(ast.literal_eval(raw)["owner"])
-    except ValueError, SyntaxError, KeyError, TypeError:
-        LOGGER.warning("Unreadable federation owner field")
+    if not raw:
         return default
+    if isinstance(raw, dict):
+        return raw.get("owner", default)
+    try:
+        data = json.loads(raw) if raw.startswith("{") else ast.literal_eval(raw)
+    except Exception:
+        try:
+            data = ast.literal_eval(raw)
+        except ValueError, SyntaxError, KeyError, TypeError:
+            LOGGER.warning("Unreadable federation owner field")
+            return default
+    if not isinstance(data, dict):
+        return default
+    owner = data.get("owner", default)
+    if isinstance(owner, str) and (owner.startswith("{") or owner.startswith("[")):
+        try:
+            owner = ast.literal_eval(owner)
+        except Exception:
+            pass
+    return owner
 
 
 def get_fed_info(fed_id):
@@ -256,60 +305,108 @@ def get_fed_name(chat_id):
         return get["chat_name"]
 
 
+@unit_of_work_guard
 def get_user_fban(fed_id, user_id):
     fed_id = str(fed_id)
-    user_id = str(user_id)
-    if not FEDERATION_BANNED_FULL.get(fed_id):
+    try:
+        uid = int(user_id)
+    except ValueError, TypeError:
         return False, False, False
-    user_info = FEDERATION_BANNED_FULL[fed_id].get(user_id)
-    if not user_info:
+
+    user_ids = FEDERATION_BANNED_USERID.get(fed_id)
+    if not user_ids or uid not in user_ids:
+        return False, False, False
+
+    cached = FEDERATION_BANNED_FULL.get(fed_id, {}).get(str(uid))
+    if cached is not None:
+        return cached["first_name"], cached["reason"], cached["time"]
+
+    ban = SESSION.get(BansF, (fed_id, uid))
+    if not ban:
         return None, None, None
+    user_info = {
+        "first_name": ban.first_name,
+        "reason": ban.reason,
+        "time": ban.time,
+    }
+    FEDERATION_BANNED_FULL.setdefault(fed_id, {})[str(uid)] = user_info
     return user_info["first_name"], user_info["reason"], user_info["time"]
 
 
 def get_user_admin_fed_name(user_id):
     user_feds = []
+    try:
+        uid = int(user_id)
+    except ValueError, TypeError:
+        return user_feds
     for f in FEDERATION_BYFEDID:
-        if int(user_id) in _fed_members(FEDERATION_BYFEDID[f]["fusers"]):
-            user_feds.append(FEDERATION_BYFEDID[f]["fname"])
+        fed = FEDERATION_BYFEDID[f]
+        members = fed.get("members_set")
+        if members is None:
+            members = set(_fed_members(fed.get("fusers")))
+            fed["members_set"] = members
+        if uid in members:
+            user_feds.append(fed["fname"])
     return user_feds
 
 
 def get_user_owner_fed_name(user_id):
     user_feds = []
+    try:
+        uid = int(user_id)
+    except ValueError, TypeError:
+        return user_feds
     for f in FEDERATION_BYFEDID:
-        owner = _fed_owner(FEDERATION_BYFEDID[f]["fusers"])
-        if owner is not None and int(user_id) == int(owner):
+        owner = _fed_owner(FEDERATION_BYFEDID[f].get("fusers"))
+        if owner is not None and uid == int(owner):
             user_feds.append(FEDERATION_BYFEDID[f]["fname"])
     return user_feds
 
 
 def get_user_admin_fed_full(user_id):
     user_feds = []
+    try:
+        uid = int(user_id)
+    except ValueError, TypeError:
+        return user_feds
     for f in FEDERATION_BYFEDID:
-        if int(user_id) in _fed_members(FEDERATION_BYFEDID[f]["fusers"]):
-            user_feds.append({"fed_id": f, "fed": FEDERATION_BYFEDID[f]})
+        fed = FEDERATION_BYFEDID[f]
+        members = fed.get("members_set")
+        if members is None:
+            members = set(_fed_members(fed.get("fusers")))
+            fed["members_set"] = members
+        if uid in members:
+            user_feds.append({"fed_id": f, "fed": fed})
     return user_feds
 
 
 def get_user_owner_fed_full(user_id):
     user_feds = []
+    try:
+        uid = int(user_id)
+    except ValueError, TypeError:
+        return user_feds
     for f in FEDERATION_BYFEDID:
-        owner = _fed_owner(FEDERATION_BYFEDID[f]["fusers"])
-        if owner is not None and int(user_id) == int(owner):
+        owner = _fed_owner(FEDERATION_BYFEDID[f].get("fusers"))
+        if owner is not None and uid == int(owner):
             user_feds.append({"fed_id": f, "fed": FEDERATION_BYFEDID[f]})
     return user_feds
 
 
+@unit_of_work_guard
 def get_user_fbanlist(user_id):
-    banlist = FEDERATION_BANNED_FULL
+    try:
+        uid = int(user_id)
+    except ValueError, TypeError:
+        return "", []
+
+    bans = SESSION.scalars(select(BansF).where(BansF.user_id == uid)).all()
     user_name = ""
     fedname = []
-    for x in banlist:
-        if banlist[x].get(user_id):
-            if user_name == "":
-                user_name = banlist[x][user_id].get("first_name")
-            fedname.append([x, banlist[x][user_id].get("reason")])
+    for ban in bans:
+        if not user_name and ban.first_name:
+            user_name = ban.first_name
+        fedname.append([ban.fed_id, ban.reason])
     return user_name, fedname
 
 
@@ -317,13 +414,14 @@ def get_user_fbanlist(user_id):
 def new_fed(owner_id, fed_name, fed_id):
     with FEDS_LOCK:
         global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME
+        fed_users = json.dumps({"owner": str(owner_id), "members": []})
         fed = Federations(
             int(owner_id),
             fed_name,
             str(fed_id),
             "Rules is not set in this federation.",
             None,
-            str({"owner": str(owner_id), "members": "[]"}),
+            fed_users,
         )
         SESSION.add(fed)
         SESSION.commit()
@@ -332,21 +430,24 @@ def new_fed(owner_id, fed_name, fed_id):
             "fname": fed_name,
             "frules": "Rules is not set in this federation.",
             "flog": None,
-            "fusers": str({"owner": str(owner_id), "members": "[]"}),
+            "fusers": fed_users,
+            "members_set": set(),
         }
         FEDERATION_BYFEDID[str(fed_id)] = {
             "owner": str(owner_id),
             "fname": fed_name,
             "frules": "Rules is not set in this federation.",
             "flog": None,
-            "fusers": str({"owner": str(owner_id), "members": "[]"}),
+            "fusers": fed_users,
+            "members_set": set(),
         }
         FEDERATION_BYNAME[fed_name] = {
             "fid": str(fed_id),
             "owner": str(owner_id),
             "frules": "Rules is not set in this federation.",
             "flog": None,
-            "fusers": str({"owner": str(owner_id), "members": "[]"}),
+            "fusers": fed_users,
+            "members_set": set(),
         }
         return fed
 
@@ -477,10 +578,17 @@ def search_fed_by_name(fed_name):
 
 
 def search_user_in_fed(fed_id, user_id):
-    getfed = FEDERATION_BYFEDID.get(fed_id)
+    getfed = FEDERATION_BYFEDID.get(str(fed_id))
     if getfed is None:
         return False
-    return int(user_id) in _fed_members(getfed["fusers"])
+    members = getfed.get("members_set")
+    if members is None:
+        members = set(_fed_members(getfed.get("fusers")))
+        getfed["members_set"] = members
+    try:
+        return int(user_id) in members
+    except ValueError, TypeError:
+        return False
 
 
 @unit_of_work_guard
@@ -500,10 +608,14 @@ def user_demote_fed(fed_id, user_id):
         # remove() raises ValueError when the id is not there, which the caller
         # only reaches after a stale read, and that used to surface as a crash
         # rather than a failed demotion.
-        if int(user_id) not in members:
+        try:
+            uid = int(user_id)
+        except ValueError, TypeError:
             return False
-        members = [member for member in members if int(member) != int(user_id)]
-        fed_users = str({"owner": str(owner_id), "members": str(members)})
+        if uid not in members:
+            return False
+        members = [member for member in members if int(member) != uid]
+        fed_users = json.dumps({"owner": str(owner_id), "members": members})
         fed = Federations(
             int(owner_id),
             fed_name,
@@ -514,9 +626,15 @@ def user_demote_fed(fed_id, user_id):
         )
         SESSION.merge(fed)
         SESSION.commit()
-        FEDERATION_BYOWNER[str(owner_id)]["fusers"] = fed_users
-        FEDERATION_BYFEDID[str(fed_id)]["fusers"] = fed_users
-        FEDERATION_BYNAME[fed_name]["fusers"] = fed_users
+        members_set = set(members)
+        for d in (
+            FEDERATION_BYOWNER.get(str(owner_id)),
+            FEDERATION_BYFEDID.get(str(fed_id)),
+            FEDERATION_BYNAME.get(fed_name),
+        ):
+            if d is not None:
+                d["fusers"] = fed_users
+                d["members_set"] = members_set
         return True
 
 
@@ -534,9 +652,13 @@ def user_join_fed(fed_id, user_id):
         fed_log = getfed["flog"]
         # Temp set
         members = _fed_members(getfed["fusers"])
-        if int(user_id) not in members:
-            members.append(int(user_id))
-        fed_users = str({"owner": str(owner_id), "members": str(members)})
+        try:
+            uid = int(user_id)
+        except ValueError, TypeError:
+            return False
+        if uid not in members:
+            members.append(uid)
+        fed_users = json.dumps({"owner": str(owner_id), "members": members})
         fed = Federations(
             int(owner_id),
             fed_name,
@@ -547,9 +669,15 @@ def user_join_fed(fed_id, user_id):
         )
         SESSION.merge(fed)
         SESSION.commit()
-        FEDERATION_BYOWNER[str(owner_id)]["fusers"] = fed_users
-        FEDERATION_BYFEDID[str(fed_id)]["fusers"] = fed_users
-        FEDERATION_BYNAME[fed_name]["fusers"] = fed_users
+        members_set = set(members)
+        for d in (
+            FEDERATION_BYOWNER.get(str(owner_id)),
+            FEDERATION_BYFEDID.get(str(fed_id)),
+            FEDERATION_BYNAME.get(fed_name),
+        ):
+            if d is not None:
+                d["fusers"] = fed_users
+                d["members_set"] = members_set
         return True
 
 
@@ -956,40 +1084,35 @@ def __load_all_feds():
         return
     try:
         feds = SESSION.scalars(select(Federations)).all()
-        for x in feds:  # remove tuple by ( ,)
+        for x in feds:
+            members_set = set(_fed_members(x.fed_users))
             # Fed by Owner. The cache is keyed by the owner as a string, so
             # the owner id read out of the row has to be turned into one.
-            check = FEDERATION_BYOWNER.get(str(x.owner_id))
-            if check is None:
-                FEDERATION_BYOWNER[str(x.owner_id)] = []
             FEDERATION_BYOWNER[str(x.owner_id)] = {
                 "fid": str(x.fed_id),
                 "fname": x.fed_name,
                 "frules": x.fed_rules,
                 "flog": x.fed_log,
                 "fusers": str(x.fed_users),
+                "members_set": members_set,
             }
             # Fed By FedId
-            check = FEDERATION_BYFEDID.get(x.fed_id)
-            if check is None:
-                FEDERATION_BYFEDID[x.fed_id] = []
             FEDERATION_BYFEDID[str(x.fed_id)] = {
                 "owner": str(x.owner_id),
                 "fname": x.fed_name,
                 "frules": x.fed_rules,
                 "flog": x.fed_log,
                 "fusers": str(x.fed_users),
+                "members_set": members_set,
             }
             # Fed By Name
-            check = FEDERATION_BYNAME.get(x.fed_name)
-            if check is None:
-                FEDERATION_BYNAME[x.fed_name] = []
             FEDERATION_BYNAME[x.fed_name] = {
                 "fid": str(x.fed_id),
                 "owner": str(x.owner_id),
                 "frules": x.fed_rules,
                 "flog": x.fed_log,
                 "fusers": str(x.fed_users),
+                "members_set": members_set,
             }
     except Exception:
         pass
@@ -1029,17 +1152,10 @@ def __load_all_feds_banned():
     try:
         FEDERATION_BANNED_USERID = {}
         FEDERATION_BANNED_FULL = {}
-        qall = SESSION.scalars(select(BansF)).all()
-        for x in qall:
-            user_ids = FEDERATION_BANNED_USERID.setdefault(str(x.fed_id), set())
-            user_ids.add(int(x.user_id))
-            # The full cache holds the details of a ban. It was never filled,
-            # so every lookup of a ban came back empty.
-            FEDERATION_BANNED_FULL.setdefault(str(x.fed_id), {})[str(x.user_id)] = {
-                "first_name": x.first_name,
-                "reason": x.reason,
-                "time": x.time,
-            }
+        rows = SESSION.execute(select(BansF.fed_id, BansF.user_id)).all()
+        for fed_id, user_id in rows:
+            user_ids = FEDERATION_BANNED_USERID.setdefault(str(fed_id), set())
+            user_ids.add(int(user_id))
     except Exception:
         pass
     finally:

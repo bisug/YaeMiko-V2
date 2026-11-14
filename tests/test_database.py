@@ -88,6 +88,7 @@ def test_indexes_declared_in_sql_modules():
     )
 
     assert 'ensure_index("chat_feds_fed_id_idx", "chat_feds", "fed_id")' in feds_sql
+    assert 'ensure_index("bans_feds_user_idx", "bans_feds", "user_id")' in feds_sql
     assert (
         'ensure_index("notes_name_lower_idx", "notes", "chat_id, lower(name)")'
         in notes_sql
@@ -260,3 +261,38 @@ def test_chat_model_accepts_long_chat_id():
 
     chat = Chats("-100999999999999", "Test Long ID Chat")
     assert chat.chat_id == "-100999999999999"
+
+
+def test_fed_members_and_owner_parsing():
+    from Database.sql.feds_sql import _fed_members, _fed_owner
+
+    # JSON formatted
+    json_raw = '{"owner": "111", "members": [222, 333]}'
+    assert _fed_members(json_raw) == [222, 333]
+    assert _fed_owner(json_raw) == "111"
+
+    # Legacy double stringified format
+    legacy_raw = "{'owner': '111', 'members': '[222, 333]'}"
+    assert _fed_members(legacy_raw) == [222, 333]
+    assert _fed_owner(legacy_raw) == "111"
+
+    # Malformed/empty
+    assert _fed_members("") == []
+    assert _fed_owner("", default="default") == "default"
+    assert _fed_members("{invalid}") == []
+
+
+def test_search_user_in_fed_cached():
+    from Database.sql.feds_sql import FEDERATION_BYFEDID, search_user_in_fed
+
+    FEDERATION_BYFEDID["test_fed"] = {
+        "owner": "100",
+        "fname": "Test Fed",
+        "frules": "",
+        "flog": None,
+        "fusers": '{"owner": "100", "members": [200, 300]}',
+        "members_set": {200, 300},
+    }
+    assert search_user_in_fed("test_fed", 200) is True
+    assert search_user_in_fed("test_fed", 999) is False
+    assert search_user_in_fed("non_existent", 200) is False
