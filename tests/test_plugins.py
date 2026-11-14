@@ -294,7 +294,51 @@ def test_every_helpable_plugin_defines_mod_name(monkeypatch):
         mod = importlib.import_module(f"Mikobot.plugins.{name}")
         if getattr(mod, "__help__", None):
             mod_name = getattr(mod, "__mod_name__", None)
-            if not mod_name or mod_name.startswith("Mikobot.plugins"):
+            source_file = PLUGINS_DIR / f"{name}.py"
+            has_explicit_attr = source_file.is_file() and re.search(
+                r"^\s*__mod_name__\s*=",
+                source_file.read_text(encoding="utf-8"),
+                re.MULTILINE,
+            )
+            if (
+                not mod_name
+                or mod_name.startswith("Mikobot.plugins")
+                or not has_explicit_attr
+            ):
                 bad.append(name)
 
     assert not bad, f"Plugins with __help__ missing explicit valid __mod_name__: {bad}"
+
+
+def test_load_plugins_fallback_and_none_guard(monkeypatch):
+    import types
+
+    import Mikobot.__main__ as main
+
+    dummy_plugin = types.ModuleType("Mikobot.plugins.dummy_sample_plugin")
+    dummy_plugin.__help__ = "Dummy help text"
+
+    dummy_plugin_none = types.ModuleType("Mikobot.plugins.dummy_none_plugin")
+    dummy_plugin_none.__help__ = "Dummy none help"
+    dummy_plugin_none.__mod_name__ = None
+
+    test_modules = {
+        "dummy_sample_plugin": dummy_plugin,
+        "dummy_none_plugin": dummy_plugin_none,
+    }
+
+    monkeypatch.setattr(main, "ALL_MODULES", list(test_modules.keys()))
+    monkeypatch.setattr(main, "IMPORTED", {})
+    monkeypatch.setattr(main, "HELPABLE", {})
+    monkeypatch.setattr(
+        importlib,
+        "import_module",
+        lambda name: test_modules[name.replace("Mikobot.plugins.", "")],
+    )
+
+    main.load_plugins()
+
+    assert dummy_plugin.__mod_name__ == "Dummy Sample Plugin"
+    assert "dummy sample plugin" in main.HELPABLE
+    assert dummy_plugin_none.__mod_name__ == "Dummy None Plugin"
+    assert "dummy none plugin" in main.HELPABLE
