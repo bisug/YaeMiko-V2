@@ -13,6 +13,7 @@ from pyrogram.types import (
     InlineKeyboardMarkup,
     LinkPreviewOptions,
     Message,
+    ReplyParameters,
 )
 
 import Database.sql.notes_sql as sql
@@ -153,11 +154,14 @@ async def get(
         keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
 
         try:
+            reply_params = (
+                ReplyParameters(message_id=reply_id) if reply_id else None
+            )
             if note.msgtype in (sql.Types.BUTTON_TEXT, sql.Types.TEXT):
                 await client.send_message(
                     chat_id,
                     markdown_to_html(text),
-                    reply_to_message_id=reply_id,
+                    reply_parameters=reply_params,
                     parse_mode=parseMode,
                     link_preview_options=LinkPreviewOptions(is_disabled=True),
                     reply_markup=keyboard,
@@ -170,7 +174,7 @@ async def get(
                     chat_id,
                     note.file,
                     caption=markdown_to_html(text),
-                    reply_to_message_id=reply_id,
+                    reply_parameters=reply_params,
                     parse_mode=parseMode,
                     link_preview_options=LinkPreviewOptions(is_disabled=True),
                     reply_markup=keyboard,

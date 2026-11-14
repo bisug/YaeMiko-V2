@@ -13,6 +13,7 @@ from pyrogram.types import (
     InlineKeyboardMarkup,
     LinkPreviewOptions,
     Message,
+    ReplyParameters,
 )
 
 from Database.sql import cust_filters_sql as sql
@@ -357,7 +358,9 @@ async def reply_filter(client, message: Message):
                             await client.send_sticker(
                                 chat.id,
                                 sticker_id,
-                                reply_to_message_id=message.id,
+                                reply_parameters=ReplyParameters(
+                                    message_id=message.id
+                                ),
                                 message_thread_id=(
                                     message.message_thread_id if chat.is_forum else None
                                 ),
@@ -455,7 +458,9 @@ async def reply_filter(client, message: Message):
                                 chat.id,
                                 filt.file_id,
                                 reply_markup=keyboard,
-                                reply_to_message_id=message.id,
+                                reply_parameters=ReplyParameters(
+                                    message_id=message.id
+                                ),
                                 message_thread_id=(
                                     message.message_thread_id if chat.is_forum else None
                                 ),
@@ -466,7 +471,9 @@ async def reply_filter(client, message: Message):
                                 filt.file_id,
                                 reply_markup=keyboard,
                                 caption=filt.reply_text,
-                                reply_to_message_id=message.id,
+                                reply_parameters=ReplyParameters(
+                                    message_id=message.id
+                                ),
                                 message_thread_id=(
                                     message.message_thread_id if chat.is_forum else None
                                 ),

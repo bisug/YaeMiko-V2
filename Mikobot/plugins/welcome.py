@@ -27,6 +27,7 @@ from pyrogram.types import (
     InlineKeyboardMarkup,
     LinkPreviewOptions,
     Message,
+    ReplyParameters,
 )
 from pyrogram.types import InlineKeyboardButton as IB
 from pyrogram.types import InlineKeyboardMarkup as IM
@@ -709,7 +710,9 @@ async def new_member(client, message: Message):
                     cust_content,
                     caption=res,
                     reply_markup=keyboard,
-                    reply_to_message_id=reply,
+                    reply_parameters=(
+                        ReplyParameters(message_id=reply) if reply else None
+                    ),
                     parse_mode=ParseMode.MARKDOWN,
                 )
             else:
