@@ -129,8 +129,7 @@ async def enforce_gban(client, message: Message):
             await check_and_ban(client, message, reply_user.id, should_message=False)
 
 
-# The enforcer watches every group message, so it registers ahead of the
-# commands, matching PTB's group 6.
+# The enforcer watches every group message, so it registers ahead of the commands.
 if STRICT_GBAN:  # enforce GBANS if this is set
     on_message(GROUPS, chained=True)(enforce_gban)
 

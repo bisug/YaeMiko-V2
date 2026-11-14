@@ -8,13 +8,7 @@ from Mikobot.utils.gate import requirement
 
 # <================================================ FUNCTION =======================================================>
 async def send_message(message, text, *args, **kwargs):
-    """reply_text(), retried once when Telegram errors.
-
-    The original second attempt dropped PTB's do_quote kwarg, which neither
-    framework has, so the retry became a verbatim repeat of the first call and
-    did nothing for a rejected quote. It is kept as a single retry because a
-    network error is transient and the repeat is what recovers from it.
-    """
+    """reply_text(), retried once when Telegram errors."""
     try:
         return await message.reply_text(text, *args, **kwargs)
     except RPCError:

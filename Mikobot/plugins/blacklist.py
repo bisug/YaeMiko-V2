@@ -719,8 +719,6 @@ async def _silent_action(client, chat, user, getmode, value, trigger) -> None:
                 permissions=ChatPermissions(can_send_messages=False),
             )
         elif getmode == 4:
-            # Kick == unban the current user; PTB returned a truthy result
-            # from chat.unban_member, aiogram raises instead.
             await client.unban_chat_member(chat.id, user.id)
         elif getmode == 5:
             await client.ban_chat_member(chat.id, user.id)
@@ -843,8 +841,6 @@ async def del_blacklist(client, message: Message):
                     return
                 elif getmode == 4:
                     await message.delete()
-                    # Kick == unban the current user; PTB returned a truthy
-                    # result from chat.unban_member, aiogram raises instead.
                     await client.unban_chat_member(chat.id, user.id)
                     await client.send_message(
                         chat.id,

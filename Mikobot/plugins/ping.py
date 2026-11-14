@@ -16,7 +16,7 @@ from Mikobot.utils.human_read import get_readable_time
 # <================================================ FUNCTION =======================================================>
 @on_message(filters.command("ping"), chained=True)
 @check_admin(only_dev=True)
-async def ptb_ping(client, message: Message):
+async def ping(client, message: Message):
     start_time = time.time()
     sent = await message.reply_text("Pining")
     end_time = time.time()

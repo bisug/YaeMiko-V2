@@ -23,8 +23,6 @@ MENTION_ENTITIES = (MessageEntityType.TEXT_MENTION, MessageEntityType.MENTION)
 
 
 # <================================================ FUNCTION =======================================================>
-# Every one of these matched a message in PTB and all of them ran, so each is
-# chained; otherwise the first match would swallow the rest.
 @on_message(*disableable("afk"), chained=True)
 async def afk(client, message: Message):
     if not message.text:

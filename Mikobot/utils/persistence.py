@@ -1,9 +1,7 @@
 """Per-chat and per-user scratch storage.
 
-PTB's ``PicklePersistence`` exposed ``context.chat_data`` and
-``context.user_data`` and wrote them to ``ptb_persistence.pickle``. Neither
-aiogram nor kurigram has an equivalent dict, so the federation keeps its own
-copy in the same file and plugins read it from here.
+Exposes ``chat_data`` and ``user_data`` and writes them to ``persistence.pickle``.
+The federation and anonymous-admin flows read and write their state here.
 """
 
 import os

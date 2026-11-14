@@ -726,8 +726,6 @@ async def adminlist(client, message: Message):
     chained=True,
 )
 async def admin_callback(client, query: CallbackQuery):
-    # PTB's update.effective_message on a callback query is the message the
-    # query is attached to; aiogram exposes it on the query itself.
     message = query.message
     chat = message.chat
     admin_user = query.from_user

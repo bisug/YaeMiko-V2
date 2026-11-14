@@ -56,7 +56,7 @@
 
   <rect class="panel" x="640" y="250" width="600" height="90"/>
   <text class="head" x="664" y="282">Context persistence</text>
-  <text class="sub" x="664" y="304">PicklePersistence stores chat_data and user_data in ptb_persistence.pickle</text>
+  <text class="sub" x="664" y="304">DataStore stores chat_data and user_data in persistence.pickle</text>
   <text class="sub" x="664" y="326">State survives restarts on Heroku dyno restarts, callback_data is intentionally not stored</text>
 
   <rect class="panel" x="40" y="390" width="560" height="110"/>

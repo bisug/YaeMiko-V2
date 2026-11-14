@@ -439,7 +439,7 @@ Full variable list with defaults: [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
 3. Add the variables listed in [Before any platform](#before-any-platform), with `ENV=True`.
 4. Deploy and watch for `Mikobot is starting`.
 
-The container filesystem is ephemeral, so `ptb_persistence.pickle` resets on every deploy. Attach a
+The container filesystem is ephemeral, so `persistence.pickle` resets on every deploy. Attach a
 Railway volume at `/root/Mikobot` to keep it.
 
 ### Heroku

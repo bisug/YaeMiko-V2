@@ -119,7 +119,7 @@ What the second core buys:
   `asyncio.to_thread`. More cores means those threads finish sooner.
 
 What the extra disk buys: rotating logs, temp media from `TEMP_DOWNLOAD_DIRECTORY`, and the
-`ptb_persistence.pickle` context store all live on the same volume. On a platform with an ephemeral
+`persistence.pickle` context store all live on the same volume. On a platform with an ephemeral
 disk the pickle is recreated on every deploy, which is a correctness issue rather than a capacity
 one. See [DEPLOYMENT.md](DEPLOYMENT.md).
 
@@ -215,7 +215,7 @@ grep VmHWM /proc/$(pgrep -f "python -m Mikobot" | head -1)/status
 # Disk used by the checkout, the virtual environment and the pickle
 du -sh /path/to/YaeMiko
 du -sh /path/to/YaeMiko/.venv
-ls -lh /path/to/YaeMiko/ptb_persistence.pickle
+ls -lh /path/to/YaeMiko/persistence.pickle
 ```
 
 `VmHWM` is the high water mark, which is the number that matters when sizing. `RSS` is the current

@@ -1,9 +1,6 @@
 """One-shot scheduled callbacks.
 
-python-telegram-bot shipped a job queue through its ``[job-queue]`` extra, which
-was APScheduler, and neither aiogram nor kurigram has one. The bot only ever
-needs ``run_once`` (deleting a join message after a delay), so this wraps
-APScheduler directly and keeps the call shape the plugins already use.
+Wraps APScheduler directly for delayed execution like ``run_once``.
 """
 
 import asyncio

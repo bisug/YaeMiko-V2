@@ -162,8 +162,8 @@ Railway redeploys automatically. Watch the deploy log for `Mikobot is starting`.
 
 ### Notes
 
-- The container filesystem is ephemeral. `ptb_persistence.pickle` is recreated empty on every
-  deploy, so moderation state that lives in `context.chat_data` resets. Attach a Railway volume
+- The container filesystem is ephemeral. `persistence.pickle` is recreated empty on every
+  deploy, so moderation state that lives in `chat_data` resets. Attach a Railway volume
   mounted at `/root/Mikobot` if you want it to survive.
 - `restartPolicyType` is `ON_FAILURE` with 10 retries, so a clean stop is respected but a crash loops.
 

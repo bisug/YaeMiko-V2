@@ -1,12 +1,5 @@
 """Permission and chat-action gates, enforced before a handler runs.
 
-PTB did this with decorator wrappers around ``async def handler(update, context)``.
-aiogram injected the handler arguments by name from the *inner* signature, so a
-wrapper only ever saw what the wrapped function declared and could not reach
-for the event or the bot by itself. The decorators therefore tag the handler
-instead of wrapping it, and the middleware enforces the tags once per event,
-where both the event and the bot are in hand.
-
 kurigram calls handlers as ``handler(client, update)`` and has no middleware,
 so the registry in ``Mikobot.events`` calls ``enforce`` before it calls the
 handler and hands it the same two things.
@@ -54,8 +47,6 @@ def requirement(**spec):
 def chain(func):
     """Mark a handler that lets the next matching handler run as well.
 
-    PTB's ``block=False`` meant "do not stop the chain", and 105 of the bot's
-    handlers used it: one message could hit locks, then flood, then the plugin.
     The registry in ``Mikobot.events`` walks the handlers in order and stops at
     the first one that is not chained, so the marker is all this has to do.
     """
@@ -223,9 +214,8 @@ async def enforce(client, event, handler) -> bool:
                     return False
                 continue
 
-            # Skips quietly when the sender is an admin, matching PTB, which
-            # only reached the handler for a non-admin user. It is not a
-            # denial: no reply and no command deletion.
+            # Skips quietly when the sender is an admin;
+            # no reply and no command deletion.
             if spec["kind"] == "user_not_admin":
                 if not await _sender_is_not_admin(event):
                     return False
@@ -323,7 +313,7 @@ async def _bot_command_reviewed(client, event) -> bool:
 
 # <================================================== PERMISSIONS ================================================>
 async def _sender_is_not_admin(event) -> bool:
-    """PTB's @user_not_admin ran the handler only for a non-admin sender."""
+    """True if sender is not an administrator."""
     from Mikobot.plugins.helper_funcs import chat_status
 
     chat, user = _event_parts(event)

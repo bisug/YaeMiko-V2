@@ -1557,7 +1557,6 @@ async def fed_chats(client, message: Message):
 
 @on_message(filters.command("importfbans"), chained=True)
 async def fed_import_bans(client, message: Message):
-    # chat_data is the module-level store; PTB passed it per-context
     chat = message.chat
     user = message.from_user
     msg = message

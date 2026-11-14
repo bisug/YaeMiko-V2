@@ -329,8 +329,14 @@ CONFIG_TIGERS = set(TIGERS)
 # bot no longer depends on the Bot API or on an HTTP session of its own.
 # Handlers are registered on it through Mikobot.events.
 
+_persistence_file = os.path.join(os.path.dirname(__file__), "..", "persistence.pickle")
+_legacy_persistence = os.path.join(
+    os.path.dirname(__file__), "..", "ptb_persistence.pickle"
+)
 store = open_store(
-    os.path.join(os.path.dirname(__file__), "..", "ptb_persistence.pickle")
+    _legacy_persistence
+    if os.path.exists(_legacy_persistence) and not os.path.exists(_persistence_file)
+    else _persistence_file
 )
 chat_data = store.chat_data
 user_data = store.user_data

@@ -133,8 +133,8 @@ name in that list, so dropping a new file into the directory is enough to regist
 
 The AI and chatbot plugins were removed along with their Gemini configuration. `ai` (`/askai`,
 `/palm`), `palmchat` (`Miko <question>`), the per-chat chatbot and the `kuki_chats` table are
-gone; `google-genai` is no longer a dependency. Two older stubs were retired earlier: the
-PTB `chatbot.py.txt`, which called the defunct `api.brainshop.ai` echo service, and
+gone; `google-genai` is no longer a dependency. Two older stubs were retired earlier:
+`chatbot.py.txt`, which called the defunct `api.brainshop.ai` echo service, and
 `getreaction.py.txt`, dropped rather than ported because Kurigram reactions have no Bot API
 equivalent and Telegram's own client already shows that list.
 

@@ -43,12 +43,7 @@ def _has_arabic_script(text: str) -> bool:
 
 
 def _has_entity(message, kind: str) -> bool:
-    """True when the text or the caption carries this entity kind.
-
-    PTB spelled this filters.Entity(X) | filters.CaptionEntity(X); checking
-    both entity lists directly avoids depending on how aiogram evaluates a
-    composed magic filter.
-    """
+    """True when the text or the caption carries this entity kind."""
     for entities in (message.entities, message.caption_entities):
         if entities and any(entity.type == kind for entity in entities):
             return True

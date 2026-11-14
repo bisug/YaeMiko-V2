@@ -1,9 +1,6 @@
-"""Shared filters for the chat-type checks PTB spelled as filters.ChatType.
+"""Shared filters for chat-type checks.
 
-PTB had `filters.ChatType.GROUPS` meaning "group or supergroup" and it appeared
-44 times across 24 plugins. The kurigram equivalents are short enough to name
-once here, so each ported plugin imports a symbol instead of repeating a
-filter expression.
+``GROUPS`` selects group or supergroup chats.
 """
 
 from pyrogram import filters

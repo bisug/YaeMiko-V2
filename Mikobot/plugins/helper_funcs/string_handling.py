@@ -21,12 +21,7 @@ if MessageEntity.__hash__ is None:
 
 
 def escape_markdown(text: str, version: int = 1, entity_type: str = None) -> str:
-    """Escape Telegram Markdown text.
-
-    PTB shipped this in telegram.helpers; Kurigram has no counterpart for the
-    legacy Markdown mode, so the repo's own helper in Mikobot.utils.parser is
-    the base and the v2 sets are reproduced here.
-    """
+    """Escape Telegram Markdown text."""
     from Mikobot.utils.parser import escape_markdown as escape_markdown_v1
 
     if int(version) == 1:
@@ -72,7 +67,7 @@ def _extract_entity_text(text: str, entity: MessageEntity) -> str:
 
 
 def entities_map(message: Message, types: list[str] = None) -> dict:
-    """PTB's Message.parse_entities(types) as {entity: entity_text}."""
+    """Extract entities from message as {entity: entity_text}."""
     if not message:
         return {}
     text = message.text or message.caption or ""
@@ -361,13 +356,7 @@ def escape_chars(text: str, to_escape: list[str]) -> str:
 
 
 async def extract_time(message, time_val):
-    """Return an absolute unix expiry, or None if the input was unusable.
-
-    Callers guard on falsiness to skip the ban entirely. PTB tolerated the
-    empty string returned on error, but Kurigram validates ``until_date`` and
-    rejects it, so a malformed duration would raise out of the handler
-    instead of quietly not banning anyone.
-    """
+    """Return an absolute unix expiry, or None if the input was unusable."""
     # The error text below reports time_val[-1], which raises on empty input
     # such as "/ban @user " with the duration omitted.
     if not time_val:
