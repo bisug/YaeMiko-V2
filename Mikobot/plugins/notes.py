@@ -146,7 +146,7 @@ async def get(
         parseMode = ParseMode.HTML
         buttons = sql.get_buttons(note_chat_id, notename)
         if no_format:
-            parseMode = None
+            parseMode = ParseMode.DISABLED
             text += revert_buttons(buttons)
         else:
             keyb = build_keyboard(buttons)
@@ -155,10 +155,11 @@ async def get(
 
         try:
             reply_params = ReplyParameters(message_id=reply_id) if reply_id else None
+            formatted_text = text if no_format else markdown_to_html(text)
             if note.msgtype in (sql.Types.BUTTON_TEXT, sql.Types.TEXT):
                 await client.send_message(
                     chat_id,
-                    markdown_to_html(text),
+                    formatted_text,
                     reply_parameters=reply_params,
                     parse_mode=parseMode,
                     link_preview_options=LinkPreviewOptions(is_disabled=True),
@@ -171,7 +172,7 @@ async def get(
                 await ENUM_FUNC_MAP[note.msgtype](
                     chat_id,
                     note.file,
-                    caption=markdown_to_html(text),
+                    caption=formatted_text,
                     reply_parameters=reply_params,
                     parse_mode=parseMode,
                     link_preview_options=LinkPreviewOptions(is_disabled=True),

@@ -1,5 +1,3 @@
-import html
-
 # <============================================== IMPORTS =========================================================>
 import re
 import time
@@ -392,52 +390,9 @@ async def extract_time(message, time_val):
 
 
 def markdown_to_html(text: str) -> str:
-    tokens = {}
+    from Mikobot.utils.parser import smart_format_to_html
 
-    def protect(value: str) -> str:
-        key = f"\x00{len(tokens)}\x00"
-        tokens[key] = value
-        return key
-
-    text = re.sub(
-        r"```(?:([a-zA-Z0-9_-]+)\n)?(.*?)```",
-        lambda match: protect(
-            f'<pre language="{html.escape(match.group(1))}">{html.escape(match.group(2))}</pre>'
-            if match.group(1)
-            else f"<pre>{html.escape(match.group(2))}</pre>"
-        ),
-        text,
-        flags=re.S,
-    )
-    text = re.sub(
-        r"`([^`\n]+)`",
-        lambda match: protect(f"<code>{html.escape(match.group(1))}</code>"),
-        text,
-    )
-    text = re.sub(
-        r"\|\|(?=\S)(.+?)(?<=\S)\|\|",
-        lambda match: protect(
-            f"<tg-spoiler>{html.escape(match.group(1))}</tg-spoiler>"
-        ),
-        text,
-        flags=re.S,
-    )
-    text = re.sub(
-        r"\[([^\]]+)\]\(((?:https?://|tg://)[^\s)]+)\)",
-        lambda match: protect(
-            f'<a href="{html.escape(match.group(2), quote=True)}">{html.escape(re.sub(r"\\([*_`\[\]()~>#+=|{}.!-])", r"\1", match.group(1)))}</a>'
-        ),
-        text,
-    )
-    text = html.escape(text)
-    text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
-    text = re.sub(r"__(.+?)__", r"<u>\1</u>", text)
-    text = re.sub(r"~~(.+?)~~", r"<s>\1</s>", text)
-    text = re.sub(r"(?<!\*)\*([^*\n]+)\*(?!\*)", r"<b>\1</b>", text)
-    text = re.sub(r"(?<![a-zA-Z0-9_])_([^_\n]+)_(?![a-zA-Z0-9_])", r"<i>\1</i>", text)
-    for key, value in tokens.items():
-        text = text.replace(html.escape(key), value)
-    return text
+    return smart_format_to_html(text)
 
 
 # <================================================ END =======================================================>

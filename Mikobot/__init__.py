@@ -30,6 +30,7 @@ from pyrogram import Client
 from pyrogram.enums import ParseMode
 from pyrogram.errors import RPCError
 
+from Mikobot.utils.parser import install_smart_parser
 from Mikobot.utils.persistence import open_store
 
 if not hasattr(RPCError, "message"):
@@ -475,6 +476,7 @@ app = Client(
     api_hash=API_HASH,
     bot_token=TOKEN,
 )
+install_smart_parser(app)
 # <=======================================================================================================>
 
 # <================================================== CONVERT LISTS =====================================================>
