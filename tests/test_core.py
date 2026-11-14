@@ -96,3 +96,30 @@ def test_lazy_imports_configuration():
         import Mikobot  # noqa: F401
 
         assert sys.get_lazy_imports() in ("all", True)
+
+
+async def test_safe_resolve_peer_converts_numeric_strings(monkeypatch):
+    from pyrogram import Client
+
+    import Mikobot  # noqa: F401
+
+    resolved = []
+
+    async def fake_orig(self, peer_id):
+        resolved.append(peer_id)
+        return peer_id
+
+    monkeypatch.setattr(Mikobot, "_orig_resolve_peer", fake_orig)
+
+    client = Client("test", api_id=123, api_hash="abc")
+
+    await Client.resolve_peer(client, "-1001234567890")
+    assert resolved[-1] == -1001234567890
+    assert isinstance(resolved[-1], int)
+
+    await Client.resolve_peer(client, "987654321")
+    assert resolved[-1] == 987654321
+    assert isinstance(resolved[-1], int)
+
+    await Client.resolve_peer(client, "@valid_username")
+    assert resolved[-1] == "@valid_username"

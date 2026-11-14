@@ -98,8 +98,18 @@ if is_module_loaded(FILENAME):
 
         return glog_action
 
-    async def send_log(log_chat_id: str, orig_chat_id: str, result: str):
-        is_chat_log = log_chat_id == sql.get_chat_log_channel(orig_chat_id)
+    async def send_log(log_chat_id: str | int, orig_chat_id: str | int, result: str):
+        if isinstance(log_chat_id, str) and log_chat_id.strip().lstrip("-").isdigit():
+            try:
+                log_chat_id = int(log_chat_id.strip())
+            except ValueError:
+                pass
+        if isinstance(orig_chat_id, str) and orig_chat_id.strip().lstrip("-").isdigit():
+            try:
+                orig_chat_id = int(orig_chat_id.strip())
+            except ValueError:
+                pass
+        is_chat_log = str(log_chat_id) == str(sql.get_chat_log_channel(orig_chat_id))
         try:
             await client.send_message(
                 log_chat_id,

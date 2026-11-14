@@ -27,7 +27,10 @@ if hasattr(sys, "set_lazy_imports"):
         sys.set_lazy_imports_filter(_lazy_imports_filter)
 
 from pyrogram import Client
+from pyrogram.enums import ParseMode
 from pyrogram.errors import RPCError
+
+from Mikobot.utils.persistence import open_store
 
 if not hasattr(RPCError, "message"):
     RPCError.message = property(
@@ -38,9 +41,24 @@ if not hasattr(RPCError, "message"):
             or str(self)
         )
     )
-from pyrogram.enums import ParseMode
 
-from Mikobot.utils.persistence import open_store
+_orig_resolve_peer = Client.resolve_peer
+
+
+async def _safe_resolve_peer(self, peer_id):
+    if isinstance(peer_id, str):
+        cleaned = peer_id.strip()
+        # Convert numeric string IDs to int so Kurigram does not mistake them
+        # for phone numbers and attempt contacts.ResolvePhone (invalid for bots).
+        if (cleaned.startswith("-") and cleaned[1:].isdigit()) or cleaned.isdigit():
+            try:
+                peer_id = int(cleaned)
+            except ValueError:
+                pass
+    return await _orig_resolve_peer(self, peer_id)
+
+
+Client.resolve_peer = _safe_resolve_peer
 
 # <=======================================================================================================>
 
@@ -196,9 +214,19 @@ if ENV:
     DB_URI = os.environ.get("DATABASE_URL")
     DEL_CMDS = env_bool("DEL_CMDS")
     BAN_STICKER = os.environ.get("BAN_STICKER", "")
-    EVENT_LOGS = os.environ.get("EVENT_LOGS", None)
+    _raw_event_logs = os.environ.get("EVENT_LOGS", None)
+    EVENT_LOGS = (
+        int(str(_raw_event_logs).strip())
+        if _raw_event_logs and str(_raw_event_logs).strip().lstrip("-").isdigit()
+        else _raw_event_logs
+    )
     INFOPIC = env_bool("INFOPIC", True)
-    MESSAGE_DUMP = os.environ.get("MESSAGE_DUMP", None)
+    _raw_msg_dump = os.environ.get("MESSAGE_DUMP", None)
+    MESSAGE_DUMP = (
+        int(str(_raw_msg_dump).strip())
+        if _raw_msg_dump and str(_raw_msg_dump).strip().lstrip("-").isdigit()
+        else _raw_msg_dump
+    )
     LOAD = os.environ.get("LOAD", "").split()
     NO_LOAD = os.environ.get("NO_LOAD", "").split()
     STRICT_GBAN = env_bool("STRICT_GBAN", True)

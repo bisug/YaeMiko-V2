@@ -506,21 +506,33 @@ async def new_member(client, message: Message):
                         reply += "\nCreator Username: @{}".format(creator.username)
 
                     if EVENT_LOGS:
-                        await client.send_message(
-                            EVENT_LOGS,
-                            reply,
-                            parse_mode=ParseMode.MARKDOWN,
-                        )
+                        try:
+                            await client.send_message(
+                                EVENT_LOGS,
+                                reply,
+                                parse_mode=ParseMode.MARKDOWN,
+                            )
+                        except RPCError:
+                            LOGGER.warning(
+                                "Unable to deliver new group log to EVENT_LOGS",
+                                exc_info=True,
+                            )
                 else:
                     if EVENT_LOGS:
-                        await client.send_message(
-                            EVENT_LOGS,
-                            "#NEW_GROUP\n<b>Group name:</b> {}\n<b>ID:</b> <code>{}</code>".format(
-                                html.escape(chat.title),
-                                chat.id,
-                            ),
-                            parse_mode=ParseMode.HTML,
-                        )
+                        try:
+                            await client.send_message(
+                                EVENT_LOGS,
+                                "#NEW_GROUP\n<b>Group name:</b> {}\n<b>ID:</b> <code>{}</code>".format(
+                                    html.escape(chat.title),
+                                    chat.id,
+                                ),
+                                parse_mode=ParseMode.HTML,
+                            )
+                        except RPCError:
+                            LOGGER.warning(
+                                "Unable to deliver new group log to EVENT_LOGS",
+                                exc_info=True,
+                            )
                 await message.reply_text(
                     "I feel like I'm gonna suffocate in here.",
                 )
