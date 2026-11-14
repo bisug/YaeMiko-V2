@@ -681,10 +681,7 @@ async def del_lockables(client, message: Message):
         bot_member = await client.get_chat_member(chat.id, client.id)
     except RPCError:
         return
-    if (
-        bot_member.status != ChatMemberStatus.ADMINISTRATOR
-        or not bot_member.can_delete_messages
-    ):
+    if not granted(bot_member, "can_delete_messages"):
         return
     if user:
         if await is_user_admin(chat, user.id):
