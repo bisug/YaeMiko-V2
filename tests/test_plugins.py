@@ -206,3 +206,76 @@ def test_all_except_clauses_parenthesized():
         for node in ast.walk(tree):
             if isinstance(node, ast.ExceptHandler) and isinstance(node.type, ast.Tuple):
                 assert len(node.type.elts) > 0
+
+
+def test_no_markdown_v2_usage():
+    for py_file in (ROOT / "Mikobot").rglob("*.py"):
+        content = py_file.read_text(encoding="utf-8")
+        assert "ParseMode.MARKDOWN_V2" not in content, (
+            f"{py_file.name} references non-existent ParseMode.MARKDOWN_V2"
+        )
+
+
+def test_markdown_to_html_formatting():
+    from Mikobot.plugins.helper_funcs.string_handling import markdown_to_html
+
+    assert markdown_to_html("*bold*") == "<b>bold</b>"
+    assert markdown_to_html("**bold**") == "<b>bold</b>"
+    assert markdown_to_html("_italic_") == "<i>italic</i>"
+    assert markdown_to_html("some_variable_name") == "some_variable_name"
+    assert markdown_to_html("__underline__") == "<u>underline</u>"
+    assert markdown_to_html("~~strike~~") == "<s>strike</s>"
+    assert markdown_to_html("||spoiler||") == "<tg-spoiler>spoiler</tg-spoiler>"
+    assert markdown_to_html("`code`") == "<code>code</code>"
+    assert "<pre" in markdown_to_html("```python\nprint(1)\n```")
+    assert markdown_to_html("[link](https://example.com)") == (
+        '<a href="https://example.com">link</a>'
+    )
+    assert markdown_to_html("[user](tg://user?id=123)") == (
+        '<a href="tg://user?id=123">user</a>'
+    )
+
+
+async def test_kurigram_parsemode_html_parsing():
+    from pyrogram.parser.html import HTML
+
+    from Mikobot.plugins.helper_funcs.string_handling import markdown_to_html
+
+    h = HTML(None)
+    parsed = await h.parse(
+        markdown_to_html("Hello *bold* and _italic_ and [user](tg://user?id=123)")
+    )
+    assert parsed["message"] == "Hello bold and italic and user"
+    assert len(parsed["entities"]) == 3
+
+
+def test_entities_mapping_and_markdown_parser():
+    from pyrogram.enums import MessageEntityType
+    from pyrogram.types import Message, MessageEntity
+
+    from Mikobot.plugins.helper_funcs.string_handling import (
+        caption_entities_map,
+        entities_map,
+        markdown_parser,
+    )
+
+    entity = MessageEntity(type=MessageEntityType.CODE, offset=6, length=4)
+    msg = Message(id=1, text="Hello code world", entities=[entity])
+
+    mapped = entities_map(msg)
+    assert entity in mapped
+    assert mapped[entity] == "code"
+
+    mapped_filtered = entities_map(msg, types=["code"])
+    assert entity in mapped_filtered
+
+    mapped_enum = entities_map(msg, types=[MessageEntityType.CODE])
+    assert entity in mapped_enum
+
+    assert len(entities_map(msg, types=["bold"])) == 0
+
+    cap_msg = Message(id=2, caption="Hello code world", caption_entities=[entity])
+    assert entity in caption_entities_map(cap_msg)
+
+    parsed_md = markdown_parser(msg.text, entities=mapped)
+    assert parsed_md == "Hello `code` world"

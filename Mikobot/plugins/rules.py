@@ -1,4 +1,6 @@
 # <============================================== IMPORTS =========================================================>
+from html import escape
+
 from pyrogram import filters
 from pyrogram.enums import ButtonStyle, ParseMode
 from pyrogram.errors import RPCError
@@ -18,7 +20,6 @@ from Mikobot.plugins.helper_funcs.string_handling import (
     markdown_to_html,
 )
 from Mikobot.utils.filters import GROUPS
-from Mikobot.utils.parser import escape_markdown
 
 # <=======================================================================================================>
 
@@ -41,15 +42,13 @@ async def send_rules(client, message, chat_id, from_pm=False):
             raise
 
     rules = sql.get_rules(chat_id)
-    text = (
-        f"The rules for {escape_markdown(chat.title)} are:\n\n{markdown_to_html(rules)}"
-    )
+    text = f"The rules for {escape(chat.title)} are:\n\n{markdown_to_html(rules)}"
 
     if from_pm and rules:
         await client.send_message(
             user.id,
             text,
-            parse_mode=ParseMode.MARKDOWN_V2,
+            parse_mode=ParseMode.HTML,
             link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     elif from_pm:

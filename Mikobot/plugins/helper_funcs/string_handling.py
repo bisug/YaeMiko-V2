@@ -5,8 +5,20 @@ import re
 import time
 
 from emoji import unicode_codes
+from pyrogram.parser.utils import add_surrogates, remove_surrogates
 from pyrogram.types import Message as AiogramMessage
 from pyrogram.types import MessageEntity
+
+if MessageEntity.__hash__ is None:
+    MessageEntity.__hash__ = lambda self: hash(
+        (
+            getattr(self.type, "name", str(self.type)),
+            self.offset,
+            self.length,
+            getattr(self, "url", None),
+            getattr(self.user, "id", None) if getattr(self, "user", None) else None,
+        )
+    )
 
 
 def escape_markdown(text: str, version: int = 1, entity_type: str = None) -> str:
@@ -32,27 +44,55 @@ def escape_markdown_v2(text: str, entity_type: str = None) -> str:
     return escape_markdown(text, version=2, entity_type=entity_type)
 
 
-def entities_map(message: AiogramMessage, types: list[str] = None) -> dict:
-    """PTB's Message.parse_entities(types) as {entity: entity_text}.
+def _matches_entity_type(entity_type, types: list[str] = None) -> bool:
+    if types is None:
+        return True
+    name = (
+        entity_type.name.lower()
+        if hasattr(entity_type, "name")
+        else str(entity_type).lower()
+    )
+    if name.startswith("messageentitytype."):
+        name = name.split(".", 1)[1]
+    for t in types:
+        if entity_type == t:
+            return True
+        t_name = t.name.lower() if hasattr(t, "name") else str(t).lower()
+        if t_name.startswith("messageentitytype."):
+            t_name = t_name.split(".", 1)[1]
+        if name == t_name:
+            return True
+    return False
 
-    markdown_parser walks an entity/text mapping, so keep that shape and build
-    it from aiogram's entity list instead. ``types`` filters the way PTB's did.
-    """
+
+def _extract_entity_text(text: str, entity: MessageEntity) -> str:
+    if not text:
+        return ""
+    surrogates = add_surrogates(text)
+    return remove_surrogates(surrogates[entity.offset : entity.offset + entity.length])
+
+
+def entities_map(message: AiogramMessage, types: list[str] = None) -> dict:
+    """PTB's Message.parse_entities(types) as {entity: entity_text}."""
+    if not message:
+        return {}
     text = message.text or message.caption or ""
     return {
-        entity: entity.extract_from(text)
+        entity: _extract_entity_text(text, entity)
         for entity in (message.entities or [])
-        if types is None or entity.type in types
+        if _matches_entity_type(entity.type, types)
     }
 
 
 def caption_entities_map(message: AiogramMessage, types: list[str] = None) -> dict:
     """Caption counterpart of entities_map, for parse_caption_entities()."""
+    if not message:
+        return {}
     text = message.caption or ""
     return {
-        entity: entity.extract_from(text)
+        entity: _extract_entity_text(text, entity)
         for entity in (message.caption_entities or [])
-        if types is None or entity.type in types
+        if _matches_entity_type(entity.type, types)
     }
 
 
@@ -143,15 +183,23 @@ def markdown_parser(
         start = ent.offset + offset  # start of entity
         end = ent.offset + offset + ent.length - 1  # end of entity
 
+        ent_type = (
+            ent.type.name.lower()
+            if hasattr(ent.type, "name")
+            else str(ent.type).lower()
+        )
+        if ent_type.startswith("messageentitytype."):
+            ent_type = ent_type.split(".", 1)[1]
+
         # we only care about code, url, text links
-        if ent.type in ("code", "url", "text_link", "spoiler"):
+        if ent_type in ("code", "url", "text_link", "spoiler"):
             # count emoji to switch counter
             count = _calc_emoji_offset(txt[:start])
             start -= count
             end -= count
 
             # URL handling -> do not escape if in [](), escape otherwise.
-            if ent.type == "url":
+            if ent_type == "url":
                 if any(
                     match.start(1) <= start and end <= match.end(1)
                     for match in LINK_REGEX.finditer(txt)
@@ -165,17 +213,17 @@ def markdown_parser(
                     )
 
             # code handling
-            elif ent.type == "code":
+            elif ent_type == "code":
                 res += _selective_escape(txt[prev:start]) + "`" + ent_text + "`"
 
             # handle markdown/html links
-            elif ent.type == "text_link":
+            elif ent_type == "text_link":
                 res += _selective_escape(txt[prev:start]) + "[{}]({})".format(
                     ent_text,
                     ent.url,
                 )
             # handle spoiler
-            elif ent.type == "spoiler":
+            elif ent_type == "spoiler":
                 res += _selective_escape(txt[prev:start]) + "||" + ent_text + "||"
 
             end += 1
@@ -364,6 +412,16 @@ def markdown_to_html(text: str) -> str:
         return key
 
     text = re.sub(
+        r"```(?:([a-zA-Z0-9_-]+)\n)?(.*?)```",
+        lambda match: protect(
+            f'<pre language="{html.escape(match.group(1))}">{html.escape(match.group(2))}</pre>'
+            if match.group(1)
+            else f"<pre>{html.escape(match.group(2))}</pre>"
+        ),
+        text,
+        flags=re.S,
+    )
+    text = re.sub(
         r"`([^`\n]+)`",
         lambda match: protect(f"<code>{html.escape(match.group(1))}</code>"),
         text,
@@ -377,17 +435,18 @@ def markdown_to_html(text: str) -> str:
         flags=re.S,
     )
     text = re.sub(
-        r"\[([^\]]+)\]\((https?://[^\s)]+)\)",
+        r"\[([^\]]+)\]\(((?:https?://|tg://)[^\s)]+)\)",
         lambda match: protect(
-            f'<a href="{html.escape(match.group(2), quote=True)}">{html.escape(match.group(1))}</a>'
+            f'<a href="{html.escape(match.group(2), quote=True)}">{html.escape(re.sub(r"\\([*_`\[\]()~>#+=|{}.!-])", r"\1", match.group(1)))}</a>'
         ),
         text,
     )
     text = html.escape(text)
-    text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
     text = re.sub(r"__(.+?)__", r"<u>\1</u>", text)
-    text = re.sub(r"~~(.+?)~~", r"<strike>\1</strike>", text)
-    text = re.sub(r"(?<!\*)\*([^*\n]+)\*(?!\*)", r"<em>\1</em>", text)
+    text = re.sub(r"~~(.+?)~~", r"<s>\1</s>", text)
+    text = re.sub(r"(?<!\*)\*([^*\n]+)\*(?!\*)", r"<b>\1</b>", text)
+    text = re.sub(r"(?<![a-zA-Z0-9_])_([^_\n]+)_(?![a-zA-Z0-9_])", r"<i>\1</i>", text)
     for key, value in tokens.items():
         text = text.replace(html.escape(key), value)
     return text

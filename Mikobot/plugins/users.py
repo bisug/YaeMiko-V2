@@ -17,7 +17,6 @@ from Database.sql.users_sql import get_all_users
 from Mikobot import BOT_ID, DEV_USERS, LOGGER, OWNER_ID
 from Mikobot.events import on_message
 from Mikobot.plugins.helper_funcs.chat_status import check_admin, granted
-from Mikobot.plugins.helper_funcs.string_handling import escape_markdown_v2
 from Mikobot.utils.consts import ChatID
 from Mikobot.utils.errors import FLOOD_WAIT_ERRORS, flood_wait_seconds
 from Mikobot.utils.filters import GROUPS
@@ -176,8 +175,8 @@ async def broadcast(client: Client, message: Message):
                 try:
                     await client.send_message(
                         int(chat.chat_id),
-                        escape_markdown_v2(to_send[1]),
-                        parse_mode=ParseMode.MARKDOWN_V2,
+                        to_send[1],
+                        parse_mode=ParseMode.DEFAULT,
                         link_preview_options=LinkPreviewOptions(is_disabled=True),
                     )
                     await asyncio.sleep(1)
@@ -188,8 +187,8 @@ async def broadcast(client: Client, message: Message):
                 try:
                     await client.send_message(
                         int(user.user_id),
-                        escape_markdown_v2(to_send[1]),
-                        parse_mode=ParseMode.MARKDOWN_V2,
+                        to_send[1],
+                        parse_mode=ParseMode.DEFAULT,
                         link_preview_options=LinkPreviewOptions(is_disabled=True),
                     )
                     await asyncio.sleep(1)
