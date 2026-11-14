@@ -52,10 +52,24 @@ async def speedtestxyz_callback(client, query: CallbackQuery):
         msg = await query.message.edit_text("Running a speedtest....")
         import speedtest
 
-        speed = await asyncio.to_thread(speedtest.Speedtest)
-        await asyncio.to_thread(speed.get_best_server)
-        await asyncio.to_thread(speed.download)
-        await asyncio.to_thread(speed.upload)
+        try:
+            speed = await asyncio.wait_for(
+                asyncio.to_thread(speedtest.Speedtest), timeout=15.0
+            )
+            await asyncio.wait_for(
+                asyncio.to_thread(speed.get_best_server), timeout=15.0
+            )
+            await asyncio.wait_for(asyncio.to_thread(speed.download), timeout=30.0)
+            await asyncio.wait_for(asyncio.to_thread(speed.upload), timeout=30.0)
+        except asyncio.TimeoutError:
+            await msg.edit_text("Speedtest timed out. Target server did not respond.")
+            await query.answer("Speedtest timed out.", show_alert=True)
+            return
+        except Exception as e:
+            await msg.edit_text(f"Speedtest failed: {e}")
+            await query.answer("Speedtest failed.", show_alert=True)
+            return
+
         replymsg = "SpeedTest Results:"
 
         if query.data == "speedtest_image":

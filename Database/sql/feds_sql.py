@@ -282,6 +282,35 @@ def _fed_owner(raw, default=None):
     return owner
 
 
+def _migrate_feds_users_to_json() -> None:
+    """Migrate legacy Python stringified dicts in feds.fed_users to valid JSON."""
+    if ENGINE is None:
+        return
+    inspector = inspect(ENGINE)
+    if "feds" not in inspector.get_table_names():
+        return
+    with ENGINE.begin() as connection:
+        rows = connection.execute(
+            select(Federations.fed_id, Federations.fed_users)
+        ).fetchall()
+        for fid, raw_users in rows:
+            if not raw_users or not isinstance(raw_users, str):
+                continue
+            if raw_users.startswith("{'") or "members': '" in raw_users:
+                members = _fed_members(raw_users)
+                owner = _fed_owner(raw_users)
+                clean_json = json.dumps({"owner": str(owner or ""), "members": members})
+                connection.execute(
+                    text(
+                        'UPDATE "feds" SET "fed_users" = :users WHERE "fed_id" = :fid'
+                    ),
+                    {"users": clean_json, "fid": fid},
+                )
+
+
+run_migration(_migrate_feds_users_to_json)
+
+
 def get_fed_info(fed_id):
     get = FEDERATION_BYFEDID.get(str(fed_id))
     if get is None:

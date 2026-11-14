@@ -328,3 +328,17 @@ def test_human_check_helpers_callable():
     # Safe return on missing session / offline test
     assert remove_human_check(999, "-100123") in (True, False, None)
     assert clean_human_checks("-100123") in (0, None)
+
+
+def test_close_database_callable():
+    from Database.sql import close_database
+
+    # Should not raise even when session/engine is None or already closed
+    close_database()
+
+
+def test_migrate_feds_users_to_json_callable():
+    from Database.sql.feds_sql import _migrate_feds_users_to_json
+
+    # Should run migration safely without raising
+    _migrate_feds_users_to_json()

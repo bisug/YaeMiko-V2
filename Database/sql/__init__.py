@@ -9,6 +9,7 @@ to the next. It runs on the calling thread on purpose: an event loop cannot
 roll back a worker's session, and must not touch it.
 """
 
+import atexit
 import os
 import sys
 import threading
@@ -480,3 +481,22 @@ def create_all_tables() -> None:
 
 
 create_all_tables()
+
+
+def close_database() -> None:
+    """Cleanly close sessions and dispose the connection pool on shutdown."""
+    global ENGINE, SESSION
+    if SESSION is not None:
+        try:
+            SESSION.end_unit_of_work(force=True)
+            SESSION.remove()
+        except Exception:
+            pass
+    if ENGINE is not None:
+        try:
+            ENGINE.dispose()
+        except Exception:
+            pass
+
+
+atexit.register(close_database)

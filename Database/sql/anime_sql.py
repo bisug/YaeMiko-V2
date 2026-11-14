@@ -1,4 +1,4 @@
-"""Storage for the anime plugin's thirteen MongoDB collections.
+"""Storage for the anime plugin's settings, tokens, and group collections.
 
 Most were per-chat settings or membership markers, which one key/value table
 covers: `anime_group_settings` keyed on (collection, chat_id, key). The two
