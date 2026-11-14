@@ -6,8 +6,7 @@ import time
 
 from emoji import unicode_codes
 from pyrogram.parser.utils import add_surrogates, remove_surrogates
-from pyrogram.types import Message as AiogramMessage
-from pyrogram.types import MessageEntity
+from pyrogram.types import Message, MessageEntity
 
 if MessageEntity.__hash__ is None:
     MessageEntity.__hash__ = lambda self: hash(
@@ -24,7 +23,7 @@ if MessageEntity.__hash__ is None:
 def escape_markdown(text: str, version: int = 1, entity_type: str = None) -> str:
     """Escape Telegram Markdown text.
 
-    PTB shipped this in telegram.helpers; aiogram has no counterpart for the
+    PTB shipped this in telegram.helpers; Kurigram has no counterpart for the
     legacy Markdown mode, so the repo's own helper in Mikobot.utils.parser is
     the base and the v2 sets are reproduced here.
     """
@@ -72,7 +71,7 @@ def _extract_entity_text(text: str, entity: MessageEntity) -> str:
     return remove_surrogates(surrogates[entity.offset : entity.offset + entity.length])
 
 
-def entities_map(message: AiogramMessage, types: list[str] = None) -> dict:
+def entities_map(message: Message, types: list[str] = None) -> dict:
     """PTB's Message.parse_entities(types) as {entity: entity_text}."""
     if not message:
         return {}
@@ -84,7 +83,7 @@ def entities_map(message: AiogramMessage, types: list[str] = None) -> dict:
     }
 
 
-def caption_entities_map(message: AiogramMessage, types: list[str] = None) -> dict:
+def caption_entities_map(message: Message, types: list[str] = None) -> dict:
     """Caption counterpart of entities_map, for parse_caption_entities()."""
     if not message:
         return {}
@@ -365,7 +364,7 @@ async def extract_time(message, time_val):
     """Return an absolute unix expiry, or None if the input was unusable.
 
     Callers guard on falsiness to skip the ban entirely. PTB tolerated the
-    empty string returned on error, but aiogram validates ``until_date`` and
+    empty string returned on error, but Kurigram validates ``until_date`` and
     rejects it, so a malformed duration would raise out of the handler
     instead of quietly not banning anyone.
     """

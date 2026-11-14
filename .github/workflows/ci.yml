@@ -84,7 +84,7 @@ jobs:
                   pins[key] = pinned.split(";")[0].strip()
 
           wrong = []
-          for name in ("aiogram", "sqlalchemy", "psycopg"):
+          for name in ("kurigram", "sqlalchemy", "psycopg"):
               pinned = pins[name]
               installed = version(name)
               print(f"{name} pinned {pinned}, installed {installed}")
@@ -165,4 +165,4 @@ jobs:
 
       - name: Verify dependencies in built image
         run: |
-          docker run --rm yaemiko:ci python -c "from aiogram import Bot; from pyrogram import Client; import sqlalchemy, psycopg; print('All core dependencies present in container')"
+          docker run --rm yaemiko:ci python -c "from pyrogram import Client; import sqlalchemy, psycopg; print('All core dependencies present in container')"

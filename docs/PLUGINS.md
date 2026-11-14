@@ -141,31 +141,29 @@ equivalent and Telegram's own client already shows that list.
 ## Writing a plugin
 
 ```python
-from aiogram.filters import Command
-from aiogram.types import Message
+from pyrogram import Client, filters
 from pyrogram.enums import ButtonStyle
+from pyrogram.types import Message
 
-from Mikobot import dp
+from Mikobot.events import on_message
 
 __mod_name__ = "EXAMPLE"
 __help__ = "Short description shown in /help."
 
 
-async def example(message: Message):
-    await message.answer(
+@on_message(filters.command("example"))
+async def example(client: Client, message: Message):
+    await message.reply_text(
         "Hello",
         reply_markup=None,
     )
-
-
-dp.message.register(example, Command("example"))
 ```
 
 Rules to follow:
 
 1. File goes in `Mikobot/plugins/<name>.py`. It is registered automatically.
 2. Set `__mod_name__` and `__help__` so the module renders correctly in `/help`.
-3. Register handlers through `dp.message.register(...)` or Kurigram event decorators.
+3. Register handlers through the `Mikobot.events` registry (`@on_message`, `@on_callback`).
 4. Give every inline button an explicit `style`: `PRIMARY` for navigation, `SUCCESS` for
    confirming actions, `DANGER` for destructive actions.
 5. Store state in `Database/sql`. It is the only database; there is no MongoDB layer.

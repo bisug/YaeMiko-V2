@@ -181,13 +181,12 @@ Measured wheel sizes for the dependencies that actually matter:
 | Pillow | 6.8 MB | Native image codecs |
 | Kurigram | 5.8 MB | MTProto implementation |
 | SQLAlchemy | 4.6 MB | Includes the native C extensions |
-| aiogram | 9.6 MB | Bot API dispatcher, pulls aiohttp and pydantic |
-| All 23 direct dependencies | 80.5 MB | Download size, excluding transitive dependencies |
-| All 21 direct dependencies (Python 3.15+) | ~37 MB | ONNX wheels excluded, download size |
+| All 22 direct dependencies | 70.9 MB | Download size, excluding transitive dependencies |
+| All 20 direct dependencies (Python 3.15+) | ~27 MB | ONNX wheels excluded, download size |
 
-On the pinned Python 3.14 the install is roughly 81 MB of wheels, the ONNX runtime and model included.
-The runtime memory is dominated by the two concurrent clients, aiogram and Kurigram, each holding its
-own connection state.
+On the pinned Python 3.14 the install is roughly 71 MB of wheels, the ONNX runtime and model included.
+The runtime memory is efficiently managed by the pure Kurigram MTProto client and `Mikobot.events` registry,
+eliminating the overhead of concurrent dual clients.
 
 Three things are lazy on purpose, so you are not paying for them at startup:
 
@@ -196,7 +195,7 @@ Three things are lazy on purpose, so you are not paying for them at startup:
   class-body execution correct. On Python 3.14 the call is skipped, the interpreter has no such API.
 - The ONNX classifier is imported inside the function that needs it, not at module import, so the
   20.9 MB model is only loaded when an anti-NSFW check actually runs.
-- The MTProto and Bot API clients both start, because both are always needed, but no other heavy work
+- The Kurigram MTProto client starts with connection to Telegram MTProto, and no other heavy work
   happens during import.
 
 ## How to measure your own usage

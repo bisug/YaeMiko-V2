@@ -8,7 +8,6 @@
 
 [![Python](https://img.shields.io/badge/python-3.14-blueviolet?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-blueviolet?style=for-the-badge)](https://github.com/bisug/YaeMiko-V2/blob/main/LICENSE)
-[![aiogram](https://img.shields.io/badge/aiogram-3.31-2AABEE?style=for-the-badge&logo=telegram&logoColor=white)](https://pypi.org/project/aiogram/)
 [![Kurigram](https://img.shields.io/badge/Kurigram-2.2.27-2AABEE?style=for-the-badge&logo=python&logoColor=white)](https://pypi.org/project/Kurigram/)
 [![kuricrypt](https://img.shields.io/badge/kuricrypt-0.1.1-2AABEE?style=for-the-badge&logo=rust&logoColor=white)](https://pypi.org/project/kuricrypt/)
 [![Docker](https://img.shields.io/badge/docker-multistage-2496ED?style=for-the-badge&logo=docker&logoColor=white)](Dockerfile)
@@ -43,15 +42,14 @@
 
 # YaeMiko
 
-**YaeMiko** is a modular Telegram group management bot that runs two Telegram clients in a single
-process: [aiogram](https://docs.aiogram.dev/) for the Bot API and
-[Kurigram](https://docs.kurigram.live/) for MTProto features. It targets Python 3.14, stores chat
+**YaeMiko** is a modular Telegram group management bot powered by the
+[Kurigram](https://docs.kurigram.live/) MTProto client and `Mikobot.events` registry. It targets Python 3.14, stores chat
 state in PostgreSQL, and ships 62 plugin modules.
 
 | | |
 | --- | --- |
-| **Runtime** | Python 3.14.10, single `asyncio` event loop, long polling |
-| **Telegram** | aiogram 3.31 on the Bot API, Kurigram 2.2.27 on MTProto, side by side |
+| **Runtime** | Python 3.14.10, single `asyncio` event loop |
+| **Telegram** | Kurigram 2.2.27 on MTProto with `Mikobot.events` registry |
 | **Storage** | PostgreSQL 18 through SQLAlchemy 2.1 |
 | **Modules** | 62 auto discovered plugins under `Mikobot/plugins` |
 | **Requirements** | 512 MB RAM minimum, 1 GB recommended, Python 3.14.10 |
@@ -66,8 +64,8 @@ state in PostgreSQL, and ships 62 plugin modules.
 
 ## Highlights
 
-- **Dual client, one process.** Bot API and MTProto are both live. Commands that need user to user
-  features run on Kurigram, everything else stays on aiogram.
+- **Pure MTProto runtime.** Powered by the Kurigram MTProto client and `Mikobot.events` registry
+  for direct MTProto performance, native Telegram features, and unified handler registration.
 - **Semantic inline buttons.** Every inline button declares an explicit style: `PRIMARY` for
   navigation, `SUCCESS` for confirming and positive actions, `DANGER` for destructive actions. A
   regression test parses the AST and fails the build if any button is missing one.
@@ -111,7 +109,7 @@ PostgreSQL is the only store. MongoDB was retired after every feature moved acro
 | Layer | Path | Responsibility |
 | --- | --- | --- |
 | Entry point | [`Mikobot/__main__.py`](Mikobot/__main__.py) | Handler registration, plugin discovery, chat migration, graceful shutdown |
-| Core runtime | [`Mikobot/__init__.py`](Mikobot/__init__.py) | Configuration, logging, event loop, aiogram dispatcher, Kurigram client |
+| Core runtime | [`Mikobot/__init__.py`](Mikobot/__init__.py) | Configuration, logging, event loop, Kurigram client |
 | Plugin bus | [`Mikobot/events.py`](Mikobot/events.py) | Registers Kurigram handlers behind one signature |
 | HTTP client | [`Mikobot/state.py`](Mikobot/state.py) | One shared `httpx.AsyncClient` with HTTP/2 and a 20 second timeout |
 | Plugins | [`Mikobot/plugins`](Mikobot/plugins) | 62 feature modules, auto discovered |
@@ -125,13 +123,13 @@ PostgreSQL is the only store. MongoDB was retired after every feature moved acro
    when `ENV` is truthy, otherwise from [`variables.py`](variables.py).
 2. Logging is configured with token redaction, a stream handler, and an optional rotating file
    handler.
-3. The `asyncio` event loop is created, the Bot is built with a `ThrottledSession`, and an
-   aiogram `Dispatcher` with `MemoryStorage` is created alongside it.
-4. The bot is initialized and `get_me()` supplies `BOT_ID`, `BOT_NAME` and `BOT_USERNAME`, so the
+3. The `asyncio` event loop is created and the Kurigram `Client` is initialized with the
+   `Mikobot.events` registry.
+4. The bot is initialized and `fetch_bot_info()` supplies `BOT_ID`, `BOT_NAME` and `BOT_USERNAME`, so the
    display name is never hardcoded.
-5. The Kurigram `Client` is created and a boot message is pushed to the support chat.
+5. A boot message is pushed to the support chat.
 6. `Mikobot/__main__.py` registers the core handlers, imports every module listed by `ALL_MODULES`,
-   and starts long polling.
+   and starts update handling on the Kurigram client.
 7. On exit the Kurigram client, the httpx client and the loop are closed in
    order.
 
@@ -264,9 +262,9 @@ grep VmHWM /proc/$(pgrep -f "python -m Mikobot" | head -1)/status
 ```text
 YaeMiko/
 ├── Mikobot/                     Application package
-│   ├── __init__.py              Config, logging, event loop, aiogram dispatcher, Kurigram client
+│   ├── __init__.py              Config, logging, event loop, Kurigram client
 │   ├── __main__.py              Handler registration and entry point
-│   ├── events.py                Kurigram handler registration helpers
+│   ├── events.py                Kurigram handler registration helpers and events registry
 │   ├── state.py                 Shared httpx client
 │   ├── elevated_users.json      Runtime elevated user additions
 │   ├── plugins/                 62 feature modules + helper_funcs
@@ -581,7 +579,6 @@ Meaningful changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 ### Runtime libraries
 
-- [aiogram](https://github.com/aiogram/aiogram) for the Bot API dispatcher, session and filters
 - [Kurigram](https://github.com/KurimuzonAkuma/Kurigram) for the MTProto client
 - [kuricrypt](https://pypi.org/project/kuricrypt/) for accelerated encryption
 - [SQLAlchemy](https://github.com/sqlalchemy/sqlalchemy) and

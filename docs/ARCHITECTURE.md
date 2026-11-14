@@ -35,8 +35,8 @@ Back to [README](../README.md).
 ## Process model
 
 A single `asyncio` event loop is created at import time by `_create_event_loop()` in
-`Mikobot/__init__.py`. The aiogram `Bot` and `Dispatcher` are bound to it, the Kurigram `Client` is started on it,
-and `run_polling(close_loop=False)` drives updates on it. Shutdown stops the clients, closes the
+`Mikobot/__init__.py`. The Kurigram MTProto `Client` and `Mikobot.events` registry are initialized on it,
+and update handling is driven on it. Shutdown stops the client, closes the
 shared httpx client, then closes the loop.
 
 ## Core runtime
@@ -51,9 +51,9 @@ shared httpx client, then closes the loop.
 4. Integer and list variables are validated. An unparsable `OWNER_ID` raises immediately.
 5. `RedactingFormatter` is attached to the root logger. The `httpx` and `httpcore` loggers are set
    to `WARNING` because their INFO records embed the full Telegram API URL, including the token.
-6. The event loop, the throttled session and the aiogram dispatcher are built.
-7. `get_me()` supplies `BOT_ID`, `BOT_NAME` and `BOT_USERNAME`.
-8. The Kurigram `Client` is created and the boot message is sent to the support chat.
+6. The event loop is built and the Kurigram MTProto client is configured with the `Mikobot.events` registry.
+7. `fetch_bot_info()` supplies `BOT_ID`, `BOT_NAME` and `BOT_USERNAME`.
+8. The Kurigram `Client` is started and the boot message is sent to the support chat.
 
 ### Elevated users
 
@@ -67,28 +67,25 @@ Ranks come from two places and are merged:
 | Wolf | `WOLVES` | `whitelists` | Cannot be banned |
 | Tiger | `TIGERS` | `tigers` | Never bannable by the bot |
 
-## Bot and dispatcher
+## Kurigram MTProto client and events registry
 
 ```python
-bot = Bot(
-    token=TOKEN,
-    default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-    session=ThrottledSession(),
+app = Client(
+    ":memory:",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    bot_token=TOKEN,
+    workers=min(32, (os.cpu_count() or 1) + 4),
+    parse_mode=ParseMode.HTML,
 )
-dp = Dispatcher(storage=MemoryStorage())
 ```
 
-`ThrottledSession` is an `AiohttpSession` subclass that holds outbound calls to the Bot API's rate
-limits instead of letting a burst draw a 429. `MemoryStorage` is deliberate: `Dispatcher` already
-keeps per-chat state in a lock guarded dict, and the moderation settings that used to be written to
-a pickle now live in PostgreSQL, where they are shared correctly across workers rather than only
-surviving within one process.
-
-## Kurigram client
-
-`Mikobot/events.py` wraps Kurigram handlers so plugins do not need the client argument. Features
-that need MTProto, such as fetching a user's profile photo or resolving a peer, register through
-these helpers instead of raw handler classes.
+The Kurigram MTProto client is the sole Telegram runtime in YaeMiko. `Mikobot/events.py` provides the
+unified `Mikobot.events` registry (`@on_message`, `@on_callback`, `@on_inline_query`,
+`@on_chat_join_request`, `@on_chat_member_updated`). Rather than relying on separate dispatchers,
+one handler per update type walks the registry in registration order, running permission checks
+before handlers and supporting chaining where multiple plugins need to inspect the same update.
+Moderation settings and bot state persist directly to PostgreSQL, sharing state cleanly across workers.
 
 ## Plugin discovery
 
@@ -106,10 +103,10 @@ The resulting list is exported as `ALL_MODULES` and re-exported through `__all__
 
 | Stage | Mechanism |
 | --- | --- |
-| Transport | Long polling on aiogram, MTProto socket on Kurigram |
-| Handler match | Handler groups and `filters` objects |
+| Transport | MTProto socket on Kurigram |
+| Handler match | `Mikobot.events` registry and `filters` objects |
 | Permission gate | `Mikobot/plugins/helper_funcs/chat_status.py` and the rank sets |
-| Rate limiter | `AIORateLimiter` before every outbound Bot API call |
+| Rate limiter | Flood control and backoff on MTProto calls |
 | Execution | Plugin coroutine |
 | Reply | Explicitly styled inline buttons |
 
