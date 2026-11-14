@@ -304,13 +304,11 @@ async def _should_clean(chat_id, message: Message) -> bool:
 async def send(source_message: Message, text: str, keyboard, backup_message):
     chat = source_message.chat
     cleanserv = await _should_clean(chat.id, source_message)
-    reply = source_message.id
     if cleanserv:
         try:
             await client.delete_messages(chat.id, source_message.id)
         except RPCError:
             pass
-        reply = None
     # In a forum a greeting has to name a topic, otherwise it lands in General
     # regardless of where the rest of the conversation is.
     thread = await asyncio.to_thread(topics_sql.get_action_topic, chat.id)
@@ -330,7 +328,6 @@ async def send(source_message: Message, text: str, keyboard, backup_message):
                 text,
                 parse_mode=ParseMode.HTML,
                 reply_markup=keyboard,
-                reply_to_message_id=reply,
             )
     except RPCError as excp:
         err_str = str(getattr(excp, "message", None) or excp).lower()
@@ -353,7 +350,6 @@ async def send(source_message: Message, text: str, keyboard, backup_message):
                     backup_message
                     + "\nNote: The current message has an invalid URL in one of its buttons. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
-                    reply_to_message_id=reply,
                 )
         elif "unsupported url protocol" in err_str:
             try:
@@ -368,7 +364,6 @@ async def send(source_message: Message, text: str, keyboard, backup_message):
                     backup_message
                     + "\nNote: The current message has buttons which use URL protocols that are unsupported by Telegram. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
-                    reply_to_message_id=reply,
                 )
         elif "wrong url host" in err_str:
             try:
@@ -383,7 +378,6 @@ async def send(source_message: Message, text: str, keyboard, backup_message):
                     backup_message
                     + "\nNote: The current message has some bad URLs. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
-                    reply_to_message_id=reply,
                 )
             LOGGER.exception("Could not parse welcome message with invalid URL host")
         elif (
@@ -404,7 +398,6 @@ async def send(source_message: Message, text: str, keyboard, backup_message):
                     backup_message
                     + "\nNote: An error occurred when sending the custom message. Please update.",
                     parse_mode=ParseMode.MARKDOWN,
-                    reply_to_message_id=reply,
                 )
             LOGGER.exception("Failed to send custom welcome message: %s", excp)
     return msg
@@ -459,7 +452,6 @@ async def new_member(client, message: Message):
             if new_mem.id == OWNER_ID:
                 await message.reply_text(
                     "Oh, darling, I have searched for you everywhere.",
-                    reply_to_message_id=reply,
                 )
                 welcome_log = (
                     "{}\n#USER_JOINED\nBot owner just joined the group".format(
@@ -471,7 +463,6 @@ async def new_member(client, message: Message):
             elif new_mem.id in DEV_USERS:
                 await message.reply_text(
                     "Be cool! A member of the team just joined.",
-                    reply_to_message_id=reply,
                 )
                 welcome_log = "{}\n#USER_JOINED\nBot dev just joined the group".format(
                     html.escape(chat.title)
@@ -481,7 +472,6 @@ async def new_member(client, message: Message):
             elif new_mem.id in DRAGONS:
                 await message.reply_text(
                     "Whoa! A dragon disaster just joined! Stay alert!",
-                    reply_to_message_id=reply,
                 )
                 welcome_log = "{}\n#USER_JOINED\nBot sudo just joined the group".format(
                     html.escape(chat.title)
@@ -532,7 +522,6 @@ async def new_member(client, message: Message):
                         )
                 await message.reply_text(
                     "I feel like I'm gonna suffocate in here.",
-                    reply_to_message_id=reply,
                 )
                 continue
 
@@ -809,14 +798,12 @@ async def left_member(client, message: Message):
         return
 
     if should_goodbye:
-        reply = message.id
         cleanserv = await _should_clean(chat.id, message)
         if cleanserv:
             try:
                 await client.delete_messages(chat.id, message.id)
             except RPCError:
                 pass
-            reply = None
 
         left_mem = message.left_chat_member
         if left_mem:
@@ -829,14 +816,12 @@ async def left_member(client, message: Message):
             if left_mem.id == OWNER_ID:
                 await message.reply_text(
                     "My master left..",
-                    reply_to_message_id=reply,
                 )
                 return
 
             elif left_mem.id in DEV_USERS:
                 await message.reply_text(
                     "see you later pro!",
-                    reply_to_message_id=reply,
                 )
                 return
 
