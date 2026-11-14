@@ -56,7 +56,7 @@ def gban_user(user_id, name, reason=None):
 
         SESSION.merge(user)
         SESSION.commit()
-        __load_gbanned_userid_list()
+        GBANNED_LIST.add(int(user_id))
 
 
 @unit_of_work_guard
@@ -82,7 +82,7 @@ def ungban_user(user_id):
             SESSION.delete(user)
 
         SESSION.commit()
-        __load_gbanned_userid_list()
+        GBANNED_LIST.discard(int(user_id))
 
 
 def is_user_gbanned(user_id):

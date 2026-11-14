@@ -31,16 +31,23 @@ class ActionTopic(BASE):
 
 
 INSERTION_LOCK = threading.RLock()
+ACTION_TOPICS_CACHE: dict = {}
+
+
+def get_action_topic(chat_id):
+    """The thread automated messages should go to, or None for General."""
+    key = str(chat_id)
+    if key in ACTION_TOPICS_CACHE:
+        return ACTION_TOPICS_CACHE[key]
+    return _fetch_action_topic(key)
 
 
 @unit_of_work_guard
-def get_action_topic(chat_id):
-    """The thread automated messages should go to, or None for General."""
-    try:
-        row = SESSION.get(ActionTopic, str(chat_id))
-        return row.message_thread_id if row else None
-    finally:
-        SESSION.close()
+def _fetch_action_topic(key: str):
+    row = SESSION.get(ActionTopic, key)
+    thread_id = row.message_thread_id if row else None
+    ACTION_TOPICS_CACHE[key] = thread_id
+    return thread_id
 
 
 @unit_of_work_guard
@@ -53,6 +60,7 @@ def set_action_topic(chat_id, message_thread_id) -> None:
             row.message_thread_id = message_thread_id
         SESSION.add(row)
         SESSION.commit()
+        ACTION_TOPICS_CACHE[str(chat_id)] = message_thread_id
 
 
 @unit_of_work_guard
@@ -62,6 +70,7 @@ def remove_action_topic(chat_id) -> None:
         if row is not None:
             SESSION.delete(row)
             SESSION.commit()
+        ACTION_TOPICS_CACHE[str(chat_id)] = None
 
 
 @unit_of_work_guard
@@ -76,3 +85,6 @@ def migrate_chat(old_chat_id, new_chat_id) -> None:
             row.chat_id = str(new_chat_id)
             SESSION.add(row)
         SESSION.commit()
+        thread_id = ACTION_TOPICS_CACHE.pop(str(old_chat_id), None)
+        if thread_id is not None:
+            ACTION_TOPICS_CACHE[str(new_chat_id)] = thread_id

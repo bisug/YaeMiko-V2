@@ -240,3 +240,10 @@ def test_connection_settings_boolean():
 
     setting = ChatAccessConnectionSettings(12345, False)
     assert setting.allow_connect_to_chat is False
+
+
+def test_action_topic_cache():
+    from Database.sql.topics_sql import ACTION_TOPICS_CACHE, get_action_topic
+
+    ACTION_TOPICS_CACHE["-1009999999"] = 42
+    assert get_action_topic("-1009999999") == 42
