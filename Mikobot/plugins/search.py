@@ -23,7 +23,7 @@ def _query(message: Message) -> str:
 
 
 async def _get_json(url: str, params: dict):
-    response = await state.get(url, params=params)
+    response = await state.get(url, params=params, timeout=10)
     response.raise_for_status()
     return response.json()
 

@@ -32,7 +32,7 @@ async def instadl_command_handler(client, message: Message):
         downloading_sticker = await message.reply_sticker(DOWNLOADING_STICKER_ID)
 
         # Make an asynchronous GET request to the API using httpx
-        response = await state.get(API_URL, params={"url": link})
+        response = await state.get(API_URL, params={"url": link}, timeout=15)
         data = response.json()
 
         # Check if the API request was successful

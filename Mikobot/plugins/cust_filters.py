@@ -1,4 +1,5 @@
 # <============================================== IMPORTS =========================================================>
+import asyncio
 import random
 import re
 from html import escape
@@ -328,9 +329,11 @@ async def reply_filter(client, message: Message):
         if re.search(pattern, to_match, flags=re.IGNORECASE):
             if MessageHandlerChecker.check_user(message.from_user.id):
                 return
-            filt = sql.get_filter(chat.id, keyword)
+            filt = await asyncio.to_thread(sql.get_filter, chat.id, keyword)
             if filt.reply_text is not None:
-                buttons = sql.get_buttons(chat.id, filt.keyword)
+                buttons = await asyncio.to_thread(
+                    sql.get_buttons, chat.id, filt.keyword
+                )
                 keyb = build_keyboard_parser(chat.id, buttons)
                 keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
 

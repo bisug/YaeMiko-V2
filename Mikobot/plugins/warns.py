@@ -402,7 +402,9 @@ async def reply_filter(client, message: Message) -> str:
     if await asyncio.to_thread(is_approved, chat.id, user.id):
         return ""
 
-    warn_filter = sql.get_warn_filter(chat.id, matching_keyword)
+    warn_filter = await asyncio.to_thread(
+        sql.get_warn_filter, chat.id, matching_keyword
+    )
     return await warn(user, chat, warn_filter.reply, message)
 
 

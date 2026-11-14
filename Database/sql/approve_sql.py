@@ -48,9 +48,9 @@ class Approvals(BASE):
 APPROVE_INSERTION_LOCK = threading.RLock()
 
 # is_approved runs once per message from antiflood, the blacklist, locks and
-# warn filters, so the same row was read four times per update. Only hits are
-# cached: a miss stays a query, so a user approved by another path is picked up
-# within the TTL rather than being remembered as absent.
+# warn filters, so the same row was read four times per update. Both hits and
+# misses are cached with a short TTL to prevent repeated DB round trips for
+# regular (unapproved) users on every message.
 APPROVED_TTL = 30.0
 APPROVED = TTLCache(maxsize=16384, ttl=APPROVED_TTL, timer=monotonic)
 
@@ -59,10 +59,10 @@ def _approval_key(chat_id, user_id):
     return str(chat_id), int(user_id)
 
 
-def _remember_approved(key) -> None:
+def _remember_approved(key, approved: bool = True) -> None:
     # TTLCache is not thread safe and the helpers run on reused worker threads.
     with APPROVE_INSERTION_LOCK:
-        APPROVED[key] = True
+        APPROVED[key] = approved
 
 
 @unit_of_work_guard
@@ -77,19 +77,20 @@ def approve(chat_id, user_id):
             .on_conflict_do_nothing()
         )
         SESSION.commit()
-    _remember_approved(key)
+    _remember_approved(key, True)
 
 
 @unit_of_work_guard
 def is_approved(chat_id, user_id):
     key = _approval_key(chat_id, user_id)
-    if key in APPROVED:
-        return True
+    with APPROVE_INSERTION_LOCK:
+        if key in APPROVED:
+            return APPROVED[key]
     try:
         row = SESSION.get(Approvals, key)
-        if row:
-            _remember_approved(key)
-        return row
+        val = bool(row)
+        _remember_approved(key, val)
+        return val
     finally:
         SESSION.close()
 
@@ -99,7 +100,7 @@ def disapprove(chat_id, user_id):
     key = _approval_key(chat_id, user_id)
     with APPROVE_INSERTION_LOCK:
         disapprove_user = SESSION.get(Approvals, key)
-        APPROVED.pop(key, None)
+        APPROVED[key] = False
         if disapprove_user:
             SESSION.delete(disapprove_user)
             SESSION.commit()

@@ -249,6 +249,9 @@ run_migration(_ensure_welcome_pref_columns)
 # buttons with the same name.
 ensure_index("welcome_urls_uc", "welcome_urls", "chat_id, name", unique=True)
 ensure_index("leave_urls_uc", "leave_urls", "chat_id, name", unique=True)
+# clean_human_checks filters on chat_id, which the (user_id, chat_id) primary
+# key cannot serve without a full table scan.
+ensure_index("human_checks_chat_id_idx", "human_checks", "chat_id")
 
 INSERTION_LOCK = threading.RLock()
 WELC_BTN_LOCK = threading.RLock()

@@ -433,8 +433,32 @@ async def _denial(client, event, spec, status):
 async def _member(client, chat, user_id):
     if chat is None or user_id is None:
         return None
+    from Mikobot.plugins.helper_funcs.chat_status import ADMIN_CACHE, THREAD_LOCK
+
+    with THREAD_LOCK:
+        cached = ADMIN_CACHE.get(chat.id)
+        if cached is not None and isinstance(cached, dict):
+            return cached.get(user_id)
+
+    from Mikobot.plugins.helper_funcs.chat_status import get_chat_administrators
+
     try:
-        return await client.get_chat_member(chat.id, user_id)
+        admins = await get_chat_administrators(chat.id, client)
+        if admins:
+            return admins.get(user_id)
+    except Exception:
+        pass
+
+    try:
+        member = await client.get_chat_member(chat.id, user_id)
+        if member is not None:
+            with THREAD_LOCK:
+                cur = ADMIN_CACHE.get(chat.id)
+                if isinstance(cur, dict):
+                    cur[user_id] = member
+                else:
+                    ADMIN_CACHE[chat.id] = {user_id: member}
+        return member
     except RPCError:
         return None
 

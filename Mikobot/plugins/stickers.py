@@ -54,6 +54,11 @@ SUPPORTED_TYPES = ["jpeg", "png", "webp"]
 MAX_MEDIA_SIZE = 20 * 1024 * 1024
 
 
+def _write_bytes(path: str, data: bytes) -> None:
+    with open(path, mode="wb") as f:
+        f.write(data)
+
+
 @app.on_message(filters.command(["getsticker"], PREFIX_HANDLER), group=111)
 @use_chat_lang()
 async def getsticker_(self: Client, ctx: Message, strings):
@@ -235,10 +240,9 @@ async def kang_sticker(self: Client, ctx: Message, strings):
             await prog_msg.delete()
             return
         try:
-            r = await state.get(img_url)
+            r = await state.get(img_url, timeout=15)
             if r.status_code == 200:
-                with open(filename, mode="wb") as f:
-                    f.write(r.read())
+                await asyncio.to_thread(_write_bytes, filename, r.read())
         except Exception as r_e:
             return await prog_msg.edit(f"{r_e.__class__.__name__} : {r_e}")
         if len(ctx.command) > 2:
@@ -256,7 +260,7 @@ async def kang_sticker(self: Client, ctx: Message, strings):
         return await prog_msg.edit(strings("kang_help"))
     try:
         if resize:
-            filename = resize_image(filename)
+            filename = await asyncio.to_thread(resize_image, filename)
         elif convert:
             filename = await convert_video(filename)
             if filename is False:
@@ -496,7 +500,7 @@ async def handler(client, message):
                 os.remove(meme)
 
 
-async def draw_text(image_path, text, output_path=None):
+def _sync_draw_text(image_path, text, output_path=None):
     with Image.open(image_path) as source:
         img = source.convert("RGBA")
     i_width, i_height = img.size
@@ -615,6 +619,10 @@ async def draw_text(image_path, text, output_path=None):
         output_path = f"{uuid.uuid4().hex}.webp"
     img.save(output_path, "webp")
     return output_path
+
+
+async def draw_text(image_path, text, output_path=None):
+    return await asyncio.to_thread(_sync_draw_text, image_path, text, output_path)
 
 
 @app.on_message(filters.command(["stickerinfo", "stinfo"]), group=888)

@@ -1,3 +1,4 @@
+import asyncio
 import os
 import tempfile
 import uuid
@@ -10,7 +11,7 @@ from pyrogram.enums import ParseMode
 from Mikobot import DEMONS, DEV_USERS, DRAGONS, LOGGER, OWNER_ID, TIGERS, WOLVES, app
 
 
-async def circle(pfp, size=(900, 900)):
+def _sync_circle(pfp, size=(900, 900)):
     pfp = pfp.resize(size, Image.Resampling.LANCZOS).convert("RGBA")
     bigsize = (pfp.size[0] * 3, pfp.size[1] * 3)
     mask = Image.new("L", bigsize, 0)
@@ -22,15 +23,54 @@ async def circle(pfp, size=(900, 900)):
     return pfp
 
 
+async def circle(pfp, size=(900, 900)):
+    return await asyncio.to_thread(_sync_circle, pfp, size)
+
+
+def _sync_process_pfp(pic):
+    with Image.open(pic) as source:
+        return _sync_circle(source.convert("RGBA"), size=(900, 900))
+
+
 async def download_and_process_pfp(user, source_path):
     try:
         pic = await app.download_media(user.photo.big_file_id, file_name=source_path)
         if pic:
-            with Image.open(pic) as source:
-                return await circle(source.convert("RGBA"), size=(900, 900))
+            return await asyncio.to_thread(_sync_process_pfp, pic)
     except Exception:
         LOGGER.exception("User info operation failed")
     return None
+
+
+def _sync_build_userinfopic(
+    user_name,
+    user_id,
+    pfp,
+    user_x,
+    user_y,
+    user_id_x,
+    user_id_y,
+    pfp_x_offset=0,
+    pfp_y_offset=0,
+    pfp_size=(1218, 1385),
+    output_path=None,
+):
+    with Image.open("Extra/user.jpg") as source:
+        background = source.convert("RGB")
+    draw = ImageDraw.Draw(background)
+    font = ImageFont.truetype("Extra/default.ttf", 100)
+
+    if pfp:
+        pfp_x = 927 + pfp_x_offset
+        pfp_y = (background.size[1] - pfp.size[1]) // 2 - 290 + pfp_y_offset
+        pfp = _sync_circle(pfp, size=pfp_size)
+        background.paste(pfp, (pfp_x, pfp_y), pfp)
+
+    draw.text((user_x, user_y), user_name, font=font, fill="white")
+    draw.text((user_id_x, user_id_y), str(user_id), font=font, fill="white")
+    userinfo = output_path or f"downloads/userinfo_{user_id}_{uuid.uuid4().hex}.png"
+    background.save(userinfo)
+    return userinfo
 
 
 async def userinfopic(
@@ -51,31 +91,25 @@ async def userinfopic(
         source_path = source_path or source_file.name
         user_name = unidecode.unidecode(user.first_name)
 
-        with Image.open("Extra/user.jpg") as source:
-            background = source.convert("RGB")
-        draw = ImageDraw.Draw(background)
-        font = ImageFont.truetype("Extra/default.ttf", 100)
-
         try:
             pfp = await download_and_process_pfp(user, source_path)
-            if pfp:
-                pfp_x = 927 + pfp_x_offset
-                pfp_y = (background.size[1] - pfp.size[1]) // 2 - 290 + pfp_y_offset
-                pfp = await circle(pfp, size=pfp_size)
-                background.paste(pfp, (pfp_x, pfp_y), pfp)
-
-            draw.text((user_x, user_y), user_name, font=font, fill="white")
-            draw.text((user_id_x, user_id_y), str(user.id), font=font, fill="white")
-            userinfo = (
-                output_path or f"downloads/userinfo_{user.id}_{uuid.uuid4().hex}.png"
+            return await asyncio.to_thread(
+                _sync_build_userinfopic,
+                user_name,
+                user.id,
+                pfp,
+                user_x,
+                user_y,
+                user_id_x,
+                user_id_y,
+                pfp_x_offset,
+                pfp_y_offset,
+                pfp_size,
+                output_path,
             )
-            background.save(userinfo)
-            return userinfo
         except Exception:
             LOGGER.exception("User info operation failed")
             return None
-        finally:
-            background.close()
 
 
 # Command handler for /userinfo

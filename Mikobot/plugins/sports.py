@@ -22,7 +22,7 @@ MAX_LEAGUES = 10
 
 
 async def _get_json(path: str) -> dict:
-    response = await state.get(f"{SPORTDB_URL}/{path}")
+    response = await state.get(f"{SPORTDB_URL}/{path}", timeout=10)
     response.raise_for_status()
     data = response.json()
     return data if isinstance(data, dict) else {}

@@ -21,6 +21,7 @@ __all__ = [
     "check_admin",
     "connection_status",
     "dev_plus",
+    "get_chat_administrators",
     "granted",
     "is_admin",
     "is_bot_admin",
@@ -117,6 +118,27 @@ def _is_elevated(chat, user_id: int, member=None) -> bool:
 is_whitelist_plus = is_support_plus = is_sudo_plus = _is_elevated
 
 
+async def get_chat_administrators(chat_id: int, client=None) -> dict:
+    """Fetch and cache all administrators of a chat as {user_id: ChatMember}."""
+    with THREAD_LOCK:
+        cached = ADMIN_CACHE.get(chat_id)
+        if cached is not None and isinstance(cached, dict):
+            return cached
+    c = client or app
+    admin_map = {}
+    try:
+        async for admin in c.get_chat_members(
+            chat_id, filter=ChatMembersFilter.ADMINISTRATORS
+        ):
+            if admin.user is not None:
+                admin_map[admin.user.id] = admin
+    except RPCError:
+        return {}
+    with THREAD_LOCK:
+        ADMIN_CACHE[chat_id] = admin_map
+    return admin_map
+
+
 async def is_user_admin(chat, user_id: int, member=None) -> bool:
     if (
         getattr(chat, "type", None) in (ChatType.PRIVATE, ChatType.BOT)
@@ -127,25 +149,11 @@ async def is_user_admin(chat, user_id: int, member=None) -> bool:
         return True
     if not member:
         with THREAD_LOCK:
-            # try to fetch from cache first.
-            try:
-                return user_id in ADMIN_CACHE[chat.id]
-            except KeyError:
-                # keyerror happend means cache is deleted,
-                # so query telegram again and return user status
-                # while saving it in cache for future usage...
-                admin_list = []
-                try:
-                    async for admin in app.get_chat_members(
-                        chat.id, filter=ChatMembersFilter.ADMINISTRATORS
-                    ):
-                        if admin.user is not None:
-                            admin_list.append(admin.user.id)
-                except RPCError:
-                    return False
-                ADMIN_CACHE[chat.id] = admin_list
-
-                return user_id in admin_list
+            cached = ADMIN_CACHE.get(chat.id)
+            if cached is not None:
+                return user_id in cached
+        admins = await get_chat_administrators(chat.id)
+        return user_id in admins
     return is_admin(member)
 
 
@@ -154,7 +162,8 @@ async def is_bot_admin(chat, bot_id: int, bot_member=None) -> bool:
         return True
 
     if not bot_member:
-        bot_member = await app.get_chat_member(chat.id, bot_id)
+        admins = await get_chat_administrators(chat.id)
+        bot_member = admins.get(bot_id)
 
     return is_admin(bot_member)
 

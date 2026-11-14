@@ -1,3 +1,5 @@
+import asyncio
+
 from pyrogram import filters
 from pyrogram.types import Message, ReplyParameters
 
@@ -23,16 +25,19 @@ from Mikobot.utils.localization import use_chat_lang
 async def cek_mataa(_, ctx: Message, strings):
     if ctx.sender_chat or not is_sangmata_on(ctx.chat.id):
         return
-    data = get_userdata(ctx.from_user.id)
+    data = await asyncio.to_thread(get_userdata, ctx.from_user.id)
     if not data:
-        return add_userdata(
+        await asyncio.to_thread(
+            add_userdata,
             ctx.from_user.id,
             ctx.from_user.username,
             ctx.from_user.first_name,
             ctx.from_user.last_name,
         )
+        return
     usernamebefore, first_name, lastname_before = data
     msg = ""
+    changed = False
     if (
         usernamebefore != ctx.from_user.username
         or first_name != ctx.from_user.first_name
@@ -47,29 +52,22 @@ async def cek_mataa(_, ctx: Message, strings):
             else strings("no_uname")
         )
         msg += strings("uname_change_msg").format(bef=usernamebefore, aft=usernameafter)
-        add_userdata(
-            ctx.from_user.id,
-            ctx.from_user.username,
-            ctx.from_user.first_name,
-            ctx.from_user.last_name,
-        )
+        changed = True
     if first_name != ctx.from_user.first_name:
         msg += strings("firstname_change_msg").format(
             bef=first_name, aft=ctx.from_user.first_name
         )
-        add_userdata(
-            ctx.from_user.id,
-            ctx.from_user.username,
-            ctx.from_user.first_name,
-            ctx.from_user.last_name,
-        )
+        changed = True
     if lastname_before != ctx.from_user.last_name:
         lastname_before = lastname_before or strings("no_last_name")
         lastname_after = ctx.from_user.last_name or strings("no_last_name")
         msg += strings("lastname_change_msg").format(
             bef=lastname_before, aft=lastname_after
         )
-        add_userdata(
+        changed = True
+    if changed:
+        await asyncio.to_thread(
+            add_userdata,
             ctx.from_user.id,
             ctx.from_user.username,
             ctx.from_user.first_name,

@@ -10,6 +10,7 @@ import os
 import re
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from html import escape
 from random import choice
 
@@ -153,6 +154,9 @@ def _create_event_loop():
 
 
 loop = _create_event_loop()
+WORKERS = env_int("WORKERS", min(8, (os.cpu_count() or 4) * 2))
+executor = ThreadPoolExecutor(max_workers=WORKERS, thread_name_prefix="AsyncioWorker")
+loop.set_default_executor(executor)
 
 # <================================================== LOGGER =======================================================>
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -475,6 +479,7 @@ app = Client(
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=TOKEN,
+    workers=WORKERS,
 )
 install_smart_parser(app)
 # <=======================================================================================================>

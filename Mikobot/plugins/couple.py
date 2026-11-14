@@ -1,4 +1,5 @@
 # <============================================== IMPORTS =========================================================>
+import asyncio
 import random
 from datetime import datetime, timedelta
 
@@ -72,7 +73,7 @@ async def nibba_nibbi(_, message):
         return
     try:
         chat_id = message.chat.id
-        is_selected = get_couple(chat_id, today)
+        is_selected = await asyncio.to_thread(get_couple, chat_id, today)
         if not is_selected:
             list_of_users = []
             async for member in _.get_chat_members(message.chat.id, limit=100):
@@ -94,7 +95,9 @@ async def nibba_nibbi(_, message):
                 photo=COUPLES_PIC,
                 caption=CAP.format(c1_mention, c2_mention, tomorrow),
             )
-            save_couple(chat_id, today, {"c1_id": c1_id, "c2_id": c2_id})
+            await asyncio.to_thread(
+                save_couple, chat_id, today, {"c1_id": c1_id, "c2_id": c2_id}
+            )
         else:
             c1_id = int(is_selected["c1_id"])
             c2_id = int(is_selected["c2_id"])

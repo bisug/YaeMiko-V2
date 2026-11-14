@@ -1,4 +1,5 @@
 # <============================================== IMPORTS =========================================================>
+import asyncio
 import os
 import tempfile
 import time
@@ -47,6 +48,11 @@ MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 UPLOAD_TIMEOUT = 300
 PENDING_PREFIX = "hostup_"
 CATBOX_USERHASH = os.environ.get("CATBOX_USERHASH", "").strip()
+
+
+def _sync_webp_to_png(src: Path, dst: Path) -> None:
+    with Image.open(src) as image:
+        image.save(dst, "PNG")
 
 
 async def _upload(path: Path, host: str) -> str:
@@ -193,8 +199,7 @@ async def upload_choice(query: CallbackQuery):
         upload_path = Path(downloaded)
         if upload_path.suffix.lower() == ".webp":
             png_path = upload_path.with_suffix(".png")
-            with Image.open(upload_path) as image:
-                image.save(png_path, "PNG")
+            await asyncio.to_thread(_sync_webp_to_png, upload_path, png_path)
             upload_path = png_path
 
         fallback_used = False

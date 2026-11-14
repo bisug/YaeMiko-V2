@@ -9,7 +9,7 @@ from datetime import datetime
 from sqlalchemy import Column, DateTime, String
 from sqlalchemy.dialects.postgresql import JSONB
 
-from Database.sql import BASE, SESSION, unit_of_work_guard
+from Database.sql import BASE, SESSION, ensure_index, unit_of_work_guard
 
 
 class Whisper(BASE):
@@ -27,6 +27,9 @@ class Whisper(BASE):
         self.id = whisper_id
         self.data = data
         self.created = datetime.now()
+
+
+ensure_index("whispers_created_idx", "whispers", "created")
 
 
 @unit_of_work_guard

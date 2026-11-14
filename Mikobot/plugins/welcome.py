@@ -97,7 +97,7 @@ WELCOME_MESSAGES = TTLCache(maxsize=5000, ttl=86400)
 
 
 # <================================================ TEMPLATE WELCOME FUNCTION =======================================================>
-async def circle(pfp, size=(259, 259)):
+def _sync_circle(pfp, size=(259, 259)):
     pfp = pfp.resize(size, Image.Resampling.LANCZOS).convert("RGBA")
     bigsize = (pfp.size[0] * 3, pfp.size[1] * 3)
     mask = Image.new("L", bigsize, 0)
@@ -107,6 +107,10 @@ async def circle(pfp, size=(259, 259)):
     mask = ImageChops.darker(mask, pfp.split()[-1])
     pfp.putalpha(mask)
     return pfp
+
+
+async def circle(pfp, size=(259, 259)):
+    return await asyncio.to_thread(_sync_circle, pfp, size)
 
 
 async def draw_multiple_line_text(image, text, font, text_start_height):
@@ -123,12 +127,12 @@ async def draw_multiple_line_text(image, text, font, text_start_height):
         y_text += line_height
 
 
-async def welcomepic(pic, user, chat, user_id, output_path=None):
+def _sync_welcomepic(pic, user, chat, user_id, output_path=None):
     user = unidecode.unidecode(user)
     with Image.open("Extra/bgg.jpg") as source:
         background = source.convert("RGB")
     with Image.open(pic) as source:
-        pfp = await circle(source.convert("RGBA"), size=(259, 259))
+        pfp = _sync_circle(source.convert("RGBA"), size=(259, 259))
     pfp_x = 55
     pfp_y = (background.size[1] - pfp.size[1]) // 2 + 38
     draw = ImageDraw.Draw(background)
@@ -142,6 +146,12 @@ async def welcomepic(pic, user, chat, user_id, output_path=None):
     background.save(welcome_image_path)
     background.close()
     return welcome_image_path
+
+
+async def welcomepic(pic, user, chat, user_id, output_path=None):
+    return await asyncio.to_thread(
+        _sync_welcomepic, pic, user, chat, user_id, output_path
+    )
 
 
 @app.on_chat_member_updated(ft.group)

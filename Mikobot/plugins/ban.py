@@ -1,3 +1,4 @@
+import asyncio
 import html
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -595,7 +596,7 @@ async def bans_callback(client, query: CallbackQuery):
         return log_message
 
     chat_data.pop(f"anon_ban_{parts[3]}", None)
-    store.save()
+    await asyncio.to_thread(store.save)
     if action == "ban":
         try:
             user_id = int(parts[2])

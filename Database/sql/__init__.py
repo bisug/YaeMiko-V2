@@ -154,7 +154,7 @@ def start() -> scoped_session:
         # check out several times per update. pool_recycle already retires
         # connections before a host drops them; DB_PRE_PING restores the check
         # for a proxy with a shorter idle timeout.
-        pool_pre_ping=env_bool("DB_PRE_PING", True),
+        pool_pre_ping=env_bool("DB_PRE_PING", False),
         pool_recycle=1800,
         pool_size=pool_size,
         max_overflow=max_overflow,

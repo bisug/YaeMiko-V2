@@ -64,6 +64,19 @@ DOWN_PATH = "Mikobot/downloads/"
 USER_JSON = TTLCache(maxsize=5000, ttl=60)
 USER_WC = TTLCache(maxsize=5000, ttl=60)
 
+
+async def _delete_later(msg, delay: float = 5.0):
+    try:
+        await asyncio.sleep(delay)
+        await msg.delete()
+    except Exception:
+        pass
+
+
+def delete_later(msg, delay: float = 5.0):
+    asyncio.create_task(_delete_later(msg, delay))
+
+
 LANGUAGES = {
     "af": "afrikaans",
     "sq": "albanian",
@@ -562,8 +575,7 @@ def check_user(func):
 async def media_to_image(client: app, message: Message, x: Message, replied: Message):
     if not (replied.photo or replied.sticker or replied.animation or replied.video):
         await x.edit_text("Media Type Is Invalid !")
-        await asyncio.sleep(5)
-        await x.delete()
+        delete_later(x, 5)
         return
     media = replied.photo or replied.sticker or replied.animation or replied.video
     if not os.path.isdir(DOWN_PATH):
@@ -582,8 +594,7 @@ async def media_to_image(client: app, message: Message, x: Message, replied: Mes
         os.remove(dls_loc)
         if not os.path.lexists(png_file):
             await x.edit_text("This sticker is Gey, Task Failed Successfully ≧ω≦")
-            await asyncio.sleep(5)
-            await x.delete()
+            delete_later(x, 5)
             raise Exception(stdout + stderr)
         dls_loc = png_file
     elif replied.sticker and replied.sticker.file_name.endswith(".webp"):
@@ -591,8 +602,7 @@ async def media_to_image(client: app, message: Message, x: Message, replied: Mes
         os.rename(dls_loc, stkr_file)
         if not os.path.lexists(stkr_file):
             await x.edit_text("```Sticker not found...```")
-            await asyncio.sleep(5)
-            await x.delete()
+            delete_later(x, 5)
             return
         dls_loc = stkr_file
     elif replied.animation or replied.video:
@@ -602,8 +612,7 @@ async def media_to_image(client: app, message: Message, x: Message, replied: Mes
         os.remove(dls_loc)
         if not os.path.lexists(jpg_file):
             await x.edit_text("This Gif is Gey (｡ì _ í｡), Task Failed Successfully !")
-            await asyncio.sleep(5)
-            await x.delete()
+            delete_later(x, 5)
             return
         dls_loc = jpg_file
     return dls_loc
@@ -3189,8 +3198,8 @@ async def anime_cmd(client: Client, message: Message, mdata: dict):
 
 example: /anime Sword Art Online"""
         )
-        await asyncio.sleep(5)
-        return await k.delete()
+        delete_later(k, 5)
+        return
     query = text[1]
     auth = False
     vars_ = {"search": query}
@@ -3205,8 +3214,8 @@ example: /anime Sword Art Online"""
         title_img, finals_ = result[0], result[1]
     else:
         k = await message.reply_text(result[0])
-        await asyncio.sleep(5)
-        return await k.delete()
+        delete_later(k, 5)
+        return
     buttons = get_btns("ANIME", result=result, user=user, auth=auth)
     if db.exists("SFW_GRPS", gid) and result[2].pop() == "True":
         await client.send_photo(
@@ -3248,8 +3257,8 @@ async def manga_cmd(client: Client, message: Message, mdata: dict):
 
 example: /manga Sword Art Online"""
         )
-        await asyncio.sleep(5)
-        return await k.delete()
+        delete_later(k, 5)
+        return
     query = text[1]
     qdb = rand_key()
     MANGA_DB[qdb] = query
@@ -3261,8 +3270,8 @@ example: /manga Sword Art Online"""
     )
     if len(result) == 1:
         k = await message.reply_text(result[0])
-        await asyncio.sleep(5)
-        return await k.delete()
+        delete_later(k, 5)
+        return
     pic, finals_ = result[0], result[1][0]
     buttons = get_btns(
         "MANGA", lsqry=qdb, lspage=1, user=user, result=result, auth=auth
@@ -3315,8 +3324,8 @@ async def character_cmd(client: Client, message: Message, mdata: dict):
         k = await message.reply_text(
             "Please give a query to search about\nexample: /character Luffy"
         )
-        await asyncio.sleep(5)
-        return await k.delete()
+        delete_later(k, 5)
+        return
     query = text[1]
     qdb = rand_key()
     CHAR_DB[qdb] = query
@@ -3326,8 +3335,8 @@ async def character_cmd(client: Client, message: Message, mdata: dict):
     result = await get_character(qdb, 1, auth=auth, user=auser)
     if len(result) == 1:
         k = await message.reply_text(result[0])
-        await asyncio.sleep(5)
-        return await k.delete()
+        delete_later(k, 5)
+        return
     img = result[0]
     cap_text = result[1][0]
     buttons = get_btns(
@@ -3363,8 +3372,8 @@ async def anilist_cmd(client: Client, message: Message, mdata: dict):
         k = await message.reply_text(
             "Please give a query to search about\nexample: /anilist Sword Art Online"
         )
-        await asyncio.sleep(5)
-        return await k.delete()
+        delete_later(k, 5)
+        return
     query = text[1]
     qdb = rand_key()
     ANIME_DB[qdb] = query
@@ -3376,8 +3385,8 @@ async def anilist_cmd(client: Client, message: Message, mdata: dict):
     )
     if len(result) == 1:
         k = await message.reply_text(result[0])
-        await asyncio.sleep(5)
-        return await k.delete()
+        delete_later(k, 5)
+        return
     pic, msg = result[0], result[1][0]
     buttons = get_btns(
         "ANIME", lsqry=qdb, lspage=1, result=result, user=user, auth=auth
@@ -3423,8 +3432,8 @@ async def top_tags_cmd(client: Client, message: Message, mdata: dict):
     result = await get_top_animes(get_tag, 1, user)
     if len(result) == 1:
         k = await message.reply_text(result[0])
-        await asyncio.sleep(5)
-        return await k.delete()
+        delete_later(k, 5)
+        return
     if db.exists("SFW_GRPS", gid) and str(result[0][1]) == "True":
         return await message.reply_text("No nsfw stuff allowed in this group!!!")
     msg, buttons = result
@@ -3446,8 +3455,7 @@ async def studio_cmd(client: Client, message: Message, mdata: dict):
         x = await message.reply_text(
             "Please give a query to search about!!!\nExample: /studio ufotable"
         )
-        await asyncio.sleep(5)
-        await x.delete()
+        delete_later(x, 5)
         return
     query = text[1]
     qdb = rand_key()
@@ -3468,8 +3476,8 @@ async def studio_cmd(client: Client, message: Message, mdata: dict):
     result = await get_studios(qdb, 1, user=auser, duser=user, auth=auth)
     if len(result) == 1:
         x = await message.reply_text("No results found!!!")
-        await asyncio.sleep(5)
-        return await x.delete()
+        delete_later(x, 5)
+        return
     msg, buttons = result[0], result[1]
     await client.send_message(gid, msg, reply_markup=buttons if buttons != "" else None)
 
@@ -3490,8 +3498,8 @@ async def airing_cmd(client: Client, message: Message, mdata: dict):
 
 example: /airing Sword Art Online"""
         )
-        await asyncio.sleep(5)
-        return await k.delete()
+        delete_later(k, 5)
+        return
     query = text[1]
     qdb = rand_key()
     AIRING_DB[qdb] = query
@@ -3511,8 +3519,8 @@ example: /airing Sword Art Online"""
     result = await get_airing(qdb, 1, auth=auth, user=auser)
     if len(result) == 1:
         k = await message.reply_text(result[0])
-        await asyncio.sleep(5)
-        return await k.delete()
+        delete_later(k, 5)
+        return
     coverImg, out = result[0]
     btn = get_btns("AIRING", user=user, result=result, auth=auth, lsqry=qdb, lspage=1)
     if db.exists("SFW_GRPS", gid) and result[2].pop() == "True":

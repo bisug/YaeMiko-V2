@@ -57,6 +57,7 @@ from Mikobot import (
     StartTime,
     app,
     events,
+    executor,
     loop,
     send_booting_message,
 )
@@ -956,6 +957,10 @@ if __name__ == "__main__":
             loop.run_until_complete(state.aclose())
         except Exception:
             LOGGER.exception("Failed to close HTTP client")
+        try:
+            executor.shutdown(wait=False, cancel_futures=True)
+        except Exception:
+            LOGGER.exception("Failed to close thread executor")
         try:
             if loop.is_running():
                 loop.stop()

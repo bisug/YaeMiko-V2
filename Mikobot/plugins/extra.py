@@ -1,4 +1,5 @@
 # <============================================== IMPORTS =========================================================>
+import asyncio
 from time import gmtime, strftime, time
 
 from pyrogram import filters
@@ -111,7 +112,7 @@ async def logs(client, message: Message):
 
         # Store the message ID for later reference
         user_data.setdefault(message.from_user.id, {})["log_message_id"] = sent.id
-        store.save()
+        await asyncio.to_thread(store.save)
 
 
 # Asynchronous callback query handler for the "close" button
@@ -125,7 +126,7 @@ async def close_callback(client, query: CallbackQuery):
                 chat_id=query.message.chat.id, message_ids=message_id
             )
             user_data[query.from_user.id].pop("log_message_id", None)
-            store.save()
+            await asyncio.to_thread(store.save)
             await query.answer()
         except Exception:
             await query.answer("Unable to close this log.", show_alert=True)

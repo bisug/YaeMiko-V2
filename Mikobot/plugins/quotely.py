@@ -1,4 +1,5 @@
 # <============================================== IMPORTS =========================================================>
+import asyncio
 import base64
 import io
 import os
@@ -38,6 +39,19 @@ def _entity_type_name(entity_type) -> str:
 
 
 # <================================================ CLASS & FUNCTION =======================================================>
+def _sync_convert_quote_media(file_, png_file):
+    with Image.open(file_) as image:
+        converted = image.convert("RGB")
+        converted.save(png_file, "PNG")
+
+
+def _sync_save_quotly_image(image_data, file_name, webp_file):
+    with open(file_name, "wb") as file, Image.open(io.BytesIO(image_data)) as image:
+        image.convert("RGB").save(file, format="PNG")
+    with open(webp_file, "wb") as wf:
+        wf.write(image_data)
+
+
 class Quotly:
     _API = "https://shnwazdev-quoteapi.vercel.app/quote/generate"
 
@@ -81,9 +95,7 @@ class Quotly:
         async def upload_media(file_):
             png_file = f"{file_}.png"
             try:
-                with Image.open(file_) as image:
-                    converted = image.convert("RGB")
-                    converted.save(png_file, "PNG")
+                await asyncio.to_thread(_sync_convert_quote_media, file_, png_file)
                 try:
                     return await _upload(Path(png_file), "catbox")
                 except Exception as err:
@@ -294,11 +306,10 @@ class Quotly:
             image_data = base64.b64decode(request["result"]["image"])
             with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as file:
                 file_name = file.name
-                with Image.open(io.BytesIO(image_data)) as image:
-                    image.convert("RGB").save(file, format="PNG")
             webp_file = f"{file_name}.webp"
-            with open(webp_file, "wb") as wf:
-                wf.write(image_data)
+            await asyncio.to_thread(
+                _sync_save_quotly_image, image_data, file_name, webp_file
+            )
             return file_name
         error_msg = (
             request.get("error", {}).get("message", str(request))
@@ -325,6 +336,7 @@ async def async_searcher(
     *args,
     **kwargs,
 ):
+    kwargs.setdefault("timeout", 15)
     request = (
         state.post(url, headers=headers, params=params, json=json, data=data, **kwargs)
         if post

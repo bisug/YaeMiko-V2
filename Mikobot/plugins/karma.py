@@ -56,10 +56,10 @@ async def upvote(_, message):
     chat_id = message.chat.id
     user_id = reply_user.id
     user_mention = reply_user.mention
-    current_karma = get_karma(chat_id, int_to_alpha(user_id))
+    current_karma = await asyncio.to_thread(get_karma, chat_id, int_to_alpha(user_id))
     karma = current_karma["karma"] + 1 if current_karma else 1
     new_karma = {"karma": karma}
-    update_karma(chat_id, int_to_alpha(user_id), new_karma)
+    await asyncio.to_thread(update_karma, chat_id, int_to_alpha(user_id), new_karma)
     await message.reply_text(
         f"𝗜𝗻𝗰𝗿𝗲𝗺𝗲𝗻𝘁𝗲𝗱 𝗸𝗮𝗿𝗺𝗮 𝗼𝗳 {user_mention} 𝗯𝘆 1.\n**⭐️ 𝗧𝗢𝗧𝗔𝗟 𝗣𝗢𝗜𝗡𝗧𝗦:** {karma}"
     )
@@ -91,10 +91,14 @@ async def downvote(_, message):
 
     user_id = reply_user.id
     user_mention = reply_user.mention
-    current_karma = get_karma(message.chat.id, int_to_alpha(user_id))
+    current_karma = await asyncio.to_thread(
+        get_karma, message.chat.id, int_to_alpha(user_id)
+    )
     karma = current_karma["karma"] - 1 if current_karma else 0
     new_karma = {"karma": karma}
-    update_karma(message.chat.id, int_to_alpha(user_id), new_karma)
+    await asyncio.to_thread(
+        update_karma, message.chat.id, int_to_alpha(user_id), new_karma
+    )
     await message.reply_text(
         f"𝗗𝗲𝗰𝗿𝗲𝗺𝗲𝗻𝘁𝗲𝗱 𝗸𝗮𝗿𝗺𝗮 𝗼𝗳 {user_mention} 𝗯𝘆 1.\n**⭐️ 𝗧𝗢𝗧𝗔𝗟 𝗣𝗢𝗜𝗡𝗧𝗦:** {karma}"
     )
@@ -105,7 +109,7 @@ async def downvote(_, message):
 async def karma(_, message):
     if not message.reply_to_message:
         m = await message.reply_text("Analyzing karma... This may take a while.")
-        karma = get_karmas(message.chat.id)
+        karma = await asyncio.to_thread(get_karmas, message.chat.id)
         if not karma:
             await m.edit_text("No karma in the database for this chat.")
             return

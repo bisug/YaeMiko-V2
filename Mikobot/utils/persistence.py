@@ -4,6 +4,7 @@ Exposes ``chat_data`` and ``user_data`` and writes them to ``persistence.pickle`
 The federation and anonymous-admin flows read and write their state here.
 """
 
+import asyncio
 import os
 import pickle
 import time
@@ -116,6 +117,9 @@ class DataStore:
             if os.path.exists(tmp):
                 os.remove(tmp)
             raise
+
+    async def save_async(self) -> None:
+        await asyncio.to_thread(self.save)
 
 
 def open_store(filepath: str) -> DataStore:

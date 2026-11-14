@@ -44,23 +44,35 @@ class ChatToggle(BASE):
 
 
 INSERTION_LOCK = threading.RLock()
+TOGGLE_CACHE = {}
+TOGGLE_LOCK = threading.RLock()
 
 
 @unit_of_work_guard
 def is_toggle_on(chat_id, feature):
+    cid = str(chat_id)
+    key = (cid, feature)
+    with TOGGLE_LOCK:
+        if key in TOGGLE_CACHE:
+            return TOGGLE_CACHE[key]
     try:
-        row = SESSION.get(ChatToggle, (str(chat_id), feature))
-        if row is None:
-            return DEFAULTS[feature]
-        return bool(row.enabled)
+        row = SESSION.get(ChatToggle, key)
+        val = DEFAULTS[feature] if row is None else bool(row.enabled)
+        with TOGGLE_LOCK:
+            TOGGLE_CACHE[key] = val
+        return val
     finally:
         SESSION.close()
 
 
 @unit_of_work_guard
 def set_toggle(chat_id, feature, enabled):
+    cid = str(chat_id)
+    key = (cid, feature)
+    with TOGGLE_LOCK:
+        TOGGLE_CACHE[key] = bool(enabled)
     with INSERTION_LOCK:
-        SESSION.merge(ChatToggle(str(chat_id), feature, bool(enabled)))
+        SESSION.merge(ChatToggle(cid, feature, bool(enabled)))
         SESSION.commit()
 
 
@@ -98,3 +110,7 @@ def migrate_chat(old_chat_id, new_chat_id):
         for row in rows:
             row.chat_id = str(new_chat_id)
         SESSION.commit()
+    with TOGGLE_LOCK:
+        for k in list(TOGGLE_CACHE):
+            if k[0] == str(old_chat_id):
+                del TOGGLE_CACHE[k]
