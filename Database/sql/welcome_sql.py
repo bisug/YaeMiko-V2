@@ -64,7 +64,7 @@ DEFAULT_GOODBYE_MESSAGES = [
 
 class Welcome(BASE):
     __tablename__ = "welcome_pref"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     should_welcome = Column(Boolean, default=True)
     should_goodbye = Column(Boolean, default=True)
     custom_content = Column(UnicodeText, default=None)
@@ -100,7 +100,7 @@ class Welcome(BASE):
 class WelcomeButtons(BASE):
     __tablename__ = "welcome_urls"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     name = Column(UnicodeText, nullable=False)
     url = Column(UnicodeText, nullable=False)
     same_line = Column(Boolean, default=False)
@@ -115,7 +115,7 @@ class WelcomeButtons(BASE):
 class GoodbyeButtons(BASE):
     __tablename__ = "leave_urls"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     name = Column(UnicodeText, nullable=False)
     url = Column(UnicodeText, nullable=False)
     same_line = Column(Boolean, default=False)
@@ -129,7 +129,7 @@ class GoodbyeButtons(BASE):
 
 class WelcomeMute(BASE):
     __tablename__ = "welcome_mutes"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     # "off", "soft" or "strong". The column used to hold a Python False, which
     # PostgreSQL refuses to store in a text column.
     welcomemutes = Column(String(16), default="off")
@@ -142,7 +142,7 @@ class WelcomeMute(BASE):
 class WelcomeMuteUsers(BASE):
     __tablename__ = "human_checks"
     user_id = Column(BigInteger, primary_key=True)
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     human_check = Column(Boolean, nullable=False, default=False)
 
     def __init__(self, user_id, chat_id, human_check):
@@ -153,7 +153,7 @@ class WelcomeMuteUsers(BASE):
 
 class CleanServiceSetting(BASE):
     __tablename__ = "clean_service"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     clean_service = Column(Boolean, default=True)
     # Comma separated service types to remove, e.g. "join,leave,pin". An empty
     # value keeps the original all-or-nothing behaviour, so a chat that has
@@ -170,7 +170,7 @@ class CleanServiceSetting(BASE):
 
 class RaidMode(BASE):
     __tablename__ = "raid_mode"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     status = Column(Boolean, default=False)
     time = Column(BigInteger, default=21600)
     acttime = Column(BigInteger, default=3600)

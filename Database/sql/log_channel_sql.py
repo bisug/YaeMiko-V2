@@ -31,8 +31,8 @@ from Database.sql import BASE, ENGINE, SESSION, run_migration, unit_of_work_guar
 
 class GroupLogs(BASE):
     __tablename__ = "log_channels"
-    chat_id = Column(String(14), primary_key=True)
-    log_channel = Column(String(14), nullable=False)
+    chat_id = Column(String, primary_key=True)
+    log_channel = Column(String, nullable=False)
 
     def __init__(self, chat_id, log_channel):
         self.chat_id = str(chat_id)
@@ -41,7 +41,7 @@ class GroupLogs(BASE):
 
 class LogChannelSettings(BASE):
     __tablename__ = "log_channel_setting"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     log_joins = Column(Boolean, default=True)
     log_leave = Column(Boolean, default=True)
     log_warn = Column(Boolean, default=True)

@@ -7,7 +7,7 @@ from Database.sql import BASE, SESSION, unit_of_work_guard
 
 class Rules(BASE):
     __tablename__ = "rules"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     rules = Column(UnicodeText, default="")
 
     def __init__(self, chat_id):

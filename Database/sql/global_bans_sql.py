@@ -27,7 +27,7 @@ class GloballyBannedUsers(BASE):
 
 class GbanSettings(BASE):
     __tablename__ = "gban_settings"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     setting = Column(Boolean, default=True, nullable=False)
 
     def __init__(self, chat_id, enabled):

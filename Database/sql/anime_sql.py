@@ -44,7 +44,7 @@ class AnimeGroupSetting(BASE):
     __tablename__ = "anime_group_settings"
 
     collection = Column(String(24), primary_key=True)
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     key = Column(String(32), primary_key=True)
     value = Column(UnicodeText)
     # CC stored the owning user id and compared it against an int user id, so

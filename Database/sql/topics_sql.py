@@ -18,7 +18,7 @@ GENERAL_TOPIC = None
 
 class ActionTopic(BASE):
     __tablename__ = "action_topics"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     # NULL means General, which is what Telegram does with a missing thread.
     message_thread_id = Column(BigInteger, default=None)
 

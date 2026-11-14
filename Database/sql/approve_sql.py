@@ -34,7 +34,7 @@ from Database.sql import BASE, SESSION, unit_of_work_guard
 
 class Approvals(BASE):
     __tablename__ = "approval"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     user_id = Column(BigInteger, primary_key=True)
 
     def __init__(self, chat_id, user_id):

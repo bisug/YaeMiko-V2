@@ -31,7 +31,7 @@ DEF_BUTTON_TEXT = "I'm not a bot"
 
 class CaptchaSettings(BASE):
     __tablename__ = "captcha_settings"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     enabled = Column(Boolean, default=False)
     mode = Column(String(16), default=MODE_BUTTON)
     # Plaintext only: the button label is shown inside an InlineKeyboardButton,
@@ -58,7 +58,7 @@ class CaptchaSettings(BASE):
 
 class CaptchaSolved(BASE):
     __tablename__ = "captcha_solved"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     user_id = Column(BigInteger, primary_key=True)
 
     def __init__(self, chat_id, user_id):

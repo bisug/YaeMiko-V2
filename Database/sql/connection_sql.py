@@ -32,7 +32,7 @@ from Database.sql import BASE, SESSION, ensure_index, unit_of_work_guard
 
 class ChatAccessConnectionSettings(BASE):
     __tablename__ = "access_connection"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     allow_connect_to_chat = Column(Boolean, default=True)
 
     def __init__(self, chat_id, allow_connect_to_chat):
@@ -49,7 +49,7 @@ class ChatAccessConnectionSettings(BASE):
 class Connection(BASE):
     __tablename__ = "connection"
     user_id = Column(BigInteger, primary_key=True)
-    chat_id = Column(String(14))
+    chat_id = Column(String)
 
     def __init__(self, user_id, chat_id):
         self.user_id = user_id
@@ -59,7 +59,7 @@ class Connection(BASE):
 class ConnectionHistory(BASE):
     __tablename__ = "connection_history"
     user_id = Column(BigInteger, primary_key=True)
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     chat_name = Column(UnicodeText)
     conn_time = Column(BigInteger)
 

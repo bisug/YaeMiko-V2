@@ -50,7 +50,7 @@ class Federations(BASE):
 
 class ChatF(BASE):
     __tablename__ = "chat_feds"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     chat_name = Column(UnicodeText)
     fed_id = Column(UnicodeText, index=True)
 

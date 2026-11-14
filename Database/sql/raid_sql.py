@@ -37,7 +37,7 @@ DEF_AUTO_ANTIRAID = 0  # joins-per-minute threshold; 0 means disabled
 
 class RaidChats(BASE):
     __tablename__ = "raid_chats"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     # Absolute unix expiry rather than a bare flag: the raid has to end on its
     # own once the configured window is up, and a boolean cannot say when.
     raid_until = Column(BigInteger, default=0)

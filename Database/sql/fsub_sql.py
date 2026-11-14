@@ -16,7 +16,7 @@ _settings_cache = TTLCache(maxsize=10_000, ttl=30)
 class ForceSub(BASE):
     __tablename__ = "fsub_settings"
 
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     channel = Column(String(32))
 
     def __init__(self, chat_id, channel):

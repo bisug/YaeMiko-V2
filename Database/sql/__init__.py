@@ -380,6 +380,40 @@ def run_migration(migration) -> None:
         )
 
 
+def _widen_chat_id_columns() -> None:
+    """Widen chat_id and related columns from VARCHAR(14) to VARCHAR(64).
+
+    Telegram channel and supergroup IDs with 11+ digits (e.g. -100xxxxxxxxxx)
+    exceed 14 characters and cause StringDataRightTruncation errors on insert.
+    """
+    if ENGINE is None or getattr(ENGINE.dialect, "name", "") != "postgresql":
+        return
+    try:
+        from sqlalchemy import text
+
+        with ENGINE.begin() as conn:
+            rows = conn.execute(
+                text(
+                    """
+                    SELECT table_name, column_name
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND data_type = 'character varying'
+                      AND character_maximum_length <= 14
+                      AND column_name IN ('chat_id', 'log_channel', 'chat');
+                    """
+                )
+            ).fetchall()
+            for table_name, column_name in rows:
+                conn.execute(
+                    text(
+                        f'ALTER TABLE "{table_name}" ALTER COLUMN "{column_name}" TYPE VARCHAR(64)'
+                    )
+                )
+    except Exception:
+        log.exception("[PostgreSQL] Failed to widen chat_id columns")
+
+
 def create_all_tables() -> None:
     """Ensure all model tables are registered and created in a single batch."""
     try:
@@ -419,6 +453,7 @@ def create_all_tables() -> None:
             # The modules were imported above, and they asked for their indexes
             # before create_all() made the tables. Now the tables are there.
             create_pending_indexes()
+            _widen_chat_id_columns()
 
             # Populate caches now that all tables exist in the database
             afk_sql.__load_afk_users()

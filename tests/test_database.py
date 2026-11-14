@@ -247,3 +247,16 @@ def test_action_topic_cache():
 
     ACTION_TOPICS_CACHE["-1009999999"] = 42
     assert get_action_topic("-1009999999") == 42
+
+
+def test_no_string_14_in_sql_models():
+    for path in sorted((ROOT / "Database" / "sql").glob("*_sql.py")):
+        content = path.read_text(encoding="utf-8")
+        assert "String(14)" not in content, f"found String(14) in {path.name}"
+
+
+def test_chat_model_accepts_long_chat_id():
+    from Database.sql.users_sql import Chats
+
+    chat = Chats("-100999999999999", "Test Long ID Chat")
+    assert chat.chat_id == "-100999999999999"

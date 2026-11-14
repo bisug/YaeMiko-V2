@@ -33,7 +33,7 @@ from Database.sql import BASE, SESSION, unit_of_work_guard
 
 class Permissions(BASE):
     __tablename__ = "permissions"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     # Booleans are for "is this locked", _NOT_ "is this allowed"
     audio = Column(Boolean, default=False)
     voice = Column(Boolean, default=False)
@@ -79,7 +79,7 @@ class Permissions(BASE):
 
 class AllowedItem(BASE):
     __tablename__ = "allowed_items"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     # Which locktype this exemption applies to, e.g. "url" or "forward".
     lockable = Column(String(32), primary_key=True)
     # Domain, bot id, invite link or pack name. Stored lowercase so lookups
@@ -97,7 +97,7 @@ class AllowedItem(BASE):
 
 class Restrictions(BASE):
     __tablename__ = "restrictions"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     # Booleans are for "is this restricted", _NOT_ "is this allowed"
     messages = Column(Boolean, default=False)
     media = Column(Boolean, default=False)

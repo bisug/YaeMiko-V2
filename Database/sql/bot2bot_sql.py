@@ -97,7 +97,7 @@ SETTING_COMMANDS = frozenset(
 
 class BotToBot(BASE):
     __tablename__ = "bot_to_bot"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     mode = Column(String(16), default=MODE_OFF)
     skip_review = Column(Boolean, default=False)
     # Bot ids allowed to run command triggers in this chat, independent of mode.

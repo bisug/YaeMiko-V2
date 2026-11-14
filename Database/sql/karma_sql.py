@@ -19,7 +19,7 @@ from Database.sql import BASE, ENGINE, SESSION, run_migration, unit_of_work_guar
 class Karma(BASE):
     __tablename__ = "karma"
 
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     name = Column(String(16), primary_key=True)
     karma = Column(Integer, default=0)
 
@@ -32,7 +32,7 @@ class Karma(BASE):
 class Couple(BASE):
     __tablename__ = "couple"
 
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     date = Column(String(16), primary_key=True)
     # BigInteger, not Integer: Telegram user ids are past 2**31, and every other
     # user-id column in this package already uses BigInteger for that reason.

@@ -42,7 +42,7 @@ from Database.sql import BASE, ENGINE, SESSION, run_migration, unit_of_work_guar
 
 class BlackListFilters(BASE):
     __tablename__ = "blacklist"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     trigger = Column(UnicodeText, primary_key=True, nullable=False)
 
     def __init__(self, chat_id, trigger):
@@ -62,7 +62,7 @@ class BlackListFilters(BASE):
 
 class BlacklistSettings(BASE):
     __tablename__ = "blacklist_settings"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     blacklist_type = Column(BigInteger, default=1)
     value = Column(UnicodeText, default="0")
     # Deleting the message is separate from the action taken on the sender, so

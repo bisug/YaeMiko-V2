@@ -43,7 +43,7 @@ class Warns(BASE):
     __tablename__ = "warns"
 
     user_id = Column(BigInteger, primary_key=True)
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     num_warns = Column(BigInteger, default=0)
     reasons = Column(postgresql.ARRAY(UnicodeText))
 
@@ -64,7 +64,7 @@ class Warns(BASE):
 
 class WarnFilters(BASE):
     __tablename__ = "warn_filters"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     keyword = Column(UnicodeText, primary_key=True, nullable=False)
     reply = Column(UnicodeText, nullable=False)
 
@@ -86,7 +86,7 @@ class WarnFilters(BASE):
 
 class WarnSettings(BASE):
     __tablename__ = "warn_settings"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     warn_limit = Column(BigInteger, default=3)
     soft_warn = Column(Boolean, default=False)
 

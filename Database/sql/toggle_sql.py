@@ -33,7 +33,7 @@ DEFAULTS = {
 class ChatToggle(BASE):
     __tablename__ = "chat_toggles"
 
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     feature = Column(String(16), primary_key=True)
     enabled = Column(Boolean, default=False)
 

@@ -17,7 +17,7 @@ from Database.sql import BASE, SESSION, unit_of_work_guard
 class ChatLocale(BASE):
     __tablename__ = "chat_locale"
 
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     lang = Column(String(8))
 
 

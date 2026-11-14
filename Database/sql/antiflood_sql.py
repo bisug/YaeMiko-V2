@@ -52,7 +52,7 @@ DEF_OBJ = (None, DEF_COUNT, DEF_LIMIT, DEF_TIMER, DEF_CLEARFLOOD)
 
 class FloodControl(BASE):
     __tablename__ = "antiflood"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     # The user id and the counter used to live here. The counter is kept in
     # the CHAT_FLOOD cache and the user id was only ever set to None.
     limit = Column(BigInteger, default=DEF_LIMIT)
@@ -74,7 +74,7 @@ class FloodControl(BASE):
 
 class FloodSettings(BASE):
     __tablename__ = "antiflood_settings"
-    chat_id = Column(String(14), primary_key=True)
+    chat_id = Column(String, primary_key=True)
     flood_type = Column(BigInteger, default=1)
     value = Column(UnicodeText, default="0")
 
