@@ -342,3 +342,20 @@ def test_migrate_feds_users_to_json_callable():
 
     # Should run migration safely without raising
     _migrate_feds_users_to_json()
+
+
+def test_cachetools_ttl_cache_compatibility():
+    import cachetools
+
+    from Database.sql.approve_sql import APPROVED
+    from Database.sql.fsub_sql import _settings_cache
+
+    assert int(cachetools.__version__.split(".")[0]) >= 8
+    assert isinstance(APPROVED, cachetools.TTLCache)
+    assert isinstance(_settings_cache, cachetools.TTLCache)
+
+    # Basic put/get/expiry behavior
+    _settings_cache["test_chat"] = {"chat_id": "test_chat", "channel": "test_chan"}
+    assert "test_chat" in _settings_cache
+    assert _settings_cache["test_chat"]["channel"] == "test_chan"
+    del _settings_cache["test_chat"]
