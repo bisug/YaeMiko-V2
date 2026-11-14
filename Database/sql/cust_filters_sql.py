@@ -3,6 +3,7 @@ import threading
 from sqlalchemy import (
     Boolean,
     Column,
+    ForeignKeyConstraint,
     Integer,
     String,
     UnicodeText,
@@ -98,6 +99,14 @@ class Buttons(BASE):
     name = Column(UnicodeText, nullable=False)
     url = Column(UnicodeText, nullable=False)
     same_line = Column(Boolean, default=False)
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["chat_id", "keyword"],
+            ["cust_filters.chat_id", "cust_filters.keyword"],
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+    )
 
     def __init__(self, chat_id, keyword, name, url, same_line=False):
         self.chat_id = str(chat_id)

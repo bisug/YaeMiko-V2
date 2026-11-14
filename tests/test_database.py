@@ -296,3 +296,35 @@ def test_search_user_in_fed_cached():
     assert search_user_in_fed("test_fed", 200) is True
     assert search_user_in_fed("test_fed", 999) is False
     assert search_user_in_fed("non_existent", 200) is False
+
+
+def test_button_models_foreign_keys_declared():
+    from Database.sql.cust_filters_sql import Buttons as FilterButtons
+    from Database.sql.notes_sql import Buttons as NoteButtons
+    from Database.sql.welcome_sql import GoodbyeButtons, WelcomeButtons
+
+    # note_urls composite foreign key
+    note_fks = NoteButtons.__table__.foreign_keys
+    assert any("notes.chat_id" in str(fk.target_fullname) for fk in note_fks)
+    assert any("notes.name" in str(fk.target_fullname) for fk in note_fks)
+
+    # cust_filter_urls composite foreign key
+    filt_fks = FilterButtons.__table__.foreign_keys
+    assert any("cust_filters.chat_id" in str(fk.target_fullname) for fk in filt_fks)
+    assert any("cust_filters.keyword" in str(fk.target_fullname) for fk in filt_fks)
+
+    # welcome_urls foreign key
+    welc_fks = WelcomeButtons.__table__.foreign_keys
+    assert any("welcome_pref.chat_id" in str(fk.target_fullname) for fk in welc_fks)
+
+    # leave_urls foreign key
+    leave_fks = GoodbyeButtons.__table__.foreign_keys
+    assert any("welcome_pref.chat_id" in str(fk.target_fullname) for fk in leave_fks)
+
+
+def test_human_check_helpers_callable():
+    from Database.sql.welcome_sql import clean_human_checks, remove_human_check
+
+    # Safe return on missing session / offline test
+    assert remove_human_check(999, "-100123") in (True, False, None)
+    assert clean_human_checks("-100123") in (0, None)

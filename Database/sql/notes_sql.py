@@ -29,6 +29,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     Column,
+    ForeignKeyConstraint,
     String,
     UnicodeText,
     distinct,
@@ -69,6 +70,14 @@ class Buttons(BASE):
     name = Column(UnicodeText, nullable=False)
     url = Column(UnicodeText, nullable=False)
     same_line = Column(Boolean, default=False)
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["chat_id", "note_name"],
+            ["notes.chat_id", "notes.name"],
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+    )
 
     def __init__(self, chat_id, note_name, name, url, same_line=False):
         self.chat_id = str(chat_id)

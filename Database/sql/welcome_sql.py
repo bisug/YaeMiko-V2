@@ -29,6 +29,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     Column,
+    ForeignKey,
     Integer,
     String,
     UnicodeText,
@@ -100,7 +101,11 @@ class Welcome(BASE):
 class WelcomeButtons(BASE):
     __tablename__ = "welcome_urls"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    chat_id = Column(String, primary_key=True)
+    chat_id = Column(
+        String,
+        ForeignKey("welcome_pref.chat_id", onupdate="CASCADE", ondelete="CASCADE"),
+        primary_key=True,
+    )
     name = Column(UnicodeText, nullable=False)
     url = Column(UnicodeText, nullable=False)
     same_line = Column(Boolean, default=False)
@@ -115,7 +120,11 @@ class WelcomeButtons(BASE):
 class GoodbyeButtons(BASE):
     __tablename__ = "leave_urls"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    chat_id = Column(String, primary_key=True)
+    chat_id = Column(
+        String,
+        ForeignKey("welcome_pref.chat_id", onupdate="CASCADE", ondelete="CASCADE"),
+        primary_key=True,
+    )
     name = Column(UnicodeText, nullable=False)
     url = Column(UnicodeText, nullable=False)
     same_line = Column(Boolean, default=False)
@@ -306,6 +315,32 @@ def get_human_checks(user_id, chat_id):
         return human_check
     finally:
         SESSION.close()
+
+
+@unit_of_work_guard
+def remove_human_check(user_id, chat_id):
+    """Remove a solved human check entry for a user in a chat."""
+    with INSERTION_LOCK:
+        human_check = SESSION.get(WelcomeMuteUsers, (user_id, str(chat_id)))
+        if human_check:
+            SESSION.delete(human_check)
+            SESSION.commit()
+            return True
+        return False
+
+
+@unit_of_work_guard
+def clean_human_checks(chat_id):
+    """Remove all human check entries for a chat."""
+    with INSERTION_LOCK:
+        checks = SESSION.scalars(
+            select(WelcomeMuteUsers).where(WelcomeMuteUsers.chat_id == str(chat_id))
+        ).all()
+        for check in checks:
+            SESSION.delete(check)
+        if checks:
+            SESSION.commit()
+        return len(checks)
 
 
 @unit_of_work_guard
