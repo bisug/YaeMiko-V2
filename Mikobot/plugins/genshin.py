@@ -1,6 +1,7 @@
 # <============================================== IMPORTS =========================================================>
 import html
 import logging
+import time
 from dataclasses import dataclass
 
 import httpx
@@ -45,6 +46,12 @@ LOGGER = logging.getLogger(__name__)
 LANGS = {"en": "English", "fr": "Français"}
 
 PAGE_SIZE = 6
+
+# The rosters are static game data, so they are cached for a while instead of
+# being downloaded again by every command and every page turn.
+ROSTER_TTL = 900
+
+_ROSTER_CACHE: dict[tuple[str, str], tuple[float, list]] = {}
 
 VISION_EMOJI = {
     "ANEMO": "🍃",
@@ -149,6 +156,11 @@ def _lines(text, limit: int = 220) -> str:
     return _cut(" ".join(str(text or "").split()), limit)
 
 
+def html_escape(text: str) -> str:
+    """Escapes for the few plain-HTML notices still sent while loading."""
+    return html.escape(str(text))
+
+
 def _rarity(value) -> str:
     try:
         return RARITY_EMOJI.get(int(value), "")
@@ -156,27 +168,19 @@ def _rarity(value) -> str:
         return ""
 
 
-def _lang_arg(args_str: str) -> str:
-    """Read an optional trailing `-fr` from the arguments."""
-    args = (args_str or "").split()
-    # The language is a suffix on the last token, so `/gchar albedo-fr` and
-    # `/gchar hu tao fr` both resolve. Splitting on hyphens alone would break
-    # the two-word names that already contain one.
-    if args and "-" in args[-1]:
-        head, _, tail = args[-1].rpartition("-")
-        if tail.lower() in LANGS and head:
-            return tail.lower()
-    return "en"
+def _split_lang(args_str: str) -> tuple[str, str]:
+    """The language suffix of the arguments, and the query without it.
 
-
-def _strip_lang(args_str: str) -> str:
-    """The query with any `-xx` language suffix removed."""
+    The language is a suffix on the last token, so `/gchar albedo-fr` and
+    `/gchar hu tao fr` both resolve. Splitting on hyphens alone would break
+    the two-word names that already contain one.
+    """
     args = (args_str or "").split()
     if args and "-" in args[-1]:
         head, _, tail = args[-1].rpartition("-")
         if tail.lower() in LANGS and head:
-            args[-1] = head
-    return " ".join(args)
+            return tail.lower(), " ".join([*args[:-1], head])
+    return "en", " ".join(args)
 
 
 async def _fetch(path: str, lang: str = "en"):
@@ -228,19 +232,36 @@ async def _fetch_grouped(kind: str, lang: str) -> dict:
 
 
 async def _search(kind: str, lang: str) -> list:
-    """Every searchable record for a collection, whichever shape it has."""
+    """Every searchable record for a collection, whichever shape it has.
+
+    The rosters are static game data and the API is a community service, so
+    they are kept for a while: without this every command and every page turn
+    downloads the whole list again.
+    """
+    cached = _ROSTER_CACHE.get((kind, lang))
+    if cached and cached[0] > time.monotonic():
+        return cached[1]
+
     entity = ENTITY_TYPES[kind]
     if not entity.grouped:
-        return await _fetch_flat(kind, lang)
+        records = await _fetch_flat(kind, lang)
+    else:
+        flat = []
+        for category, items in (await _fetch_grouped(kind, lang)).items():
+            for item_id, record in items.items():
+                record = dict(record)
+                record.setdefault("id", item_id)
+                record["category"] = category
+                flat.append(record)
+        records = flat
 
-    flat = []
-    for category, items in (await _fetch_grouped(kind, lang)).items():
-        for item_id, record in items.items():
-            record = dict(record)
-            record.setdefault("id", item_id)
-            record["category"] = category
-            flat.append(record)
-    return flat
+    _ROSTER_CACHE[(kind, lang)] = (time.monotonic() + ROSTER_TTL, records)
+    return records
+
+
+def _strip_spaces(text: str) -> str:
+    """Drop spaces so `hutao` still matches the id `hu-tao`."""
+    return text.replace(" ", "").replace("-", "")
 
 
 def _match(entries: list, query: str) -> list:
@@ -274,13 +295,16 @@ def _match(entries: list, query: str) -> list:
             return 4
         return 9
 
-    hits = [e for e in entries if rank(e) < 9]
-    return sorted(hits, key=lambda e: (rank(e), str(e.get("name", "")).casefold()))
-
-
-def _strip_spaces(text: str) -> str:
-    """Drop spaces so `hutao` still matches the id `hu-tao`."""
-    return text.replace(" ", "").replace("-", "")
+    # The score is worked out once per entry: ranking inside the sort key
+    # would redo it for every comparison.
+    scored = sorted(
+        (
+            (rank(entry), str(entry.get("name", "")).casefold(), entry)
+            for entry in entries
+        ),
+        key=lambda item: (item[0], item[1]),
+    )
+    return [entry for score, _, entry in scored if score < 9]
 
 
 def _paginate(items: list, page: int):
@@ -431,16 +455,20 @@ def _photo_block(entry: dict, kind: str):
 _CHARACTER_NAME_CACHE: dict = {}
 
 
-async def _character_names() -> dict:
+async def _character_names(lang: str) -> dict:
     """id -> display name, for the collections that reference characters by id.
 
     Boss materials list their users as slugs (`hu-tao`), so rendering them
     raw showed "hu-tao" where a name was meant.
     """
-    if not _CHARACTER_NAME_CACHE:
-        for record in await _search("characters", "en"):
-            _CHARACTER_NAME_CACHE[record["id"]] = record.get("name") or record["id"]
-    return _CHARACTER_NAME_CACHE
+    cached = _CHARACTER_NAME_CACHE.get(lang)
+    if cached and cached[0] > time.monotonic():
+        return cached[1]
+    names = {}
+    for record in await _search("characters", lang):
+        names[record["id"]] = record.get("name") or record["id"]
+    _CHARACTER_NAME_CACHE[lang] = (time.monotonic() + ROSTER_TTL, names)
+    return names
 
 
 def _name_blocks(entry: dict, emoji: str, kind: str = "") -> list:
@@ -949,25 +977,16 @@ def _blocks_to_text(blocks: list) -> str:
     return "\n".join(x for x in lines if x)
 
 
-def _is_run(value) -> bool:
-    """A serialised run is `["text", value]`; anything else is not one."""
-    return isinstance(value, list) and len(value) == 2 and value[0] == "text"
-
-
 def _flatten(node) -> str:
     """Plain text out of any rich text shape.
 
-    A run serialises two ways: as `RichText(text="Geo")` when it is the whole
-    field, and as `["text", "Geo"]` once nested inside a styled run. Both have to
-    be handled, since reading the first element as content prints the literal
-    word "text" into every field of the fallback output.
+    A run is a styled object that holds its own text, a paragraph holds a
+    list of them, and a bare string is already text.
     """
     if node is None:
         return ""
     if isinstance(node, str):
         return node
-    if _is_run(node):
-        return _flatten(node[1])
     if isinstance(node, (list, tuple)):
         return "".join(_flatten(part) for part in node)
     inner = getattr(node, "text", None)
@@ -979,8 +998,7 @@ async def _lookup(message: Message, kind: str):
     entity = ENTITY_TYPES[kind]
     parts = (message.text or "").split(None, 1)
     args_str = parts[1] if len(parts) > 1 else ""
-    lang = _lang_arg(args_str)
-    query = _strip_lang(args_str)
+    lang, query = _split_lang(args_str)
 
     if not query:
         listing = "\n".join(
@@ -1037,7 +1055,7 @@ async def _lookup(message: Message, kind: str):
                 pass
         if isinstance(record.get("characters"), list):
             try:
-                names = await _character_names()
+                names = await _character_names(lang)
                 record = dict(record)
                 record["characters"] = [
                     names.get(str(c), str(c)) for c in record["characters"]
@@ -1047,16 +1065,15 @@ async def _lookup(message: Message, kind: str):
         blocks = RENDERERS[kind](record)
         markup = None
 
-    try:
-        await status.delete()
-    except RPCError:
-        pass
-    await _send_rich(message.chat.id, blocks, markup, thread_id)
-
-
-def html_escape(text: str) -> str:
-    """Escapes for the few plain-HTML notices still sent while loading."""
-    return html.escape(str(text))
+    sent = await _send_rich(message.chat.id, blocks, markup, thread_id)
+    if sent is not None:
+        # The placeholder is only cleared once a result exists, so a send
+        # that fails outright leaves the user with the notice instead of
+        # nothing at all.
+        try:
+            await status.delete()
+        except RPCError:
+            pass
 
 
 async def _replace(status: Message, text: str):
