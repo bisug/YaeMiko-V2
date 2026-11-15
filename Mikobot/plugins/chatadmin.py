@@ -27,15 +27,11 @@ def _user_id(value: str) -> int:
     return int(value)
 
 
-def _expiry(value: str | None) -> int | None:
+def _expiry(value: str | None) -> datetime | None:
     if not value or value.lower() in {"none", "never"}:
         return None
     try:
-        return int(
-            datetime.strptime(value, "%Y-%m-%d %H:%M")
-            .replace(tzinfo=timezone.utc)
-            .timestamp()
-        )
+        return datetime.strptime(value, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
     except ValueError as exc:
         raise ValueError("Expiry must use YYYY-MM-DD HH:MM UTC.") from exc
 
@@ -88,14 +84,14 @@ async def invite_manage(client, message: Message) -> None:
     action = args[0].lower()
     try:
         if action == "create":
-            link = await client.create_invite_link(
+            link = await client.create_chat_invite_link(
                 chat_id,
                 name=args[1] if len(args) > 1 else None,
                 member_limit=int(args[2]) if len(args) > 2 else None,
                 expire_date=_expiry(args[3] if len(args) > 3 else None),
             )
         elif action == "edit" and len(args) >= 2:
-            link = await client.edit_invite_link(
+            link = await client.edit_chat_invite_link(
                 chat_id,
                 args[1],
                 name=args[2] if len(args) > 2 else None,
@@ -103,7 +99,7 @@ async def invite_manage(client, message: Message) -> None:
                 expire_date=_expiry(args[4] if len(args) > 4 else None),
             )
         elif action == "revoke" and len(args) >= 2:
-            link = await client.revoke_invite_link(chat_id, args[1])
+            link = await client.revoke_chat_invite_link(chat_id, args[1])
         else:
             await message.reply_text("Usage: /invitelink create|edit|revoke ...")
             return

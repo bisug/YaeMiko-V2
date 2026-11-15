@@ -179,8 +179,6 @@ if is_module_loaded(FILENAME):
             f_chat = getattr(message.forward_origin, "chat", None) or getattr(
                 message.forward_origin, "sender_chat", None
             )
-        if f_chat is None:
-            f_chat = getattr(message, "forward_from_chat", None)
 
         if chat.type == ChatType.CHANNEL:
             await client.send_message(

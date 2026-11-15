@@ -284,7 +284,7 @@ SERVICE_TYPES = (
 
 def _service_type_of(message: Message):
     """Which service type this message is, or None when it is not one."""
-    if message.new_chat_member is not None:
+    if message.new_chat_members:
         return "join"
     if message.left_chat_member is not None:
         return "leave"

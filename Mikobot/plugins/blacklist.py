@@ -170,10 +170,6 @@ def matches_metadata(trigger: str, message: Message) -> bool:
                 or getattr(forward_origin, "sender_chat", None)
             )
         if origin is None:
-            origin = getattr(message, "forward_from_chat", None) or getattr(
-                message, "forward_from", None
-            )
-        if origin is None:
             return False
         identifier = str(origin.id)
         handle = (origin.username or "").lstrip("@").lower()
