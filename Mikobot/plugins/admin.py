@@ -13,7 +13,7 @@ from pyrogram.enums import (
 from pyrogram.errors import RPCError
 from pyrogram.types import (
     CallbackQuery,
-    ChatPrivileges,
+    ChatAdministratorRights,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
@@ -101,7 +101,7 @@ async def promote(client, message: Message):
 
     if bot_member.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER):
         try:
-            privs = ChatPrivileges(
+            privs = ChatAdministratorRights(
                 can_change_info=granted(bot_member, "can_change_info"),
                 can_post_messages=granted(bot_member, "can_post_messages"),
                 can_edit_messages=granted(bot_member, "can_edit_messages"),
@@ -210,7 +210,7 @@ async def fullpromote(client, message: Message):
 
     if bot_member.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER):
         try:
-            privs = ChatPrivileges(
+            privs = ChatAdministratorRights(
                 can_change_info=granted(bot_member, "can_change_info"),
                 can_post_messages=granted(bot_member, "can_post_messages"),
                 can_edit_messages=granted(bot_member, "can_edit_messages"),
@@ -320,7 +320,7 @@ async def demote(client, message: Message):
         await client.promote_chat_member(
             chat.id,
             user_id,
-            privileges=ChatPrivileges(
+            privileges=ChatAdministratorRights(
                 can_manage_chat=False,
                 can_change_info=False,
                 can_post_messages=False,
@@ -827,7 +827,7 @@ async def admin_callback(client, query: CallbackQuery):
             ChatMemberStatus.OWNER,
         ):
             try:
-                privs = ChatPrivileges(
+                privs = ChatAdministratorRights(
                     can_change_info=granted(bot_member, "can_change_info"),
                     can_post_messages=granted(bot_member, "can_post_messages"),
                     can_edit_messages=granted(bot_member, "can_edit_messages"),
@@ -921,7 +921,7 @@ async def admin_callback(client, query: CallbackQuery):
             await client.promote_chat_member(
                 chat.id,
                 user_id,
-                privileges=ChatPrivileges(
+                privileges=ChatAdministratorRights(
                     can_manage_chat=False,
                     can_change_info=False,
                     can_post_messages=False,
