@@ -139,7 +139,7 @@ def article(
         id=str(uuid4()),
         title=title,
         description=description,
-        thumbnail_url=thumb_url,
+        thumb_url=thumb_url,
         input_message_content=InputTextMessageContent(
             message_text=message_text,
             link_preview_options=link_preview_options,
