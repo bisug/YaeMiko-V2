@@ -22,7 +22,6 @@ from pyrogram.types import (
     InputRichMessage,
     Message,
     RichBlockCaption,
-    RichText,
     RichTextBold,
     RichTextCode,
     RichTextItalic,
@@ -293,8 +292,9 @@ def _paginate(items: list, page: int):
 
 # Rich text runs are a list, not a string, and do not concatenate with +. The
 # short helpers below build the shapes used throughout the renderers.
-def _t(value) -> RichText:
-    return RichText(text=_lines(value, 900))
+# Plain text is a bare str: the RichText classes are the styled variants only.
+def _t(value) -> str:
+    return _lines(value, 900)
 
 
 def _bold(value) -> list:
@@ -318,9 +318,9 @@ def _field(label: str, value) -> list | None:
     if value in (None, "", [], {}):
         return None
     return [
-        RichTextUnderline(text=RichText(text=f"{label}: ")),
+        RichTextUnderline(text=f"{label}: "),
         _t(value),
-        RichText(text="  "),
+        "  ",
     ]
 
 
@@ -328,12 +328,32 @@ def _bullet(label: str, value) -> InputRichBlockListItem | None:
     if value in (None, "", [], {}):
         return None
     return InputRichBlockListItem(
-        label=label,
         blocks=[
             InputRichBlockParagraph(
-                text=[RichTextUnderline(text=RichText(text=f"{label} — ")), _t(value)]
+                text=[RichTextUnderline(text=f"{label} — "), _t(value)]
             )
         ],
+    )
+
+
+def _list_item(label: str, blocks: list) -> InputRichBlockListItem:
+    """A list item whose marker is folded into its first paragraph.
+
+    The block type has no label field - Telegram draws the bullet itself - so
+    a marker that carries information (a level, a rarity) has to become part
+    of the item's own text rather than being dropped.
+    """
+    if not label or not blocks:
+        return InputRichBlockListItem(blocks=blocks)
+    first, *rest = blocks
+    runs = getattr(first, "text", None)
+    if not isinstance(runs, list):
+        return InputRichBlockListItem(blocks=blocks)
+    return InputRichBlockListItem(
+        blocks=[
+            InputRichBlockParagraph(text=[RichTextUnderline(text=f"{label} "), *runs]),
+            *rest,
+        ]
     )
 
 
@@ -363,7 +383,7 @@ def _image_url(kind: str, record_id: str, slot: str = "") -> str | None:
 
 
 def _heading(text: str, size: int = 2):
-    return InputRichBlockSectionHeading(text=RichText(text=text), size=size)
+    return InputRichBlockSectionHeading(text=text, size=size)
 
 
 def _para(runs):
@@ -382,7 +402,7 @@ def _rarity_line(record: dict) -> list | None:
     value = record.get("rarity", record.get("max_rarity"))
     if value in (None, "", []):
         return None
-    return [RichText(text=f"{_rarity(value)} "), RichTextBold(text=_t(value))]
+    return [f"{_rarity(value)} ", RichTextBold(text=_t(value))]
 
 
 def _runlist(items) -> list:
@@ -404,7 +424,7 @@ def _photo_block(entry: dict, kind: str):
         return None
     return InputRichBlockPhoto(
         photo=InputMediaPhoto(media=url),
-        caption=RichBlockCaption(text=RichText(text=str(entry.get("name", "")))),
+        caption=RichBlockCaption(text=str(entry.get("name", ""))),
     )
 
 
@@ -443,9 +463,9 @@ def _talent_list(records: list, heading: str) -> list:
     if not kept:
         return []
     items = [
-        InputRichBlockListItem(
-            label=str(r.get("unlock") or r.get("level") or "•"),
-            blocks=[_para(_bold(r.get("name"))), _para(_italic(r.get("description")))],
+        _list_item(
+            str(r.get("unlock") or r.get("level") or ""),
+            [_para(_bold(r.get("name"))), _para(_italic(r.get("description")))],
         )
         for r in kept
     ]
@@ -481,9 +501,9 @@ def _render_character(entry: dict) -> list:
         blocks.append(
             InputRichBlockList(
                 items=[
-                    InputRichBlockListItem(
-                        label=f"C{c.get('level', '')}",
-                        blocks=[
+                    _list_item(
+                        f"C{c.get('level', '')}",
+                        [
                             _para(_bold(c.get("name"))),
                             _para(_italic(c.get("description"))),
                         ],
@@ -511,7 +531,7 @@ def _render_character(entry: dict) -> list:
                 blocks.append(
                     _para(
                         [
-                            RichTextUnderline(text=RichText(text=f"{tier}: ")),
+                            RichTextUnderline(text=f"{tier}: "),
                             _t(summary),
                         ]
                     )
@@ -585,11 +605,9 @@ def _render_element(entry: dict) -> list:
         if against:
             runs.append(_t(f" — against {against}"))
         if reaction.get("description"):
-            runs.append(RichText(text=". "))
+            runs.append(". ")
             runs.append(_italic(reaction["description"]))
-        items.append(
-            InputRichBlockListItem(label=name[:1] or "•", blocks=[_para(runs)])
-        )
+        items.append(InputRichBlockListItem(blocks=[_para(runs)]))
     if items:
         blocks.append(InputRichBlockList(items=items))
     return blocks
@@ -625,10 +643,7 @@ def _render_enemy(entry: dict) -> list:
         blocks.append(
             InputRichBlockList(
                 items=[
-                    InputRichBlockListItem(
-                        label=_rarity(d.get("rarity")) or "•",
-                        blocks=[_para(_t(d.get("name")))],
-                    )
+                    _list_item(_rarity(d.get("rarity")) or "", [_para(_t(d.get("name")))])
                     for d in drops
                 ]
             )
@@ -644,9 +659,9 @@ def _render_enemy(entry: dict) -> list:
         blocks.append(
             InputRichBlockList(
                 items=[
-                    InputRichBlockListItem(
-                        label=str(a.get("rarity") or "•"),
-                        blocks=[
+                    _list_item(
+                        str(a.get("rarity") or ""),
+                        [
                             _para(_bold(a.get("name"))),
                             _para(_italic(str(a.get("set", "")).strip() or "—")),
                         ],
@@ -666,9 +681,9 @@ def _render_enemy(entry: dict) -> list:
         blocks.append(
             InputRichBlockList(
                 items=[
-                    InputRichBlockListItem(
-                        label=VISION_EMOJI.get(str(e.get("element", "")).upper(), "•"),
-                        blocks=[_para(_italic(e["description"]))],
+                    _list_item(
+                        VISION_EMOJI.get(str(e.get("element", "")).upper(), ""),
+                        [_para(_italic(e["description"]))],
                     )
                     for e in elemental
                 ]
@@ -703,10 +718,7 @@ def _render_domain(entry: dict) -> list:
         blocks.append(
             InputRichBlockList(
                 items=[
-                    InputRichBlockListItem(
-                        label=str(r.get("level") or "•"),
-                        blocks=[_para(_t(r.get("name")))],
-                    )
+                    _list_item(str(r.get("level") or ""), [_para(_t(r.get("name")))])
                     for r in rewards
                 ]
             )
@@ -718,9 +730,9 @@ def _render_domain(entry: dict) -> list:
         blocks.append(
             InputRichBlockList(
                 items=[
-                    InputRichBlockListItem(
-                        label=f"AR {r.get('adventureRank', '—')}",
-                        blocks=[
+                    _list_item(
+                        f"AR {r.get('adventureRank', '—')}",
+                        [
                             _para(
                                 [
                                     _bold("Level "),
@@ -777,7 +789,6 @@ def _render_grouped(entry: dict, kind: str) -> list:
             InputRichBlockList(
                 items=[
                     InputRichBlockListItem(
-                        label="•",
                         blocks=[
                             _para([_t(f"{c['item']} "), _code(f"x{c.get('quantity')}")])
                         ],
@@ -811,7 +822,7 @@ def _render_list(kind: str, items: list, query: str, page: int, lang: str) -> li
     """A paged result list, as blocks.
 
     The vision and rarity markers the old string renderer used as leading emoji
-    are carried by the list item label instead.
+    are folded into the first line of each list item instead.
     """
     entity = ENTITY_TYPES[kind]
     shown, page, total = _paginate(items, page)
@@ -820,17 +831,16 @@ def _render_list(kind: str, items: list, query: str, page: int, lang: str) -> li
         _divider(),
         InputRichBlockList(
             items=[
-                InputRichBlockListItem(
-                    label=(
+                _list_item(
+                    (
                         (
                             VISION_EMOJI.get(str(e.get("vision_key", "")).upper(), "")
                             if kind == "characters"
                             else ""
                         )
                         + _rarity(e.get("rarity", e.get("max_rarity")))
-                    )
-                    or "•",
-                    blocks=[
+                    ),
+                    [
                         _para(
                             [_bold(e.get("name", "?")), _code(f"  {e.get('id', '')}")]
                         )
@@ -843,7 +853,7 @@ def _render_list(kind: str, items: list, query: str, page: int, lang: str) -> li
     footer = f"Page {page} of {total}"
     if lang != "en":
         footer += f" · {LANGS[lang]}"
-    blocks.append(_para([RichTextItalic(text=RichText(text=footer))]))
+    blocks.append(_para([RichTextItalic(text=footer)]))
     return blocks
 
 
