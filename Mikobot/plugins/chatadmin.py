@@ -1,7 +1,7 @@
 import html
 from datetime import datetime, timezone
 
-from pyrogram import filters, raw
+from pyrogram import filters, raw, utils
 from pyrogram.enums import ChatMembersFilter, ChatType, ParseMode
 from pyrogram.errors import RPCError
 from pyrogram.types import (
@@ -280,23 +280,40 @@ async def clear_reactions(client, message: Message) -> None:
         return await message.reply_text("Reply to a message to clear all reactions.")
     try:
         peer = await client.resolve_peer(message.chat.id)
-        res = await client.invoke(
-            raw.functions.messages.GetMessageReactionsList(
-                peer=peer,
-                id=message.reply_to_message.id,
-                limit=100,
-            )
-        )
-        if hasattr(res, "reactions"):
-            for r in res.reactions:
-                p = await client.resolve_peer(r.peer_id)
-                await client.invoke(
-                    raw.functions.messages.DeleteParticipantReaction(
-                        peer=peer,
-                        msg_id=message.reply_to_message.id,
-                        participant=p,
-                    )
+        # The reaction list is paginated, so a message carrying more
+        # reactions than one page holds needs its continuation offset
+        # walked to the end. The participants are collected first: deleting
+        # as the pages are read would shift the list the offset points at.
+        participants = []
+        offset = None
+        seen_offsets = set()
+        while True:
+            res = await client.invoke(
+                raw.functions.messages.GetMessageReactionsList(
+                    peer=peer,
+                    id=message.reply_to_message.id,
+                    limit=100,
+                    offset=offset,
                 )
+            )
+            participants.extend(getattr(res, "reactions", None) or [])
+            offset = getattr(res, "next_offset", None)
+            if not offset or offset in seen_offsets:
+                break
+            seen_offsets.add(offset)
+        for reaction in participants:
+            # resolve_peer takes an id or a username, not the raw peer the
+            # reaction carries.
+            participant = await client.resolve_peer(
+                utils.get_peer_id(reaction.peer_id)
+            )
+            await client.invoke(
+                raw.functions.messages.DeleteParticipantReaction(
+                    peer=peer,
+                    msg_id=message.reply_to_message.id,
+                    participant=participant,
+                )
+            )
     except RPCError as error:
         await _reply_error(message, error)
         return
