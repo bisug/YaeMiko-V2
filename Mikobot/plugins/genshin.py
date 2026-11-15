@@ -53,6 +53,23 @@ ROSTER_TTL = 900
 
 _ROSTER_CACHE: dict[tuple[str, str], tuple[float, list]] = {}
 
+# The upstream API can be unreachable, can answer with an error status, and
+# can answer with something that is not the JSON that was expected. A
+# TypeError is deliberately not in this list: that is the error a wrong
+# Pyrogram call raises, and swallowing it would hide the mistake behind a
+# generic "not responding" notice.
+LOOKUP_ERRORS = (httpx.HTTPError, ValueError, KeyError)
+
+
+class _NotFound(ValueError):
+    """The API answered 404: the record, or the language, is not there.
+
+    It is a ValueError so that the ordinary lookup handling covers it; the
+    callers that expect a whole collection catch it on the way out and
+    treat it as an empty one.
+    """
+
+
 VISION_EMOJI = {
     "ANEMO": "🍃",
     "CRYO": "❄️",
@@ -186,19 +203,27 @@ def _split_lang(args_str: str) -> tuple[str, str]:
 async def _fetch(path: str, lang: str = "en"):
     """One GET against the API, returning decoded JSON.
 
-    A 404 means the id or language is absent, which callers turn into a
-    "no results" reply rather than an error.
+    A 404 means the id or the language is absent, which is no data rather
+    than a service that is down, so it raises `_NotFound` and the callers
+    that expect a collection turn it into an empty one.
     """
     response = await state.get(
         f"{API}/{path}", params={"lang": lang}, timeout=REQUEST_TIMEOUT
     )
+    if response.status_code == 404:
+        raise _NotFound(path)
     response.raise_for_status()
     return response.json()
 
 
 async def _fetch_flat(kind: str, lang: str) -> list:
     """Records for the seven collections that are a plain list of objects."""
-    data = await _fetch(f"{kind}/all", lang)
+    try:
+        data = await _fetch(f"{kind}/all", lang)
+    except _NotFound:
+        # The collection is missing in this language, which is no data and
+        # not a service that is down.
+        return []
     if not isinstance(data, list):
         raise ValueError(f"{kind}/all did not return a list")
     return [e for e in data if isinstance(e, dict) and e.get("id")]
@@ -211,7 +236,10 @@ async def _fetch_grouped(kind: str, lang: str) -> dict:
     as a sibling key. Reading it as a map of category to items returns nothing,
     because it is a list.
     """
-    data = await _fetch(f"{kind}/all", lang)
+    try:
+        data = await _fetch(f"{kind}/all", lang)
+    except _NotFound:
+        return {}
     if not isinstance(data, list):
         raise ValueError(f"{kind}/all did not return a list")
     groups = {}
@@ -889,7 +917,14 @@ def _list_keyboard(kind: str, query: str, page: int, lang: str) -> InlineKeyboar
     """Page controls. Callback data is capped at 64 bytes by Telegram."""
 
     def data(step: int) -> str:
-        return f"genshin|{kind}|{step}|{lang}|{query}"[:64]
+        # The term is the last field, so it may hold the separator itself.
+        # It is shortened to leave the rest of the data whole, rather than
+        # having the whole string cut at an arbitrary point. The limit is in
+        # bytes, so it is measured on the encoded form; a multi-byte character
+        # that does not fit is dropped rather than split in half.
+        head = f"genshin|{kind}|{step}|{lang}|"
+        room = max(0, 64 - len(head.encode()))
+        return head + query.encode()[:room].decode(errors="ignore")
 
     return InlineKeyboardMarkup(
         [
@@ -1018,7 +1053,7 @@ async def _lookup(message: Message, kind: str):
     )
     try:
         entries = await _search(kind, lang)
-    except (httpx.HTTPError, ValueError, KeyError, TypeError) as err:
+    except LOOKUP_ERRORS as err:
         LOGGER.warning("Genshin %s lookup failed: %s", kind, err)
         await _replace(status, "The lookup service is not responding right now.")
         return
@@ -1051,7 +1086,7 @@ async def _lookup(message: Message, kind: str):
                 detail = await _fetch(f"{kind}/{record['id']}", lang)
                 if isinstance(detail, dict):
                     record = detail
-            except httpx.HTTPError, ValueError, KeyError, TypeError:
+            except LOOKUP_ERRORS:
                 pass
         if isinstance(record.get("characters"), list):
             try:
@@ -1060,7 +1095,7 @@ async def _lookup(message: Message, kind: str):
                 record["characters"] = [
                     names.get(str(c), str(c)) for c in record["characters"]
                 ]
-            except httpx.HTTPError, ValueError, KeyError, TypeError:
+            except LOOKUP_ERRORS:
                 LOGGER.debug("Could not resolve character names", exc_info=True)
         blocks = RENDERERS[kind](record)
         markup = None
@@ -1144,7 +1179,7 @@ async def genshin_page(client, query: CallbackQuery):
     the card in place. The previous page is deleted and the next one sent; only
     the bot's own listing is ever removed, and the user's command is untouched.
     """
-    parts = (query.data or "").split("|")
+    parts = (query.data or "").split("|", 4)
     if len(parts) != 5 or parts[1] not in ENTITY_TYPES:
         await query.answer("This button is out of date.", show_alert=True)
         return
@@ -1158,7 +1193,7 @@ async def genshin_page(client, query: CallbackQuery):
 
     try:
         matches = _match(await _search(kind, lang), term)
-    except (httpx.HTTPError, ValueError, KeyError, TypeError) as err:
+    except LOOKUP_ERRORS as err:
         LOGGER.warning("Genshin page turn failed: %s", err)
         await query.answer("The lookup service is not responding.", show_alert=True)
         return
