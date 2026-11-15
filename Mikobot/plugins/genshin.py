@@ -902,7 +902,10 @@ async def _send_rich(
         LOGGER.debug("Rich message unavailable (%s), falling back to text", err)
         try:
             return await app.send_message(
-                chat_id, _blocks_to_text(blocks), reply_markup=reply_markup
+                chat_id,
+                _blocks_to_text(blocks),
+                reply_markup=reply_markup,
+                message_thread_id=thread_id,
             )
         except RPCError:
             LOGGER.debug("Could not deliver a genshin result", exc_info=True)
@@ -913,14 +916,14 @@ def _blocks_to_text(blocks: list) -> str:
     """Readable plain text from rich blocks, for the fallback path."""
     lines = []
     for block in blocks:
-        kind = getattr(block, "type", None)
-        if kind == "divider":
+        if isinstance(block, InputRichBlockDivider):
             lines.append("———")
             continue
-        if kind == "photo":
+        photo = getattr(block, "photo", None)
+        if photo is not None:
             # A photo block carries no text of its own, so without this the
             # image disappears entirely when the rich send is unavailable.
-            media = getattr(getattr(block, "photo", None), "media", None)
+            media = getattr(photo, "media", None)
             if isinstance(media, str):
                 lines.append(media)
             continue
@@ -931,12 +934,17 @@ def _blocks_to_text(blocks: list) -> str:
         items = getattr(block, "items", None)
         if items is not None:
             for item in items:
-                label = getattr(item, "label", "")
+                # The marker of a list item is part of its first paragraph,
+                # so there is no separate label to read.
                 inner = " ".join(
-                    _flatten(getattr(b, "text", ""))
-                    for b in getattr(item, "blocks", [])
+                    part
+                    for part in (
+                        _flatten(getattr(b, "text", "")) for b in getattr(item, "blocks", [])
+                    )
+                    if part
                 )
-                lines.append(f"{label}. {inner}".strip())
+                if inner:
+                    lines.append(inner)
             continue
     return "\n".join(x for x in lines if x)
 
@@ -1052,12 +1060,16 @@ def html_escape(text: str) -> str:
 
 
 async def _replace(status: Message, text: str):
-    """Swap the 'looking up' placeholder for a short plain-text notice."""
+    """Swap the 'looking up' placeholder for a short notice.
+
+    The notices carry markup, so they go out as HTML rather than as the plain
+    text the placeholder was written in.
+    """
     try:
-        await status.edit_text(text, parse_mode=None)
+        await status.edit_text(text, parse_mode=ParseMode.HTML)
     except RPCError:
         try:
-            await status.reply_text(text, parse_mode=None)
+            await status.reply_text(text, parse_mode=ParseMode.HTML)
         except RPCError:
             LOGGER.debug("Could not deliver a genshin notice", exc_info=True)
 
