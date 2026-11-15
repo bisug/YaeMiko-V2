@@ -53,13 +53,22 @@ async def _packkang(app, message):
 
     for i in shits:
         sex = pyrogram.raw.types.InputDocument(
-            id=i.id, access_hash=i.access_hash, file_reference=i.thumbs[0].bytes
+            id=i.id, access_hash=i.access_hash, file_reference=i.file_reference
+        )
+
+        # The emoji lives on the sticker attribute, whose position among the
+        # document attributes is not fixed, so it has to be looked up.
+        emoji = next(
+            (
+                attribute.alt
+                for attribute in i.attributes
+                if isinstance(attribute, pyrogram.raw.types.DocumentAttributeSticker)
+            ),
+            "",
         )
 
         sticks.append(
-            pyrogram.raw.types.InputStickerSetItem(
-                document=sex, emoji=i.attributes[1].alt
-            )
+            pyrogram.raw.types.InputStickerSetItem(document=sex, emoji=emoji)
         )
 
     try:
