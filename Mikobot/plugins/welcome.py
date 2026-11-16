@@ -716,6 +716,9 @@ async def new_member(client, message: Message):
                             can_add_web_page_previews=False,
                             can_manage_topics=False,
                         ),
+                        # Telegram releases the mute even if the bot restarts
+                        # before the in-memory 120 s verification job runs.
+                        until_date=int(time.time()) + 130,
                     )
                     job_queue.run_once(
                         partial(check_not_bot, new_mem, chat.id, message.id),
