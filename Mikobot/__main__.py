@@ -188,7 +188,7 @@ async def start(client, message: Message):
                         inline_keyboard=[
                             [
                                 InlineKeyboardButton(
-                                    text="◁",
+                                    text="Back",
                                     callback_data="help_back",
                                     style=ButtonStyle.PRIMARY,
                                 )
@@ -219,7 +219,7 @@ async def start(client, message: Message):
                 parse_mode=ParseMode.MARKDOWN,
             )
             await asyncio.sleep(0.2)
-            guu = await message.reply_text("🐾")
+            guu = await message.reply_text("...")
             await asyncio.sleep(1.8)
             await guu.delete()
             await message.reply_text(
@@ -232,7 +232,7 @@ async def start(client, message: Message):
         await message.reply_photo(
             photo=str(choice(START_IMG)),
             reply_markup=InlineKeyboardMarkup(inline_keyboard=GROUP_START_BTN),
-            caption="<b>I am Alive!</b>\n\n<b>Since:</b> <code>{}</code>".format(
+            caption="<b>Bot is online</b>\n\n<b>Uptime:</b> <code>{}</code>".format(
                 uptime
             ),
             parse_mode=ParseMode.HTML,
@@ -243,31 +243,31 @@ async def extra_command_callback(client, query: CallbackQuery):
     if query.data == "extra_command_handler":
         await query.answer()
         await query.message.edit_text(
-            "𝙎𝙡𝙲𝙤𝙩 𝙝𝙚 [𝙨𝙡𝙤𝙤𝙥𝙞𝙤𝙣](https://telegra.ph/file/8c092f4e9d303f9497c83.jpg) 𝙝𝙚 𝙘𝙥𝙣𝙚 𝙤𝙥𝙣𝙚",
+            "[Command list](https://telegra.ph/file/8c092f4e9d303f9497c83.jpg)\n\nChoose a category:",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="MANAGEMENT",
+                            text="Management",
                             callback_data="help_back",
                             style=ButtonStyle.PRIMARY,
                         ),
                     ],
                     [
                         InlineKeyboardButton(
-                            text="ANIME",
+                            text="Anime",
                             callback_data="anime_command_handler",
                             style=ButtonStyle.PRIMARY,
                         ),
                         InlineKeyboardButton(
-                            text="GENSHIN",
+                            text="Genshin",
                             callback_data="genshin_command_handler",
                             style=ButtonStyle.PRIMARY,
                         ),
                     ],
                     [
                         InlineKeyboardButton(
-                            text="HOME",
+                            text="Home",
                             callback_data="Miko_back",
                             style=ButtonStyle.PRIMARY,
                         ),
@@ -282,41 +282,39 @@ async def anime_command_callback(client, query: CallbackQuery):
     if query.data == "anime_command_handler":
         await query.answer()
         await query.message.edit_text(
-            "⛩[𝗔𝗻𝗶𝗺𝗲 𝗨𝗽𝗱𝗮𝘽𝗲](https://telegra.ph//file/59d93fede8bf12fec1a51.jpg) :\n\n"
-            "**╔ /anime: **fetches info on a single anime (includes buttons to look up prequels and sequels)\n"
-            "**╠ /character: **fetches info on multiple possible characters related to the query\n"
-            "**╠ /manga: **fetches info on multiple possible manga related to the query\n"
-            "**╠ /airing: **fetches info on airing data for anime\n"
-            "**╠ /studio: **fetches info on studios\n"
-            "**╠ /schedule: **fetches scheduled anime\n"
-            "**╠ /browse: **gets popular, trending or upcoming anime\n"
-            "**╠ /top: **retrieves top anime for a genre or tag\n"
-            "**╠ /watch: **fetches watch order for anime series\n"
-            "**╠ /fillers: **gets a list of anime fillers\n"
-            "**╠ /gettags: **gets a list of available tags\n"
-            "**╠ /animequotes: **gets random anime quotes\n"
-            "**╚ /getgenres: **gets a list of available genres\n\n"
-            "**⚙️ Group Settings:**\n"
-            "**╔**\n"
-            "**╠ /anisettings: **toggles NSFW lock, airing notifications and other group settings (anime news)\n"
-            "**╚**",
+            "[Anime commands](https://telegra.ph//file/59d93fede8bf12fec1a51.jpg)\n\n"
+            "/anime: info on one anime, with buttons for prequels and sequels\n"
+            "/character: possible characters matching the query\n"
+            "/manga: possible manga matching the query\n"
+            "/airing: airing data for an anime\n"
+            "/studio: studio information\n"
+            "/schedule: scheduled anime\n"
+            "/browse: popular, trending or upcoming anime\n"
+            "/top: top anime for a genre or tag\n"
+            "/watch: watch order for an anime series\n"
+            "/fillers: list of anime fillers\n"
+            "/gettags: list of available tags\n"
+            "/animequotes: random anime quotes\n"
+            "/getgenres: list of available genres\n\n"
+            "Group settings:\n"
+            "/anisettings: toggle NSFW lock, airing notifications and other group settings",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="More Info",
+                            text="More info",
                             url="https://anilist.co/",
                             style=ButtonStyle.PRIMARY,
                         ),
                         InlineKeyboardButton(
-                            text="㊋Infamous•Hydra",
+                            text="Infamous Hydra",
                             url="https://t.me/Infamous_Hydra",
                             style=ButtonStyle.PRIMARY,
                         ),
                     ],
                     [
                         InlineKeyboardButton(
-                            text="» 𝘽𝘼𝘾𝙆 «",
+                            text="Back",
                             callback_data="extra_command_handler",
                             style=ButtonStyle.PRIMARY,
                         ),
@@ -331,31 +329,30 @@ async def genshin_command_callback(client, query: CallbackQuery):
     if query.data == "genshin_command_handler":
         await query.answer()
         await query.message.edit_text(
-            "⛩ [𝗦𝗲𝘀𝘀𝗵𝗶𝗻 𝗜𝗺𝗽𝗮𝘀𝗲](https://telegra.ph/file/cd03348a4a357624e70db.jpg) ⛩\n\n"
-            "**╔ /gchar: **vision, talents, constellations and lore\n"
-            "**╠ /gweapon: **type, main ATK, substat and passive\n"
-            "**╠ /gartifact: **artifact set bonuses\n"
-            "**╠ /gconsumable: **crafting materials and food\n"
-            "**╠ /gmaterial: **ascension materials and who needs them\n"
-            "**╠ /genemy: **family, faction and drops\n"
-            "**╠ /gdomain: **domain rewards and drops\n"
-            "**╠ /gnation: **enemy and nation lore\n"
-            "**╠ /gelement: **reactions and what triggers them\n"
-            "**╚**\n\n"
-            "Append **-fr** for French, e.g. `/gchar albedo-fr`.\n"
-            "Data is static game data; it cannot look up a player account.",
+            "[Genshin commands](https://telegra.ph/file/cd03348a4a357624e70db.jpg)\n\n"
+            "/gchar: vision, talents, constellations and lore\n"
+            "/gweapon: type, main ATK, substat and passive\n"
+            "/gartifact: artifact set bonuses\n"
+            "/gconsumable: crafting materials and food\n"
+            "/gmaterial: ascension materials and who needs them\n"
+            "/genemy: family, faction and drops\n"
+            "/gdomain: domain rewards and drops\n"
+            "/gnation: enemy and nation lore\n"
+            "/gelement: reactions and what triggers them\n\n"
+            "Append `-fr` for French, for example `/gchar albedo-fr`.\n"
+            "Data is static game data, so it cannot look up a player account.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="More Info",
+                            text="More info",
                             url="https://genshin.mihoyo.com/",
                             style=ButtonStyle.PRIMARY,
                         ),
                     ],
                     [
                         InlineKeyboardButton(
-                            text="» 𝘽𝘼𝘾𝙆 «",
+                            text="Back",
                             callback_data="extra_command_handler",
                             style=ButtonStyle.PRIMARY,
                         ),
@@ -370,10 +367,10 @@ async def Miko_about_callback(client, query: CallbackQuery):
     await query.answer()
     if query.data == "Miko_":
         message_text = (
-            f"➲ <b>AI integration.</b>"
-            f"\n➲ <b>Advanced management capability.</b>"
-            f"\n➲ <b>Anime bot functionality.</b>"
-            f"\n\n<b>Click the buttons below for help and info about</b> {BOT_NAME}."
+            f"<b>AI integration</b>"
+            f"\n<b>Group management</b>"
+            f"\n<b>Anime commands</b>"
+            f"\n\nButtons below open help and info about {BOT_NAME}."
         )
         await query.message.edit_text(
             text=message_text,
@@ -383,26 +380,26 @@ async def Miko_about_callback(client, query: CallbackQuery):
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="ABOUT",
+                            text="About",
                             callback_data="Miko_support",
                             style=ButtonStyle.PRIMARY,
                         ),
                         InlineKeyboardButton(
-                            text="COMMAND",
+                            text="Commands",
                             callback_data="help_back",
                             style=ButtonStyle.PRIMARY,
                         ),
                     ],
                     [
                         InlineKeyboardButton(
-                            text="INSIDER",
+                            text="Insider",
                             callback_data="insider_",
                             style=ButtonStyle.PRIMARY,
                         ),
                     ],
                     [
                         InlineKeyboardButton(
-                            text="◁",
+                            text="Back",
                             callback_data="Miko_back",
                             style=ButtonStyle.PRIMARY,
                         ),
@@ -412,8 +409,8 @@ async def Miko_about_callback(client, query: CallbackQuery):
         )
     elif query.data == "Miko_support":
         message_text = (
-            "*Our bot uses SQL, Telegram and MTProto. It runs on a high-speed server and integrates many APIs for quick, versatile answers to user queries.*"
-            f"\n\n*If you find a bug in {BOT_NAME}, report it in the support chat.*"
+            f"*{escape_markdown(BOT_NAME)} uses SQL, Telegram and MTProto. It runs on a server and uses several APIs.*"
+            f"\n\n*Report bugs in {BOT_NAME} to the support chat.*"
         )
         await query.message.edit_text(
             text=message_text,
@@ -423,19 +420,21 @@ async def Miko_about_callback(client, query: CallbackQuery):
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="SUPPORT",
+                            text="Support",
                             url=f"https://t.me/{SUPPORT_CHAT}",
                             style=ButtonStyle.PRIMARY,
                         ),
                         InlineKeyboardButton(
-                            text="DEVELOPER",
+                            text="Developer",
                             url=f"tg://user?id={OWNER_ID}",
                             style=ButtonStyle.PRIMARY,
                         ),
                     ],
                     [
                         InlineKeyboardButton(
-                            text="◁", callback_data="Miko_", style=ButtonStyle.PRIMARY
+                            text="Back",
+                            callback_data="Miko_",
+                            style=ButtonStyle.PRIMARY,
                         ),
                     ],
                 ]
@@ -458,12 +457,12 @@ async def get_help(client, message: Message):
         if len(args) >= 2 and any(args[1].lower() == x for x in HELPABLE):
             module = args[1].lower()
             await message.reply_text(
-                f"Contact me in PM to get help for {module.capitalize()}",
+                f"Message me privately for help with {module.capitalize()}",
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
                         [
                             InlineKeyboardButton(
-                                text="HELP",
+                                text="Help",
                                 url="https://t.me/{}?start=ghelp_{}".format(
                                     BOT_USERNAME, module
                                 ),
@@ -475,19 +474,19 @@ async def get_help(client, message: Message):
             )
             return
         await message.reply_text(
-            "» *Choose an option to get* [𝗵𝗲𝗹𝗽](https://telegra.ph/file/cce9038f6a9b88eb409b5.jpg)",
+            "Choose where to open [help](https://telegra.ph/file/cce9038f6a9b88eb409b5.jpg):",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="OPEN IN PM",
+                            text="Open in PM",
                             url="https://t.me/{}?start=help".format(BOT_USERNAME),
                             style=ButtonStyle.PRIMARY,
                         )
                     ],
                     [
                         InlineKeyboardButton(
-                            text="OPEN HERE",
+                            text="Open here",
                             callback_data="extra_command_handler",
                             style=ButtonStyle.PRIMARY,
                         )
@@ -501,9 +500,7 @@ async def get_help(client, message: Message):
     elif len(args) >= 2 and any(args[1].lower() == x for x in HELPABLE):
         module = args[1].lower()
         text = (
-            "Here is the available help for the *{}* module:\n".format(
-                HELPABLE[module].__mod_name__
-            )
+            "Help for the *{}* module:\n".format(HELPABLE[module].__mod_name__)
             + HELPABLE[module].__help__
         )
         await send_help(
@@ -513,7 +510,7 @@ async def get_help(client, message: Message):
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="◁",
+                            text="Back",
                             callback_data="help_back",
                             style=ButtonStyle.PRIMARY,
                         )
@@ -535,14 +532,14 @@ async def send_settings(chat_id, user_id, user=False):
             )
             await app.send_message(
                 user_id,
-                "These are your current settings:" + "\n\n" + settings,
+                "Your current settings:" + "\n\n" + settings,
                 parse_mode=ParseMode.MARKDOWN,
             )
 
         else:
             await app.send_message(
                 user_id,
-                "Seems like there aren't any user-specific settings available :'(",
+                "No user-specific settings are available.",
                 parse_mode=ParseMode.MARKDOWN,
             )
     else:
@@ -551,7 +548,7 @@ async def send_settings(chat_id, user_id, user=False):
             chat_name = chat.title
             await app.send_message(
                 user_id,
-                text="Which module's settings would you like to check for {}?".format(
+                text="Which module's settings do you want to check for {}?".format(
                     chat_name
                 ),
                 reply_markup=InlineKeyboardMarkup(
@@ -563,8 +560,8 @@ async def send_settings(chat_id, user_id, user=False):
         else:
             await app.send_message(
                 user_id,
-                "Seems like there aren't any chat settings available :'(\nSend this "
-                "in a group chat you're an admin in to find its current settings!",
+                "No chat settings are available.\nSend this in a group where you are an admin "
+                "to see its settings.",
                 parse_mode=ParseMode.MARKDOWN,
             )
 
@@ -596,7 +593,7 @@ async def settings_button(client, query: CallbackQuery):
             chat_id = mod_match.group(1)
             module = mod_match.group(2)
             chat = await client.get_chat(chat_id)
-            text = "*{}* has the following settings for the *{}* module:\n\n".format(
+            text = "*{}* settings for the *{}* module:\n\n".format(
                 escape_markdown(chat.title), CHAT_SETTINGS[module].__mod_name__
             ) + CHAT_SETTINGS[module].__chat_settings__(chat_id, user.id)
             await query.message.reply_text(
@@ -606,7 +603,7 @@ async def settings_button(client, query: CallbackQuery):
                     inline_keyboard=[
                         [
                             InlineKeyboardButton(
-                                text="◁",
+                                text="Back",
                                 callback_data="stngs_back({})".format(chat_id),
                                 style=ButtonStyle.PRIMARY,
                             )
@@ -620,8 +617,7 @@ async def settings_button(client, query: CallbackQuery):
             curr_page = int(prev_match.group(2))
             chat = await client.get_chat(chat_id)
             await query.message.reply_text(
-                "Hi there! There are quite a few settings for {} - go ahead and pick what "
-                "you're interested in.".format(chat.title),
+                "Choose a settings category for {}:".format(chat.title),
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=paginate_modules(
                         curr_page - 1, CHAT_SETTINGS, "stngs", chat=chat_id
@@ -634,8 +630,7 @@ async def settings_button(client, query: CallbackQuery):
             next_page = int(next_match.group(2))
             chat = await client.get_chat(chat_id)
             await query.message.reply_text(
-                "Hi there! There are quite a few settings for {} - go ahead and pick what "
-                "you're interested in.".format(chat.title),
+                "Choose a settings category for {}:".format(chat.title),
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=paginate_modules(
                         next_page + 1, CHAT_SETTINGS, "stngs", chat=chat_id
@@ -647,8 +642,9 @@ async def settings_button(client, query: CallbackQuery):
             chat_id = back_match.group(1)
             chat = await client.get_chat(chat_id)
             await query.message.reply_text(
-                text="Hi there! There are quite a few settings for {} - go ahead and pick what "
-                "you're interested in.".format(escape_markdown(chat.title)),
+                text="Choose a settings category for {}:".format(
+                    escape_markdown(chat.title)
+                ),
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=paginate_modules(
                         0, CHAT_SETTINGS, "stngs", chat=chat_id
@@ -675,14 +671,14 @@ async def get_settings(client, message: Message):
 
     if chat.type != ChatType.PRIVATE:
         if await is_user_admin(chat, user.id):
-            text = "Click here to get this chat's settings, as well as yours."
+            text = "Open this chat's settings and your own."
             await msg.reply_text(
                 text,
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
                         [
                             InlineKeyboardButton(
-                                text="SETTINGS",
+                                text="Settings",
                                 url="t.me/{}?start=stngs_{}".format(
                                     BOT_USERNAME, chat.id
                                 ),
@@ -693,7 +689,7 @@ async def get_settings(client, message: Message):
                 ),
             )
         else:
-            await msg.reply_text("Contact me in PM to get your current settings.")
+            await msg.reply_text("Message me privately to see your settings.")
 
     else:
         await send_settings(chat.id, user.id, True)
@@ -728,7 +724,7 @@ async def help_button(client, query: CallbackQuery):
         if mod_match:
             module = mod_match.group(1)
             text = (
-                "➲ *HELP SECTION OF* *{}* :\n".format(HELPABLE[module].__mod_name__)
+                "*Help for {}*\n".format(HELPABLE[module].__mod_name__)
                 + HELPABLE[module].__help__
             )
             await query.message.edit_text(
@@ -739,7 +735,7 @@ async def help_button(client, query: CallbackQuery):
                     inline_keyboard=[
                         [
                             InlineKeyboardButton(
-                                text="◁",
+                                text="Back",
                                 callback_data="help_back",
                                 style=ButtonStyle.PRIMARY,
                             )
@@ -792,19 +788,18 @@ async def stats_back(client, query: CallbackQuery):
         mem = psutil.virtual_memory().percent
         disk = psutil.disk_usage("/").percent
         rss, peak = await asyncio.to_thread(_process_memory)
-        peak_line = f"\nBOT PEAK ➼ {peak:.1f} MB" if peak is not None else ""
+        peak_line = f"\nBot peak: {peak:.1f} MB" if peak is not None else ""
         text = f"""
-𝙎𝙮𝙨𝙩𝙴𝙢 𝙨𝙩𝙖𝙩𝙨@𝙔𝙖𝙈𝙞𝙠𝙤_𝙍𝙤𝙭𝙗𝙤𝙩
-➖➖➖➖➖➖
-UPTIME ➼ {uptime}
-CPU ➼ {cpu}%
-RAM ➼ {mem}%
-BOT RSS ➼ {rss:.1f} MB{peak_line}
-DISK ➼ {disk}%
+{BOT_NAME} system stats
 
-PYTHON ➼ {PYTHON_VERSION}
+Uptime: {uptime}
+CPU: {cpu}%
+RAM: {mem}%
+Bot RSS: {rss:.1f} MB{peak_line}
+Disk: {disk}%
 
-KURIGRAM ➼ {KURIGRAM_VERSION}
+Python: {PYTHON_VERSION}
+Kurigram: {KURIGRAM_VERSION}
 """
         await query.answer(text=text, show_alert=True)
 
@@ -814,12 +809,12 @@ async def gitsource_callback(client, query: CallbackQuery):
 
     if query.data == "git_source":
         source_link = "https://github.com/bisug/YaeMiko-V2"
-        message_text = f"*Here is the link to the public source repo*:\n\n{source_link}"
+        message_text = f"*Source code*:\n\n{source_link}"
 
         keyboard = [
             [
                 InlineKeyboardButton(
-                    text="◁", callback_data="Miko_back", style=ButtonStyle.PRIMARY
+                    text="Back", callback_data="Miko_back", style=ButtonStyle.PRIMARY
                 )
             ]
         ]
@@ -835,7 +830,7 @@ async def gitsource_callback(client, query: CallbackQuery):
 
 async def repo(client, message: Message):
     source_link = "https://github.com/bisug/YaeMiko-V2"
-    message_text = f"*Here is the link to the public source repo*:\n\n{source_link}"
+    message_text = f"*Source code*:\n\n{source_link}"
 
     await client.send_message(
         chat_id=message.chat.id,
@@ -857,9 +852,7 @@ async def error_callback(client, exception, handler, update, users, chats):
 
     if isinstance(update, CallbackQuery):
         try:
-            await update.answer(
-                "The action failed. Please try again later.", show_alert=True
-            )
+            await update.answer("The action failed. Try again later.", show_alert=True)
         except RPCError:
             LOGGER.debug(
                 "Unable to answer failed callback in chat %s",

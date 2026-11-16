@@ -31,36 +31,36 @@ ALIVE_ANIMATION = [
     "https://telegra.ph//file/6efdd8e28756bc2f6e53e.mp4",
 ]
 
-FIRST_PART_TEXT = "✨ *ʜᴇʟʟᴏ* `{}` . . ."
+FIRST_PART_TEXT = "*Hello* `{}`..."
 
-PM_START_TEXT = f"✨ *ɪ ᴀᴍ {escape_markdown(BOT_NAME)}, ᴀ ɢᴇɴꜱʜɪɴ ɪᴍᴘᴀᴄᴛ ᴛʜᴇᴍᴇᴅ ʀᴏʙᴏᴛ ᴡʜɪᴄʜ ᴄᴀɴ ʜᴇʟᴘ ʏᴏᴜ ᴛᴏ ᴍᴀɴᴀɢᴇ ᴀɴᴅ ꜱᴇᴄᴜʀᴇ ʏᴏᴜʀ ɢʀᴏᴜᴘ ᴡɪᴛʜ ʜᴜɢᴇ ɢʀᴏᴜᴘ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ*"
+PM_START_TEXT = f"*I am {escape_markdown(BOT_NAME)}, a Genshin Impact themed robot that helps you manage and secure your group*"
 
 START_BTN = [
     [
         InlineKeyboardButton(
-            text="⇦ ADD ME ⇨",
+            text="Add me",
             url=f"https://t.me/{BOT_USERNAME}?startgroup=true",
             style=ButtonStyle.PRIMARY,
         ),
     ],
     [
         InlineKeyboardButton(
-            text="HELP",
+            text="Help",
             callback_data="extra_command_handler",
             style=ButtonStyle.PRIMARY,
         ),
     ],
     [
         InlineKeyboardButton(
-            text="DETAILS", callback_data="Miko_", style=ButtonStyle.PRIMARY
+            text="Details", callback_data="Miko_", style=ButtonStyle.PRIMARY
         ),
         InlineKeyboardButton(
-            text="SOURCE", callback_data="git_source", style=ButtonStyle.PRIMARY
+            text="Source", callback_data="git_source", style=ButtonStyle.PRIMARY
         ),
     ],
     [
         InlineKeyboardButton(
-            text="CREATOR", url=f"tg://user?id={OWNER_ID}", style=ButtonStyle.PRIMARY
+            text="Creator", url=f"tg://user?id={OWNER_ID}", style=ButtonStyle.PRIMARY
         ),
     ],
 ]
@@ -68,19 +68,19 @@ START_BTN = [
 GROUP_START_BTN = [
     [
         InlineKeyboardButton(
-            text="⇦ ADD ME ⇨",
+            text="Add me",
             url=f"https://t.me/{BOT_USERNAME}?startgroup=true",
             style=ButtonStyle.PRIMARY,
         ),
     ],
     [
         InlineKeyboardButton(
-            text="SUPPORT",
+            text="Support",
             url=f"https://t.me/{SUPPORT_CHAT}",
             style=ButtonStyle.PRIMARY,
         ),
         InlineKeyboardButton(
-            text="CREATOR", url=f"tg://user?id={OWNER_ID}", style=ButtonStyle.PRIMARY
+            text="Creator", url=f"tg://user?id={OWNER_ID}", style=ButtonStyle.PRIMARY
         ),
     ],
 ]
@@ -88,19 +88,19 @@ GROUP_START_BTN = [
 ALIVE_BTN = [
     [
         InlineKeyboardButton(
-            text="UPDATES",
+            text="Updates",
             url="https://t.me/Hydra_Updates",
             style=ButtonStyle.PRIMARY,
         ),
         InlineKeyboardButton(
-            text="SUPPORT",
+            text="Support",
             url="https://t.me/hydraXsupport",
             style=ButtonStyle.PRIMARY,
         ),
     ],
     [
         InlineKeyboardButton(
-            text="⇦ ADD ME ⇨",
+            text="Add me",
             url=f"https://t.me/{BOT_USERNAME}?startgroup=true",
             style=ButtonStyle.PRIMARY,
         ),
@@ -108,9 +108,9 @@ ALIVE_BTN = [
 ]
 
 HELP_STRINGS = f"""
-🫧 *{escape_markdown(BOT_NAME)}* 🫧 [ㅤ](https://telegra.ph/file/b05535884267a19ee5c93.jpg)
+*{escape_markdown(BOT_NAME)}* [ㅤ](https://telegra.ph/file/b05535884267a19ee5c93.jpg)
 
-☉ *Here, you will find a list of all the available commands.*
+Below is the list of available commands.
 
-ᴀʟʟ ᴄᴏᴍᴍᴀɴᴅs ᴄᴀɴ ʙᴇ ᴜsᴇᴅ ᴡɪᴛʜ : /
+All commands start with /
 """
