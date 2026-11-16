@@ -741,7 +741,15 @@ async def clog(
     if replied:
         media = replied.photo or replied.sticker or replied.animation or replied.video
         media_path = await app.download_media(media)
-        await app.send_document(MESSAGE_DUMP, media_path)
+        if media_path:
+            try:
+                await app.send_document(MESSAGE_DUMP, media_path)
+            finally:
+                if os.path.exists(media_path):
+                    try:
+                        os.remove(media_path)
+                    except OSError:
+                        pass
     if file:
         await app.send_document(MESSAGE_DUMP, file)
     if send_as_file:

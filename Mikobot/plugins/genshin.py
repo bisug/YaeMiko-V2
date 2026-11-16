@@ -5,6 +5,7 @@ import logging
 import time
 from dataclasses import dataclass
 
+from cachetools import TTLCache
 import httpx
 from pyrogram import filters
 from pyrogram.enums import ParseMode
@@ -31,7 +32,9 @@ PAGE_SIZE = 6
 ROSTER_TTL = 900
 
 _ROSTER_CACHE: dict[str, tuple[float, list]] = {}
-_DETAIL_CACHE: dict[tuple[str, str], tuple[float, dict]] = {}
+_DETAIL_CACHE: TTLCache[tuple[str, str], tuple[float, dict]] = TTLCache(
+    maxsize=1000, ttl=ROSTER_TTL
+)
 _CHARACTER_NAME_CACHE: dict[str, object] = {}
 
 LOOKUP_ERRORS = (httpx.HTTPError, ValueError, KeyError)

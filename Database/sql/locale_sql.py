@@ -11,6 +11,7 @@ the live chat.type instead). Rows come from the backfill only.
 
 import threading
 
+from cachetools import TTLCache
 from sqlalchemy import Column, String
 
 from Database.sql import BASE, SESSION, unit_of_work_guard
@@ -23,7 +24,7 @@ class ChatLocale(BASE):
     lang = Column(String(8))
 
 
-LOCALE_CACHE = {}
+LOCALE_CACHE = TTLCache(maxsize=10_000, ttl=3600)
 LOCALE_LOCK = threading.RLock()
 
 

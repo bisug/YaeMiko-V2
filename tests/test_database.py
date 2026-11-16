@@ -359,3 +359,20 @@ def test_cachetools_ttl_cache_compatibility():
     assert "test_chat" in _settings_cache
     assert _settings_cache["test_chat"]["channel"] == "test_chan"
     del _settings_cache["test_chat"]
+
+
+def test_bounded_sql_caches():
+    from cachetools import TTLCache
+    from Database.sql.captcha_sql import _cache as captcha_cache
+    from Database.sql.locale_sql import LOCALE_CACHE
+    from Database.sql.toggle_sql import TOGGLE_CACHE
+    from Database.sql.topics_sql import ACTION_TOPICS_CACHE
+
+    assert isinstance(captcha_cache, TTLCache)
+    assert isinstance(LOCALE_CACHE, TTLCache)
+    assert isinstance(TOGGLE_CACHE, TTLCache)
+    assert isinstance(ACTION_TOPICS_CACHE, TTLCache)
+    assert captcha_cache.maxsize <= 10_000
+    assert LOCALE_CACHE.maxsize <= 10_000
+    assert TOGGLE_CACHE.maxsize <= 20_000
+    assert ACTION_TOPICS_CACHE.maxsize <= 10_000

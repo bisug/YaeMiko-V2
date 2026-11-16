@@ -10,6 +10,7 @@ than in the schema.
 
 import threading
 
+from cachetools import TTLCache
 from sqlalchemy import Boolean, Column, String, select
 
 from Database.sql import BASE, SESSION, unit_of_work_guard
@@ -44,7 +45,7 @@ class ChatToggle(BASE):
 
 
 INSERTION_LOCK = threading.RLock()
-TOGGLE_CACHE = {}
+TOGGLE_CACHE = TTLCache(maxsize=20_000, ttl=3600)
 TOGGLE_LOCK = threading.RLock()
 
 

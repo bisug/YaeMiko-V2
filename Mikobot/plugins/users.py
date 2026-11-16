@@ -199,7 +199,7 @@ async def broadcast(client: Client, message: Message):
         )
 
 
-USER_DB_CACHE = TTLCache(maxsize=100_000, ttl=300, timer=monotonic)
+USER_DB_CACHE = TTLCache(maxsize=10_000, ttl=300, timer=monotonic)
 BOT_STATUS_CACHE = TTLCache(maxsize=10_000, ttl=600, timer=monotonic)
 USER_DB_LOCK = RLock()
 

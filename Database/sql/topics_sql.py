@@ -8,6 +8,7 @@ the conversation is.
 
 import threading
 
+from cachetools import TTLCache
 from sqlalchemy import BigInteger, Column, String
 
 from Database.sql import BASE, SESSION, unit_of_work_guard
@@ -31,14 +32,15 @@ class ActionTopic(BASE):
 
 
 INSERTION_LOCK = threading.RLock()
-ACTION_TOPICS_CACHE: dict = {}
+ACTION_TOPICS_CACHE = TTLCache(maxsize=10_000, ttl=3600)
 
 
 def get_action_topic(chat_id):
     """The thread automated messages should go to, or None for General."""
     key = str(chat_id)
-    if key in ACTION_TOPICS_CACHE:
-        return ACTION_TOPICS_CACHE[key]
+    with INSERTION_LOCK:
+        if key in ACTION_TOPICS_CACHE:
+            return ACTION_TOPICS_CACHE[key]
     return _fetch_action_topic(key)
 
 
@@ -46,7 +48,8 @@ def get_action_topic(chat_id):
 def _fetch_action_topic(key: str):
     row = SESSION.get(ActionTopic, key)
     thread_id = row.message_thread_id if row else None
-    ACTION_TOPICS_CACHE[key] = thread_id
+    with INSERTION_LOCK:
+        ACTION_TOPICS_CACHE[key] = thread_id
     return thread_id
 
 

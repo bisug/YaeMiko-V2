@@ -386,3 +386,21 @@ async def test_blacklist_del_blacklist_filter_on_various_messages(monkeypatch):
     matched_text = await reg.matches(client, msg_text)
     assert matched_text is True
 
+
+def test_plugin_caches_bounded():
+    from cachetools import TTLCache
+    from Mikobot.plugins import bot2bot, genshin, users
+
+    assert isinstance(users.USER_DB_CACHE, TTLCache)
+    assert users.USER_DB_CACHE.maxsize <= 10_000
+
+    assert isinstance(genshin._DETAIL_CACHE, TTLCache)
+    assert genshin._DETAIL_CACHE.maxsize <= 1000
+
+    assert isinstance(bot2bot.PENDING, TTLCache)
+    assert isinstance(bot2bot.APPROVED_ONCE, TTLCache)
+    bot2bot.APPROVED_ONCE.add(99999)
+    assert 99999 in bot2bot.APPROVED_ONCE
+    bot2bot.APPROVED_ONCE.discard(99999)
+    assert 99999 not in bot2bot.APPROVED_ONCE
+

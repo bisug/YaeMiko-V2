@@ -11,6 +11,7 @@ challenge is answered or expires.
 
 import threading
 
+from cachetools import TTLCache
 from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, select
 
 from Database.sql import BASE, SESSION, unit_of_work_guard
@@ -72,7 +73,7 @@ class CaptchaSolved(BASE):
 SETTINGS_LOCK = threading.RLock()
 SOLVED_LOCK = threading.RLock()
 
-_cache: dict = {}
+_cache: TTLCache = TTLCache(maxsize=10_000, ttl=3600)
 
 
 @unit_of_work_guard
@@ -97,8 +98,9 @@ def _update(chat_id, **fields) -> None:
 def get_settings(chat_id):
     """Settings dict with defaults when the chat has never configured any."""
     key = str(chat_id)
-    if key in _cache:
-        return dict(_cache[key])
+    with SETTINGS_LOCK:
+        if key in _cache:
+            return dict(_cache[key])
     try:
         row = _row(key)
     finally:
@@ -122,7 +124,8 @@ def get_settings(chat_id):
         "mute_time": int(row.mute_time or 0),
         "show_rules": bool(row.show_rules),
     }
-    _cache[key] = entry
+    with SETTINGS_LOCK:
+        _cache[key] = entry
     return dict(entry)
 
 

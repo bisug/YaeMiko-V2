@@ -21,19 +21,30 @@ from pyrogram.types import (
     Message,
 )
 
+from cachetools import TTLCache
+
 import Database.sql.bot2bot_sql as sql
 from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.helper_funcs.alternate import typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.utils.parser import mention_html
 
+
+class TTLSet(TTLCache):
+    def add(self, item) -> None:
+        self[item] = True
+
+    def discard(self, item) -> None:
+        self.pop(item, None)
+
+
 # Populated by the review middleware: command name -> pending (bot_id, args).
-PENDING: dict = {}
+PENDING: TTLCache = TTLCache(maxsize=2000, ttl=86400)
 
 # Approving replays the command, which would come straight back through the
 # gate and ask for approval again. Each approved replay is keyed by the new
 # message id and consumed once, so a replay cannot loop or be reused.
-APPROVED_ONCE: set = set()
+APPROVED_ONCE: TTLSet = TTLSet(maxsize=2000, ttl=3600)
 
 
 @on_message(filters.command("bot2bot"), chained=True)
