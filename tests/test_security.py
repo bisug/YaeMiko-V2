@@ -61,6 +61,26 @@ def test_elevated_users_json():
             )
 
 
+def test_bot_review_covers_state_changing_commands():
+    from Database.sql.bot2bot_sql import SETTING_COMMANDS
+
+    high_risk = {
+        "fban",
+        "unfban",
+        "warn",
+        "filter",
+        "save",
+        "connect",
+        "promote",
+        "addsudo",
+        "unbanall",
+        "broadcast",
+        "setfrules",
+        "disable",
+    }
+    assert high_risk <= SETTING_COMMANDS
+
+
 async def test_bot_command_approval_is_scoped_to_chat(monkeypatch):
     from Mikobot.plugins import bot2bot
     from Mikobot.utils import gate
