@@ -1011,7 +1011,6 @@ class google_new_transError(Exception):
             premise = "Failed to connect"
 
             return "{}. Probable cause: {}".format(premise, "timeout")
-            # if tts.tld != 'com':
             #     host = _translate_url(tld=tts.tld)
             #     cause = "Host '{}' is not reachable".format(host)
 

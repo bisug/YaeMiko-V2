@@ -672,13 +672,6 @@ async def fed_ban(client, message: Message):
 
     if fban:
         fed_name = info["fname"]
-        # https://t.me/OnePunchSupport/41606 // https://t.me/OnePunchSupport/41619
-        # starting = "The reason fban is replaced for {} in the Federation <b>{}</b>.".format(user_target, fed_name)
-        # await send_message(message, starting, parse_mode=ParseMode.HTML)
-
-        # if reason == "":
-        #    reason = "No reason given."
-
         temp = sql.un_fban_user(fed_id, fban_user_id)
         if not temp:
             await message.reply_text("Failed to update the reason for fedban!")
@@ -758,14 +751,6 @@ async def fed_ban(client, message: Message):
         for fedschat in fed_chats:
             try:
                 # Do not spam all fed chats
-                """
-				client.send_message(chat, "<b>FedBan reason updated</b>" \
-							 "\n<b>Federation:</b> {}" \
-							 "\n<b>Federation Admin:</b> {}" \
-							 "\n<b>User:</b> {}" \
-							 "\n<b>User ID:</b> <code>{}</code>" \
-							 "\n<b>Reason:</b> {}".format(fed_name, mention_html(user.id, user.first_name), user_target, fban_user_id, reason), parse_mode="HTML")
-				"""
                 await client.ban_chat_member(fedschat, fban_user_id)
             except RPCError as excp:
                 if _matches_fed_error(excp, FBAN_ERRORS):
@@ -787,16 +772,6 @@ async def fed_ban(client, message: Message):
                         "Could not fban on {} because: {}".format(fedschat, excp),
                     )
         # Also do not spam all fed admins
-        """
-		send_to_list(bot, FEDADMIN,
-				 "<b>FedBan reason updated</b>" \
-							 "\n<b>Federation:</b> {}" \
-							 "\n<b>Federation Admin:</b> {}" \
-							 "\n<b>User:</b> {}" \
-							 "\n<b>User ID:</b> <code>{}</code>" \
-							 "\n<b>Reason:</b> {}".format(fed_name, mention_html(user.id, user.first_name), user_target, fban_user_id, reason),
-							html=True)
-		"""
 
         # Fban for fed subscriber
         subscriber = list(sql.get_subscriber(fed_id))
@@ -829,7 +804,6 @@ async def fed_ban(client, message: Message):
                                     excp,
                                 ),
                             )
-        # await send_message(message, "Fedban Reason has been updated.")
         return
 
     fed_name = info["fname"]
@@ -909,14 +883,6 @@ async def fed_ban(client, message: Message):
     for fedschat in fed_chats:
         try:
             # Do not spam all fed chats
-            """
-			client.send_message(chat, "<b>FedBan reason updated</b>" \
-							"\n<b>Federation:</b> {}" \
-							"\n<b>Federation Admin:</b> {}" \
-							"\n<b>User:</b> {}" \
-							"\n<b>User ID:</b> <code>{}</code>" \
-							"\n<b>Reason:</b> {}".format(fed_name, mention_html(user.id, user.first_name), user_target, fban_user_id, reason), parse_mode="HTML")
-			"""
             await client.ban_chat_member(fedschat, fban_user_id)
         except RPCError as excp:
             if _matches_fed_error(excp, FBAN_ERRORS):
@@ -929,16 +895,6 @@ async def fed_ban(client, message: Message):
                 )
 
         # Also do not spam all fed admins
-        """
-		send_to_list(bot, FEDADMIN,
-				 "<b>FedBan reason updated</b>" \
-							 "\n<b>Federation:</b> {}" \
-							 "\n<b>Federation Admin:</b> {}" \
-							 "\n<b>User:</b> {}" \
-							 "\n<b>User ID:</b> <code>{}</code>" \
-							 "\n<b>Reason:</b> {}".format(fed_name, mention_html(user.id, user.first_name), user_target, fban_user_id, reason),
-							html=True)
-		"""
 
     # Fban for fed subscriber
     subscriber = list(sql.get_subscriber(fed_id))
@@ -1089,13 +1045,6 @@ async def unfban(client, message: Message):
             if member.status == ChatMemberStatus.BANNED:
                 await client.unban_chat_member(fedchats, user_id)
             # Do not spam all fed chats
-            """
-			client.send_message(chat, "<b>Un-FedBan</b>" \
-						 "\n<b>Federation:</b> {}" \
-						 "\n<b>Federation Admin:</b> {}" \
-						 "\n<b>User:</b> {}" \
-						 "\n<b>User ID:</b> <code>{}</code>".format(info['fname'], mention_html(user.id, user.first_name), user_target, fban_user_id), parse_mode="HTML")
-			"""
         except RPCError as excp:
             if _matches_fed_error(excp, UNFBAN_ERRORS):
                 pass
@@ -1149,22 +1098,6 @@ async def unfban(client, message: Message):
             "This person has been un-fbanned in {} chats.".format(unfbanned_in_chats),
         )
     # Also do not spam all fed admins
-    """
-	FEDADMIN = sql.all_fed_users(fed_id)
-	for x in FEDADMIN:
-		getreport = sql.user_feds_report(x)
-		if getreport is False:
-			FEDADMIN.remove(x)
-	send_to_list(bot, FEDADMIN,
-			 "<b>Un-FedBan</b>" \
-			 "\n<b>Federation:</b> {}" \
-			 "\n<b>Federation Admin:</b> {}" \
-			 "\n<b>User:</b> {}" \
-			 "\n<b>User ID:</b> <code>{}</code>".format(info['fname'], mention_html(user.id, user.first_name),
-												 user_target,
-															  fban_user_id),
-			html=True)
-	"""
 
 
 @on_message(filters.command("setfrules"), chained=True)
