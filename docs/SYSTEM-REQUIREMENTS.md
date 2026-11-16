@@ -115,7 +115,6 @@ one. See [DEPLOYMENT.md](DEPLOYMENT.md).
 | --- | --- | --- |
 | `ffmpeg` | Yes, for media features | Frame extraction in `Mikobot/plugins/antinsfw.py` and thumbnail generation in `Mikobot/plugins/anime.py` |
 | `libgomp1` | Yes, for the NSFW check | OpenMP runtime that ONNX Runtime links against |
-| `curl` | Yes, in the Docker image | Health probes and downloads |
 | `git` | Only for a source install | Not needed in the container |
 | `tmux` | Optional | Only for running without systemd |
 
@@ -125,7 +124,7 @@ On Debian and Ubuntu:
 sudo apt-get install -y ffmpeg libgomp1
 ```
 
-The [Dockerfile](../Dockerfile) already installs all three in the runtime stage.
+The [Dockerfile](../Dockerfile) already installs both in the runtime stage.
 
 ## Network and bandwidth
 

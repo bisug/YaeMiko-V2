@@ -233,7 +233,7 @@ sudo apt-get install -y ffmpeg libgomp1
 
 `ffmpeg` is required for frame extraction in the anti-NSFW check and for anime thumbnails.
 `libgomp1` is the OpenMP runtime ONNX Runtime links against. The [Dockerfile](Dockerfile) installs
-both, plus `curl`, in the runtime stage.
+both in the runtime stage.
 
 The RAM figures are estimates, not measurements of a live bot. To size your own instance, read the
 peak rather than the current usage:
@@ -455,8 +455,9 @@ Steps:
 
 ### Docker
 
-[`Dockerfile`](Dockerfile) is a two stage build: a `builder` stage installs the wheels, and the
-runtime stage is `python:3.14.10-slim` with `ffmpeg`, `curl` and `libgomp1` for ONNX Runtime.
+[`Dockerfile`](Dockerfile) is a two stage build: a `builder` stage installs the wheels with a pinned
+uv, and the runtime stage is `python:3.14.10-slim-trixie` with `ffmpeg` and `libgomp1` for ONNX
+Runtime.
 
 ```bash
 docker build -t yaemiko .
