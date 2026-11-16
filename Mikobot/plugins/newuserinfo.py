@@ -117,11 +117,11 @@ async def userinfopic(
 async def userinfo_command(client, message):
     user = message.from_user
     if not user:
-        return await message.reply_text("Only users can check userinfo.")
+        return await message.reply_text("Only users can check user info.")
     user_x, user_y = 1035, 2885
     user_id_x, user_id_y = 1035, 2755
 
-    processing_message = await message.reply_text("Processing user information...")
+    processing_message = await message.reply_text("Processing user information.")
     try:
         with tempfile.TemporaryDirectory(prefix="yae-userinfo-") as temp_dir:
             image_path = await userinfopic(
@@ -137,26 +137,26 @@ async def userinfo_command(client, message):
                 await processing_message.delete()
                 return
             caption = (
-                f"「 **According to the Mikos analogy, the userinfo is...** : 」\n\n"
-                f"❐  𝗜𝗗: {user.id}\n"
-                f"❐  𝗙𝗶𝗿𝘀𝘁 𝗡𝗮𝗺𝗲: {user.first_name}\n"
-                f"❐  𝗟𝗮𝘀𝘁 𝗡𝗮𝗺𝗲: {user.last_name}\n"
-                f"❐  𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲: {user.username}\n"
-                f"❐  𝗨𝘀𝗲𝗿𝗹𝗶𝗻𝗸: [link](https://t.me/{user.username})\n"
+                f"**User information**\n\n"
+                f"ID: {user.id}\n"
+                f"First name: {user.first_name}\n"
+                f"Last name: {user.last_name}\n"
+                f"Username: {user.username}\n"
+                f"User link: [link](https://t.me/{user.username})\n"
             )
 
             if user.id == OWNER_ID:
-                caption += "\n\n〄 The disaster level of this user is **Owner**.\n"
+                caption += "\n\nRole: **Owner**.\n"
             elif user.id in DEV_USERS:
-                caption += "\n\n〄 This user is a member of **Developer**.\n"
+                caption += "\n\nRole: **Developer**.\n"
             elif user.id in DRAGONS:
-                caption += "\n\n〄 The disaster level of this user is **Sudo**.\n"
+                caption += "\n\nRole: **Sudo**.\n"
             elif user.id in DEMONS:
-                caption += "\n\n〄 The disaster level of this user is **Demon**.\n"
+                caption += "\n\nRole: **Demon**.\n"
             elif user.id in TIGERS:
-                caption += "\n\n〄 The disaster level of this user is **Tiger**.\n"
+                caption += "\n\nRole: **Tiger**.\n"
             elif user.id in WOLVES:
-                caption += "\n\n〄 The disaster level of this user is **Wolf**.\n"
+                caption += "\n\nRole: **Wolf**.\n"
 
             if (
                 user.id == OWNER_ID
@@ -166,20 +166,20 @@ async def userinfo_command(client, message):
                 or user.id in TIGERS
                 or user.id in WOLVES
             ):
-                caption += "\n\n〄 𝗥𝗮𝗻𝗸: "
+                caption += "\n\nRank: "
 
                 if user.id == OWNER_ID:
-                    caption += "**CREATOR**"
+                    caption += "**Creator**"
                 elif user.id in DEV_USERS:
-                    caption += "**DEVELOPER**"
+                    caption += "**Developer**"
                 elif user.id in DRAGONS:
-                    caption += "**DRAGON**"
+                    caption += "**Dragon**"
                 elif user.id in DEMONS:
-                    caption += "**DEMON**"
+                    caption += "**Demon**"
                 elif user.id in TIGERS:
-                    caption += "**TIGER**"
+                    caption += "**Tiger**"
                 elif user.id in WOLVES:
-                    caption += "**WOLF**"
+                    caption += "**Wolf**"
 
                 caption += "\n"
 

@@ -126,7 +126,7 @@ async def _resolve(message: Message, need_owner: bool):
     if conn:
         return conn, await client.get_chat(conn), None
     if message.chat.type == ChatType.PRIVATE:
-        return None, None, "This command is meant to be used in a group."
+        return None, None, "Use this command in a group."
     if need_owner:
         try:
             member = await client.get_chat_member(message.chat.id, user.id)
@@ -294,17 +294,17 @@ async def reset_button(client, query: CallbackQuery) -> str:
     return ""
 
 
-__mod_name__ = "SETTINGS"
+__mod_name__ = "Settings"
 
 __help__ = """
-➡ Back up a chat's configuration, copy it to another group, or start over.
+Back up a chat configuration, copy it to another group, or start over.
 
-➡ `/export` writes the chat's settings to a JSON file you can edit first.
-`/export <modules>` limits it to the named ones.
+/export: Write the chat settings to an editable JSON file.
+/export <modules>: Limit the export to the named modules.
 
-➡ `/import` replies to that file to apply it here. Only the group owner.
+/import: Reply to the file to apply it here. Group owner only.
 
-➡ `/reset` clears every exportable setting, after a confirmation.
+/reset: Clear every exportable setting after confirmation.
 
-➡ Modules: blacklist, blocklist_stickers, locks, filters, notes, rules, warns.
+Modules: blacklist, blocklist\\_stickers, locks, filters, notes, rules, warns.
 """

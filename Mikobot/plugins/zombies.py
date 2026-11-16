@@ -108,7 +108,7 @@ async def zombies(_, message):
         return await message.reply_text(
             "You need to be an admin to remove deleted accounts."
         )
-    status = await message.reply_text("Removing deleted accounts…")
+    status = await message.reply_text("Removing deleted accounts.")
     await _remove_deleted(message, status)
 
 
@@ -120,15 +120,15 @@ async def zombies_callback(_, callback):
         return
     if not await is_administrator(callback.from_user.id, callback.message):
         return await callback.answer("You need admin permission.", show_alert=True)
-    await callback.answer("Removing deleted accounts…", show_alert=True)
-    status = await callback.message.edit("Removing deleted accounts…")
+    await callback.answer("Removing deleted accounts.", show_alert=True)
+    status = await callback.message.edit("Removing deleted accounts.")
     await _remove_deleted(callback.message, status)
 
 
 __help__ = """
-➠ <b>Remove Deleted Accounts:</b>
+Remove deleted accounts:
 
-» /zombies — find deleted accounts in a group
-» /zombies clean — remove deleted accounts from a group
+/zombies: Find deleted accounts in a group.
+/zombies clean: Remove deleted accounts from a group.
 """
-__mod_name__ = "ZOMBIES"
+__mod_name__ = "Zombies"

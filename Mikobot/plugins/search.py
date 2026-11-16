@@ -33,7 +33,7 @@ def _safe_text(value, limit: int = 300) -> str:
 
 
 async def _send_images(message: Message, query: str) -> None:
-    status = await message.reply_text("🔎 Searching open image sources…")
+    status = await message.reply_text("Searching open image sources.")
     try:
         data = await _get_json(
             OPENVERSE_IMAGES_URL,
@@ -54,7 +54,7 @@ async def _send_images(message: Message, query: str) -> None:
             source = _safe_text(result.get("source"), 60)
             license_url = _safe_text(result.get("license_url"), 200)
             credits.append(
-                f"• {creator or 'Unknown creator'} — {license_name or 'license unavailable'}"
+                f"• {creator or 'Unknown creator'}: {license_name or 'license unavailable'}"
                 f"{f' ({license_url})' if license_url else ''}{f' via {source}' if source else ''}"
             )
             if len(images) == MAX_RESULTS:
@@ -73,7 +73,7 @@ async def _send_images(message: Message, query: str) -> None:
 async def image_search(client: Client, message: Message):
     query = _query(message)
     if not query:
-        await message.reply_text("Provide a query to search!")
+        await message.reply_text("Provide a query to search.")
         return
     await _send_images(message, query)
 
@@ -98,7 +98,7 @@ async def news(_, message: Message):
         url = _safe_text(item.get("url") or item.get("story_url"), 500)
         author = _safe_text(item.get("author"), 80)
         await message.reply_text(
-            f"📰 <b>{title}</b>\n\n"
+            f"<b>{title}</b>\n\n"
             f"Author: {author or 'Unknown'}\n"
             f"Points: {item.get('points', 0)} | Comments: {item.get('num_comments', 0)}\n"
             f"URL: {url or 'https://news.ycombinator.com/item?id=' + str(item.get('objectID', ''))}\n\n"
@@ -142,16 +142,16 @@ async def web_search(client: Client, message: Message):
         await message.reply_text("Search failed. Please try again later.")
 
 
-__mod_name__ = "SEARCH"
+__mod_name__ = "Search"
 
 __help__ = """
-💭 𝗦𝗘𝗔𝗥𝗖𝗛
 
-➠ *Available commands:*
 
-» /googleimg <query> or /bingimg <query>: Search openly licensed images via Openverse.
+Commands:
 
-» /news <query>: Search technology news via Hacker News.
+/googleimg <query> or /bingimg <query>: Search openly licensed images on Openverse.
 
-» /bingsearch <query> or /duckduckgo <query>: Search quick answers via DuckDuckGo.
+/news <query>: Search technology news on Hacker News.
+
+/bingsearch <query> or /duckduckgo <query>: Search quick answers on DuckDuckGo.
 """

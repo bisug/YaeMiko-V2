@@ -77,8 +77,9 @@ async def _packkang(app, message):
             )
         )
         await txt.edit(
-            f"""Your sticker has been added! For a faster update, remove your pack and add it again\n
-🎖 𝗧𝗢𝗧𝗔𝗟 𝗦𝗧𝗜𝗖𝗞𝗘𝗥: {len(sticks)}""",
+            f"""Sticker added. Remove and re-add your pack to see it sooner.
+
+Total stickers: {len(sticks)}""",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [

@@ -54,14 +54,14 @@ def _format_match(match: dict, sport: str) -> str:
     league = _escape(match.get("strLeague"), 120)
     lines = [
         f"{icon} <b>{_escape(event, 180)}</b>",
-        f"🗓 <b>Date:</b> {_escape(date, 80)}",
+        f"<b>Date:</b> {_escape(date, 80)}",
     ]
     if teams_line:
-        lines.append(f"🏆 <b>Teams:</b> {teams_line}")
+        lines.append(f"<b>Teams:</b> {teams_line}")
     if venue and venue.lower() != "unknown":
-        lines.append(f"🏟 <b>Venue:</b> {venue}")
+        lines.append(f"<b>Venue:</b> {venue}")
     if league:
-        lines.append(f"🏆 <b>Competition:</b> {league}")
+        lines.append(f"<b>Competition:</b> {league}")
     return "\n".join(lines)
 
 
@@ -84,7 +84,7 @@ def _back_keyboard(sport: str) -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="⬅️ Leagues",
+                    text="Leagues",
                     callback_data=f"sport_menu:{sport}",
                     style=ButtonStyle.PRIMARY,
                 )
@@ -97,7 +97,7 @@ async def _show_leagues(message: Message, sport: str) -> None:
     try:
         leagues = await get_leagues(sport)
         if not leagues:
-            await message.reply_text(f"No {sport} leagues are currently available.")
+            await message.reply_text(f"No {sport} leagues available.")
             return
         await message.reply_text(
             f"Select a {sport} league:",
@@ -153,9 +153,7 @@ async def _show_menu(query: CallbackQuery, sport: str) -> None:
     try:
         leagues = await get_leagues(sport)
         if not leagues:
-            await query.message.edit_text(
-                f"No {sport} leagues are currently available."
-            )
+            await query.message.edit_text(f"No {sport} leagues available.")
             return
         await query.message.edit_text(
             f"Select a {sport} league:",
@@ -202,16 +200,16 @@ async def sport_callback(client, query: CallbackQuery) -> None:
 
 
 __help__ = """
-🏅 <b>Sports schedules</b>
+Sports schedules:
 
-➠ <b>Commands:</b>
-» /cricket — list cricket leagues
-» /football — list football leagues
-» /cricket &lt;league ID&gt; — show upcoming cricket matches
-» /football &lt;league ID&gt; — show upcoming football matches
+Commands:
+/cricket: List cricket leagues.
+/football: List football leagues.
+/cricket <league ID>: Show upcoming cricket matches.
+/football <league ID>: Show upcoming football matches.
 
 Data: TheSportsDB
 """
 
-__mod_name__ = "SPORTS"
+__mod_name__ = "Sports"
 __command_list__ = ["cricket", "football"]

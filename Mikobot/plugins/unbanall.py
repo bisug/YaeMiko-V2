@@ -42,7 +42,7 @@ async def bulk_moderation(client, message: Message):
         if command in {"/unbanall", "unbanall"}
         else ChatMembersFilter.RESTRICTED
     )
-    status = await message.reply_text("Searching participant list...")
+    status = await message.reply_text("Searching participant list.")
     count = 0
     async for member in client.get_chat_members(message.chat.id, filter=member_filter):
         try:

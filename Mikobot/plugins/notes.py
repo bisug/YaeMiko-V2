@@ -185,21 +185,19 @@ async def get(
                 in str(getattr(excp, "message", None) or excp).lower()
             ):
                 await message.reply_text(
-                    "Looks like you tried to mention someone I've never seen before. If you really "
-                    "want to mention them, forward one of their messages to me, and I'll be able "
-                    "to tag them!",
+                    "I cannot mention a user I have not seen. Forward one of their messages "
+                    "so I can tag them.",
                 )
             elif FILE_MATCHER.match(note.value):
                 await message.reply_text(
-                    "This note was an incorrectly imported file from another bot - I can't use "
-                    "it. If you really need it, you'll have to save it again. In "
-                    "the meantime, I'll remove it from your notes list.",
+                    "This note was imported incorrectly from another bot and cannot be used. "
+                    "Save it again. I will remove it from the notes list.",
                 )
                 sql.rm_note(note_chat_id, notename)
             else:
                 await message.reply_text(
-                    "This note could not be sent, as it is incorrectly formatted. Ask in "
-                    f"@{SUPPORT_CHAT} if you can't figure out why!",
+                    "This note could not be sent because it is incorrectly formatted. "
+                    f"Ask in @{SUPPORT_CHAT} for help.",
                 )
                 LOGGER.exception(
                     "Could not parse message #%s in chat %s",
@@ -209,7 +207,7 @@ async def get(
                 LOGGER.warning("Message was: %s", str(note.value))
         return
     elif show_none:
-        await message.reply_text("This note doesn't exist")
+        await message.reply_text("That note does not exist.")
 
 
 @on_message(filters.command("get"), chained=True)
@@ -235,7 +233,7 @@ async def cmd_get(client, message: Message):
             connected_chat=connected_chat,
         )
     else:
-        await message.reply_text("Get rekt")
+        await message.reply_text("Provide a note name.")
 
 
 @on_message(filters.regex(r"^#[^\s]+"), chained=True)
@@ -262,7 +260,7 @@ async def slash_get(client, msg: Message):
             client, msg, note_name, show_none=False, connected_chat=connected_chat
         )
     except IndexError:
-        await msg.reply_text("Wrong Note ID 😾")
+        await msg.reply_text("Wrong note ID.")
 
 
 @on_message(filters.command("save"), chained=True)
@@ -272,13 +270,13 @@ async def save(client, msg: Message):
     chat_id = msg.chat.id
     args = msg.command[1:] if len(msg.command) > 1 else []
     if len(args) < 1:
-        await msg.reply_text("You should give the note a name.")
+        await msg.reply_text("Provide a name for the note.")
         return
 
     note_name, text, data_type, content, buttons = get_note_type(msg)
     note_name = note_name.lower()
     if data_type is None:
-        await msg.reply_text("Dude, there's no note content")
+        await msg.reply_text("The note has no content.")
         return
 
     sql.add_note_to_db(
@@ -291,7 +289,7 @@ async def save(client, msg: Message):
     )
 
     await msg.reply_text(
-        f"Yas! Added `{note_name}`.\nGet it with /get `{note_name}`, or `#{note_name}`",
+        f"Added `{note_name}`.\nGet it with /get `{note_name}` or #{note_name}.",
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -303,17 +301,13 @@ async def save(client, msg: Message):
     ):
         if text:
             await msg.reply_text(
-                "Seems like you're trying to save a message from a client. Unfortunately, "
-                "bots can't forward bot messages, so I can't save the exact message. "
-                "\nI'll save all the text I can, but if you want more, you'll have to "
-                "forward the message yourself, and then save it.",
+                "I cannot save a bot message as-is. I will save the text I can read. "
+                "To save the full message, forward it yourself and save that.",
             )
         else:
             await msg.reply_text(
-                "Bots are kinda handicapped by telegram, making it hard for bots to "
-                "interact with other bots, so I can't save this message "
-                "like I usually would - do you mind forwarding it and "
-                "then saving that new message? Thanks!",
+                "I cannot save messages from other bots. Forward the message and "
+                "save that instead.",
             )
         return
 
@@ -328,9 +322,9 @@ async def clear(client, message: Message):
         notename = args[0].lower()
 
         if sql.rm_note(chat_id, notename):
-            await message.reply_text("Successfully removed note.")
+            await message.reply_text("Note removed.")
         else:
-            await message.reply_text("That's not a note in my database!")
+            await message.reply_text("That is not a saved note.")
 
 
 @on_message(*disableable("removeallnotes"), chained=True)
@@ -340,7 +334,7 @@ async def clearall(client, message: Message):
     member = await client.get_chat_member(chat.id, user.id)
     if member.status != ChatMemberStatus.OWNER and user.id not in DRAGONS:
         await message.reply_text(
-            "Only the chat owner can clear all notes at once.",
+            "Only the chat owner can clear all notes.",
         )
     else:
         buttons = InlineKeyboardMarkup(
@@ -362,7 +356,7 @@ async def clearall(client, message: Message):
             ],
         )
         await message.reply_text(
-            f"Are you sure you would like to clear ALL notes in {escape_markdown(chat.title)}? This action cannot be undone.",
+            f"Delete all notes in {escape_markdown(chat.title)}? This cannot be undone.",
             reply_markup=buttons,
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -389,16 +383,16 @@ async def clearall_btn(client, query: CallbackQuery):
             await query.answer("Only the owner of the chat can do this.")
 
         if member.status == ChatMemberStatus.MEMBER:
-            await query.answer("You need to be admin to do this.")
+            await query.answer("You need to be an admin to do this.")
     elif query.data == "notes_cancel":
         if member.status == ChatMemberStatus.OWNER or query.from_user.id in DRAGONS:
-            await message.edit_text("Clearing of all notes has been cancelled.")
+            await message.edit_text("Note deletion cancelled.")
             await query.answer()
             return
         if member.status == ChatMemberStatus.ADMINISTRATOR:
             await query.answer("Only the owner of the chat can do this.")
         if member.status == ChatMemberStatus.MEMBER:
-            await query.answer("You need to be admin to do this.")
+            await query.answer("You need to be an admin to do this.")
 
 
 @on_message(*disableable(["notes", "saved"], admin_ok=True), chained=True)
@@ -407,7 +401,7 @@ async def list_notes(client, message: Message):
     chat_id = message.chat.id
     note_list = sql.get_all_chat_notes(chat_id)
     notes = len(note_list) + 1
-    msg = "Get note by `/notenumber` or `#notename` \n\n  *ID*    *Note* \n"
+    msg = "Get a note with /notenumber or #notename.\n\nID    Note\n"
     for note_id, note in zip(range(1, notes), note_list, strict=False):
         if note_id < 10:
             note_name = f"`{note_id:2}.`  `#{(note.name.lower())}`\n"
@@ -420,9 +414,9 @@ async def list_notes(client, message: Message):
 
     if not note_list:
         try:
-            await message.reply_text("No notes in this chat!")
+            await message.reply_text("No notes in this chat.")
         except RPCError:
-            await message.reply_text("No notes in this chat!")
+            await message.reply_text("No notes in this chat.")
 
     elif len(msg) != 0:
         await message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
@@ -557,9 +551,8 @@ async def __import_data__(chat_id, data, message: Message):
                 chat_id,
                 document=output,
                 file_name="failed_imports.txt",
-                caption="These files/photos failed to import due to originating "
-                "from another client. This is a Telegram API restriction, and can't "
-                "be avoided. Sorry for the inconvenience!",
+                caption="These files and photos could not be imported from another "
+                "client. Telegram's API does not allow it.",
                 message_thread_id=(
                     message.message_thread_id if message.chat.is_forum else None
                 ),
@@ -593,30 +586,27 @@ def __chat_settings__(chat_id, user_id):
 
 
 __help__ = """
- » /get <notename> : get the note with this notename
- » #<notename> : same as /get
- » /notes or /saved : list all saved notes in this chat
- » /number : Will pull the note of that number in the list
- ➠ If you would like to retrieve the contents of a note without any formatting, use `/get <notename> noformat`. This can \
-be useful when updating a current note
+/get <notename>: Get a saved note.
+#<notename>: Get a saved note.
+/notes or /saved: List saved notes in this chat.
+/number: Get a note by its number in the list.
+/get <notename> noformat: Get a note without formatting.
 
-*Admins only:*
- » /save <notename> <notedata> : saves notedata as a note with name notename
- ➠ A button can be added to a note by using standard markdown link syntax - the link should just be prepended with a \
-`buttonurl:` section, as such: `[somelink](buttonurl:example.com)`.
- » /save <notename> : save the replied message as a note with name notename
- Separate different replies with `%%%` to get random notes
- ➠ *Example:*
- `/save notename
- Reply 1
- %%%
- Reply 2
- %%%
- Reply 3`
- » /clear <notename>: clear note with this name
- » /removeallnotes: removes all notes from the group
- ➠ *Note:* Note names are case-insensitive, and they are automatically converted to lowercase before getting saved.
-
+Admin only:
+/save <notename> <notedata>: Save text as a note.
+/save <notename>: Save the replied message as a note.
+Add buttons with markdown link syntax, prefixed with buttonurl:, for example [somelink](buttonurl:example.com).
+Separate replies with %%% to make a note pick one at random.
+Example:
+/save notename
+Reply 1
+%%%
+Reply 2
+%%%
+Reply 3
+/clear <notename>: Delete a note.
+/removeallnotes: Delete all notes in the group.
+Note names are case-insensitive and are saved in lowercase.
 """
 
-__mod_name__ = "NOTES"
+__mod_name__ = "Notes"

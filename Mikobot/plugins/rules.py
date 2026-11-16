@@ -30,8 +30,7 @@ async def send_rules(client, message, chat_id, from_pm=False):
         if from_pm:
             await client.send_message(
                 user.id,
-                "The rules shortcut for this chat hasn't been set properly! Ask admins to "
-                "fix it.\nMaybe they forgot the hyphen in the ID",
+                "The rules shortcut for this chat is not set. Ask an admin to fix it.",
             )
             return
         else:
@@ -50,8 +49,7 @@ async def send_rules(client, message, chat_id, from_pm=False):
     elif from_pm:
         await client.send_message(
             user.id,
-            "The group admins haven't set any rules for this chat yet. "
-            "This probably doesn't mean it's lawless though...!",
+            "No rules have been set for this chat.",
         )
     elif rules and reply_msg and not reply_msg.forum_topic_created:
         await reply_msg.reply_text(
@@ -60,7 +58,7 @@ async def send_rules(client, message, chat_id, from_pm=False):
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="RULES",
+                            text="Rules",
                             url=f"t.me/{BOT_USERNAME}?start={chat_id}",
                             style=ButtonStyle.PRIMARY,
                         ),
@@ -75,7 +73,7 @@ async def send_rules(client, message, chat_id, from_pm=False):
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="RULES",
+                            text="Rules",
                             url=f"t.me/{BOT_USERNAME}?start={chat_id}",
                             style=ButtonStyle.PRIMARY,
                         ),
@@ -85,8 +83,7 @@ async def send_rules(client, message, chat_id, from_pm=False):
         )
     else:
         await message.reply_text(
-            "The group admins haven't set any rules for this chat yet. "
-            "This probably doesn't mean it's lawless though...!",
+            "No rules have been set for this chat.",
         )
 
 
@@ -114,7 +111,7 @@ async def set_rules(client, message: Message):
 @check_admin(is_user=True)
 async def clear_rules(client, message: Message):
     sql.set_rules(message.chat.id, "")
-    await message.reply_text("Successfully cleared rules!")
+    await message.reply_text("Rules cleared.")
 
 
 def __stats__():
@@ -135,12 +132,12 @@ def __chat_settings__(chat_id, user_id):
 
 
 __help__ = """
-➠ /rules: Get the rules for this chat.
+/rules: Get the rules for this chat.
 
-➠ *Admins only*:
-» /setrules <your rules here>: Set the rules for this chat.
+Admin only:
+/setrules <rules>: Set the rules for this chat.
 
-» /clearrules: Clear the rules for this chat.
+/clearrules: Clear the rules for this chat.
 """
 
-__mod_name__ = "RULES"
+__mod_name__ = "Rules"

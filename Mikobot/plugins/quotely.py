@@ -371,9 +371,9 @@ async def quott_(event):
             reply = None
 
     if not reply:
-        return await event.reply("Please reply to a message.")
+        return await event.reply("Reply to a message.")
 
-    msg = await event.reply("Creating quote, please wait.")
+    msg = await event.reply("Creating quote.")
     replied_to, reply_ = None, None
 
     if match:
@@ -477,18 +477,18 @@ async def quott_(event):
     return message
 
 
-__mod_name__ = "QUOTELY"
+__mod_name__ = "Quotely"
 
-__help__ = """   
-»  /q : Create quote sticker.
+__help__ = """
+/q: Create a quote sticker.
 
-» /q r : Get replied quote sticker.
+/q r: Quote the message you replied to.
 
-» /q 2 ᴛᴏ 8 : Get multiple quotes.
+/q 2 to 8: Create multiple quotes.
 
-» /q < any colour name > : Create colored quote sticker.
+/q <colour>: Create a quote sticker with that background colour.
 
-➠ Example:
+Example:
 
-» /q red, /q blue etc.
+/q red, /q blue.
 """

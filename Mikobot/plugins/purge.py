@@ -13,7 +13,7 @@ from Mikobot.utils.can_restrict import can_restrict
 @can_restrict
 async def purge(c: app, m: Message):
     if m.chat.type != ChatType.SUPERGROUP:
-        await m.reply_text(text="Cannot purge messages in a basic group")
+        await m.reply_text(text="Cannot purge messages in a basic group.")
         return
 
     if m.reply_to_message:
@@ -35,23 +35,23 @@ async def purge(c: app, m: Message):
             await m.delete()
         except MessageDeleteForbidden:
             await m.reply_text(
-                text="Cannot delete all messages. The messages may be too old, I might not have delete rights, or this might not be a supergroup."
+                text="Could not delete all messages. The messages may be too old, I may lack delete rights, or this may not be a supergroup."
             )
             return
         except RPCError as ef:
             await m.reply_text(
-                text=f"""Some error occurred, report to @{SUPPORT_CHAT}
+                text=f"""An error occurred. Report it to @{SUPPORT_CHAT}
 
       <b>Error:</b> <code>{ef}</code>"""
             )
 
         count_del_msg = len(message_ids)
 
-        z = await m.reply_text(text=f"Deleted <i>{count_del_msg}</i> messages")
+        z = await m.reply_text(text=f"Deleted <i>{count_del_msg}</i> messages.")
         await sleep(3)
         await z.delete()
         return
-    await m.reply_text("Reply to a message to start purge!")
+    await m.reply_text("Reply to a message to start a purge.")
     return
 
 
@@ -59,7 +59,7 @@ async def purge(c: app, m: Message):
 @can_restrict
 async def spurge(c: app, m: Message):
     if m.chat.type != ChatType.SUPERGROUP:
-        await m.reply_text(text="Cannot purge messages in a basic group")
+        await m.reply_text(text="Cannot purge messages in a basic group.")
         return
 
     if m.reply_to_message:
@@ -81,17 +81,17 @@ async def spurge(c: app, m: Message):
             await m.delete()
         except MessageDeleteForbidden:
             await m.reply_text(
-                text="Cannot delete all messages. The messages may be too old, I might not have delete rights, or this might not be a supergroup."
+                text="Could not delete all messages. The messages may be too old, I may lack delete rights, or this may not be a supergroup."
             )
             return
         except RPCError as ef:
             await m.reply_text(
-                text=f"""Some error occurred, report to @{SUPPORT_CHAT}
+                text=f"""An error occurred. Report it to @{SUPPORT_CHAT}
 
       <b>Error:</b> <code>{ef}</code>"""
             )
         return
-    await m.reply_text("Reply to a message to start spurge!")
+    await m.reply_text("Reply to a message to start a silent purge.")
     return
 
 
@@ -111,17 +111,17 @@ async def del_msg(c: app, m: Message):
             message_ids=m.reply_to_message.id,
         )
     else:
-        await m.reply_text(text="What do you wanna delete?")
+        await m.reply_text(text="What do you want to delete?")
     return
 
 
 __help__ = """
-❗️*Purge*
+Purge
 
-» /purge: Deletes messages up to the replied message.
+/purge: Delete messages up to the replied message.
 
-» /spurge: Deletes messages up to the replied message without a success message.
+/spurge: Delete messages up to the replied message without a success message.
 
-» /del: Deletes a single message, used as a reply to a message."""
+/del: Delete a single message. Use as a reply to that message."""
 
-__mod_name__ = "PURGE"
+__mod_name__ = "Purge"

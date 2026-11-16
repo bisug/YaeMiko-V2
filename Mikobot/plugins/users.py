@@ -55,7 +55,7 @@ async def broadcast_cmd(client: Client, message: Message):
 
     if user_id not in [OWNER_ID] + DEV_USERS:
         await message.reply_text(
-            "You are not authorized to use this command. Only the owner and authorized users can use it."
+            "Only the owner and authorized users can use this command."
         )
         return
 
@@ -64,19 +64,17 @@ async def broadcast_cmd(client: Client, message: Message):
     )
     if not targets:
         return await message.reply_text(
-            "<b>GLOBALCASTING COMMANDS</b>\n"
-            "-user : broadcast to users\n"
-            "-group : broadcast to groups\n"
-            "-all : broadcast to users and groups\n"
-            "Ex: <code>/gcast -all message</code> or reply with "
+            "<b>Broadcast commands</b>\n"
+            "-user: Broadcast to users.\n"
+            "-group: Broadcast to groups.\n"
+            "-all: Broadcast to users and groups.\n"
+            "Example: <code>/gcast -all message</code> or reply with "
             "<code>/gcast -all</code>"
         )
     if content is None:
-        return await message.reply_text(
-            "<b>Please provide a message or reply to a message</b>"
-        )
+        return await message.reply_text("<b>Provide a message or reply to one.</b>")
 
-    tex = await message.reply_text("<code>Starting global broadcast...</code>")
+    tex = await message.reply_text("<code>Starting global broadcast.</code>")
 
     usersss = 0
     chatttt = 0
@@ -121,7 +119,7 @@ async def broadcast_cmd(client: Client, message: Message):
         chatttt, cerror = await fan_out([chat.chat_id for chat in chats])
 
     await tex.edit_text(
-        f"<b>Message Successfully Sent</b> \nTotal Users: <code>{usersss}</code> \nFailed Users: <code>{uerror}</code> \nTotal GroupChats: <code>{chatttt}</code> \nFailed GroupChats: <code>{cerror}</code>"
+        f"<b>Broadcast sent</b>\nUsers: <code>{usersss}</code>\nFailed users: <code>{uerror}</code>\nGroups: <code>{chatttt}</code>\nFailed groups: <code>{cerror}</code>"
     )
 
 
@@ -289,7 +287,7 @@ async def chats(client: Client, message: Message):
         output.name = "groups_list.txt"
         await message.reply_document(
             document=output,
-            caption="Here be the list of groups in my database.",
+            caption="Groups in the database.",
         )
 
 
@@ -324,4 +322,4 @@ def __migrate__(old_chat_id, new_chat_id):
     locale_sql.migrate_chat(old_chat_id, new_chat_id)
 
 
-__mod_name__ = "USERS"
+__mod_name__ = "Users"

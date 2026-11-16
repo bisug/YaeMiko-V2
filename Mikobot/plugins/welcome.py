@@ -168,7 +168,7 @@ async def member_has_joined(client, member: ChatMemberUpdated):
         return
     user = member.new_chat_member.user if member.new_chat_member else member.from_user
     if user.id in SUPPORT_STAFF:
-        await client.send_message(member.chat.id, "**Global Admins Joined The Chat!**")
+        await client.send_message(member.chat.id, "Global admin joined the chat.")
         return
     elif user.is_bot:
         return
@@ -214,7 +214,7 @@ async def member_has_joined(client, member: ChatMemberUpdated):
                     [
                         [
                             IB(
-                                "🔗 USER",
+                                "User profile",
                                 url=f"https://t.me/{user_username}",
                                 style=KButtonStyle.PRIMARY,
                             )
@@ -224,7 +224,7 @@ async def member_has_joined(client, member: ChatMemberUpdated):
                 sent = await client.send_photo(
                     member.chat.id,
                     photo=welcomeimg,
-                    caption=f"**𝗛𝗲𝘆❗️{mention}, 𝗪𝗲𝗹𝗰𝗼𝗺𝗲 𝗧𝗼 {member.chat.title} 𝗚𝗿𝗼𝘂𝗽.**\n\n**𝗜𝗗 : {user_id}**\n**𝗗𝗔𝗧𝗘 𝗝𝗢𝗜𝗡𝗘𝗗 : {joined_date}**",
+                    caption=f"Welcome, {mention}, to {member.chat.title}.\n\nID: {user_id}\nDate joined: {joined_date}",
                     reply_markup=inline_keyboard,
                 )
                 if sent:
@@ -351,13 +351,13 @@ async def send(source_message: Message, text: str, keyboard, backup_message):
                 msg = await client.send_message(
                     chat.id,
                     backup_message
-                    + "\nNote: The current message has an invalid URL in one of its buttons. Please update.",
+                    + "\nThe current message has an invalid URL in a button. Update it.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             except RPCError:
                 msg = await source_message.reply_text(
                     backup_message
-                    + "\nNote: The current message has an invalid URL in one of its buttons. Please update.",
+                    + "\nThe current message has an invalid URL in a button. Update it.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
         elif "unsupported url protocol" in err_str:
@@ -365,13 +365,13 @@ async def send(source_message: Message, text: str, keyboard, backup_message):
                 msg = await client.send_message(
                     chat.id,
                     backup_message
-                    + "\nNote: The current message has buttons which use URL protocols that are unsupported by Telegram. Please update.",
+                    + "\nThe current message uses URL protocols Telegram does not support. Update it.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             except RPCError:
                 msg = await source_message.reply_text(
                     backup_message
-                    + "\nNote: The current message has buttons which use URL protocols that are unsupported by Telegram. Please update.",
+                    + "\nThe current message uses URL protocols Telegram does not support. Update it.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
         elif "wrong url host" in err_str:
@@ -379,13 +379,13 @@ async def send(source_message: Message, text: str, keyboard, backup_message):
                 msg = await client.send_message(
                     chat.id,
                     backup_message
-                    + "\nNote: The current message has some bad URLs. Please update.",
+                    + "\nThe current message has invalid URLs. Update it.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             except RPCError:
                 msg = await source_message.reply_text(
                     backup_message
-                    + "\nNote: The current message has some bad URLs. Please update.",
+                    + "\nThe current message has invalid URLs. Update it.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             LOGGER.exception("Could not parse welcome message with invalid URL host")
@@ -399,13 +399,13 @@ async def send(source_message: Message, text: str, keyboard, backup_message):
                 msg = await client.send_message(
                     chat.id,
                     backup_message
-                    + "\nNote: An error occurred when sending the custom message. Please update.",
+                    + "\nThe custom message could not be sent. Update it.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             except RPCError:
                 msg = await source_message.reply_text(
                     backup_message
-                    + "\nNote: An error occurred when sending the custom message. Please update.",
+                    + "\nThe custom message could not be sent. Update it.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             LOGGER.exception("Failed to send custom welcome message: %s", excp)
@@ -431,9 +431,7 @@ async def new_member(client, message: Message):
         if new_mem.id == client.me.id and not ALLOW_CHATS:
             with suppress(RPCError):
                 await message.reply_text(
-                    "Groups are disabled for {}, I'm outta here.".format(
-                        client.me.first_name
-                    )
+                    "Groups are disabled for {}. Leaving.".format(client.me.first_name)
                 )
             await client.leave_chat(message.chat.id)
             return
@@ -460,7 +458,7 @@ async def new_member(client, message: Message):
 
             if new_mem.id == OWNER_ID:
                 await message.reply_text(
-                    "Oh, darling, I have searched for you everywhere.",
+                    "The owner joined.",
                 )
                 welcome_log = (
                     "{}\n#USER_JOINED\nBot owner just joined the group".format(
@@ -471,7 +469,7 @@ async def new_member(client, message: Message):
 
             elif new_mem.id in DEV_USERS:
                 await message.reply_text(
-                    "Be cool! A member of the team just joined.",
+                    "A team member joined.",
                 )
                 welcome_log = "{}\n#USER_JOINED\nBot dev just joined the group".format(
                     html.escape(chat.title)
@@ -480,7 +478,7 @@ async def new_member(client, message: Message):
 
             elif new_mem.id in DRAGONS:
                 await message.reply_text(
-                    "Whoa! A dragon disaster just joined! Stay alert!",
+                    "A sudo user joined.",
                 )
                 welcome_log = "{}\n#USER_JOINED\nBot sudo just joined the group".format(
                     html.escape(chat.title)
@@ -544,7 +542,7 @@ async def new_member(client, message: Message):
                                 exc_info=True,
                             )
                 await message.reply_text(
-                    "I feel like I'm gonna suffocate in here.",
+                    "I cannot join this group.",
                 )
                 continue
 
@@ -678,14 +676,14 @@ async def new_member(client, message: Message):
                         user.id, html.escape(new_mem.first_name)
                     )
                     message = await msg.reply_text(
-                        "{}\nYou have 120 seconds to prove you're human.".format(
+                        "{}\nYou have 120 seconds to verify you are human.".format(
                             new_join_mem
                         ),
                         reply_markup=InlineKeyboardMarkup(
                             inline_keyboard=[
                                 [
                                     InlineKeyboardButton(
-                                        text="YES, I'M HUMAN",
+                                        text="I am human",
                                         callback_data="user_join_({})".format(
                                             new_mem.id
                                         ),
@@ -796,7 +794,7 @@ async def check_not_bot(member, chat_id, message_id):
 
         try:
             await client.edit_message_text(
-                "Kicks user\nThey can always rejoin and try.",
+                "User kicked. They can rejoin and try again.",
                 chat_id=chat_id,
                 message_id=message_id,
             )
@@ -837,13 +835,13 @@ async def left_member(client, message: Message):
 
             if left_mem.id == OWNER_ID:
                 await message.reply_text(
-                    "My master left..",
+                    "The owner left.",
                 )
                 return
 
             elif left_mem.id in DEV_USERS:
                 await message.reply_text(
-                    "see you later pro!",
+                    "Goodbye.",
                 )
                 return
 
@@ -912,8 +910,8 @@ async def welcome(client, message: Message):
             sql.get_welc_pref, chat.id
         )
         await message.reply_text(
-            f"This chat has its welcome setting set to: `{pref}`.\n"
-            f"The welcome message (not filling the {{}}) is:",
+            f"Welcome setting: `{pref}`.\n"
+            f"The welcome message (with `{{}}` left unfilled):",
             parse_mode=ParseMode.MARKDOWN,
         )
 
@@ -949,18 +947,18 @@ async def welcome(client, message: Message):
         if args[0].lower() in ("on", "yes"):
             await asyncio.to_thread(sql.set_welc_preference, str(chat.id), True)
             await message.reply_text(
-                "Okay! I'll greet members when they join.",
+                "Welcome messages enabled.",
             )
 
         elif args[0].lower() in ("off", "no"):
             await asyncio.to_thread(sql.set_welc_preference, str(chat.id), False)
             await message.reply_text(
-                "I'll go loaf around and not welcome anyone then.",
+                "Welcome messages disabled.",
             )
 
         else:
             await message.reply_text(
-                "I understand 'on/yes' or 'off/no' only!",
+                "Use on/yes or off/no.",
             )
 
 
@@ -976,8 +974,8 @@ async def goodbye(client, message: Message):
             sql.get_gdbye_pref, chat.id
         )
         await message.reply_text(
-            f"This chat has its goodbye setting set to: `{pref}`.\n"
-            f"The goodbye message (not filling the {{}}) is:",
+            f"Goodbye setting: `{pref}`.\n"
+            f"The goodbye message (with `{{}}` left unfilled):",
             parse_mode=ParseMode.MARKDOWN,
         )
 
@@ -1004,15 +1002,15 @@ async def goodbye(client, message: Message):
     elif len(args) >= 1:
         if args[0].lower() in ("on", "yes"):
             await asyncio.to_thread(sql.set_gdbye_preference, str(chat.id), True)
-            await message.reply_text("Okay, it's set to on!")
+            await message.reply_text("Goodbye messages enabled.")
 
         elif args[0].lower() in ("off", "no"):
             await asyncio.to_thread(sql.set_gdbye_preference, str(chat.id), False)
-            await message.reply_text("Okay, it's set to off!")
+            await message.reply_text("Goodbye messages disabled.")
 
         else:
             await message.reply_text(
-                "I understand 'on/yes' or 'off/no' only!",
+                "Use on/yes or off/no.",
             )
 
 
@@ -1027,13 +1025,13 @@ async def set_welcome(client, message: Message):
     text, data_type, content, buttons = get_welcome_type(msg)
 
     if data_type is None:
-        await msg.reply_text("You didn't specify what to reply with!")
+        await msg.reply_text("Provide text or reply to a message.")
         return ""
 
     await asyncio.to_thread(
         sql.set_custom_welcome, chat.id, content, text, data_type, buttons
     )
-    await msg.reply_text("Successfully set custom welcome message!")
+    await msg.reply_text("Custom welcome message set.")
 
     return (
         f"<b>{html.escape(chat.title)}:</b>\n"
@@ -1057,7 +1055,7 @@ async def reset_welcome(client, message: Message):
         sql.DEFAULT_WELCOME,
         sql.Types.TEXT,
     )
-    await message.reply_text("Successfully reset welcome message to default!")
+    await message.reply_text("Welcome message reset to default.")
 
     return (
         f"<b>{html.escape(chat.title)}:</b>\n"
@@ -1077,13 +1075,13 @@ async def set_goodbye(client, message: Message):
     text, data_type, content, buttons = get_welcome_type(msg)
 
     if data_type is None:
-        await msg.reply_text("You didn't specify what to reply with!")
+        await msg.reply_text("Provide text or reply to a message.")
         return ""
 
     await asyncio.to_thread(
         sql.set_custom_gdbye, chat.id, content or text, data_type, buttons
     )
-    await msg.reply_text("Successfully set custom goodbye message!")
+    await msg.reply_text("Custom goodbye message set.")
     return (
         f"<b>{html.escape(chat.title)}:</b>\n"
         f"#SET_GOODBYE\n"
@@ -1103,7 +1101,7 @@ async def reset_goodbye(client, message: Message) -> str:
         sql.set_custom_gdbye, chat.id, sql.DEFAULT_GOODBYE, sql.Types.TEXT
     )
     await message.reply_text(
-        "Successfully reset goodbye message to default!",
+        "Goodbye message reset to default.",
     )
 
     return (
@@ -1126,7 +1124,7 @@ async def welcomemute(client, message: Message) -> str:
     if len(args) >= 1:
         if args[0].lower() in ("off", "no"):
             await asyncio.to_thread(sql.set_welcome_mutes, chat.id, "off")
-            await msg.reply_text("I will no longer mute people on joining!")
+            await msg.reply_text("Welcome muting disabled.")
             return (
                 f"<b>{html.escape(chat.title)}:</b>\n"
                 f"#WELCOME_MUTE\n"
@@ -1136,35 +1134,35 @@ async def welcomemute(client, message: Message) -> str:
         elif args[0].lower() in ["soft"]:
             await asyncio.to_thread(sql.set_welcome_mutes, chat.id, "soft")
             await msg.reply_text(
-                "I will restrict users' permission to send media for 24 hours.",
+                "New members cannot send media for 24 hours.",
             )
             return (
                 f"<b>{html.escape(chat.title)}:</b>\n"
-                f"#𝐖𝐄𝐋𝐂𝐎𝐌𝐄_𝐌𝐔𝐓𝐄\n"
+                f"#WELCOME_MUTE\n"
                 f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
                 f"Has toggled welcome mute to <b>soft</b>."
             )
         elif args[0].lower() in ["strong"]:
             await asyncio.to_thread(sql.set_welcome_mutes, chat.id, "strong")
             await msg.reply_text(
-                "I will now mute people when they join until they prove they're not a client. They will have 120 seconds before they get kicked.",
+                "New members are muted until they verify. They have 120 seconds before being kicked.",
             )
             return (
                 f"<b>{html.escape(chat.title)}:</b>\n"
-                f"#𝐖𝐄𝐋𝐂𝐎𝐌𝐄_𝐌𝐔𝐓𝐄\n"
+                f"#WELCOME_MUTE\n"
                 f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
                 f"Has toggled welcome mute to <b>strong</b>."
             )
         else:
             await msg.reply_text(
-                "Please enter <code>off</code>/<code>no</code>/<code>soft</code>/<code>strong</code>!",
+                "Use <code>off</code>, <code>no</code>, <code>soft</code>, or <code>strong</code>.",
                 parse_mode=ParseMode.HTML,
             )
             return ""
     else:
         curr_setting = await asyncio.to_thread(sql.welcome_mutes, chat.id)
         reply = (
-            "Give me a setting!\nChoose one out of: <code>off</code>/<code>no</code> or <code>soft</code> or <code>strong</code> only! \n"
+            "Choose a setting: <code>off</code>, <code>no</code>, <code>soft</code>, or <code>strong</code>.\n"
             f"Current setting: <code>{curr_setting}</code>"
         )
         await msg.reply_text(reply, parse_mode=ParseMode.HTML)
@@ -1183,20 +1181,20 @@ async def clean_welcome(client, message: Message) -> str:
         clean_pref = await asyncio.to_thread(sql.is_clean_welcome_enabled, chat.id)
         if clean_pref:
             await message.reply_text(
-                "I should be deleting welcome messages up to two days old.",
+                "Old welcome messages are deleted.",
             )
         else:
             await message.reply_text(
-                "I'm currently not deleting old welcome messages!",
+                "Old welcome messages are not deleted.",
             )
         return ""
 
     if args[0].lower() in ("on", "yes"):
         await asyncio.to_thread(sql.set_clean_welcome_enabled, str(chat.id), True)
-        await message.reply_text("I'll try to delete old welcome messages!")
+        await message.reply_text("Old welcome messages will be deleted.")
         return (
             f"<b>{html.escape(chat.title)}:</b>\n"
-            f"#𝐂𝐋𝐄𝐀𝐍_𝐖𝐄𝐋𝐂𝐎𝐌𝐄\n"
+            f"#CLEAN_WELCOME\n"
             f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
             "Has toggled clean welcomes to <code>on</code>."
         )
@@ -1205,13 +1203,13 @@ async def clean_welcome(client, message: Message) -> str:
         await message.reply_text("I won't delete old welcome messages.")
         return (
             f"<b>{html.escape(chat.title)}:</b>\n"
-            f"#𝐂𝐋𝐄𝐀𝐍_𝐖𝐄𝐋𝐂𝐎𝐌𝐄\n"
+            f"#CLEAN_WELCOME\n"
             f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
             "Has toggled clean welcomes to <code>off</code>."
         )
     else:
         await message.reply_text(
-            "I understand 'on/yes' or 'off/no' only!",
+            "Use on/yes or off/no.",
         )
         return ""
 
@@ -1330,7 +1328,7 @@ async def nocleanservice(client, message: Message) -> str:
 
     if not args:
         await message.reply_text(
-            "Give me the service types to stop cleaning.",
+            "Provide the service types to stop cleaning.",
             parse_mode=ParseMode.HTML,
         )
         return ""
@@ -1366,7 +1364,7 @@ async def cleanservicetypes(client, message: Message) -> str:
     await message.reply_text(
         "Service types you can use:\n"
         + "\n".join(
-            f"\n <code>{name}</code> — {desc}"
+            f"\n <code>{name}</code>: {desc}"
             for name, desc in (
                 ("all", "Every service message"),
                 ("join", "When a new user joins, or is added"),
@@ -1410,7 +1408,7 @@ async def user_button(client, query: CallbackQuery):
             )
         member_dict["status"] = True
         VERIFIED_USER_WAITLIST[waitlist_key] = member_dict
-        await query.answer(text="Yeet! You're a human, unmuted!")
+        await query.answer(text="Verification complete. You are unmuted.")
         await client.restrict_chat_member(
             chat.id,
             user.id,
@@ -1472,16 +1470,15 @@ async def user_button(client, query: CallbackQuery):
                     )
 
     else:
-        await query.answer(text="You're not allowed to do this!")
+        await query.answer(text="You are not allowed to do this.")
 
 
 WELC_MUTE_HELP_TXT = (
-    "You can get the bot to mute new people who join your group and hence prevent spambots from flooding your group. "
-    "The following options are possible:\n"
-    "• `/welcomemute soft`: Restricts new members from sending media for 24 hours.\n"
-    "• `/welcomemute strong`: Mutes new members until they tap on a button, thereby verifying they're human.\n"
-    "• `/welcomemute off`: Turns off welcomemute.\n"
-    "Note: Strong mode kicks a user from the chat if they don't verify in 120 seconds. They can always rejoin though."
+    "New members can be muted when they join to prevent spam. Options:\n"
+    "• `/welcomemute soft`: Restrict new members from sending media for 24 hours.\n"
+    "• `/welcomemute strong`: Mute new members until they verify they are human.\n"
+    "• `/welcomemute off`: Disable welcome muting.\n"
+    "Strong mode kicks a user who does not verify within 120 seconds. They can rejoin."
 )
 
 
@@ -1489,25 +1486,21 @@ WELC_MUTE_HELP_TXT = (
 @check_admin(is_user=True)
 async def welcome_help(client, message: Message):
     WELC_HELP_TXT = (
-        "Your group's welcome/goodbye messages can be personalized in multiple ways. If you want the messages"
-        " to be individually generated, like the default welcome message is, you can use these variables:\n"
-        " • `{first}`: This represents the user's *first* name\n"
-        " • `{last}`: This represents the user's *last* name. Defaults to *first name* if the user has no last name.\n"
-        " • `{fullname}`: This represents the user's *full* name. Defaults to *first name* if the user has no last name.\n"
-        " • `{username}`: This represents the user's *username*. Defaults to a *mention* of the user's"
-        " first name if they have no username.\n"
-        " • `{mention}`: This simply *mentions* a user - tagging them with their first name.\n"
-        " • `{id}`: This represents the user's *ID*\n"
-        " • `{count}`: This represents the user's *member number*.\n"
-        " • `{chatname}`: This represents the *current chat name*.\n"
-        "\nEach variable must be surrounded by `{}` to be replaced.\n"
-        "Welcome messages also support markdown, so you can make any elements bold/italic/code/links. "
-        "Buttons are also supported, so you can add intro buttons."
-        "\nTo create a button linking to your rules, use this: `[rules](buttonurl://t.me/"
-        f"{BOT_USERNAME}?start=group_id)`. Replace `group_id` with your group's ID,"
-        " which you can get from /id. Group IDs usually start with a `-`, so keep the sign."
-        " You can even set images/gifs/videos/voice messages as the welcome message by replying to the desired media,"
-        " and calling `/setwelcome`."
+        "Welcome and goodbye messages can use variables. Each variable must be wrapped in `{}` to be replaced.\n"
+        " • `{first}`: The user's first name.\n"
+        " • `{last}`: The user's last name. Defaults to the first name.\n"
+        " • `{fullname}`: The user's full name. Defaults to the first name.\n"
+        " • `{username}`: The user's username. Defaults to a mention of the first name.\n"
+        " • `{mention}`: A mention that tags the user with their first name.\n"
+        " • `{id}`: The user's ID.\n"
+        " • `{count}`: The user's member number.\n"
+        " • `{chatname}`: The current chat name.\n"
+        "Welcome messages support markdown for bold, italic, code, and links. Buttons are supported too.\n"
+        "To add a rules button, use `[rules](buttonurl://t.me/"
+        f"{BOT_USERNAME}?start=group_id)`. Replace `group_id` with the group ID from /id."
+        " Group IDs start with a `-`, so keep the sign."
+        " You can also set an image, GIF, video, or voice message as the welcome message by replying to it"
+        " and using `/setwelcome`."
     )
 
     await message.reply_text(WELC_HELP_TXT, parse_mode=ParseMode.MARKDOWN)
@@ -1536,35 +1529,32 @@ def __chat_settings__(chat_id, user_id):
 
 
 __help__ = """
-➠ *Admins Only:*
+Admin only:
+Default welcome:
+/dwelcome on: Enable the default welcome template.
+/dwelcome off: Disable the default welcome template.
 
-➠ *Default Welcome CMDS:*
-» /dwelcome on : Enables the default template welcome.
-» /dwelcome off : Disables the default template welcome.
+Welcome and goodbye:
+/welcome <on/off>: Enable or disable welcome messages.
+/welcome: Show the current welcome settings.
+/welcome noformat: Show the current welcome message without formatting.
+/goodbye: Same arguments as /welcome.
+/setwelcome <text>: Set a custom welcome message. Reply to media to use it.
+/setgoodbye <text>: Set a custom goodbye message. Reply to media to use it.
+/resetwelcome: Reset to the default welcome message.
+/resetgoodbye: Reset to the default goodbye message.
+/cleanwelcome <on/off>: Delete the previous welcome message when a member joins.
+/welcomemutehelp: Show information about welcome mutes.
+/cleanservice <on/off/types>: Delete Telegram service messages. Accepts on, off, all, or specific types.
+/nocleanservice <types>: Stop deleting those service types.
+/cleanservicetypes: List all supported service types.
 
-➠ *Normal Welcome CMDS:*
-» /welcome <on/off>: Enable/disable welcome messages.
-» /welcome: Shows current welcome settings.
-» /welcome noformat: Shows current welcome settings, without the formatting - useful to recycle your welcome messages!
-» /goodbye: Same usage and args as /welcome
-» /setwelcome <sometext>: Set a custom welcome message. If used while replying to media, uses that media.
-» /setgoodbye <sometext>: Set a custom goodbye message. If used while replying to media, uses that media.
-» /resetwelcome: Reset to the default welcome message.
-» /resetgoodbye: Reset to the default goodbye message.
-» /cleanwelcome <on/off>: On new member, try to delete the previous welcome message to avoid spamming the chat.
-» /welcomemutehelp: Gives information about welcome mutes.
-» /cleanservice <on/off/types>: Deletes Telegram's service messages. Accepts `on`, `off`, `all`, or specific types.
+Example:
+A user joins, then leaves.
 
-» /nocleanservice <types>: Stop deleting those service types.
-
-» /cleanservicetypes: List every supported service type.
-
-➠ *Example:*
-User joined chat, user left chat.
-
-➠ *Welcome Markdown:*
-» /welcomehelp: View more formatting information for custom welcome/goodbye messages.
+Welcome markdown:
+/welcomehelp: Show more formatting information for custom messages.
 """
 
-__mod_name__ = "WELCOME"
+__mod_name__ = "Welcome"
 __command_list__ = []

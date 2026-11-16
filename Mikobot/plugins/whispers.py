@@ -27,7 +27,7 @@ async def mainwhisper(client, query: InlineQuery):
     if not query.query:
         return await query.answer(
             [],
-            switch_pm_text="Give me a username or ID!",
+            switch_pm_text="Provide a username or ID.",
             switch_pm_parameter="ghelp_whisper",
         )
 
@@ -64,16 +64,16 @@ async def mainwhisper(client, query: InlineQuery):
     answers = [
         InlineQueryResultArticle(
             id=whisperId,
-            title=f"👤 Send a whisper message to {user}!",
-            description="Only they can see it!",
+            title=f"Send a whisper to {user}.",
+            description="Only the recipient can see it.",
             input_message_content=InputTextMessageContent(
-                message_text=f"🔐 A Whisper Message For {user}\nOnly they can see it!"
+                message_text=f"A whisper for {user}\nOnly the recipient can see it."
             ),
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="📩 𝗦𝗵𝗼𝘄 𝗪𝗵𝗶𝘀𝗽𝗲𝗿 📩",
+                            text="Show whisper",
                             callback_data=f"whisper_{whisperId}",
                             style=ButtonStyle.PRIMARY,
                         )
@@ -92,9 +92,7 @@ async def showWhisper(client, callback_query: CallbackQuery):
     whisper = get_whisper(whisperId)
 
     if not whisper:
-        await callback_query.answer(
-            "This whisper is not valid anymore!", show_alert=True
-        )
+        await callback_query.answer("This whisper is no longer valid.", show_alert=True)
         return
 
     userType = whisper["usertype"]
@@ -114,7 +112,7 @@ async def showWhisper(client, callback_query: CallbackQuery):
     ):
         await callback_query.answer(whisper["message"], show_alert=True)
     else:
-        await callback_query.answer("Not your Whisper!", show_alert=True)
+        await callback_query.answer("This whisper is not for you.", show_alert=True)
         return
 
     if not is_sender:
@@ -141,13 +139,13 @@ def parse_user_message(query_text):
 
 
 __help__ = f"""
-➠ *Whisper inline function for secret chats.*
+Send a message only the recipient can see.
 
-➠ *Commands:*
+Example:
 
-» @{BOT_USERNAME} your message @username
-» @{BOT_USERNAME} @username your message
+@{BOT_USERNAME} your message @username
+@{BOT_USERNAME} @username your message
 """
 
-__mod_name__ = "WHISPERS"
+__mod_name__ = "Whispers"
 __command_list__ = []

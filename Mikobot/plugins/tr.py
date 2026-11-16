@@ -107,7 +107,7 @@ async def totranslate(client, message: Message):
             detection = await asyncio.to_thread(trl.detect, text)
             trans_str = await asyncio.to_thread(trl.translate, text, lang_tgt=dest_lang)
             return await message.reply_text(
-                f"📒 *Translated from* `{detection[0]}` to `{dest_lang}`:\n`{trans_str}`",
+                f"*Translated from* `{detection[0]}` to `{dest_lang}`:\n`{trans_str}`",
                 parse_mode=ParseMode.MARKDOWN,
             )
         else:
@@ -115,36 +115,36 @@ async def totranslate(client, message: Message):
                 trl.translate, text, lang_tgt=dest_lang, lang_src=source_lang
             )
             await message.reply_text(
-                f"📒 *Translated from* `{source_lang}` to `{dest_lang}`:\n`{trans_str}`",
+                f"*Translated from* `{source_lang}` to `{dest_lang}`:\n`{trans_str}`",
                 parse_mode=ParseMode.MARKDOWN,
             )
 
     except IndexError:
         await message.reply_text(
-            "Reply to messages or write messages from other languages ​​for translating into the intended language\n\n"
-            "Example: `/tr en-ta` to translate from English to Tamil\n"
-            "Or use: `/tr ta` for automatic detection and translation into Tamil.\n"
-            "See [List of Language Codes](https://t.me/Hydra_Updates/80) for a list of language codes.",
+            "Reply to a message or provide text to translate.\n\n"
+            "Example: `/tr en-ta` translates from English to Tamil.\n"
+            "Or use: `/tr ta` to detect the source language and translate to Tamil.\n"
+            "See [List of Language Codes](https://t.me/Hydra_Updates/80).",
             parse_mode=ParseMode.MARKDOWN,
             link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     except ValueError:
-        await message.reply_text("The intended language is not found!")
+        await message.reply_text("Language not found.")
     else:
         return
 
 
 __help__ = """
-➠ `/tr` or `/tl` (language code) as reply to a long message
+/tr <language code> or /tl <language code>: Reply to a message to translate it.
 
-➠ *Example:*
+Example:
 
-» `/tr en`*:* translates something to English
+/tr en: Translate to English.
 
-» `/tr hi-en`*:* translates Hindi to English
+/tr hi-en: Translate from Hindi to English.
 
-» /echo < text >: echoes the message.
+/echo <text>: Repeat the given text.
 """
 
-__mod_name__ = "TRANSLATOR"
+__mod_name__ = "Translator"
 __command_list__ = ["tr", "tl", "echo"]

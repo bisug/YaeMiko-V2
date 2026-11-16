@@ -99,22 +99,22 @@ async def nekomode_commands(_, event):
 
 
 __help__ = """
-*✨ Sends fun Gifs/Images*
+Sends GIFs and images.
 
-➥ /nekomode on : Enables fun neko mode.
-➥ /nekomode off : Disables fun neko mode.
+/nekomode on: Enable neko mode.
+/nekomode off: Disable neko mode.
 
-» /waifu: sends a random waifu.
-» /neko: sends a random neko.
-» /wallpaper: sends random wallpapers.
-» /tickle: sends random tickle GIFs.
-» /kiss: sends random kissing GIFs.
-» /cuddle: sends random cuddle GIFs.
-» /smug: sends random smug GIFs.
-» /slap: sends random slap GIFs.
-» /hug: sends a random hug GIF.
-» /pat: sends a random pat GIF.
-» /spank: sends a random spank.
+/waifu: Send a random waifu image.
+/neko: Send a random neko image.
+/wallpaper: Send a random wallpaper.
+/tickle: Send a random tickle GIF.
+/kiss: Send a random kissing GIF.
+/cuddle: Send a random cuddle GIF.
+/smug: Send a random smug GIF.
+/slap: Send a random slap GIF.
+/hug: Send a random hug GIF.
+/pat: Send a random pat GIF.
+/spank: Send a random spank image.
 """
 
-__mod_name__ = "NEKO"
+__mod_name__ = "Nekomode"

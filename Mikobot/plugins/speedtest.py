@@ -33,7 +33,7 @@ async def speedtestxyz(client, message: Message):
         ],
     ]
     await message.reply_text(
-        "Select SpeedTest Mode",
+        "Select a speedtest mode.",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
     )
 
@@ -45,7 +45,7 @@ async def speedtestxyz_callback(client, query: CallbackQuery):
         return
 
     if query.from_user.id in DEV_USERS:
-        msg = await query.message.edit_text("Running a speedtest....")
+        msg = await query.message.edit_text("Running a speedtest.")
         import speedtest
 
         try:
@@ -66,7 +66,7 @@ async def speedtestxyz_callback(client, query: CallbackQuery):
             await query.answer("Speedtest failed.", show_alert=True)
             return
 
-        replymsg = "SpeedTest Results:"
+        replymsg = "Speedtest results:"
 
         if query.data == "speedtest_image":
             speedtest_image = await asyncio.to_thread(speed.results.share)
@@ -82,8 +82,8 @@ async def speedtestxyz_callback(client, query: CallbackQuery):
             await query.message.edit_text(replymsg, parse_mode=ParseMode.MARKDOWN)
         await query.answer("Speedtest complete.")
     else:
-        await query.answer("You are required to join Black Bulls to use this command.")
+        await query.answer("You must join Black Bulls to use this command.")
 
 
-__mod_name__ = "SpeedTest"
+__mod_name__ = "Speedtest"
 __command_list__ = ["speedtest"]

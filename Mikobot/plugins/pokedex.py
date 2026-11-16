@@ -314,11 +314,8 @@ async def callback_query_handler(client, query: CallbackQuery) -> None:
 
 
 __help__ = """
-
-🍥 <b>POKÉDEX</b>
-
-➠ <b>Commands:</b>
-» /pokedex &lt;name or ID&gt; — Pokémon overview, stats, moves, species data, and evolution chain
+Commands:
+/pokedex <name or ID>: Show a Pokémon overview, stats, moves, species data, and evolution chain.
 """
 
-__mod_name__ = "POKEDEX"
+__mod_name__ = "Pokedex"

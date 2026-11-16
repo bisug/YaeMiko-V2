@@ -319,20 +319,17 @@ def __chat_settings__(chat_id, user_id):
     return f"Automated messages go to `{topic or 'General'}`."
 
 
-__mod_name__ = "TOPICS"
+__mod_name__ = "Topics"
 
 __help__ = """
-➡ Manage the topics in a forum. Every command needs the manage topics
-permission, which only exists in a forum with topics enabled.
+Manage forum topics. Every command needs the manage topics permission, which only exists in a forum with topics enabled.
 
-» /actiontopic: Show where automated messages are sent.
-» /setactiontopic: Run inside a topic to send greetings and moderation
-notices there instead of to General.
+/actiontopic: Show where automated messages are sent.
+/setactiontopic: Run inside a topic to send greetings and moderation notices there instead of to General.
 
-» /newtopic <name>: Create a topic.
-» /renametopic <name>: Rename the topic you are in.
-» /closetopic: Close the topic you are in. Admins can still post in it.
-» /reopentopic: Reopen the topic you are in.
-» /deletetopic: Delete the topic you are in, after a confirmation. This
-removes every message in it and cannot be undone.
+/newtopic <name>: Create a topic.
+/renametopic <name>: Rename the current topic.
+/closetopic: Close the current topic. Admins can still post in it.
+/reopentopic: Reopen the current topic.
+/deletetopic: Delete the current topic after confirmation. This removes every message in it and cannot be undone.
 """

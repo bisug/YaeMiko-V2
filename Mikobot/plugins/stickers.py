@@ -112,14 +112,14 @@ async def _getvideo(_, message):
             new_file = await _.download_media(file_id, file_name=dest)
             await _.send_video(chat_id, video=new_file)
     else:
-        await message.reply_text("Please reply to a gif for me to get its video.")
+        await message.reply_text("Reply to a GIF to get its video.")
 
 
 @app.on_message(filters.command("stickerid", PREFIX_HANDLER) & filters.reply, group=444)
 async def getstickerid(_, ctx: Message):
     if ctx.reply_to_message.sticker:
         await ctx.reply(
-            "The ID of this sticker is: <code>{stickerid}</code>".format(
+            "Sticker ID: <code>{stickerid}</code>".format(
                 stickerid=ctx.reply_to_message.sticker.file_id
             )
         )
@@ -129,10 +129,12 @@ async def getstickerid(_, ctx: Message):
 @use_chat_lang()
 async def unkangs(self: Client, ctx: Message, strings):
     if not ctx.from_user:
-        return await ctx.reply("You're anon, unkang in my PM")
+        return await ctx.reply(
+            "Use this command in a private chat to remove a sticker."
+        )
     if sticker := ctx.reply_to_message.sticker:
         if str(ctx.from_user.id) not in sticker.set_name:
-            return await ctx.reply("This sticker isn't from your pack, don't do that.")
+            return await ctx.reply("This sticker is not from your pack.")
         pp = await ctx.reply(strings("unkang_msg"))
         try:
             decoded = FileId.decode(sticker.file_id)
@@ -268,7 +270,7 @@ async def kang_sticker(self: Client, ctx: Message, strings):
             elif convert:
                 filename = await convert_video(filename)
                 if filename is False:
-                    return await prog_msg.edit("Error")
+                    return await prog_msg.edit("An error occurred.")
             max_stickers = 50 if animated else 120
             while not packname_found:
                 try:
@@ -450,17 +452,17 @@ async def convert_video(filename: str) -> str:
 @app.on_message(filters.command("mmf"), group=777)
 async def handler(client, message):
     if not message.reply_to_message:
-        await message.reply_text("Reply to an image or a sticker to memify it!")
+        await message.reply_text("Reply to an image or a sticker to add text.")
         return
 
     reply_message = message.reply_to_message
     if not reply_message.media:
-        await message.reply_text("Provide some text please.")
+        await message.reply_text("Provide some text.")
         return
 
     text = " ".join(message.command[1:]).strip()
     if not text:
-        return await message.reply_text("You might want to try `/mmf text`")
+        return await message.reply_text("Use `/mmf text`.")
 
     if (
         reply_message.document
@@ -625,7 +627,7 @@ async def draw_text(image_path, text, output_path=None):
 @app.on_message(filters.command(["stickerinfo", "stinfo"]), group=888)
 async def give_st_info(c: app, m: Message):
     if not m.reply_to_message or not m.reply_to_message.sticker:
-        await m.reply_text("Reply to a sticker")
+        await m.reply_text("Reply to a sticker.")
         return
     st_in = m.reply_to_message.sticker
     st_type = "Normal"
@@ -634,19 +636,19 @@ async def give_st_info(c: app, m: Message):
     elif st_in.is_video:
         st_type = "Video"
     st_to_gib = f"""[Sticker]({m.reply_to_message.link}) info:
-➼ 𝗙𝗜𝗟𝗘 𝗜𝗗 : `{st_in.file_id}`
-➼ 𝗙𝗜𝗟𝗘 𝗡𝗔𝗠𝗘 : {st_in.file_name}
-➼ 𝗙𝗜𝗟𝗘 𝗨𝗡𝗜𝗤𝗨𝗘 𝗜𝗗 : `{st_in.file_unique_id}`
-➼ 𝗗𝗔𝗧𝗘 𝗔𝗡𝗗 𝗧𝗜𝗠𝗘 𝗢𝗙 𝗦𝗧𝗜𝗖𝗞𝗘𝗥 𝗖𝗥𝗘𝗔𝗧𝗘𝗗 : `{st_in.date}`
-➼ 𝗦𝗧𝗜𝗖𝗞𝗘𝗥 𝗧𝗬𝗣𝗘 : `{st_type}`
-➼ 𝗘𝗠𝗢𝗝𝗜 : {st_in.emoji}
-➼ 𝗣𝗔𝗖𝗞 𝗡𝗔𝗠𝗘 : {st_in.set_name}
+File ID: `{st_in.file_id}`
+File name: {st_in.file_name}
+File unique ID: `{st_in.file_unique_id}`
+Created: `{st_in.date}`
+Sticker type: `{st_type}`
+Emoji: {st_in.emoji}
+Pack name: {st_in.set_name}
 """
     kb = IKM(
         [
             [
                 IKB(
-                    "➕ 𝗔𝗱𝗱 𝘀𝘁𝗶𝗰𝗸𝗲𝗿 𝗽𝗮𝗰𝗸",
+                    "Add sticker pack",
                     url=f"https://t.me/addstickers/{st_in.set_name}",
                     style=ButtonStyle.PRIMARY,
                 )
@@ -658,34 +660,22 @@ async def give_st_info(c: app, m: Message):
 
 
 __help__ = """
-➠ *👨‍🏫 User Commands:*
-
-» /kang (/steal) < emoji >: Reply to a sticker or any supported media.
-
-» /pkang: Reply to an image type sticker to get the full pack.
-
-» /stickerinfo (/stinfo) : Reply to any sticker to get its info.
-
-» /stickerid: Reply to a sticker message to get the sticker ID and emoji.
-
-» /stickers < query >: Search for sticker packs based on the given query.
-
-» /getsticker: Reply to a sticker message to get the sticker as a document.
-
-» /getvidsticker: Reply to a video sticker message to get the video as an animation.
-
-» /getvideo: Reply to a GIF message to get the GIF as a video.
-
-» /unkang: Reply to a sticker created by the bot to remove it from your pack.
-
-» /mmf < your text >: Reply to a normal sticker or a photo or video file to memify it. If you want to write text at the bottom use `;right your message`
-    ■ For example:
-    ○ /mmf Hello friends : this will add text to the top
-    ○ /mmf Hello ; friends : this will add Hello to the top and friends at the bottom
-    ○ /mmf ; Hello friends : this will add text at the bottom
-
-➠ *Note*
-➠ *mmf and getsticker only support photo and normal stickers for now*.
+User commands:
+/kang <emoji> or /steal <emoji>: Reply to a sticker or supported media to add it to your pack.
+/pkang: Reply to a static sticker to get its full pack.
+/stickerinfo or /stinfo: Reply to a sticker to see its details.
+/stickerid: Reply to a sticker to see its ID and emoji.
+/stickers <query>: Search for sticker packs.
+/getsticker: Reply to a sticker to get it as a document.
+/getvidsticker: Reply to a video sticker to get its MP4.
+/getvideo: Reply to a GIF to get its video.
+/unkang: Reply to a sticker added by the bot to remove it from your pack.
+/mmf <text>: Reply to a sticker, photo, or video to add text. Use ; to split text between the top and bottom.
+Example:
+/mmf Hello: Add text at the top.
+/mmf Hello ; friends: Add Hello at the top and friends at the bottom.
+/mmf ; Hello: Add text at the bottom.
+/mmf and /getsticker support only photos and static stickers.
 """
 
-__mod_name__ = "STICKERS"
+__mod_name__ = "Stickers"

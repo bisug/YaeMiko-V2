@@ -20,12 +20,12 @@ ENDPOINT = "https://sasta-api.vercel.app/googleImageSearch"
 
 
 class STRINGS:
-    REQUESTING_API_SERVER = "🫧"
-    DOWNLOADING_MEDIA = "🔍"
-    UPLOADING_TO_API_SERVER = "📤"
-    PARSING_RESULT = "📥"
+    REQUESTING_API_SERVER = "Contacting the reverse image service."
+    DOWNLOADING_MEDIA = "Downloading media."
+    UPLOADING_TO_API_SERVER = "Uploading media."
+    PARSING_RESULT = "Reading results."
     RESULT = 'Query: {query}\nGoogle Page: <a href="{search_url}">Link</a>'
-    OPEN_SEARCH_PAGE = "OPEN LINK"
+    OPEN_SEARCH_PAGE = "Open link"
 
 
 def _valid_url(value):
@@ -41,7 +41,7 @@ async def reverse_image_search(client, message: Message):
     if len(args) > 1:
         image_url = args[1]
         if not _valid_url(image_url):
-            await message.reply_text("Please provide a valid HTTP(S) image URL.")
+            await message.reply_text("Provide a valid HTTP(S) image URL.")
             return
         status_msg = await message.reply_text(STRINGS.REQUESTING_API_SERVER)
         try:
@@ -117,5 +117,5 @@ async def reverse_image_search(client, message: Message):
     await status_msg.delete()
 
 
-__mod_name__ = "REVERSE"
+__mod_name__ = "Reverse"
 __command_list__ = ["reverse", "pp", "p", "grs", "sauce"]

@@ -44,7 +44,7 @@ async def warn(
     warner: User = None,
 ) -> str:
     if await is_user_admin(chat, user.id):
-        await message.reply_text("Admins can't be warned.")
+        await message.reply_text("Admins cannot be warned.")
         return
 
     if warner:
@@ -59,7 +59,7 @@ async def warn(
         if soft_warn:  # kick
             await client.unban_chat_member(chat.id, user.id)
             reply = (
-                f"<code>❕</code><b>Kick Event</b>\n"
+                f"<b>Kick event</b>\n"
                 f"<code> </code><b>•  User:</b> {mention_html(user.id, user.first_name)}\n"
                 f"<code> </code><b>•  Count:</b> {limit}"
             )
@@ -67,7 +67,7 @@ async def warn(
         else:  # ban
             await client.ban_chat_member(chat.id, user.id)
             reply = (
-                f"<code>❕</code><b>Ban Event</b>\n"
+                f"<b>Ban event</b>\n"
                 f"<code> </code><b>•  User:</b> {mention_html(user.id, user.first_name)}\n"
                 f"<code> </code><b>•  Count:</b> {limit}"
             )
@@ -91,7 +91,7 @@ async def warn(
             inline_keyboard=[
                 [
                     InlineKeyboardButton(
-                        text="🔘 Remove warn",
+                        text="Remove warn",
                         callback_data="rm_warn({})".format(user.id),
                         style=ButtonStyle.DANGER,
                     ),
@@ -100,7 +100,7 @@ async def warn(
         )
 
         reply = (
-            f"<code>❕</code><b>Warn Event</b>\n"
+            f"<b>Warn event</b>\n"
             f"<code> </code><b>•  User:</b> {mention_html(user.id, user.first_name)}\n"
             f"<code> </code><b>•  Count:</b> {num_warns}/{limit}"
         )
@@ -151,7 +151,7 @@ async def button(client, query: CallbackQuery) -> str:
     if chat_member.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER):
         pass
     else:
-        await query.answer("You need to be admin to do this!")
+        await query.answer("You need to be an admin to do this.")
         return
     res = sql.remove_warn(user_id, chat.id)
     if res:
@@ -209,7 +209,7 @@ async def warn_user(client, message: Message) -> str:
             member = await client.get_chat_member(chat.id, user_id)
             return await warn(member.user, chat, reason, message, warner)
     else:
-        await message.reply_text("That looks like an invalid User ID to me.")
+        await message.reply_text("That is not a valid user ID.")
     return ""
 
 
@@ -225,7 +225,7 @@ async def reset_warns(client, message: Message) -> str:
 
     if user_id:
         sql.reset_warns(user_id, chat.id)
-        await message.reply_text("Warns have been reset!")
+        await message.reply_text("Warns have been reset.")
         try:
             warned_member = await client.get_chat_member(chat.id, user_id)
             user_target_text = mention_html(
@@ -241,7 +241,7 @@ async def reset_warns(client, message: Message) -> str:
             f"<b>User:</b> {user_target_text}"
         )
     else:
-        await message.reply_text("No user has been designated!")
+        await message.reply_text("No user specified.")
     return ""
 
 
@@ -261,9 +261,7 @@ async def warns(client, message: Message):
         limit, soft_warn = sql.get_warn_setting(chat.id)
 
         if reasons:
-            text = (
-                f"This user has {num_warns}/{limit} warns, for the following reasons:"
-            )
+            text = f"This user has {num_warns}/{limit} warns, for these reasons:"
             for reason in reasons:
                 text += f"\n • {html.escape(reason)}"
 
@@ -272,10 +270,10 @@ async def warns(client, message: Message):
                 await message.reply_text(msg)
         else:
             await message.reply_text(
-                f"User has {num_warns}/{limit} warns, but no reasons for any of them.",
+                f"User has {num_warns}/{limit} warns, with no reasons recorded.",
             )
     else:
-        await message.reply_text("This user doesn't have any warns!")
+        await message.reply_text("This user has no warns.")
 
 
 @on_message(GROUPS, filters.command("addwarn"), chained=True)
@@ -301,7 +299,7 @@ async def add_warn_filter(client, message: Message):
         return
 
     sql.add_warn_filter(chat.id, keyword, content)
-    await message.reply_text(f"Warn handler added for '{keyword}'!")
+    await message.reply_text(f"Warn filter added for '{keyword}'.")
 
 
 @on_message(GROUPS, filters.command(["nowarn", "stopwarn"]), chained=True)
@@ -328,17 +326,17 @@ async def remove_warn_filter(client, message: Message):
     chat_filters = sql.get_chat_warn_triggers(chat.id)
 
     if not chat_filters:
-        await msg.reply_text("No warning filters are active here!")
+        await msg.reply_text("No warning filters are active here.")
         return
 
     for filt in chat_filters:
         if filt == to_remove:
             sql.remove_warn_filter(chat.id, to_remove)
-            await msg.reply_text("Okay, I'll stop warning people for that.")
+            await msg.reply_text("Warning filter removed.")
             return
 
     await msg.reply_text(
-        "That's not a current warning filter - run /warnlist for all active warning filters.",
+        "That is not an active warning filter. Run /warnlist to see active filters.",
     )
 
 
@@ -352,7 +350,7 @@ async def list_warn_filters(client, message: Message):
     all_handlers = sql.get_chat_warn_triggers(chat.id)
 
     if not all_handlers:
-        await message.reply_text("No warning filters are active here!")
+        await message.reply_text("No warning filters are active here.")
         return
 
     filter_list = CURRENT_WARNING_FILTER_STRING
@@ -419,10 +417,10 @@ async def set_warn_limit(client, message: Message) -> str:
     if args:
         if args[0].isdigit():
             if int(args[0]) < 3:
-                await msg.reply_text("The minimum warn limit is 3!")
+                await msg.reply_text("The minimum warn limit is 3.")
             else:
                 sql.set_warn_limit(chat.id, int(args[0]))
-                await msg.reply_text("Updated the warn limit to {}".format(args[0]))
+                await msg.reply_text("Warn limit set to {}".format(args[0]))
                 return (
                     f"<b>{html.escape(chat.title)}:</b>\n"
                     f"#SET_WARN_LIMIT\n"
@@ -430,7 +428,7 @@ async def set_warn_limit(client, message: Message) -> str:
                     f"Set the warn limit to <code>{args[0]}</code>"
                 )
         else:
-            await msg.reply_text("Give me a number as an arg!")
+            await msg.reply_text("Provide a number.")
     else:
         limit, soft_warn = sql.get_warn_setting(chat.id)
 
@@ -449,7 +447,7 @@ async def set_warn_strength(client, message: Message):
     if args:
         if args[0].lower() in ("on", "yes"):
             sql.set_warn_strength(chat.id, False)
-            await msg.reply_text("Too many warns will now result in a Ban!")
+            await msg.reply_text("Too many warns will now result in a ban.")
             return (
                 f"<b>{html.escape(chat.title)}:</b>\n"
                 f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
@@ -459,7 +457,7 @@ async def set_warn_strength(client, message: Message):
         elif args[0].lower() in ("off", "no"):
             sql.set_warn_strength(chat.id, True)
             await msg.reply_text(
-                "Too many warns will now result in a normal Kick! Users will be able to join again after.",
+                "Too many warns will now result in a kick. Users can rejoin.",
             )
             return (
                 f"<b>{html.escape(chat.title)}:</b>\n"
@@ -468,17 +466,17 @@ async def set_warn_strength(client, message: Message):
             )
 
         else:
-            await msg.reply_text("I only understand on/yes/no/off!")
+            await msg.reply_text("Use on, yes, no, or off.")
     else:
         limit, soft_warn = sql.get_warn_setting(chat.id)
         if soft_warn:
             await msg.reply_text(
-                "Warns are currently set to *kick* users when they exceed the limits.",
+                "Warns are currently set to *kick* users who exceed the limit.",
                 parse_mode=ParseMode.MARKDOWN,
             )
         else:
             await msg.reply_text(
-                "Warns are currently set to *Ban* users when they exceed the limits.",
+                "Warns are currently set to *ban* users who exceed the limit.",
                 parse_mode=ParseMode.MARKDOWN,
             )
     return ""
@@ -511,26 +509,17 @@ def __chat_settings__(chat_id, user_id):
 
 
 __help__ = """
-» /warns <userhandle>: get a user's number, and reason, of warns.
+/warns <userhandle>: Show a user's warn count and reasons.
+/warnlist: List all active warning filters.
 
-» /warnlist: list of all current warning filters
-
-➠ *Admins only:*
-
-» /warn <userhandle>: warn a user. After 3 warns, the user will be banned from the group. Can also be used as a reply.
-
-» /dwarn <userhandle>: warn a user and delete the message. After 3 warns, the user will be banned from the group. Can also be used as a reply.
-
-» /resetwarn <userhandle>: reset the warns for a user. Can also be used as a reply.
-
-» /addwarn <keyword> <reply message>: set a warning filter on a certain keyword. If you want your keyword to \
-be a sentence, encompass it with quotes, as such: `/addwarn "very angry" This is an angry user`.
-
-» /nowarn <keyword>: stop a warning filter
-
-» /warnlimit <num>: set the warning limit
-
-» /strongwarn <on/yes/off/no>: If set to on, exceeding the warn limit will result in a ban. Otherwise, it will just kick.
+Admin only:
+/warn <userhandle>: Warn a user. Users are banned when they reach the warn limit. Can be used as a reply.
+/dwarn <userhandle>: Warn a user and delete the message. Users are banned when they reach the warn limit. Can be used as a reply.
+/resetwarn <userhandle>: Reset a user's warns. Can be used as a reply.
+/addwarn <keyword> <reply message>: Set a warning filter for a keyword. Quote multi-word keywords, for example /addwarn "very angry" This is an angry user.
+/nowarn <keyword>: Remove a warning filter.
+/warnlimit <num>: Set the warn limit.
+/strongwarn <on/yes/off/no>: Ban users who exceed the limit when on. Otherwise, kick them.
 """
 
-__mod_name__ = "WARNS"
+__mod_name__ = "Warns"

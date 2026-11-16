@@ -113,14 +113,14 @@ async def telegraph_upload(client: Client, message: Message):
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🔒 Permanent (Catbox)",
+                    text="Permanent (Catbox)",
                     callback_data=f"hostup_catbox_{token}",
                     style=ButtonStyle.SUCCESS,
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text=f"🕐 Temporary ({LITTERBOX_HOURS}, Litterbox)",
+                    text=f"Temporary ({LITTERBOX_HOURS}, Litterbox)",
                     callback_data=f"hostup_litterbox_{token}",
                     style=ButtonStyle.PRIMARY,
                 )
@@ -150,7 +150,7 @@ async def upload_choice(query: CallbackQuery):
     # Spent, whether or not the upload then succeeds, so one button is one try.
     chat_data.pop(key, None)
 
-    await query.answer("Uploading…")
+    await query.answer("Uploading.")
     started = time.perf_counter()
 
     try:
@@ -222,25 +222,23 @@ async def upload_choice(query: CallbackQuery):
     elapsed = time.perf_counter() - started
     if fallback_used:
         note = (
-            f"➼ **Catbox upload failed ({catbox_error}); saved to Litterbox instead in {elapsed:.2f} seconds.**\n\n"
-            f"➼ **Link:** `{link}`\n\n"
-            f"➼ This link expires after {LITTERBOX_HOURS}."
+            f"Catbox upload failed ({catbox_error}). Saved to Litterbox in {elapsed:.2f} seconds.\n\n"
+            f"Link: {link}\n\n"
+            f"This link expires after {LITTERBOX_HOURS}."
         )
     else:
-        note = f"➼ **Uploaded to {host} in {elapsed:.2f} seconds.**\n\n➼ **Link:** `{link}`"
+        note = f"Uploaded to {host} in {elapsed:.2f} seconds.\n\nLink: {link}"
         if host == "litterbox":
-            note += f"\n\n➼ This link expires after {LITTERBOX_HOURS}."
+            note += f"\n\nThis link expires after {LITTERBOX_HOURS}."
     await query.message.edit_text(note)
 
 
 __help__ = """
-➠ *HOSTING*:
+Hosting:
 
-» /tgm, /tmg, /telegraph*:* *Reply to media to get a hosted link.*
+/tgm, /tmg, /telegraph: Reply to media to get a hosted link.
 
-➠ Pick **Permanent** for a Catbox link that does not expire, or
-**Temporary** for a Litterbox link that does. Set `LITTERBOX_HOURS` to
-`1h`, `12h`, `24h` or `72h` to change how long the temporary one lasts.
-  """
+Pick Permanent for a Catbox link that does not expire, or Temporary for a Litterbox link that does. Set LITTERBOX\\_HOURS to 1h, 12h, 24h, or 72h to change the temporary link lifetime.
+"""
 
-__mod_name__ = "HOSTING"
+__mod_name__ = "Hosting"
