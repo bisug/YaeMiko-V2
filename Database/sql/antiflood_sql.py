@@ -370,6 +370,3 @@ def __load_flood_settings():
         pass
     finally:
         SESSION.close()
-
-
-__load_flood_settings()

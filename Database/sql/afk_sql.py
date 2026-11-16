@@ -101,6 +101,3 @@ def __load_afk_users():
         pass
     finally:
         SESSION.close()
-
-
-__load_afk_users()

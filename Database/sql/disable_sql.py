@@ -134,6 +134,3 @@ def __load_disabled_commands():
         pass
     finally:
         SESSION.close()
-
-
-__load_disabled_commands()

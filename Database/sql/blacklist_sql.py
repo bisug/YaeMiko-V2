@@ -364,7 +364,3 @@ def migrate_chat(old_chat_id, new_chat_id):
         for filt in chat_filters:
             filt.chat_id = str(new_chat_id)
         SESSION.commit()
-
-
-__load_chat_blacklists()
-__load_chat_settings_blacklists()

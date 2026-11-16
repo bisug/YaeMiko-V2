@@ -370,6 +370,3 @@ def migrate_chat(old_chat_id, new_chat_id):
         for setting in chat_settings:
             setting.chat_id = str(new_chat_id)
         SESSION.commit()
-
-
-__load_chat_warn_filters()

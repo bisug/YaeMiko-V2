@@ -255,6 +255,3 @@ def __load_user_history():
         pass
     finally:
         SESSION.close()
-
-
-__load_user_history()

@@ -369,9 +369,6 @@ def __load_locks_cache():
         SESSION.close()
 
 
-__load_locks_cache()
-
-
 @unit_of_work_guard
 def allow_item(chat_id, lockable, item):
     """Add an exemption for one locktype. Repeatable and case-insensitive."""

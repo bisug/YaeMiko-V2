@@ -179,8 +179,3 @@ def migrate_chat(old_chat_id, new_chat_id):
             SESSION.add(chat)
 
         SESSION.commit()
-
-
-# Load the ban lists into memory so checks avoid a database round trip.
-__load_gbanned_userid_list()
-__load_gban_stat_list()

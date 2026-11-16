@@ -213,6 +213,3 @@ def __load_log_channels():
         pass
     finally:
         SESSION.close()
-
-
-__load_log_channels()
