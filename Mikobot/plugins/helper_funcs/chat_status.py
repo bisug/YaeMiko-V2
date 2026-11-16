@@ -150,8 +150,10 @@ async def is_user_admin(chat, user_id: int, member=None) -> bool:
     if not member:
         with THREAD_LOCK:
             cached = ADMIN_CACHE.get(chat.id)
-            if cached is not None:
-                return user_id in cached
+            if cached is not None and isinstance(cached, dict):
+                member = cached.get(user_id)
+                if member is not None:
+                    return is_admin(member)
         admins = await get_chat_administrators(chat.id)
         return user_id in admins
     return is_admin(member)

@@ -120,6 +120,27 @@ async def test_the_gate_refuses_the_handler_and_stops_the_registry(monkeypatch):
     assert calls == []
 
 
+async def test_chained_handler_gate_refusal_continues_to_subsequent_handlers(monkeypatch):
+    calls = []
+
+    @events.on_message(lambda client, message: True, chained=True)
+    async def first(client, message):
+        calls.append("first")
+
+    @events.on_message(lambda client, message: True)
+    async def second(client, message):
+        calls.append("second")
+
+    async def refuse_first_only(client, event, handler):
+        return handler != first
+
+    monkeypatch.setattr(events, "enforce", refuse_first_only)
+
+    await events.registry.run(events.registry.messages, make_client(), make_message())
+
+    assert calls == ["second"]
+
+
 def test_the_requirement_decorator_keeps_the_source_order():
     @requirement(kind="admin", permission="ban_users")
     @requirement(kind="sudo_plus")

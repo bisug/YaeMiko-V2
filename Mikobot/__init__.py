@@ -214,7 +214,7 @@ if ENV:
         "API_ID", message="Your API_ID env variable is not a valid integer."
     )
     API_HASH = os.environ.get("API_HASH", None)
-    ALLOW_CHATS = env_bool("ALLOW_CHATS")
+    ALLOW_CHATS = env_bool("ALLOW_CHATS", default=True)
     ALLOW_EXCL = env_bool("ALLOW_EXCL")
     DB_URI = os.environ.get("DATABASE_URL")
     DEL_CMDS = env_bool("DEL_CMDS")

@@ -12,7 +12,7 @@ from Mikobot.events import on_message
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.alternate import send_message
-from Mikobot.plugins.helper_funcs.chat_status import check_admin, user_not_admin
+from Mikobot.plugins.helper_funcs.chat_status import check_admin, is_user_admin, user_not_admin
 from Mikobot.plugins.helper_funcs.misc import split_message
 from Mikobot.plugins.helper_funcs.string_handling import extract_time
 from Mikobot.plugins.log_channel import loggable
@@ -405,10 +405,11 @@ async def blacklist_mode(client, message: Message):
 
 
 @on_message(GROUPS & filters.sticker, chained=True)
-@user_not_admin
 async def del_blackliststicker(client, message: Message):
     chat = message.chat
     user = message.from_user
+    if not user or await is_user_admin(chat, user.id):
+        return
     to_match = message.sticker
     if not to_match or not to_match.set_name:
         return

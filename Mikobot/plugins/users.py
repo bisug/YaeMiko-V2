@@ -305,11 +305,8 @@ async def chat_checker(client: Client, message: Message):
     if chat_id in BOT_STATUS_CACHE:
         return
     try:
-        bot_admin = await client.get_chat_member(chat_id, client.me.id)
+        await client.get_chat_member(chat_id, client.me.id)
         BOT_STATUS_CACHE[chat_id] = True
-        if bot_admin.status == ChatMemberStatus.ADMINISTRATOR:
-            if not granted(bot_admin, "can_post_messages"):
-                await client.leave_chat(chat_id)
     except RPCError:
         BOT_STATUS_CACHE[chat_id] = True
 

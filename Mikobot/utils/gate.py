@@ -452,12 +452,15 @@ async def _member(client, chat, user_id):
     try:
         member = await client.get_chat_member(chat.id, user_id)
         if member is not None:
-            with THREAD_LOCK:
-                cur = ADMIN_CACHE.get(chat.id)
-                if isinstance(cur, dict):
-                    cur[user_id] = member
-                else:
-                    ADMIN_CACHE[chat.id] = {user_id: member}
+            from Mikobot.plugins.helper_funcs.chat_status import is_admin
+
+            if is_admin(member):
+                with THREAD_LOCK:
+                    cur = ADMIN_CACHE.get(chat.id)
+                    if isinstance(cur, dict):
+                        cur[user_id] = member
+                    else:
+                        ADMIN_CACHE[chat.id] = {user_id: member}
         return member
     except RPCError:
         return None

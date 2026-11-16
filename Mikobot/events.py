@@ -72,14 +72,19 @@ class Registry:
     async def run(self, bucket, client, update) -> None:
         """Run every matching handler, stopping at the one that does not chain.
 
-        A handler that the gate refuses ends the run: aiogram's middleware
-        returned without calling the handler, and the update stopped there.
+        A handler that the gate refuses ends the run for unchained handlers,
+        while chained background checks continue to subsequent handlers.
         """
         for registration in list(bucket):
             if not await registration.matches(client, update):
                 continue
+            is_chained = registration.chained or getattr(
+                registration.handler, "chained", False
+            )
             try:
                 if not await enforce(client, update, registration.handler):
+                    if is_chained:
+                        continue
                     return
                 await registration.handler(client, update)
             finally:
@@ -87,9 +92,7 @@ class Registry:
                 # session is thread-local, so whatever is left would otherwise
                 # be committed by an unrelated later call.
                 end_unit_of_work()
-            if not (
-                registration.chained or getattr(registration.handler, "chained", False)
-            ):
+            if not is_chained:
                 return
 
 
