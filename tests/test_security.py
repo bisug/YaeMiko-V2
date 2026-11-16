@@ -61,6 +61,33 @@ def test_elevated_users_json():
             )
 
 
+async def test_bot_command_approval_is_scoped_to_chat(monkeypatch):
+    from Mikobot.plugins import bot2bot
+    from Mikobot.utils import gate
+
+    approved = {"-100111:42"}
+    monkeypatch.setattr(bot2bot, "APPROVED_ONCE", approved)
+    review = AsyncMock(return_value=False)
+    monkeypatch.setattr(bot2bot, "request_review", review)
+
+    client = MagicMock()
+    client.me.id = 999
+
+    def event(chat_id, message_id):
+        update = MagicMock()
+        update.chat.id = chat_id
+        update.from_user.is_bot = True
+        update.text = "/lock"
+        update.id = message_id
+        return update
+
+    assert await gate._bot_command_reviewed(client, event(-100111, 42)) is True
+    assert approved == set(), "a consumed replay must be removed"
+
+    assert await gate._bot_command_reviewed(client, event(-100222, 42)) is False
+    assert review.await_count == 1, "same message id in another chat must be reviewed"
+
+
 async def test_can_restrict_decorator_handles_owner(monkeypatch):
     from pyrogram.enums import ChatMemberStatus
 

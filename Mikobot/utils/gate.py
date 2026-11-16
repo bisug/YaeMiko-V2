@@ -291,9 +291,11 @@ async def _bot_command_reviewed(client, event) -> bool:
 
     # A replay of an approved command passes straight through, once.
     message_id = getattr(event, "id", None) or getattr(event, "message_id", None)
-    if message_id is not None and message_id in bot2bot.APPROVED_ONCE:
-        bot2bot.APPROVED_ONCE.discard(message_id)
-        return True
+    if message_id is not None:
+        key = f"{_chat_id(event)}:{message_id}"
+        if key in bot2bot.APPROVED_ONCE:
+            bot2bot.APPROVED_ONCE.discard(key)
+            return True
 
     return await bot2bot.request_review(user, _event_parts(event)[0], event)
 

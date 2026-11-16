@@ -219,8 +219,10 @@ async def review_callback(client, query: CallbackQuery) -> str:
         await query.answer("Failed.")
         return ""
 
-    # Let this one replay through without asking again.
-    APPROVED_ONCE.add(getattr(replay, "id", getattr(replay, "message_id", 0)))
+    # Let this one replay through without asking again. Message ids are unique
+    # per chat, so the chat id has to be part of the key.
+    replay_id = getattr(replay, "id", getattr(replay, "message_id", 0))
+    APPROVED_ONCE.add(f"{chat_id}:{replay_id}")
 
     await query.message.edit_text(
         f"Approved by {mention_html(query.from_user.id, query.from_user.first_name)}.",
