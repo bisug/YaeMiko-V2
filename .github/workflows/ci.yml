@@ -3,73 +3,38 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore: [CHANGELOG.md]
   pull_request:
+    paths-ignore: [CHANGELOG.md]
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  validate:
-    name: Validate
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # The SQL layer is only exercised against a real PostgreSQL; without one
-    # those tests skip and a broken column type or query would go unnoticed.
-    services:
-      postgres:
-        image: postgres:18
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
-      DB_NAME: MIKO_DB
-      # Placeholder so importing Mikobot does not need a real token.
-      TOKEN: "0000000000:CIPLACEHOLDERNOTAREALTOKEN"
+    timeout-minutes: 10
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v10.3.3
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          version: "latest"
+          python-version-file: .python-version
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.8"
           enable-cache: true
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.14.10"
-
-      # The suite asserts framework constructors against the real package, and
-      # the SQL-layer tests need a real driver to reach the postgres service
-      # above. Both versions are read out of requirements.txt rather than
-      # repeated here, so a Dependabot bump touches one file: without that a
-      # bump to requirements.txt left these literals behind and the run failed
-      # against an install nobody had asked for.
-      - name: Install the dependencies under test
+      - name: Install dependencies
         run: |
           uv sync --frozen
-          echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
-
-      # Guards the install above rather than the pin itself: a requirements.txt
-      # edit that fails to install must not pass as a green build.
-      - name: Verify the installed versions match the pins
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+      - name: Check runtime pins match requirements.txt
         run: |
           python - <<'PY'
-          import re, sys
           from importlib.metadata import version
 
           pins = {}
@@ -77,92 +42,103 @@ jobs:
               line = line.split("#")[0].strip()
               if "==" in line:
                   name, pinned = line.split("==", 1)
-                  # psycopg[binary,pool]==3.3.6 installs as psycopg.
-                  # uvloop==0.23.0; sys_platform != "win32": an environment
-                  # marker is not part of the version to compare against.
-                  key = name.split("[")[0].strip().lower()
-                  pins[key] = pinned.split(";")[0].strip()
+                  pins[name.split("[")[0].strip().lower()] = pinned.split(";")[0].strip()
 
-          wrong = []
           for name in ("kurigram", "sqlalchemy", "psycopg"):
-              pinned = pins[name]
-              installed = version(name)
-              print(f"{name} pinned {pinned}, installed {installed}")
+              pinned, installed = pins[name], version(name)
+              print(f"{name}: pinned {pinned}, installed {installed}")
               if installed != pinned:
-                  wrong.append(f"{name}: pinned {pinned}, installed {installed}")
-          if wrong:
-              print("FAIL " + "; ".join(wrong), file=sys.stderr)
-              raise SystemExit(1)
+                  raise SystemExit(f"{name}: pinned {pinned}, installed {installed}")
           PY
-
       - name: Validate JSON manifests
         run: |
           python -m json.tool app.json >/dev/null
           python -m json.tool railway.json >/dev/null
-
-      - name: Compile application
+      - name: Compile sources
         run: python -m compileall -q .
-
-      - name: Run tests
-        run: pytest -v
-
-      - name: Lint
-        run: ruff check .
-
       - name: Check formatting
         run: ruff format --check .
-
+      - name: Lint
+        run: ruff check .
       - name: Check whitespace
         run: git diff --check
-
-      - name: Check no committed secrets
+      - name: Check for committed secrets
         run: |
           status=0
           if git ls-files --error-unmatch .env >/dev/null 2>&1; then
-            echo "FAIL .env is tracked, it must stay in .gitignore"
+            echo "::error::.env must stay in .gitignore"
             status=1
           fi
           if git grep -nIE '(^|[^A-Za-z0-9_])[0-9]{6,10}:[A-Za-z0-9_-]{30,}' -- \
             '*.py' '*.json' '*.yml' '*.md' '*.svg' ':!tests/*'; then
-            echo "FAIL a bot token is committed in the source"
+            echo "::error::bot token committed in source"
             status=1
           fi
           exit $status
 
-  docker:
-    name: Build worker image
+  test:
+    name: Tests
     runs-on: ubuntu-latest
-    needs: validate
-    timeout-minutes: 30
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      DB_NAME: MIKO_DB
+      TOKEN: "0000000000:CIPLACEHOLDERNOTAREALTOKEN"
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.8"
+          enable-cache: true
+      - name: Install dependencies
+        run: |
+          uv sync --frozen
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+      - name: Run tests
+        run: pytest -v
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Build worker image
         uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
           push: false
-          tags: yaemiko:ci
-          # Buildx uses the docker-container driver, so without load the image
-          # stays inside the builder and the inspect step below cannot see it.
           load: true
-
-      - name: Verify the image CMD
+          tags: yaemiko:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max,ignore-error=true
+      - name: Verify image
         run: |
-          image_id=$(docker image inspect yaemiko:ci --format '{{.Id}}')
           cmd=$(docker image inspect yaemiko:ci --format '{{json .Config.Cmd}}')
-          echo "image: $image_id"
-          echo "cmd: $cmd"
+          echo "CMD: $cmd"
           if [ "$cmd" != '["python","-m","Mikobot"]' ]; then
-            echo "FAIL the image CMD must be python -m Mikobot, found $cmd"
+            echo "::error::unexpected image CMD: $cmd"
             exit 1
           fi
-
-      - name: Verify dependencies in built image
-        run: |
-          docker run --rm yaemiko:ci python -c "from pyrogram import Client; import sqlalchemy, psycopg; print('All core dependencies present in container')"
+          docker run --rm yaemiko:ci python -c "from pyrogram import Client; import sqlalchemy, psycopg; print('core dependencies present')"
