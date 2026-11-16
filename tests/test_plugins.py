@@ -209,6 +209,22 @@ def test_restrict_rights_helper_is_used_by_the_privilege_checks():
         assert "has_restrict_rights" in source, f"{name} does not use the shared helper"
 
 
+def test_admin_cache_is_dropped_on_every_rights_change():
+    source = (PLUGINS_DIR / "admin.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    for func in tree.body:
+        if not isinstance(func, ast.AsyncFunctionDef):
+            continue
+        if func.name not in ("promote", "fullpromote", "demote", "refresh_admin"):
+            continue
+        calls = {
+            node.func.id
+            for node in ast.walk(func)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        }
+        assert "_forget_admins" in calls, f"{func.name} leaves a stale admin cache"
+
+
 def test_couple_reports_an_unresolvable_member():
     source = (PLUGINS_DIR / "couple.py").read_text(encoding="utf-8")
     assert "users[0] is None" in source

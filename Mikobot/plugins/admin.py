@@ -25,6 +25,7 @@ from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.alternate import send_message
 from Mikobot.plugins.helper_funcs.chat_status import (
     ADMIN_CACHE,
+    THREAD_LOCK,
     check_admin,
     connection_status,
     granted,
@@ -33,6 +34,12 @@ from Mikobot.plugins.helper_funcs.extraction import extract_user, extract_user_a
 from Mikobot.plugins.log_channel import loggable
 from Mikobot.utils.consts import ChatID
 from Mikobot.utils.parser import mention_html
+
+
+def _forget_admins(chat_id) -> None:
+    """Drop a stale admin list after a rights change in that chat."""
+    with THREAD_LOCK:
+        ADMIN_CACHE.pop(chat_id, None)
 
 
 @connection_status
@@ -113,6 +120,7 @@ async def promote(client, message: Message):
                 user_id,
                 privileges=privs,
             )
+            _forget_admins(chat.id)
         except RPCError as err:
             if (
                 "user_not_mutual_contact"
@@ -219,6 +227,7 @@ async def fullpromote(client, message: Message):
                 user_id,
                 privileges=privs,
             )
+            _forget_admins(chat.id)
         except RPCError as err:
             if (
                 "user_not_mutual_contact"
@@ -321,6 +330,7 @@ async def demote(client, message: Message):
                 can_manage_topics=False,
             ),
         )
+        _forget_admins(chat.id)
 
         await client.send_message(
             chat.id,
@@ -348,10 +358,7 @@ async def demote(client, message: Message):
 @check_admin(is_user=True)
 @on_message(filters.command("admincache"), filters.group, chained=True)
 async def refresh_admin(client, message: Message):
-    try:
-        ADMIN_CACHE.pop(message.chat.id)
-    except KeyError:
-        pass
+    _forget_admins(message.chat.id)
 
     await message.reply_text("Admin list refreshed.")
 
