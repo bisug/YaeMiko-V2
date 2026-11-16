@@ -35,12 +35,12 @@
   <text class="big" x="64" y="206">512 MB</text>
   <text class="unit" x="64" y="226">RAM, 1 shared vCPU</text>
   <text class="sub" x="64" y="262">Disk 5 GB, swap 1 GB</text>
-  <text class="sub" x="64" y="284">Python 3.15.2</text>
+  <text class="sub" x="64" y="284">Python 3.14.10</text>
   <text class="sub" x="64" y="306">1 to 3 groups</text>
   <text class="sub" x="64" y="344">What you give up:</text>
-  <text class="sub" x="64" y="366">ONNX loads a 20.9 MB model on first use</text>
+  <text class="sub" x="64" y="366">ONNX loads its classifier model on first use</text>
   <text class="sub" x="64" y="386">ffmpeg frame extraction is slow</text>
-  <text class="sub" x="64" y="406">64 concurrent updates on one core</text>
+  <text class="sub" x="64" y="406">WORKERS defaults to min(8, cpu*2)</text>
   <text class="sub" x="64" y="426">Fits: Render 0.5c-512mb</text>
   <text class="sub" x="64" y="452">1 Mbps up, 5 GB per month</text>
 
@@ -50,12 +50,12 @@
   <text class="big" x="474" y="206">1 GB</text>
   <text class="unit" x="474" y="226">RAM, 1 dedicated vCPU</text>
   <text class="sub" x="474" y="262">Disk 10 GB</text>
-  <text class="sub" x="474" y="284">Python 3.15.2</text>
+  <text class="sub" x="474" y="284">Python 3.14.10</text>
   <text class="sub" x="474" y="306">10 to 30 groups</text>
   <text class="sub" x="474" y="344">What you gain:</text>
   <text class="sub" x="474" y="366">Room for the ONNX session and buffers</text>
   <text class="sub" x="474" y="386">No shared core throttling on replies</text>
-  <text class="sub" x="474" y="406">AI commands and media run alongside</text>
+  <text class="sub" x="474" y="406">Media commands run alongside</text>
   <text class="sub" x="474" y="426">Fits: Render 1c-2g, 1 GB VPS</text>
   <text class="sub" x="474" y="452">10 Mbps up, 100 GB per month</text>
 
@@ -65,7 +65,7 @@
   <text class="big" x="884" y="206">2 GB</text>
   <text class="unit" x="884" y="226">RAM, 2 dedicated vCPU</text>
   <text class="sub" x="884" y="262">Disk 20 GB</text>
-  <text class="sub" x="884" y="284">Python 3.15.2</text>
+  <text class="sub" x="884" y="284">Python 3.14.10</text>
   <text class="sub" x="884" y="306">100 or more groups</text>
   <text class="sub" x="884" y="344">What you gain:</text>
   <text class="sub" x="884" y="366">ONNX uses one thread per core</text>
@@ -75,8 +75,8 @@
   <text class="sub" x="884" y="452">25 Mbps up, unmetered</text>
 
   <rect class="panel" x="40" y="524" width="1200" height="110"/>
-  <text class="head" x="64" y="554">Where the weight sits, measured from PyPI wheel sizes</text>
-  <text class="sub" x="64" y="580">Pillow 6.8 MB, Kurigram 5.8 MB, SQLAlchemy 4.6 MB, aiogram 9.6 MB (onnxruntime + opennsfw-onnx: Python &lt; 3.15 only)</text>
-  <text class="sub" x="64" y="602">23 direct dependencies total 80.5 MB of wheels, uvloop being 16.2 MB of that. The ONNX session is lazy, it loads only when an anti-NSFW check runs.</text>
+  <text class="head" x="64" y="554">Where the weight sits</text>
+  <text class="sub" x="64" y="580">The ONNX Runtime engine and its classifier model are the largest allocation, loaded on first anti-NSFW check.</text>
+  <text class="sub" x="64" y="602">Pillow buffers, ffmpeg subprocesses and the worker pool add to peak memory. ONNX wheels are excluded on Python 3.15+.</text>
   <text class="sub" x="64" y="624">RAM figures are estimates. Measure your own instance with VmHWM in /proc, see docs/SYSTEM-REQUIREMENTS.md.</text>
 </svg>

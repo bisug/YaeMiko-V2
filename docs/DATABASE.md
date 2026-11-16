@@ -20,7 +20,6 @@ Back to [README](../README.md).
 - [Federation and subscriptions](#federation-and-subscriptions)
 - [Chat behaviour](#chat-behaviour)
 - [Stored content](#stored-content)
-- [Service message cleaner](#service-message-cleaner)
 - [Karma and couples](#karma-and-couples)
 - [Referential integrity](#referential-integrity)
 - [Schema evolution](#schema-evolution)
@@ -29,18 +28,16 @@ Diagrams are Mermaid and render on GitHub and in VS Code preview.
 
 ## The one store
 
-PostgreSQL is the only persistent store. `Database/sql/` holds 31 model modules; 30 of them declare
-60 tables and 240 columns, all created by SQLAlchemy 2.1.6 over
-psycopg 3. MongoDB was retired once the last plugin moved across; see
-[MIGRATION-MONGO-TO-SQL.md](MIGRATION-MONGO-TO-SQL.md). The `Extra/` fonts and the pickle
-`DataStore` are files, not tables.
+PostgreSQL is the only persistent store. `Database/sql/` holds 29 model modules; 28 of them declare
+56 tables, created by SQLAlchemy 2.1.8 over psycopg 3. MongoDB was retired once the last plugin
+moved across; see [MIGRATION-MONGO-TO-SQL.md](MIGRATION-MONGO-TO-SQL.md). The `Extra/` fonts and the
+pickle `DataStore` are files, not tables.
 
-There is no migration tool and no version table. Each model module calls
-`__table__.create(bind=ENGINE, checkfirst=True)` for its own tables when it is imported by a
-plugin, and that is what creates them: `BASE.metadata.create_all(engine)` runs earlier, inside
-`Database/sql/__init__.py`, before any model has registered itself, so it finds an empty
-metadata. Adding a column to a table that already exists therefore needs the hand written
-`ALTER TABLE` described in [Schema evolution](#schema-evolution).
+There is no migration tool and no version table. `create_all_tables()` in
+`Database/sql/__init__.py` imports every model module first, then calls
+`BASE.metadata.create_all(ENGINE)` and replays the indexes the modules requested. Adding a column
+to a table that already exists needs the hand written `ALTER TABLE` described in
+[Schema evolution](#schema-evolution).
 
 ## Connection and pool
 
@@ -60,7 +57,7 @@ flowchart TD
 | `pool_size` | `DB_POOL_SIZE` | `min(8, cpu * 2 + 4)` |
 | `max_overflow` | `DB_MAX_OVERFLOW` | `4` |
 | `pool_timeout` | `DB_POOL_TIMEOUT` | `30` seconds |
-| `pool_pre_ping` | `DB_PRE_PING` | `True` |
+| `pool_pre_ping` | `DB_PRE_PING` | `False` |
 | `pool_recycle` | hard coded | `1800` seconds |
 | `client_encoding` | hard coded | `utf8` |
 | `statement_timeout` | `DB_STATEMENT_TIMEOUT_MS` | `5000` ms |
@@ -71,7 +68,7 @@ flowchart TD
 | `application_name` | hard coded | `yaemiko` |
 
 `pool_pre_ping` costs a round trip on every checkout and the message handlers check
-out several times per update, which is why it is switchable; `pool_recycle` already
+out several times per update, which is why it is off by default; `pool_recycle` already
 retires connections before a host drops them. The three timeouts are set through
 `connect_args` so a slow query, a contended lock and an abandoned transaction each give
 the connection back instead of holding it until `pool_timeout` becomes a `TimeoutError`.
@@ -162,7 +159,6 @@ guard runs on the calling thread because a session belongs to the thread that cr
 | `Database/sql/blsticker_sql.py` | `blacklist_stickers`, `blsticker_settings` |
 | `Database/sql/bot2bot_sql.py` | `bot_to_bot` |
 | `Database/sql/captcha_sql.py` | `captcha_settings`, `captcha_solved` |
-| `Database/sql/cleaner_sql.py` | `cleaner_bluetext_chat_ignore_commands`, `cleaner_bluetext_chat_setting`, `cleaner_bluetext_global_ignore_commands` |
 | `Database/sql/connection_sql.py` | `access_connection`, `connection`, `connection_history` |
 | `Database/sql/cust_filters_sql.py` | `cust_filter_urls`, `cust_filters` |
 | `Database/sql/disable_sql.py` | `disabled_commands` |
@@ -175,7 +171,6 @@ guard runs on the calling thread because a session belongs to the thread that cr
 | `Database/sql/log_channel_sql.py` | `log_channel_setting`, `log_channels` |
 | `Database/sql/notes_sql.py` | `note_urls`, `notes` |
 | `Database/sql/raid_sql.py` | `raid_chats` |
-| `Database/sql/remind_sql.py` | `reminds` |
 | `Database/sql/rules_sql.py` | `rules` |
 | `Database/sql/sangmata_sql.py` | `sangmata_users` |
 | `Database/sql/toggle_sql.py` | `chat_toggles` |
@@ -196,11 +191,12 @@ the ban handlers mention people by.
 | [Moderation and safety](#moderation-and-safety) | 19 | `warns(user_id, chat_id)`, `blacklist(chat_id, trigger)` |
 | [Federation and subscriptions](#federation-and-subscriptions) | 6 | `feds(fed_id)`, `bans_feds(fed_id, user_id)` |
 | [Chat behaviour](#chat-behaviour) | 13 | `permissions(chat_id)`, `welcome_pref(chat_id)` |
-| [Stored content](#stored-content) | 8 | `notes(chat_id, name)`, `whispers(id)` |
-| [Service message cleaner](#service-message-cleaner) | 3 | `cleaner_bluetext_global_ignore_commands(command)` |
+| [Stored content](#stored-content) | 7 | `notes(chat_id, name)`, `whispers(id)` |
 | [Karma and couples](#karma-and-couples) | 2 | `karma(chat_id, name)`, `couple(chat_id, date)` |
 
-The key shape is repeated on purpose: almost every table is `(chat_id, ...)` with `chat_id` as `VARCHAR(14)`, and every user keyed table uses a `BIGINT` user id.
+The key shape is repeated on purpose: almost every table is `(chat_id, ...)`, and chat keys are
+`String` columns (PostgreSQL `TEXT`); a start-up pass widens legacy `VARCHAR(14)` columns. Every
+user keyed table uses a `BIGINT` user id.
 
 ## Identity and directory
 
@@ -213,12 +209,12 @@ erDiagram
         TEXT username
     }
     chats {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         TEXT chat_name
     }
     chat_members {
         BIGINT priv_chat_id PK
-        VARCHAR chat FK "varchar(14)"
+        TEXT chat FK
         BIGINT user FK
     }
     sangmata_users {
@@ -228,7 +224,7 @@ erDiagram
         TEXT username
     }
     chat_locale {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         VARCHAR lang "varchar(8)"
     }
     afk_user {
@@ -238,15 +234,15 @@ erDiagram
         TIMESTAMP time
     }
     access_connection {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BOOLEAN allow_connect_to_chat
     }
     connection {
         BIGINT user_id PK
-        VARCHAR chat_id "varchar(14)"
+        TEXT chat_id
     }
     connection_history {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BIGINT user_id PK
         TEXT chat_name
         BIGINT conn_time
@@ -265,15 +261,15 @@ erDiagram
         TEXT reason
     }
     gban_settings {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BOOLEAN setting
     }
     blacklist {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         TEXT trigger PK
     }
     blacklist_settings {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BIGINT blacklist_type
         BOOLEAN delete_message
         BOOLEAN silent_enabled
@@ -281,47 +277,47 @@ erDiagram
         TEXT value
     }
     blacklist_stickers {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         TEXT trigger PK
     }
     blsticker_settings {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BIGINT blacklist_type
         TEXT value
     }
     antiflood {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BOOLEAN clearflood
         BIGINT limit
         BIGINT timer
     }
     antiflood_settings {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BIGINT flood_type
         TEXT value
     }
     warns {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BIGINT user_id PK
         BIGINT num_warns
         TEXT_ARRAY reasons
     }
     warn_filters {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         TEXT keyword PK
         TEXT reply
     }
     warn_settings {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BOOLEAN soft_warn
         BIGINT warn_limit
     }
     approval {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BIGINT user_id PK
     }
     captcha_settings {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         TEXT button_text
         BOOLEAN enabled
         BOOLEAN kick_enabled
@@ -331,33 +327,33 @@ erDiagram
         BOOLEAN show_rules
     }
     captcha_solved {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BIGINT user_id PK
     }
     raid_chats {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BIGINT action_time
         BIGINT auto_antiraid
         BIGINT raid_time
         BIGINT raid_until
     }
     raid_mode {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         INTEGER acttime
         BOOLEAN status
         INTEGER time
     }
     human_checks {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BIGINT user_id PK
         BOOLEAN human_check
     }
     disabled_commands {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         TEXT command PK
     }
     action_topics {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BIGINT message_thread_id
     }
 ```
@@ -377,7 +373,7 @@ erDiagram
         BIGINT owner_id
     }
     chat_feds {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         TEXT chat_name
         TEXT fed_id
     }
@@ -399,7 +395,7 @@ erDiagram
         TEXT fed_subs PK
     }
     fsub_settings {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         VARCHAR channel "varchar(32)"
     }
 ```
@@ -411,7 +407,7 @@ Locks, welcome and log-channel configuration, rules, disabled features and bot-t
 ```mermaid
 erDiagram
     permissions {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BOOLEAN audio
         BOOLEAN bots
         BOOLEAN button
@@ -431,19 +427,19 @@ erDiagram
         BOOLEAN voice
     }
     allowed_items {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         VARCHAR item PK "varchar(256)"
         VARCHAR lockable PK "varchar(32)"
     }
     restrictions {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BOOLEAN media
         BOOLEAN messages
         BOOLEAN other
         BOOLEAN preview
     }
     welcome_pref {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BIGINT clean_welcome
         BOOLEAN clean_welcome_enabled
         TEXT custom_content
@@ -455,34 +451,34 @@ erDiagram
         INTEGER welcome_type
     }
     welcome_urls {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         INTEGER id PK
         TEXT name
         BOOLEAN same_line
         TEXT url
     }
     leave_urls {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         INTEGER id PK
         TEXT name
         BOOLEAN same_line
         TEXT url
     }
     welcome_mutes {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         VARCHAR welcomemutes "varchar(16)"
     }
     clean_service {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BOOLEAN clean_service
         TEXT service_types
     }
     log_channels {
-        VARCHAR chat_id PK "varchar(14)"
-        VARCHAR log_channel "varchar(14)"
+        TEXT chat_id PK
+        TEXT log_channel
     }
     log_channel_setting {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BOOLEAN log_action
         BOOLEAN log_joins
         BOOLEAN log_leave
@@ -490,16 +486,16 @@ erDiagram
         BOOLEAN log_warn
     }
     rules {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         TEXT rules
     }
     chat_toggles {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         VARCHAR feature PK "varchar(16)"
         BOOLEAN enabled
     }
     bot_to_bot {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         VARCHAR allowed
         VARCHAR mode "varchar(16)"
         BOOLEAN skip_review
@@ -508,19 +504,19 @@ erDiagram
 
 ## Stored content
 
-Saved notes, custom filters, anime plugin settings, reminders and the one-shot whisper store.
+Saved notes, custom filters, anime plugin settings and the one-shot whisper store.
 
 ```mermaid
 erDiagram
     notes {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         TEXT name PK
         TEXT file
         BIGINT msgtype
         TEXT value
     }
     note_urls {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         BIGINT id PK
         TEXT note_name PK
         TEXT name
@@ -528,7 +524,7 @@ erDiagram
         TEXT url
     }
     cust_filters {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         TEXT keyword PK
         TEXT file_id
         INTEGER file_type
@@ -544,7 +540,7 @@ erDiagram
         TEXT reply_text
     }
     cust_filter_urls {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         INTEGER id PK
         TEXT keyword PK
         TEXT name
@@ -552,7 +548,7 @@ erDiagram
         TEXT url
     }
     anime_group_settings {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         VARCHAR collection PK "varchar(24)"
         VARCHAR key PK "varchar(32)"
         INTEGER number
@@ -563,35 +559,10 @@ erDiagram
         BIGINT user_id PK
         TEXT token
     }
-    reminds {
-        VARCHAR chat_id PK "varchar(14)"
-        INTEGER time_seconds PK
-        TEXT remind_message
-        BIGINT user_id
-    }
     whispers {
         VARCHAR id PK "varchar(32)"
         TIMESTAMP created
         JSONB data
-    }
-```
-
-## Service message cleaner
-
-Per-chat and global ignore lists for the automatic service message deletion.
-
-```mermaid
-erDiagram
-    cleaner_bluetext_chat_setting {
-        TEXT chat_id PK
-        BOOLEAN is_enable
-    }
-    cleaner_bluetext_chat_ignore_commands {
-        TEXT chat_id PK
-        TEXT command PK
-    }
-    cleaner_bluetext_global_ignore_commands {
-        TEXT command PK
     }
 ```
 
@@ -602,12 +573,12 @@ Karma counters per chat and nickname, and the registered couples of a chat.
 ```mermaid
 erDiagram
     karma {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         VARCHAR name PK "varchar(16)"
         INTEGER karma
     }
     couple {
-        VARCHAR chat_id PK "varchar(14)"
+        TEXT chat_id PK
         VARCHAR date PK "varchar(16)"
         BIGINT c1_id
         BIGINT c2_id
@@ -629,6 +600,10 @@ to fall back on, because `create_all` never adds an index to a table it did not 
 | `connection_history_chat_id_idx` | the rename of a chat, which filters the history on the chat |
 | `warns_chat_id_idx` | the warnings of a chat, where the primary key starts with the user |
 | `feds_subs_sub_idx` | the deletion of a federation, which filters the subscriptions on the subscriber |
+| `anime_group_settings_chat_id_idx` | anime settings lookups by chat, not by the composite key |
+| `human_checks_chat_id_idx` | `clean_human_checks`, which filters on `chat_id` |
+| `whispers_created_idx` | cleanup of expired whispers by creation time |
+| `bans_feds_user_idx` | federation ban filters and deletions by user |
 
 The two functional indexes exist because a function breaks the ordering a b-tree index relies
 on, so neither `username` nor `name` is reachable through its own primary key.
@@ -639,7 +614,7 @@ The modules ask for their indexes while they are imported, and that happens befo
 `create_all` has made the table. `create_pending_indexes()` replays the list once the tables
 exist, so a fresh database gets its indexes on the first start and not the second.
 
-Five indexes hold a uniqueness that the code assumed and the schema did not state. A chat
+Six unique indexes hold a constraint that the code assumed and the schema did not state. A chat
 cannot have two welcome buttons with the same name, a note cannot have two buttons with the
 same name, a filter cannot have two buttons with the same name, and two federations cannot
 share a name or an owner: the caches keyed by name and by owner hold one entry each, so a
@@ -660,8 +635,8 @@ duplicate silently hid a federation.
 flowchart LR
     chats["chats.chat_id"] -->|"FK, ON UPDATE AND DELETE CASCADE"| members["chat_members.chat"]
     users["users.user_id"] -->|"FK, ON UPDATE AND DELETE CASCADE"| members["chat_members.user"]
-    chats -.->|"chat_id column only, no constraint"| chattables["49 tables"]
-    users -.->|"user_id column only, no constraint"| usertables["16 tables"]
+    chats -.->|"chat_id column only, no constraint"| chattables["25 tables"]
+    users -.->|"user_id column only, no constraint"| usertables["11 tables"]
 ```
 
 `chat_members` is the only declared relationship in the schema. Both columns carry
@@ -670,17 +645,17 @@ flowchart LR
 propagates to the membership rows; `users_sql.migrate_chat` still sets them one by one.
 `rem_chat` deletes the `chats` row and the membership rows cascade with it.
 
-Everything else is a naming convention: 49 tables carry a `chat_id` column and 16 carry a
+Everything else is a naming convention: 25 tables carry a `chat_id` column and 11 carry a
 `user_id` column, and PostgreSQL enforces none of those links. A setting row can outlive the
-chat it belongs to, and `rem_chat` leaves it behind. `log_channel_setting.chat_id` was a `BIGINT` where every other chat key is `VARCHAR(14)`;
-it is text now, and a start-up pass widens an existing column. The key types drift with it:
+chat it belongs to, and `rem_chat` leaves it behind. Chat keys are `String` columns now; a start-up
+pass widens legacy `VARCHAR(14)` columns to `VARCHAR(64)`. A few migrated user keys still have a
+different type:
 
-| Table | Column | Declared as | Everywhere else |
+| Table | Column | Widened from | Widened to |
 | --- | --- | --- | --- |
-| `log_channel_setting` | `chat_id` | `BIGINT` | `VARCHAR(14)` |
-| `cleaner_bluetext_chat_setting`, `cleaner_bluetext_chat_ignore_commands` | `chat_id` | `TEXT` | `VARCHAR(14)` |
-| `bans_feds` | `user_id` | `VARCHAR(14)` | `BIGINT` |
-| `feds` | `owner_id` | `VARCHAR(14)` | `BIGINT` |
+| `log_channel_setting` | `chat_id` | `BIGINT` | text |
+| `bans_feds` | `user_id` | text | `BIGINT` |
+| `feds` | `owner_id` | text | `BIGINT` |
 
 `feds.fed_id`, `couple.date` and `anime_group_settings.collection` are keys of their own kind,
 not chat ids. The four URL tables (`note_urls`, `cust_filter_urls`, `welcome_urls`, `leave_urls`)
@@ -690,9 +665,7 @@ put the surrogate `id` inside the composite primary key, so one `id` cannot repe
 
 Telegram rewrites a chat id when a group becomes a supergroup, so a row keyed on the old id
 is orphaned. Every chat keyed module has a `migrate_chat(old, new)`, and the plugin that owns
-the data calls it from its `__migrate__` hook. A test asserts that no chat keyed table is left
-without one; the only exceptions are the two `cleaner_bluetext_*` tables and `reminds`, whose
-modules are imported by no plugin, so nothing writes those rows.
+the data calls it from its `__migrate__` hook.
 
 ## Schema evolution
 

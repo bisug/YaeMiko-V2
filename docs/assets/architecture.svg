@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 840" width="1280" height="840" role="img" aria-label="YaeMiko dual client architecture">
-  <title>YaeMiko dual client architecture</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 840" width="1280" height="840" role="img" aria-label="YaeMiko runtime architecture">
+  <title>YaeMiko runtime architecture</title>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#8b949e"/>
@@ -22,62 +22,62 @@
   <rect class="bg" x="0" y="0" width="1280" height="840"/>
 
   <text class="title" x="48" y="46">YaeMiko runtime architecture</text>
-  <text class="sub" x="48" y="70">Two Telegram clients, one process, PostgreSQL persistence</text>
+  <text class="sub" x="48" y="70">One process, one MTProto client, PostgreSQL persistence</text>
 
   <rect class="accent-blue" x="80" y="100" width="480" height="70"/>
-  <text class="head" x="104" y="128">Telegram Bot API</text>
-  <text class="sub" x="104" y="150">Long polling transport used by aiogram</text>
+  <text class="head" x="104" y="128">Configuration</text>
+  <text class="sub" x="104" y="150">Environment, .env or variables.py</text>
 
   <rect class="accent-purple" x="720" y="100" width="480" height="70"/>
   <text class="head" x="744" y="128">Telegram MTProto</text>
-  <text class="sub" x="744" y="150">MTProto transport used by Kurigram</text>
+  <text class="sub" x="744" y="150">Kurigram client, bot_token, workers=WORKERS</text>
 
   <path class="edge" d="M 320 170 L 320 250"/>
   <path class="edge" d="M 960 170 L 960 250"/>
 
   <rect class="accent-blue" x="80" y="250" width="480" height="96"/>
-  <text class="head" x="104" y="280">aiogram Dispatcher</text>
-  <text class="sub" x="104" y="302">MemoryStorage, ThrottledSession, GateMiddleware</text>
-  <text class="sub" x="104" y="324">CommandHandler, CallbackQueryHandler, MessageHandler, TypeHandler</text>
+  <text class="head" x="104" y="280">Mikobot/events.py</text>
+  <text class="sub" x="104" y="302">One handler per update type walks the registry</text>
+  <text class="sub" x="104" y="324">Permission gates run before each plugin</text>
 
   <rect class="accent-purple" x="720" y="250" width="480" height="96"/>
-  <text class="head" x="744" y="280">Kurigram Client</text>
-  <text class="sub" x="744" y="302">Bot session over MTProto, RawUpdateHandler, decorated filters</text>
-  <text class="sub" x="744" y="324">Mikobot/events.py registers message, callback, member and inline handlers</text>
+  <text class="head" x="744" y="280">Core runtime</text>
+  <text class="sub" x="744" y="302">Mikobot/__init__.py: config, logging, loop, client</text>
+  <text class="sub" x="744" y="324">__main__.py: startup, plugin discovery, shutdown</text>
 
   <path class="edge" d="M 320 346 L 320 424"/>
   <path class="edge" d="M 960 346 L 960 424"/>
 
   <rect class="panel" x="80" y="424" width="480" height="96"/>
-  <text class="head" x="104" y="454">Core runtime</text>
-  <text class="sub" x="104" y="476">Mikobot/__init__.py: config, logging with token redaction, event loop, clients</text>
-  <text class="sub" x="104" y="498">Mikobot/__main__.py: handler registration, plugin discovery, migration, shutdown</text>
+  <text class="head" x="104" y="454">Plugin system</text>
+  <text class="sub" x="104" y="476">62 modules auto discovered through glob</text>
+  <text class="sub" x="104" y="498">LOAD and NO_LOAD control ordering and exclusions</text>
 
   <rect class="panel" x="720" y="424" width="480" height="96"/>
-  <text class="head" x="744" y="454">Plugin system</text>
-  <text class="sub" x="744" y="476">Mikobot/plugins: 61 modules auto discovered through glob</text>
-  <text class="sub" x="744" y="498">LOAD and NO_LOAD control ordering and exclusions</text>
+  <text class="head" x="744" y="454">Shared HTTP client</text>
+  <text class="sub" x="744" y="476">Mikobot/state.py: one httpx.AsyncClient</text>
+  <text class="sub" x="744" y="498">HTTP/2 enabled, 20 second timeout</text>
 
   <path class="edge" d="M 200 520 L 160 600"/>
   <path class="edge" d="M 800 520 L 800 600"/>
 
   <rect class="accent-green" x="20" y="600" width="580" height="96"/>
   <text class="head" x="44" y="630">PostgreSQL</text>
-  <text class="sub" x="44" y="652">SQLAlchemy scoped sessions</text>
-  <text class="sub" x="44" y="674">35 modules: warns, locks, notes, karma, users, chats, anime</text>
+  <text class="sub" x="44" y="652">SQLAlchemy 2.1.8 over psycopg 3</text>
+  <text class="sub" x="44" y="674">29 model modules, 56 tables</text>
 
   <rect class="accent-orange" x="620" y="600" width="280" height="96"/>
   <text class="head" x="644" y="630">External HTTP APIs</text>
-  <text class="sub" x="644" y="652">Shared httpx client, HTTP/2, 20s timeout</text>
-  <text class="sub" x="644" y="674">Openverse, HN Algolia, DuckDuckGo</text>
+  <text class="sub" x="644" y="652">Openverse, HN Algolia, DuckDuckGo</text>
+  <text class="sub" x="644" y="674">Catbox, Litterbox, PokeAPI</text>
 
   <rect class="accent-red" x="920" y="600" width="340" height="96"/>
   <text class="head" x="944" y="630">Supporting services</text>
   <text class="sub" x="944" y="652">Telegraph, speedtest, ffmpeg, Pillow, ONNX</text>
-  <text class="sub" x="944" y="674">fonts for styled text, nekos for media search</text>
+  <text class="sub" x="944" y="674">fonts and locale catalogs</text>
 
   <rect class="panel" x="20" y="726" width="1240" height="88"/>
   <text class="head" x="44" y="756">Deployment targets</text>
-  <text class="sub" x="44" y="780">Heroku worker dyno via app.json and heroku.yml, Docker image built from the multi stage Dockerfile, or a bare VPS run with python -m Mikobot</text>
+  <text class="sub" x="44" y="780">Render, Railway, Heroku, a multi stage Docker image, or a bare VPS with python -m Mikobot</text>
   <text class="sub" x="44" y="800">Every target executes the same entry point: python -m Mikobot</text>
 </svg>

@@ -36,15 +36,7 @@ environment variables.
 | `API_HASH` | string | Kurigram client | Same page |
 | `TOKEN` | string | Kurigram MTProto client session | From [@BotFather](https://t.me/BotFather) |
 | `OWNER_ID` | integer | Rank checks | Parsed with `int()`, a bad value raises at startup |
-| `DATABASE_URL` | string | `Database/sql` | `postgres://` is rewritten to `postgresql+psycopg://` |
-| `DB_POOL_SIZE` | integer | `Database/sql` | Pooled connections held open. Default `min(20, cpu*2+4)` |
-| `DB_MAX_OVERFLOW` | integer | `Database/sql` | Extra connections above the pool size. Default `20` |
-| `DB_POOL_TIMEOUT` | integer | `Database/sql` | Seconds a caller waits for a connection. Default `30` |
-| `DB_PRE_PING` | boolean | `Database/sql` | Liveness check on every checkout, one round trip each. Default `True`; `False` is enough where `pool_recycle` already retires connections |
-| `DB_STATEMENT_TIMEOUT_MS` | integer | `Database/sql` | Milliseconds a single statement may run. Default `5000` |
-| `DB_LOCK_TIMEOUT_MS` | integer | `Database/sql` | Milliseconds a statement waits for a lock. Default `2000` |
-| `DB_IDLE_IN_TRANSACTION_MS` | integer | `Database/sql` | Milliseconds an open transaction may sit idle. Default `30000` |
-| `DB_STATEMENT_LOG_EVERY` | integer | `Database/sql` | Statements between query mix log lines. Default `500`, `0` is not allowed |
+| `DATABASE_URL` | string | `Database/sql` | `postgres://` and `postgresql://` are rewritten to `postgresql+psycopg://` |
 | `EVENT_LOGS` | integer | Logging plugins | Channel ID for bot level events |
 | `MESSAGE_DUMP` | integer | Logging plugins | Dump chat ID |
 | `SUPPORT_CHAT` | string | Start and about keyboards | Username without the `@` |
@@ -61,6 +53,15 @@ environment variables.
 | `STRICT_GBAN` | `True` | Enforce global bans in new groups |
 | `BAN_STICKER` | empty | Sticker file ID banned in every group |
 | `TEMP_DOWNLOAD_DIRECTORY` | `./` | Scratch directory for downloaded media |
+| `DB_POOL_SIZE` | `min(8, cpu*2+4)` | Pooled connections held open |
+| `DB_MAX_OVERFLOW` | `4` | Extra connections above the pool size |
+| `DB_POOL_TIMEOUT` | `30` | Seconds a caller waits for a connection |
+| `DB_PRE_PING` | `False` | Liveness check on each checkout, one round trip each; enable for proxies with a short idle timeout |
+| `DB_CONNECT_TIMEOUT` | `10` | Seconds a connection attempt may take |
+| `DB_STATEMENT_TIMEOUT_MS` | `5000` | Milliseconds a single statement may run |
+| `DB_LOCK_TIMEOUT_MS` | `2000` | Milliseconds a statement waits for a lock |
+| `DB_IDLE_IN_TRANSACTION_MS` | `30000` | Milliseconds an open transaction may sit idle |
+| `DB_STATEMENT_LOG_EVERY` | `500` | Statements between query mix log lines; `0` is not allowed |
 | `LOGGER` | `True` | Unused, kept so existing deployments do not break. Log files are always written |
 | `LOG_LEVEL` | `INFO` | Root log level, one of `CRITICAL ERROR WARNING INFO DEBUG NOTSET` |
 | `ACTIVITY_LOG` | `False` | Log a summary line for every incoming update |
@@ -84,9 +85,10 @@ being skipped, because a silently dropped admin is worse than a failed boot.
 | `TIGERS` | Tiger | Never bannable |
 | `BL_CHATS` | n/a | Space separated blacklisted chat IDs |
 
-`Mikobot/elevated_users.json` adds runtime users under the keys `devs`, `supports`, `whitelists`,
-`sudos`, `tigers` and `spammers`. The file is merged with the environment lists at import time, and
-`OWNER_ID` is always added to the dragon and dev sets.
+`Mikobot/elevated_users.json` adds runtime users under the keys `sudos`, `supports`, `whitelists` and
+`tigers`. The file also has `devs` and `spammers` keys that no code reads. The four active keys are
+merged with the environment lists at import time, and `OWNER_ID` is always added to the dragon and
+dev sets.
 
 ## Module selection
 
@@ -107,7 +109,7 @@ backwards compatibility but no longer read: log files are written whether it is 
 not, so set `LOG_LEVEL=CRITICAL` if you need the volume down. `LOG_LEVEL` controls the
 root level, and the `pyrogram` and `pyrate_limiter` loggers are pinned to `ERROR`.
 
-`RedactingFormatter` rewrites any token shaped like `bot<digits>:<30 or more characters>` to
+`RedactingFormatter` rewrites any token shaped like `bot<digits>:<20 or more characters>` to
 `bot<redacted>`. The `httpx` and `httpcore` loggers are set to `WARNING` because their INFO output
 contains the complete Telegram API URL with the token in the path.
 

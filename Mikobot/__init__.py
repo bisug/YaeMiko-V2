@@ -134,14 +134,13 @@ StartTime = time.time()
 def _create_event_loop():
     """uvloop where it exists, the stock selector loop where it does not.
 
-    aiogram only reaches for uvloop inside Dispatcher.run_polling, which this
-    bot never calls: the loop is built here and start_polling is driven from it
-    by __main__, so the opt-in has to happen at construction instead.
+    The loop is built here and driven by __main__, so uvloop has to be selected
+    at construction rather than inside a framework's polling helper.
 
     uvloop ships no Windows wheel, so it is marked out of requirements.txt on
     win32, and the import is guarded twice: once for the platform and once for
-    the case where a Linux install skipped it. The fallback is the loop this
-    used to build unconditionally, so nothing changes for anyone without it.
+    the case where a Linux install skipped it. The fallback is the stock loop,
+    so nothing changes for anyone without it.
     """
     try:
         import uvloop
@@ -370,8 +369,8 @@ CONFIG_TIGERS = set(TIGERS)
 
 # <============================================== INITIALIZE APPLICATION =========================================================>
 # The kurigram client is the only Telegram client: it speaks MTProto, so the
-# bot no longer depends on the Bot API or on an HTTP session of its own.
-# Handlers are registered on it through Mikobot.events.
+# bot has no Bot API dependency. Outbound HTTP uses the shared client in
+# Mikobot.state; handlers are registered through Mikobot.events.
 
 _persistence_file = os.path.join(os.path.dirname(__file__), "..", "persistence.pickle")
 _legacy_persistence = os.path.join(

@@ -26,8 +26,8 @@ Back to [README](../README.md).
 
 ## Design goals
 
-1. One process, two clients. Bot API and MTProto run side by side without a second interpreter.
-2. No hardcoded identity. The bot name, username and ID come from `get_me()` at startup.
+1. One process, one client. The Kurigram MTProto client handles every Telegram update.
+2. No hardcoded identity. The bot name, username and ID come from the connected client's `me`.
 3. Secrets never reach the log stream. Redaction happens in the formatter, not in call sites.
 4. Trimmable without code changes. Plugin selection is configuration, not editing.
 5. One entry point everywhere. Heroku, Docker and VPS all run `python -m Mikobot`.
@@ -52,7 +52,7 @@ shared httpx client, then closes the loop.
 5. `RedactingFormatter` is attached to the root logger. The `httpx` and `httpcore` loggers are set
    to `WARNING` because their INFO records embed the full Telegram API URL, including the token.
 6. The event loop is built and the Kurigram MTProto client is configured with the `Mikobot.events` registry.
-7. `fetch_bot_info()` supplies `BOT_ID`, `BOT_NAME` and `BOT_USERNAME`.
+7. `fetch_bot_info()` supplies `BOT_ID`, `BOT_NAME` and `BOT_USERNAME` from `app.me`.
 8. The Kurigram `Client` is started and the boot message is sent to the support chat.
 
 ### Elevated users
@@ -62,7 +62,7 @@ Ranks come from two places and are merged:
 | Rank | Environment | `Mikobot/elevated_users.json` key | Capability |
 | --- | --- | --- | --- |
 | Owner | `OWNER_ID` | n/a | Full control, always added to dragons and devs |
-| Dragon | `DRAGONS`, `DEV_USERS` | `sudos` | Admin level bot commands |
+| Dragon | `DRAGONS`, `DEV_USERS` | `sudos` (the `devs` key is not read) | Admin level bot commands |
 | Demon | `DEMONS` | `supports` | Global ban capability |
 | Wolf | `WOLVES` | `whitelists` | Cannot be banned |
 | Tiger | `TIGERS` | `tigers` | Never bannable by the bot |
@@ -70,13 +70,13 @@ Ranks come from two places and are merged:
 ## Kurigram MTProto client and events registry
 
 ```python
+WORKERS = env_int("WORKERS", min(8, (os.cpu_count() or 4) * 2))
 app = Client(
-    ":memory:",
+    "bot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=TOKEN,
-    workers=min(32, (os.cpu_count() or 1) + 4),
-    parse_mode=ParseMode.HTML,
+    workers=WORKERS,
 )
 ```
 
@@ -106,7 +106,7 @@ The resulting list is exported as `ALL_MODULES` and re-exported through `__all__
 | Transport | MTProto socket on Kurigram |
 | Handler match | `Mikobot.events` registry and `filters` objects |
 | Permission gate | `Mikobot/plugins/helper_funcs/chat_status.py` and the rank sets |
-| Rate limiter | Flood control and backoff on MTProto calls |
+| Rate limiting | Per-plugin flood control; no global rate limiter in the dispatch path |
 | Execution | Plugin coroutine |
 | Reply | Explicitly styled inline buttons |
 
@@ -120,8 +120,8 @@ Every inline button call must pass a `style` keyword:
 | `ButtonStyle.SUCCESS` | Confirming and positive actions | confirm, apply, refresh |
 | `ButtonStyle.DANGER` | Destructive actions | delete, ban, purge all |
 
-`tests/test_plugins.py` walks the AST of every Python file and fails when an `InlineKeyboardButton`
-or `EqInlineKeyboardButton` call has no `style` keyword, so the contract cannot regress silently.
+There is no automated check that every button follows the contract; it is a convention for new
+code.
 
 Note on subclassing: the style is a constructor argument, not a class argument. Declaring
 `class EqInlineKeyboardButton(InlineKeyboardButton, style=...)` fails, because Python forwards class
@@ -140,8 +140,10 @@ MongoDB is gone, anime plugin settings included; see
 [MIGRATION-MONGO-TO-SQL.md](MIGRATION-MONGO-TO-SQL.md). The schema table by table is in
 [DATABASE.md](DATABASE.md).
 
-`Database/sql/__init__.py` rewrites `postgres://` to `postgresql+psycopg://`, creates the engine
-with `pool_pre_ping=True` and `pool_recycle=1800`, and calls `BASE.metadata.create_all(engine)`.
+`Database/sql/__init__.py` rewrites `postgres://` and `postgresql://` to `postgresql+psycopg://`,
+creates the engine with `pool_recycle=1800` and optional `pool_pre_ping` (off by default), then
+`create_all_tables()` imports every model module, calls `BASE.metadata.create_all(ENGINE)` and
+replays the indexes the modules requested.
 
 The pool is sized from the worker count rather than left at the SQLAlchemy default of 5 plus 10
 overflow. Data helpers run on `asyncio.to_thread` workers, of which there can be up to
@@ -163,9 +165,9 @@ loop cannot roll back a worker's.
 
 ## Chat migration
 
-A `filters.StatusUpdate.MIGRATE` handler in `Mikobot/__main__.py` calls `__migrate__(old, new)` on
-every module that defines it, then raises `ApplicationHandlerStop` so no other handler sees the
-update. Missing hooks are ignored via `contextlib.suppress`.
+A message handler in `Mikobot/__main__.py` matched by `filters.migrate_to_chat_id` and
+`filters.migrate_from_chat_id` calls `__migrate__(old, new)` on every module that defines it.
+Missing hooks are ignored via `contextlib.suppress`.
 
 ## Shutdown
 
@@ -173,12 +175,13 @@ update. Missing hooks are ignored via `contextlib.suppress`.
 
 1. `app.stop()` stops the Kurigram client.
 2. `state.aclose()` closes the shared httpx client.
-3. The event loop is stopped if still running, then closed.
+3. The thread executor is shut down.
+4. The event loop is stopped if still running, then closed.
 
 ## Error handling
 
-`error_callback` answers the callback query or the chat with a short notice, then logs the full
-traceback through the redacting formatter, so users get feedback and operators get the stack.
+`error_callback` answers a failed callback query with a short notice and logs the full traceback
+through the redacting formatter, so users get feedback and operators get the stack.
 
 ## Deployment topologies
 

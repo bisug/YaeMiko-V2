@@ -42,24 +42,10 @@ groups, and anyone running the anti-NSFW checks on every image.
 
 ## What is measured and what is estimated
 
-Being precise about this, because the numbers below drive real hosting choices.
-
-| Figure | Source |
-| --- | --- |
-| Repository size, 9.2 MB without `.git` | `du -sh --exclude=.git .` on this checkout |
-| 129 Python files, 38,708 lines | `find ... | wc -l` on this checkout |
-| 66.1 MB of direct dependency wheels | `uv pip download --no-deps -r requirements.txt`, the CPython 3.14 x86_64 wheels |
-| ONNX Runtime 1.31.1 wheel, 23.8 MB | `uv pip download`, cp314 manylinux x86_64 |
-| opennsfw-onnx 0.1.0 wheel, 22.0 MB | same, the wheel ships the model |
-| Pillow 13.0.0 wheel, 7.0 MB | same |
-| Kurigram 2.2.27 wheel, 6.0 MB | same |
-| `WORKERS` (default `min(8, cpu*2)`) | `Mikobot/__init__.py:157`, set through the environment |
-| 20 second HTTP timeout | `Mikobot/state.py` |
-| Disk figures | Wheel sizes plus the source tree, with room for logs, temp media and the pickle file |
-| **RAM figures** | **Estimates.** Not measured on a live bot, see below |
-
-The RAM numbers are the one part that is judgement rather than measurement. They are derived from the
-process count, the ONNX Runtime arena, and Pillow buffers. Verify with the commands in
+The RAM figures in this document are estimates, not measurements of a live bot. They are derived
+from the worker count, the ONNX Runtime arena, and Pillow buffers. `WORKERS` defaults to
+`min(8, cpu*2)` in `Mikobot/__init__.py` and the shared HTTP client in `Mikobot/state.py` has a
+20 second timeout; both are set in code. Verify the memory figures with
 [How to measure your own usage](#how-to-measure-your-own-usage) before paying for more than you need.
 
 ## Minimum
@@ -76,8 +62,8 @@ Python 3.14.10
 
 What you give up:
 
-- The anti-NSFW module loads a 20.9 MB model into an ONNX Runtime session on first use. On 512 MB
-  this is the largest single allocation in the process.
+- The anti-NSFW module loads its classifier model into an ONNX Runtime session on first use. On
+  512 MB this is the largest single allocation in the process.
 - ffmpeg frame extraction for video and animated stickers is CPU bound, and one shared vCPU means
   commands queue behind it.
 - `WORKERS` (default `min(8, cpu*2)`) sets both the client worker count and the thread pool size.
@@ -147,14 +133,13 @@ YaeMiko makes only outbound connections. No inbound port has to be open.
 
 | Item | Direction | Volume |
 | --- | --- | --- |
-| Bot API long polling | Outbound, persistent | Roughly 1 to 3 MB per day per group |
-| MTProto session | Outbound, persistent | A few hundred KB per day |
+| Telegram MTProto | Outbound, persistent | A few MB per day per group |
 | Media upload and download | Both | Dominated by images and video in chat |
 | Speedtest | Outbound | Bursts of tens of MB while `/speedtest` runs |
 | Bot operations | Outbound | Search queries and media uploads |
 
-The long polling connection is a constant low volume stream, not a burst workload. A 1 Mbps uplink is
-enough for the polling itself. The bandwidth that matters is media: a group that passes 100 MB of
+The MTProto connection is a constant low volume stream, not a burst workload. A 1 Mbps uplink is
+enough for it. The bandwidth that matters is media: a group that passes 100 MB of
 video a day will use it, and `/speedtest` will saturate the link while it runs.
 
 ## Database sizing
@@ -166,27 +151,14 @@ PostgreSQL storage requirements are small unless the group is very large. This i
 | PostgreSQL | 1 GB | 5 GB | One row per warning, lock, note, rule, and filter |
 
 Render Free Postgres gives 1 GB, and free-tier PostgreSQL instances are enough for a small group. The
-connection pool is the thing to watch rather than the data volume: `pool_pre_ping=True` and
-`pool_recycle=1800` in `Database/sql/__init__.py` keep the pool healthy on managed platforms that drop
+connection pool is the thing to watch rather than the data volume: `pool_recycle=1800` and optional
+`pool_pre_ping` in `Database/sql/__init__.py` keep the pool healthy on managed platforms that drop
 idle connections.
 
 ## Where the resource weight comes from
 
-Measured wheel sizes for the dependencies that actually matter:
-
-| Dependency | Wheel | Why it is heavy |
-| --- | --- | --- |
-| onnxruntime | 22.7 MB | Native inference engine — ships cp314 wheels, no cp315 wheels yet |
-| opennsfw-onnx | 20.9 MB | Ships the pre trained model inside the wheel |
-| Pillow | 6.8 MB | Native image codecs |
-| Kurigram | 5.8 MB | MTProto implementation |
-| SQLAlchemy | 4.6 MB | Includes the native C extensions |
-| All 22 direct dependencies | 70.9 MB | Download size, excluding transitive dependencies |
-| All 20 direct dependencies (Python 3.15+) | ~27 MB | ONNX wheels excluded, download size |
-
-On the pinned Python 3.14 the install is roughly 71 MB of wheels, the ONNX runtime and model included.
-The runtime memory is efficiently managed by the pure Kurigram MTProto client and `Mikobot.events` registry,
-eliminating the overhead of concurrent dual clients.
+The heavy dependencies are the ONNX Runtime native engine and the `opennsfw-onnx` wheel, which ships
+the classifier model, plus Pillow's image codecs. Both ONNX packages are excluded on Python 3.15+.
 
 Three things are lazy on purpose, so you are not paying for them at startup:
 
@@ -234,7 +206,8 @@ If you are over budget, in order of impact:
    heaviest are `sangmata` (Pillow plus image work), `cosplay` (image search and download),
    `imagegen` (image generation, currently flagged off in the module display name) and `reverse`
    (reverse image search). See [PLUGINS.md](PLUGINS.md) for what each one pulls in.
-2. Set `LOGGER=False` and `LOG_LEVEL=WARNING`. The rotating file handler stops writing.
+2. Set `LOG_LEVEL=WARNING` to reduce log volume. `LOGGER` is accepted but unused; the rotating
+   file handler is always attached when the working directory is writable.
 3. Set `WORKERS=2` (default is `min(8, cpu*2)` in `Mikobot/__init__.py`). This sizes both the client
    worker pool and the thread executor; fewer threads means a smaller working set under burst.
 4. Move PostgreSQL to a managed instance. The local server process and its page cache are otherwise

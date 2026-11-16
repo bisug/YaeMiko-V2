@@ -74,7 +74,7 @@ name in that list, so dropping a new file into the directory is enough to regist
 | `afk` | AFK | `afk` |
 | `notes` | NOTES | `save`, `get`, `clear`, `removeallnotes` |
 | `users` | USERS | `groups` |
-| `echo` | ECHO | `echo`, `say`, `broadcast` (bot owners only) |
+| `echo` | ECHO | `echo`, `say`, `broadcast` (owner and dev users only) |
 | `captcha` | CAPTCHA | `captcha`, `captchamode`, `captchabuttons`, `resetcaptchatext`, `captchakick`, `captchakicktime`, `captchamutetime`, `captcharules`, `resetcaptcha` |
 | `bot2bot` | BOT2BOT | `bot2bot`, `bot2botskipreview` |
 | `topics` | TOPICS | `newtopic`, `renametopic`, `closetopic`, `reopentopic`, `deletetopic`, `actiontopic`, `setactiontopic` (forums only) |

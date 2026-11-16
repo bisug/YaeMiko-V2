@@ -54,7 +54,7 @@ state in PostgreSQL, and ships 62 plugin modules.
 | **Modules** | 62 auto discovered plugins under `Mikobot/plugins` |
 | **Requirements** | 512 MB RAM minimum, 1 GB recommended, Python 3.14.10 |
 | **Deployment** | Render, Railway, Heroku, Docker, or a bare VPS |
-| **Guarantees** | CI compile, unit, JSON and whitespace gates, weekly CodeQL, Dependabot updates |
+| **Guarantees** | CI compile, lint, unit, JSON and whitespace gates, weekly CodeQL, Dependabot updates |
 
 > **Maintained fork.** This repository is the main home of YaeMiko and is forked from
 > [Infamous-Hydra/YaeMiko](https://github.com/Infamous-Hydra/YaeMiko). Upstream remains credited
@@ -66,25 +66,24 @@ state in PostgreSQL, and ships 62 plugin modules.
 
 - **Pure MTProto runtime.** Powered by the Kurigram MTProto client and `Mikobot.events` registry
   for direct MTProto performance, native Telegram features, and unified handler registration.
-- **Semantic inline buttons.** Every inline button declares an explicit style: `PRIMARY` for
-  navigation, `SUCCESS` for confirming and positive actions, `DANGER` for destructive actions. A
-  regression test parses the AST and fails the build if any button is missing one.
-- **Rate limiting and durable state.** `ThrottledSession` holds outbound calls to the Bot API's
-  rate limits, and chat settings live in PostgreSQL rather than process memory, so a dyno bounce
-  does not lose moderation state.
+- **Semantic inline buttons.** Buttons use explicit styles: `PRIMARY` for navigation, `SUCCESS`
+  for confirming actions, `DANGER` for destructive actions.
+- **Shared HTTP client and durable state.** `Mikobot.state` holds one `httpx.AsyncClient`, and chat
+  settings live in PostgreSQL rather than process memory, so a dyno bounce does not lose moderation
+  state. Plugins that fan out messages throttle their own sends.
 - **Token safe logging.** A `RedactingFormatter` strips anything shaped like a bot token, and the
   `httpx` and `httpcore` loggers are pinned to `WARNING` because their INFO output contains the
   full Telegram API URL.
 - **One store.** Everything lives in PostgreSQL: chat state, users, AFK, whispers, karma,
   couples, per-chat toggles, locale, force-subscribe and the anime plugin's group settings.
   MongoDB was removed; see [docs/MIGRATION-MONGO-TO-SQL.md](docs/MIGRATION-MONGO-TO-SQL.md).
-- **Anti-abuse toolkit.** AntiRaid bans a flood of joins in bulk instead of one at a time; CAPTCHA
+- **Anti-abuse toolkit.** AntiRaid temporarily bans each new member while a raid is active; CAPTCHA
   gates new members with a button, a text prompt, or a math question, and can verify pending join
   requests. Flood limits accept per-type durations, and blocklists match user, chat, or channel.
 - **Lock allowlists.** A lock only applies to the types you list, so locking `sticker` no longer
   silences text as a side effect.
-- **Command approvals.** Bot-initiated setting changes need human approval before they apply, and
-  destructive commands such as `ban`, `mute` and `delete` confirm with a button before acting.
+- **Command approvals.** Bot-initiated setting changes need admin approval before they apply, and
+  an anonymous admin must confirm a ban through a button.
 - **Self service.** `/echo`, `/say` and `/broadcast` relay messages, and `/export`, `/import` and
   `/reset` move a chat's configuration in and out as JSON.
 - **Forum support.** Topics are created and routed per action topic, so each action can have its own
@@ -100,7 +99,7 @@ state in PostgreSQL, and ships 62 plugin modules.
 
 ![YaeMiko runtime architecture](docs/assets/architecture.svg)
 
-Full walkthrough: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Schema of the 60 tables:
+Full walkthrough: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Schema of the 56 tables:
 [docs/DATABASE.md](docs/DATABASE.md).
 
 PostgreSQL is the only store. MongoDB was retired after every feature moved across:
@@ -113,7 +112,7 @@ PostgreSQL is the only store. MongoDB was retired after every feature moved acro
 | Plugin bus | [`Mikobot/events.py`](Mikobot/events.py) | Registers Kurigram handlers behind one signature |
 | HTTP client | [`Mikobot/state.py`](Mikobot/state.py) | One shared `httpx.AsyncClient` with HTTP/2 and a 20 second timeout |
 | Plugins | [`Mikobot/plugins`](Mikobot/plugins) | 62 feature modules, auto discovered |
-| SQL layer | [`Database/sql`](Database/sql) | 31 SQLAlchemy model modules, 60 tables, backed by PostgreSQL; see [docs/DATABASE.md](docs/DATABASE.md) |
+| SQL layer | [`Database/sql`](Database/sql) | 29 SQLAlchemy model modules, 56 tables, backed by PostgreSQL; see [docs/DATABASE.md](docs/DATABASE.md) |
 | Shared helpers | [`Mikobot/utils`](Mikobot/utils), [`Mikobot/plugins/helper_funcs`](Mikobot/plugins/helper_funcs) | Caching, custom filters, error capture, localization, message parsing, readable sizes |
 | Static assets | [`Extra`](Extra), [`locales`](locales) | Fonts, default avatars, catalogs for `en-US`, `id-ID`, `id-JW` |
 
@@ -125,12 +124,12 @@ PostgreSQL is the only store. MongoDB was retired after every feature moved acro
    handler.
 3. The `asyncio` event loop is created and the Kurigram `Client` is initialized with the
    `Mikobot.events` registry.
-4. The bot is initialized and `fetch_bot_info()` supplies `BOT_ID`, `BOT_NAME` and `BOT_USERNAME`, so the
-   display name is never hardcoded.
-5. A boot message is pushed to the support chat.
-6. `Mikobot/__main__.py` registers the core handlers, imports every module listed by `ALL_MODULES`,
-   and starts update handling on the Kurigram client.
-7. On exit the Kurigram client, the httpx client and the loop are closed in
+4. `Mikobot/__main__.py` starts the Kurigram client and reads `BOT_ID`, `BOT_NAME` and
+   `BOT_USERNAME` from `client.me`, so the display name is never hardcoded.
+5. It imports every module listed by `ALL_MODULES`, registers the core handlers and installs the
+   `Mikobot.events` registry on the client.
+6. A boot message is pushed to the support chat.
+7. On exit the Kurigram client, the httpx client, the thread executor and the loop are closed in
    order.
 
 ---
@@ -169,7 +168,7 @@ execution. Persistence, reply construction and error handling surround that spin
 | --- | --- | --- |
 | PostgreSQL | 18 | [postgresql.org](https://www.postgresql.org/) |
 | SQLAlchemy | 2.1.8 | [sqlalchemy.org](https://www.sqlalchemy.org/) |
-| psycopg (binary, pool) | 3.3.8 | [psycopg.org](https://www.psycopg.org/) |
+| psycopg (binary, pool) | 3.3.9 | [psycopg.org](https://www.psycopg.org/) |
 
 ### HTTP, media and processing
 
@@ -180,7 +179,7 @@ execution. Persistence, reply construction and error handling surround that spin
 | ONNX Runtime | 1.31.1 | NSFW detection inference | [PyPI](https://pypi.org/project/onnxruntime/) |
 | opennsfw-onnx | 0.1.0 | Pre trained NSFW classifier | [PyPI](https://pypi.org/project/opennsfw-onnx/) |
 | beautifulsoup4 | 4.15.0 | HTML scraping for search modules | [PyPI](https://pypi.org/project/beautifulsoup4/) |
-| cachetools | 7.2.7 | Short lived caching in hot paths | [PyPI](https://pypi.org/project/cachetools/) |
+| cachetools | 8.0.0 | Short lived caching in hot paths | [PyPI](https://pypi.org/project/cachetools/) |
 | pyrate-limiter | 4.5.1 | Extra outbound throttling | [PyPI](https://pypi.org/project/pyrate-limiter/) |
 | psutil | 7.2.2 | Runtime and host stats for `/alive` | [PyPI](https://pypi.org/project/psutil/) |
 | speedtest-cli | 2.1.3 | Bandwidth checks | [PyPI](https://pypi.org/project/speedtest-cli/) |
@@ -236,17 +235,6 @@ sudo apt-get install -y ffmpeg libgomp1
 `libgomp1` is the OpenMP runtime ONNX Runtime links against. The [Dockerfile](Dockerfile) installs
 both, plus `curl`, in the runtime stage.
 
-Where the memory and disk go, measured from PyPI wheel sizes for the pinned dependencies:
-
-| Dependency | Wheel | Consequence |
-| --- | --- | --- |
-| onnxruntime | 22.7 MB | Largest single allocation, loaded on first anti-NSFW check |
-| opennsfw-onnx | 20.9 MB | Ships the model inside the wheel |
-| Pillow | 6.8 MB | Image buffers |
-| Kurigram | 5.8 MB | MTProto client |
-| SQLAlchemy | 4.6 MB | Native extensions |
-| All 23 direct dependencies | ~81 MB | Install footprint, ONNX wheels included |
-
 The RAM figures are estimates, not measurements of a live bot. To size your own instance, read the
 peak rather than the current usage:
 
@@ -270,7 +258,7 @@ YaeMiko/
 │   ├── plugins/                 62 feature modules + helper_funcs
 │   └── utils/                   Caching, filters, error capture, localization, parsing
 ├── Database/
-│   └── sql/                     31 SQLAlchemy model modules
+│   └── sql/                     29 SQLAlchemy model modules
 ├── Infamous/                    Static start and repo keyboards
 ├── Extra/                       Fonts and default images
 ├── locales/                     en-US, id-ID, id-JW catalogs
@@ -280,6 +268,7 @@ YaeMiko/
 │   ├── CONFIGURATION.md
 │   ├── DATABASE.md
 │   ├── DEPLOYMENT.md
+│   ├── kurigram-migration.md
 │   ├── MIGRATION-MONGO-TO-SQL.md
 │   ├── PLUGINS.md
 │   ├── SYSTEM-REQUIREMENTS.md
@@ -363,10 +352,10 @@ Full reference with defaults and elevated user ranks:
 | `BL_CHATS` | empty | Space separated blacklisted chat IDs |
 | `LOAD` | empty | Force a plugin start order |
 | `NO_LOAD` | empty | Skip plugins by file name |
-| `DEL_CMDS` | `True` | Delete command messages from unprivileged users |
+| `DEL_CMDS` | `False` | Delete command messages from unprivileged users |
 | `STRICT_GBAN` | `True` | Enforce global bans in new groups |
 | `ALLOW_CHATS` | `True` | Accept private chat usage |
-| `ALLOW_EXCL` | `True` | Accept excluded chat usage |
+| `ALLOW_EXCL` | `False` | Accept excluded chat usage |
 | `INFOPIC` | `True` | Use the image info card instead of a text card |
 | `LOGGER` | `True` | Unused. Log files are always written; see [Logging](docs/CONFIGURATION.md#logging) |
 | `LOG_LEVEL` | `INFO` | Root log level |
@@ -395,8 +384,8 @@ All five targets run the same entry point: `python -m Mikobot`.
 Step by step guide for every option, including the full VPS setup with systemd and PostgreSQL:
 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-YaeMiko holds a long polling connection to the Bot API and never binds a port. On Render it must be
-a background worker, never a web service, or health checks will fail forever.
+YaeMiko holds a persistent MTProto connection to Telegram and never binds a port. On Render it must
+be a background worker, never a web service, or health checks will fail forever.
 
 ### Before any platform
 
@@ -482,7 +471,7 @@ sudo apt-get install -y ffmpeg libgomp1                 # 2. Install ffmpeg, Ope
 curl -LsSf https://astral.sh/uv/install.sh | sh         # 3. Install uv
 
 git clone https://github.com/bisug/YaeMiko-V2.git  # 4. Clone the repository
-cd YaeMiko
+cd YaeMiko-V2
 
 uv sync                                                 # 5. Create venv & install dependencies
 vi .env                                                 # 6. Add the required keys, see below
@@ -504,25 +493,26 @@ uv run python -m Mikobot
 ## Continuous integration
 
 [`ci.yml`](.github/workflows/ci.yml) runs on every push to `main` and every pull request. The
-`validate` job, which the `docker` job depends on, executes:
+`validate` job runs against a PostgreSQL 18 service and, before the `docker` job, executes:
 
 ```bash
 uv sync --frozen                               # sync pinned dependencies and dev tools
 python -m json.tool app.json >/dev/null        # manifest is valid JSON
 python -m json.tool railway.json >/dev/null    # Railway config is valid JSON
-python -m compileall -q .                     # every module compiles
-pytest -v                                     # modular test suite
-git diff --check                              # no whitespace damage
+python -m compileall -q .                      # every module compiles
+pytest -v                                      # test suite
+ruff check . && ruff format --check .          # lint and format
+git diff --check                               # no whitespace damage
 ```
 
-The `docker` job then builds the worker image with Buildx, loads it into the local image
-store, and asserts its `CMD` is `python -m Mikobot`.
+It also checks that the installed Kurigram, SQLAlchemy and psycopg versions match the pins, and that
+no `.env` file or bot token is committed. The `docker` job then builds the worker image with Buildx,
+loads it into the local image store, and asserts its `CMD` is `python -m Mikobot`.
 
-The test suite in [`tests/`](tests/) uses modular `pytest` and `pytest-asyncio` suites. It verifies
-deployment manifests, documentation links, core utilities, database operations, security policies,
-and plugin configurations.
+The test suite in [`tests/`](tests/) covers deployment manifests, documentation links, core
+utilities, database operations, security policies, and plugin configurations.
 
-Reproduce the full gate locally:
+Reproduce the gate locally (with a reachable PostgreSQL instance for the database tests):
 
 ```bash
 uv sync --frozen
@@ -530,6 +520,7 @@ uv run python -m json.tool app.json >/dev/null
 uv run python -m json.tool railway.json >/dev/null
 uv run python -m compileall -q .
 uv run pytest -v
+uv run ruff check . && uv run ruff format --check .
 git diff --check
 ```
 
@@ -541,9 +532,11 @@ git diff --check
   anything matching `bot<digits>:<token>` to `bot<redacted>` in every log record.
 - **HTTP logger noise.** The `httpx` and `httpcore` loggers are set to `WARNING` because at `INFO`
   they print the complete Telegram API URL, which contains the bot token in the path.
-- **Config precedence.** Environment values win over `.env`, and `.env` wins over `variables.py`.
-- **Connection hygiene.** The SQL engine uses `pool_pre_ping=True` and `pool_recycle=1800` so idle
-  connections dropped by managed platforms are replaced instead of raising at query time.
+- **Config precedence.** With `ENV` set, environment values win over `.env`; without `ENV`,
+  `variables.py` supplies the defaults and also reads the environment.
+- **Connection hygiene.** The SQL engine uses `pool_recycle=1800` and optional `pool_pre_ping`
+  (off by default; enable with `DB_PRE_PING=True`) to replace connections dropped by managed
+  platforms.
 - **Docker hygiene.** The runtime stage copies only the virtual environment from the builder, and
   apt lists are removed in both stages.
 - **Static analysis.** CodeQL runs on push, on pull requests, and weekly.
@@ -591,8 +584,6 @@ Meaningful changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 - [Hacker News Algolia API](https://hn.algolia.com/api) for technology news search
 - [DuckDuckGo Instant Answer API](https://duckduckgo.com/duckduckgo-help-pages/results/duckduckgo-instant-answer-api)
   for quick web answers
-- [Wikimedia Commons API](https://commons.wikimedia.org/wiki/Commons:Commons_API) for public media
-  and attribution data
 - [TheSportsDB](https://www.thesportsdb.com/) for cricket and football schedules
 - [PokeAPI](https://pokeapi.co/) for Pokemon reference data
 

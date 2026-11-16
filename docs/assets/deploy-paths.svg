@@ -48,7 +48,7 @@
   <rect class="blue" x="680" y="250" width="260" height="110"/>
   <text class="head" x="704" y="282">Heroku</text>
   <text class="sub" x="704" y="304">app.json plus heroku.yml</text>
-  <text class="sub" x="704" y="324">heroku-postgresql 16 addon</text>
+  <text class="sub" x="704" y="324">heroku-postgresql 18 addon</text>
   <text class="sub" x="704" y="344">Procfile worker fallback</text>
 
   <rect class="orange" x="990" y="250" width="250" height="110"/>
@@ -76,11 +76,11 @@
 
   <rect class="panel" x="20" y="420" width="400" height="240"/>
   <text class="head" x="44" y="452">Why a worker, not a web service</text>
-  <text class="sub" x="44" y="478">The bot holds a long polling connection to the</text>
-  <text class="sub" x="44" y="498">Telegram Bot API. It never binds a port, so a web</text>
-  <text class="sub" x="44" y="518">service would fail health checks forever. Declare</text>
-  <text class="sub" x="44" y="538">type worker on Render, and the equivalent worker</text>
-  <text class="sub" x="44" y="558">process everywhere else.</text>
+  <text class="sub" x="44" y="478">The bot holds a persistent MTProto connection to</text>
+  <text class="sub" x="44" y="498">Telegram. It never binds a port, so a web service</text>
+  <text class="sub" x="44" y="518">would fail health checks forever. Declare type</text>
+  <text class="sub" x="44" y="538">worker on Render, and the equivalent worker process</text>
+  <text class="sub" x="44" y="558">everywhere else.</text>
   <text class="sub" x="44" y="588">State: chat and user context is persisted to a</text>
   <text class="sub" x="44" y="608">pickle file. On Render, Railway and Heroku the disk</text>
   <text class="sub" x="44" y="628">is ephemeral, so that file resets on each deploy.</text>

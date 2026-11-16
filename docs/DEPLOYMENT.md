@@ -23,11 +23,8 @@ Back to [README](../README.md).
 Pick a tier before you pick a platform. Full detail in
 [SYSTEM-REQUIREMENTS.md](SYSTEM-REQUIREMENTS.md).
 
-**PostgreSQL 18** is what `app.json` provisions and what CI tests against. The
-driver supports 10 through 18, and the only version-sensitive feature in use is
-`JSONB` (9.4), so an older server still runs the bot — but keep every
-environment on the same major version, and note that Aiven upgrades one major
-version at a time, so 16 reaches 18 via 17.
+**PostgreSQL 18** is what `app.json` provisions and what CI tests against. Older
+servers can run the bot, but keep every environment on the same major version.
 
 | | Minimum | Recommended | Best |
 | --- | --- | --- | --- |
@@ -112,8 +109,8 @@ never type it by hand.
 
 ### Step 4: deploy
 
-Press Apply. The first build installs every wheel in `requirements.txt`, so allow 5 to 10 minutes.
-When the deploy log shows `Mikobot is starting`, send `/start` to the bot.
+Press Apply. The first build installs the pinned dependencies with `uv sync --frozen`, so allow 5
+to 10 minutes. When the deploy log shows `Mikobot is starting`, send `/start` to the bot.
 
 ### Manual alternative
 
@@ -153,7 +150,6 @@ SUPPORT_CHAT     = <group username>
 SUPPORT_ID       = <-100...>
 DEL_CMDS         = True
 STRICT_GBAN      = True
-LOGGER           = True
 ```
 
 ### Step 4: deploy
@@ -240,7 +236,6 @@ TOKEN=123456:AAyourtokenhere
 OWNER_ID=123456789
 
 DATABASE_URL=postgresql://user:pass@localhost:5432/yaemiko
-DB_NAME=MikoDB
 
 EVENT_LOGS=-1001234567890
 MESSAGE_DUMP=-1001234567890
@@ -249,7 +244,6 @@ SUPPORT_ID=-1001234567890
 
 DEL_CMDS=True
 STRICT_GBAN=True
-LOGGER=True
 LOG_LEVEL=INFO
 ```
 
@@ -272,9 +266,8 @@ sudo -u postgres psql -c "CREATE DATABASE yaemiko OWNER yaemiko;"
 
 Use that password in `DATABASE_URL` in the `.env` file.
 
-Debian's default `postgresql` package tracks the current stable major, which is
-18 or newer. If `psql -c "SHOW server_version;"` reports something older and you
-intend to stay on it, that is fine for running but it is not what CI covers.
+Check the installed version with `psql -c "SHOW server_version;"`. A major older than 18 runs the
+bot but is not what CI covers.
 
 ### Step 7: test the bot in the foreground first
 
@@ -389,8 +382,7 @@ PostgreSQL holds everything, so `DATABASE_URL` is the only database setting in `
 | --- | --- | --- |
 | `TypeError: ... takes no keyword arguments` at import | A class keyword was added to a Telegram object subclass | Class keywords go to `__init_subclass__`. Pass `style` to the constructor instead |
 | Bot starts, no replies | The bot is not an admin, or lacks the message content permission | Promote it and grant the permissions the module needs |
-| `[PostgreSQL] Failed to connect` then exit | Bad `DATABASE_URL`, or the database is not reachable | Check the scheme is `postgresql://`, and that the host is public or on the same network |
-| `[PostgreSQL] Failed to connect` then exit | Bad `DATABASE_URL` | Check the scheme is `postgres://` or `postgresql://` and the host is reachable |
+| `[PostgreSQL] Cannot reach the database` then exit | Bad `DATABASE_URL`, or the database is not reachable | Check the scheme is `postgres://` or `postgresql://` and the host is reachable |
 | `Your OWNER_ID env variable is not a valid integer` | A stray space or text in the value | It must be digits only |
 | Module does not appear in `/help` | `__mod_name__` missing, or the file ends in `.txt` | Set `__mod_name__` and rename the file to `.py` |
 | Deploys fine, then restarts repeatedly | Crash loop, usually a database or token problem | Read the deploy log, the first traceback is the cause |
