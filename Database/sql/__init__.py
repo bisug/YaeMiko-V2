@@ -462,6 +462,10 @@ def create_all_tables() -> None:
             create_pending_indexes()
             _widen_chat_id_columns()
 
+            # The cron job that clears a pending raid disable cannot run while
+            # the bot is down, so reset it now that the table exists.
+            welcome_sql._ResetRaidOnRestart()
+
             # Populate caches now that all tables exist in the database
             afk_sql.__load_afk_users()
             antiflood_sql.__load_flood_settings()

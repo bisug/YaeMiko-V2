@@ -695,6 +695,11 @@ def toggleRaidStatus(chat_id):
 
 @unit_of_work_guard
 def _ResetRaidOnRestart():
+    """Clear pending raid disables after a restart.
+
+    The cron job that would clear them cannot run while the bot is down.
+    Called by Database.sql once the tables exist.
+    """
     if SESSION is None:
         return
     with RAID_LOCK:
@@ -702,7 +707,3 @@ def _ResetRaidOnRestart():
         for r in raid:
             r.status = False
         SESSION.commit()
-
-
-# it uses a cron job to turn off so if the bot restarts and there is a pending raid disable job then raid will stay on
-_ResetRaidOnRestart()
