@@ -102,6 +102,14 @@ def _is_user_id_invalid(excp: Exception) -> bool:
     )
 
 
+async def _notify(client, chat_id, text: str, **kwargs) -> None:
+    """Send a federation notice without letting a blocked PM abort a ban sweep."""
+    try:
+        await client.send_message(chat_id, text, **kwargs)
+    except RPCError:
+        LOGGER.warning("Could not send federation notice to %s", chat_id)
+
+
 @on_message(filters.command("newfed"), chained=True)
 async def new_fed(client, message: Message):
     chat = message.chat
@@ -141,7 +149,8 @@ async def new_fed(client, message: Message):
         )
         if EVENT_LOGS:
             try:
-                await client.send_message(
+                await _notify(
+                    client,
                     EVENT_LOGS,
                     "New Federation: <b>{}</b>\nID: <pre>{}</pre>".format(
                         fed_name, fed_id
@@ -303,7 +312,8 @@ async def join_fed(client, message: Message):
         get_fedlog = await sql.get_fed_log(args[0])
         if get_fedlog:
             if ast.literal_eval(get_fedlog):
-                await client.send_message(
+                await _notify(
+                    client,
                     get_fedlog,
                     "Chat *{}* has joined the federation *{}*".format(
                         chat.title,
@@ -345,7 +355,8 @@ async def leave_fed(client, message: Message):
             get_fedlog = await sql.get_fed_log(fed_id)
             if get_fedlog:
                 if ast.literal_eval(get_fedlog):
-                    await client.send_message(
+                    await _notify(
+                        client,
                         get_fedlog,
                         "Chat *{}* has left the federation *{}*".format(
                             chat.title,
@@ -688,7 +699,8 @@ async def fed_ban(client, message: Message):
             return
 
         fed_chats = sql.all_fed_chats(fed_id)
-        await client.send_message(
+        await _notify(
+            client,
             chat.id,
             "<b>FedBan reason updated</b>"
             "\n<b>Federation:</b> {}"
@@ -705,7 +717,8 @@ async def fed_ban(client, message: Message):
             parse_mode="HTML",
         )
         if getfednotif:
-            await client.send_message(
+            await _notify(
+                client,
                 info["owner"],
                 "<b>FedBan reason updated</b>"
                 "\n<b>Federation:</b> {}"
@@ -725,7 +738,8 @@ async def fed_ban(client, message: Message):
         get_fedlog = await sql.get_fed_log(fed_id)
         if get_fedlog:
             if int(get_fedlog) != int(chat.id):
-                await client.send_message(
+                await _notify(
+                    client,
                     get_fedlog,
                     "<b>FedBan reason updated</b>"
                     "\n<b>Federation:</b> {}"
@@ -836,7 +850,8 @@ async def fed_ban(client, message: Message):
         return
 
     fed_chats = sql.all_fed_chats(fed_id)
-    await client.send_message(
+    await _notify(
+        client,
         chat.id,
         "<b>New FedBan</b>"
         "\n<b>Federation:</b> {}"
@@ -853,7 +868,8 @@ async def fed_ban(client, message: Message):
         parse_mode="HTML",
     )
     if getfednotif:
-        await client.send_message(
+        await _notify(
+            client,
             info["owner"],
             "<b>New FedBan</b>"
             "\n<b>Federation:</b> {}"
@@ -873,7 +889,8 @@ async def fed_ban(client, message: Message):
     get_fedlog = await sql.get_fed_log(fed_id)
     if get_fedlog:
         if int(get_fedlog) != int(chat.id):
-            await client.send_message(
+            await _notify(
+                client,
                 get_fedlog,
                 "<b>New FedBan</b>"
                 "\n<b>Federation:</b> {}"
@@ -1000,7 +1017,8 @@ async def unfban(client, message: Message):
         return
 
     chat_list = sql.all_fed_chats(fed_id)
-    await client.send_message(
+    await _notify(
+        client,
         chat.id,
         "<b>Un-FedBan</b>"
         "\n<b>Federation:</b> {}"
@@ -1015,7 +1033,8 @@ async def unfban(client, message: Message):
         parse_mode="HTML",
     )
     if getfednotif:
-        await client.send_message(
+        await _notify(
+            client,
             info["owner"],
             "<b>Un-FedBan</b>"
             "\n<b>Federation:</b> {}"
@@ -1033,7 +1052,8 @@ async def unfban(client, message: Message):
     get_fedlog = await sql.get_fed_log(fed_id)
     if get_fedlog:
         if int(get_fedlog) != int(chat.id):
-            await client.send_message(
+            await _notify(
+                client,
                 get_fedlog,
                 "<b>Un-FedBan</b>"
                 "\n<b>Federation:</b> {}"
@@ -1188,7 +1208,8 @@ async def set_frules(client, message: Message):
         get_fedlog = await sql.get_fed_log(fed_id)
         if get_fedlog:
             if ast.literal_eval(get_fedlog):
-                await client.send_message(
+                await _notify(
+                    client,
                     get_fedlog,
                     "*{}* has updated federation rules for fed *{}*".format(
                         user.first_name,
@@ -1260,7 +1281,8 @@ async def fed_broadcast(client, message: Message):
         for chat in chat_list:
             title = "*New broadcast from Fed {}*\n".format(fedinfo["fname"])
             try:
-                await client.send_message(
+                await _notify(
+                    client,
                     chat,
                     title + text,
                     parse_mode=ParseMode.MARKDOWN,
@@ -1722,7 +1744,8 @@ async def fed_import_bans(client, message: Message):
                     )
                     if failed >= 1:
                         teks += " {} Failed to import.".format(failed)
-                    await client.send_message(
+                    await _notify(
+                        client,
                         get_fedlog,
                         teks,
                         parse_mode=ParseMode.MARKDOWN,
@@ -1802,7 +1825,8 @@ async def fed_import_bans(client, message: Message):
                     )
                     if failed >= 1:
                         teks += " {} Failed to import.".format(failed)
-                    await client.send_message(
+                    await _notify(
+                        client,
                         get_fedlog,
                         teks,
                         parse_mode=ParseMode.MARKDOWN,
@@ -2046,7 +2070,8 @@ async def subs_feds(client, message: Message):
             get_fedlog = await sql.get_fed_log(args[0])
             if get_fedlog:
                 if int(get_fedlog) != int(chat.id):
-                    await client.send_message(
+                    await _notify(
+                        client,
                         get_fedlog,
                         "Federation `{}` has subscribe the federation `{}`".format(
                             fedinfo["fname"],
@@ -2118,7 +2143,8 @@ async def unsubs_feds(client, message: Message):
             get_fedlog = await sql.get_fed_log(args[0])
             if get_fedlog:
                 if int(get_fedlog) != int(chat.id):
-                    await client.send_message(
+                    await _notify(
+                        client,
                         get_fedlog,
                         "Federation `{}` has unsubscribe fed `{}`.".format(
                             fedinfo["fname"],

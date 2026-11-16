@@ -10,6 +10,19 @@ PLUGINS_DIR = ROOT / "Mikobot" / "plugins"
 DUMMY_BOT_INFO = (123456789, "YaeMikoTest", "YaeMikoTestBot")
 
 
+async def test_fed_notice_failure_does_not_abort_ban():
+    from pyrogram.errors import RPCError
+
+    from Mikobot.plugins.feds import _notify
+
+    class Client:
+        async def send_message(self, *args, **kwargs):
+            raise RPCError("INPUT_PHONE_BLOCKED")
+
+    # A blocked PM must be swallowed, not propagated into the ban sweep.
+    await _notify(Client(), 123, "<b>notice</b>", parse_mode="HTML")
+
+
 def test_every_plugin_module_imports(monkeypatch):
     """A plugin that raises while importing stops the bot from starting.
 
