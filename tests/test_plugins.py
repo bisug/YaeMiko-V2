@@ -209,6 +209,20 @@ def test_restrict_rights_helper_is_used_by_the_privilege_checks():
         assert "has_restrict_rights" in source, f"{name} does not use the shared helper"
 
 
+def test_text2_decoys_match_answer_case_and_are_distinct():
+    import Mikobot.plugins.captcha as captcha
+
+    for _ in range(200):
+        answer, options = captcha.gen_text2()
+        assert options.count(answer) == 1
+        assert len(options) == 4
+        assert len({o.lower() for o in options}) == 4
+        for decoy in options:
+            if decoy == answer:
+                continue
+            assert decoy.isupper() == answer.isupper()
+
+
 def test_unfban_drops_db_record_before_chat_unbans():
     tree = ast.parse((PLUGINS_DIR / "feds.py").read_text(encoding="utf-8"))
     handler = next(

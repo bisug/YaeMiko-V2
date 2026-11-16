@@ -174,16 +174,28 @@ def gen_text2():
     """
     base = random.choice(WORDS)
     correct = base.capitalize() if random.random() < 0.5 else base.upper()
-    decoys = []
+    raw_decoys = []
     for _ in range(3):
         variant = _neighbour(base)
-        decoys.append(
+        raw_decoys.append(
             variant.capitalize() if correct.isupper() is False else variant.upper()
         )
-    # A decoy that differs only by case would be indistinguishable.
-    decoys = [d for d in decoys if d != correct and d.lower() != correct.lower()]
+    # A decoy that differs only by case would be indistinguishable. Two equal
+    # decoys would leave a gap that _options fills from plain lowercase words.
+    decoys = []
+    for decoy in raw_decoys:
+        if decoy == correct or decoy.lower() == correct.lower():
+            continue
+        if decoy.lower() not in {d.lower() for d in decoys}:
+            decoys.append(decoy)
+    upper = correct.isupper()
+    seen = {d.lower() for d in decoys}
     while len(decoys) < 3:
-        decoys.append(_neighbour(base))
+        variant = _neighbour(base)
+        if variant.lower() == base or variant.lower() in seen:
+            continue
+        seen.add(variant.lower())
+        decoys.append(variant.upper() if upper else variant.capitalize())
     return correct, _options(correct, decoys)
 
 
