@@ -209,7 +209,7 @@ def test_restrict_rights_helper_is_used_by_the_privilege_checks():
         assert "has_restrict_rights" in source, f"{name} does not use the shared helper"
 
 
-async def test_unfban_drops_db_record_before_chat_unbans():
+def test_unfban_drops_db_record_before_chat_unbans():
     tree = ast.parse((PLUGINS_DIR / "feds.py").read_text(encoding="utf-8"))
     handler = next(
         node
@@ -227,7 +227,7 @@ async def test_unfban_drops_db_record_before_chat_unbans():
     assert min(db_lines) < min(chat_lines)
 
 
-def test_math_captcha_answer_targets_the_named_chat(monkeypatch):
+async def test_math_captcha_answer_targets_the_named_chat(monkeypatch):
     from unittest.mock import AsyncMock, MagicMock
 
     from pyrogram.enums import ChatType
