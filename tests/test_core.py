@@ -244,3 +244,21 @@ async def test_job_queue_run_once_name_kwarg():
     await asyncio.sleep(0.05)
     queue.shutdown()
     assert called == [(1, 2)]
+
+
+async def test_job_queue_reports_task_failure():
+    import asyncio
+
+    from Mikobot.utils.jobs import JobQueue
+
+    queue = JobQueue()
+    calls = []
+
+    def callback():
+        raise RuntimeError("boom")
+
+    queue._report = lambda task: calls.append(task)
+    queue.run_once(callback, 0)
+    await asyncio.sleep(0.05)
+    assert len(calls) == 1
+    assert calls[0].exception() is not None

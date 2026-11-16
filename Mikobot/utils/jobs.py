@@ -1,22 +1,17 @@
-"""One-shot scheduled callbacks.
+"""One-shot delayed callbacks.
 
-Wraps APScheduler directly for delayed execution like ``run_once``.
+A task per callback is enough for the bot's single 120 s verification timer.
+The task is held until it finishes so a failure can be logged.
 """
 
 import asyncio
-from datetime import UTC, datetime, timedelta
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.date import DateTrigger
+from Mikobot.logger import LOGGER
 
 
 class JobQueue:
     def __init__(self):
-        self._scheduler = AsyncIOScheduler(timezone=UTC)
-
-    def start(self) -> None:
-        if not self._scheduler.running:
-            self._scheduler.start()
+        self._tasks: set[asyncio.Task] = set()
 
     def run_once(
         self,
@@ -25,26 +20,31 @@ class JobQueue:
         *args,
         name: str | None = None,
         **kwargs,
-    ) -> str:
+    ) -> None:
         """Run ``callback(*args, **kwargs)`` once, ``delay`` seconds from now."""
-        self.start()
-        run_date = datetime.now(UTC) + timedelta(seconds=delay)
-        job = self._scheduler.add_job(
-            self._call,
-            trigger=DateTrigger(run_date=run_date),
-            args=(callback, args, kwargs),
-            name=name,
-        )
-        return job.id
 
-    async def _call(self, callback, args, kwargs):
-        result = callback(*args, **kwargs)
-        if asyncio.iscoroutine(result):
-            await result
+        async def run():
+            await asyncio.sleep(delay)
+            result = callback(*args, **kwargs)
+            if asyncio.iscoroutine(result):
+                await result
+
+        task = asyncio.create_task(run(), name=name)
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+        task.add_done_callback(self._report)
+
+    @staticmethod
+    def _report(task: asyncio.Task) -> None:
+        if task.cancelled():
+            return
+        error = task.exception()
+        if error is not None:
+            LOGGER.error("Scheduled job failed", exc_info=error)
 
     def shutdown(self, wait: bool = False) -> None:
-        if self._scheduler.running:
-            self._scheduler.shutdown(wait=wait)
+        for task in list(self._tasks):
+            task.cancel()
 
 
 job_queue = JobQueue()
