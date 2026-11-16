@@ -1,7 +1,10 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
-import tempfile
+from collections import OrderedDict
+import io
 from pathlib import Path
+import tempfile
+import threading
 
 from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus
@@ -19,77 +22,180 @@ from Mikobot.utils.errors import capture_err
 classifier = None
 NSFW_THRESHOLD = 0.55
 MAX_FILE_SIZE = 10 * 1024 * 1024
+SCAN_CACHE_MAX = 2000
+SCAN_CACHE: OrderedDict[str, object] = OrderedDict()
+_CACHE_LOCK = threading.Lock()
 
 
-async def _scan(file_path: str):
+def get_cached_result(unique_id: str | None):
+    if not unique_id:
+        return None
+    with _CACHE_LOCK:
+        res = SCAN_CACHE.get(unique_id)
+        if res is not None:
+            SCAN_CACHE.move_to_end(unique_id)
+            return res
+    return None
+
+
+def set_cached_result(unique_id: str | None, result):
+    if not unique_id or result is None:
+        return
+    with _CACHE_LOCK:
+        SCAN_CACHE[unique_id] = result
+        if len(SCAN_CACHE) > SCAN_CACHE_MAX:
+            SCAN_CACHE.popitem(last=False)
+
+
+def get_classifier():
     global classifier
     if classifier is None:
         try:
             from opennsfw_onnx import NSFWClassifier
 
-            classifier = NSFWClassifier()
+            classifier = NSFWClassifier(
+                intra_op_num_threads=2,
+                jpeg_reencode=False,
+            )
+            classifier.warmup()
         except ImportError as error:
             raise RuntimeError(
                 "NSFW scanning is unavailable (requires opennsfw-onnx and onnxruntime)."
             ) from error
-    return await asyncio.to_thread(classifier.classify, file_path)
+    return classifier
+
+
+def _classify_sync(target):
+    if hasattr(target, "seek"):
+        target.seek(0)
+    c = get_classifier()
+    return c.classify(target)
+
+
+async def _scan(target):
+    return await asyncio.to_thread(_classify_sync, target)
+
+
+def select_best_thumb(thumbs):
+    if not thumbs or not isinstance(thumbs, (list, tuple)):
+        return None
+    sized = []
+    for t in thumbs:
+        fid = getattr(t, "file_id", None)
+        w = getattr(t, "width", 0)
+        h = getattr(t, "height", 0)
+        if (
+            fid
+            and isinstance(w, (int, float))
+            and isinstance(h, (int, float))
+            and max(w, h) >= 200
+        ):
+            sized.append((max(w, h), fid))
+    if sized:
+        sized.sort(key=lambda item: item[0])
+        return sized[0][1]
+    for t in reversed(thumbs):
+        fid = getattr(t, "file_id", None)
+        if fid and isinstance(fid, str):
+            return fid
+    return None
+
+
+def get_media_unique_id(message) -> str | None:
+    for attr in ("photo", "sticker", "animation", "video", "video_note", "document"):
+        obj = getattr(message, attr, None)
+        if obj and isinstance(getattr(obj, "file_unique_id", None), str):
+            return obj.file_unique_id
+    return None
 
 
 def get_media_from_message(message):
     if message.document:
-        if int(message.document.file_size or 0) > MAX_FILE_SIZE:
-            return None, None
         mime = message.document.mime_type or ""
+        thumb_id = select_best_thumb(getattr(message.document, "thumbs", None))
         if mime.startswith("image/"):
-            return message.document.file_id, "image"
+            file_id = thumb_id or message.document.file_id
+            if not thumb_id and int(message.document.file_size or 0) > MAX_FILE_SIZE:
+                return None, None
+            return file_id, "image"
         if mime.startswith("video/"):
-            if getattr(message.document, "thumbs", None):
-                return message.document.thumbs[0].file_id, "image"
+            if thumb_id:
+                return thumb_id, "image"
+            if int(message.document.file_size or 0) > MAX_FILE_SIZE:
+                return None, None
             return message.document.file_id, "video"
         return None, None
+
     if message.sticker:
         if getattr(message.sticker, "is_animated", False):
             return None, None
         if getattr(message.sticker, "is_video", False):
+            thumb_id = select_best_thumb(getattr(message.sticker, "thumbs", None))
+            if thumb_id:
+                return thumb_id, "image"
             if message.sticker.file_size and message.sticker.file_size > MAX_FILE_SIZE:
                 return None, None
             return message.sticker.file_id, "video"
         if message.sticker.file_size and message.sticker.file_size > MAX_FILE_SIZE:
             return None, None
         return message.sticker.file_id, "image"
+
     if message.photo:
-        if message.photo.file_size and message.photo.file_size > MAX_FILE_SIZE:
+        thumb_id = select_best_thumb(getattr(message.photo, "thumbs", None))
+        file_id = thumb_id or message.photo.file_id
+        if not thumb_id and message.photo.file_size and message.photo.file_size > MAX_FILE_SIZE:
             return None, None
-        return message.photo.file_id, "image"
+        return file_id, "image"
+
     if message.animation:
-        if getattr(message.animation, "thumbs", None):
-            return message.animation.thumbs[0].file_id, "image"
+        thumb_id = select_best_thumb(getattr(message.animation, "thumbs", None))
+        if thumb_id:
+            return thumb_id, "image"
         if message.animation.file_size and message.animation.file_size > MAX_FILE_SIZE:
             return None, None
         return message.animation.file_id, "video"
+
     if message.video:
-        if getattr(message.video, "thumbs", None):
-            return message.video.thumbs[0].file_id, "image"
+        thumb_id = select_best_thumb(getattr(message.video, "thumbs", None))
+        if thumb_id:
+            return thumb_id, "image"
         if message.video.file_size and message.video.file_size > MAX_FILE_SIZE:
             return None, None
         return message.video.file_id, "video"
+
     if message.video_note:
-        if getattr(message.video_note, "thumbs", None):
-            return message.video_note.thumbs[0].file_id, "image"
+        thumb_id = select_best_thumb(getattr(message.video_note, "thumbs", None))
+        if thumb_id:
+            return thumb_id, "image"
         if (
             message.video_note.file_size
             and message.video_note.file_size > MAX_FILE_SIZE
         ):
             return None, None
         return message.video_note.file_id, "video"
+
     return None, None
 
 
-async def prepare_scan_file(client, message, temp_dir):
+async def prepare_scan_file(client, message, temp_dir=None):
     file_id, media_type = get_media_from_message(message)
     if not file_id:
         return None
-    source = Path(temp_dir) / "source.media"
+
+    # In-memory fast path for images: avoids all disk I/O and temp dir churn
+    if not temp_dir and media_type == "image":
+        try:
+            bio = await client.download_media(file_id, in_memory=True)
+            if bio:
+                if hasattr(bio, "seek"):
+                    bio.seek(0)
+                return bio
+        except Exception as exc:
+            LOGGER.debug("In-memory media download failed, falling back: %s", exc)
+
+    with_temp = temp_dir or tempfile.gettempdir()
+    msg_id = getattr(message, "id", None) or "scan"
+    source = Path(with_temp) / f"source_{msg_id}.media"
     try:
         downloaded = await client.download_media(file_id, file_name=str(source))
     except Exception as exc:
@@ -97,6 +203,7 @@ async def prepare_scan_file(client, message, temp_dir):
         return None
     if not downloaded:
         return None
+
     if media_type == "image":
         try:
             from PIL import Image
@@ -107,7 +214,7 @@ async def prepare_scan_file(client, message, temp_dir):
         except Exception:
             pass
 
-    output = Path(temp_dir) / "frame.png"
+    output = Path(with_temp) / f"frame_{msg_id}.png"
     process = await asyncio.create_subprocess_exec(
         "ffmpeg",
         "-y",
@@ -124,11 +231,17 @@ async def prepare_scan_file(client, message, temp_dir):
         stderr=asyncio.subprocess.PIPE,
     )
     try:
-        await asyncio.wait_for(process.communicate(), timeout=20)
+        await asyncio.wait_for(process.communicate(), timeout=10)
     except asyncio.TimeoutError:
         process.kill()
         await process.wait()
         return None
+    finally:
+        try:
+            if Path(downloaded).exists():
+                Path(downloaded).unlink()
+        except Exception:
+            pass
 
     if process.returncode != 0 or not output.exists():
         return None
@@ -155,15 +268,27 @@ async def detect_nsfw(client, message):
         return
     if not get_media_from_message(message)[0]:
         return
-    with tempfile.TemporaryDirectory(prefix="yae-nsfw-") as temp_dir:
-        file = await prepare_scan_file(client, message, temp_dir)
-        if not file:
+
+    unique_id = get_media_unique_id(message)
+    result = get_cached_result(unique_id)
+
+    if result is None:
+        target = await prepare_scan_file(client, message)
+        if not target:
             return
         try:
-            result = await _scan(file)
+            result = await _scan(target)
+            set_cached_result(unique_id, result)
         except Exception as error:
             LOGGER.debug("NSFW scan skipped for message %s: %s", message.id, error)
             return
+        finally:
+            if isinstance(target, (str, Path)):
+                try:
+                    Path(target).unlink(missing_ok=True)
+                except Exception:
+                    pass
+
     if result.nsfw < NSFW_THRESHOLD:
         return
 
@@ -251,15 +376,27 @@ async def nsfw_scan_command(client, message):
         return await m.edit(
             "The media could not be processed for scanning (unsupported format or exceeds size limit)."
         )
-    with tempfile.TemporaryDirectory(prefix="yae-nsfw-") as temp_dir:
-        file = await prepare_scan_file(client, reply, temp_dir)
-        if not file:
+
+    unique_id = get_media_unique_id(reply)
+    result = get_cached_result(unique_id)
+
+    if result is None:
+        target = await prepare_scan_file(client, reply)
+        if not target:
             return await m.edit("The media could not be converted for scanning.")
         try:
-            result = await _scan(file)
+            result = await _scan(target)
+            set_cached_result(unique_id, result)
         except Exception as error:
             LOGGER.exception("Manual NSFW scan failed: %s", error)
             return await m.edit(f"NSFW scan failed: {error}")
+        finally:
+            if isinstance(target, (str, Path)):
+                try:
+                    Path(target).unlink(missing_ok=True)
+                except Exception:
+                    pass
+
     await m.edit(
         f"**➢ Safe:** `{result.sfw:.2%}`\n"
         f"**➢ NSFW:** `{result.nsfw:.2%}`\n"

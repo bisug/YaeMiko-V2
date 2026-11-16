@@ -263,3 +263,87 @@ async def test_nsfw_enable_disable_warns_when_bot_lacks_delete_rights():
     assert "Warning" in msg.reply_text.call_args[0][0]
     assert "permission to delete messages" in msg.reply_text.call_args[0][0]
 
+
+@pytest.mark.asyncio
+async def test_prepare_scan_file_in_memory_fast_path():
+    import io
+
+    client = AsyncMock()
+    fake_bio = io.BytesIO(b"fake_image_bytes")
+    client.download_media.return_value = fake_bio
+
+    msg = MagicMock()
+    msg.document = None
+    msg.sticker = None
+    msg.animation = None
+    msg.video = None
+    msg.video_note = None
+    msg.photo = MagicMock()
+    msg.photo.file_size = 500
+    msg.photo.file_id = "photo_in_mem_123"
+    msg.photo.thumbs = None
+
+    result = await antinsfw.prepare_scan_file(client, msg)
+
+    client.download_media.assert_called_once_with("photo_in_mem_123", in_memory=True)
+    assert result is fake_bio
+
+
+@pytest.mark.asyncio
+async def test_lru_cache_deduplicates_media_scans():
+    from collections import namedtuple
+    Prediction = namedtuple("Prediction", ["sfw", "nsfw"])
+
+    client = AsyncMock()
+    msg = MagicMock()
+    msg.chat.id = -10012345
+    msg.message_thread_id = None
+    msg.from_user = MagicMock()
+    msg.from_user.id = 555
+    msg.from_user.mention = "@user"
+    msg.sender_chat = None
+    msg.document = None
+    msg.photo = MagicMock()
+    msg.photo.file_size = 500
+    msg.photo.file_id = "repeat_photo_id"
+    msg.photo.file_unique_id = "unique_hash_999"
+    msg.photo.thumbs = None
+    msg.sticker = None
+    msg.animation = None
+    msg.video = None
+    msg.video_note = None
+
+    msg.delete = AsyncMock()
+
+    # Pre-populate cache
+    antinsfw.set_cached_result("unique_hash_999", Prediction(sfw=0.05, nsfw=0.95))
+
+    with (
+        patch("Database.sql.toggle_sql.is_nsfw_on", return_value=True),
+        patch("Mikobot.plugins.antinsfw.prepare_scan_file") as mock_prep,
+        patch("Mikobot.plugins.antinsfw._scan") as mock_scan,
+    ):
+        await antinsfw.detect_nsfw(client, msg)
+
+    # prepare_scan_file and _scan must NOT be called because cache matched
+    mock_prep.assert_not_called()
+    mock_scan.assert_not_called()
+    msg.delete.assert_called_once()
+
+
+def test_select_best_thumb_logic():
+    class Thumb:
+        def __init__(self, fid, w, h):
+            self.file_id = fid
+            self.width = w
+            self.height = h
+
+    t1 = Thumb("tiny", 100, 100)
+    t2 = Thumb("optimal", 320, 240)
+    t3 = Thumb("huge", 1280, 720)
+
+    # Should select optimal (closest to 224 without being too small or huge)
+    best = antinsfw.select_best_thumb([t1, t2, t3])
+    assert best == "optimal"
+
+
