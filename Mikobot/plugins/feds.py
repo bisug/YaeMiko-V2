@@ -1067,6 +1067,20 @@ async def unfban(client, message: Message):
                 ),
                 parse_mode="HTML",
             )
+    # Remove the ban record first. If the chat unbans fail, the user is no
+    # longer treated as federation-banned on their next join.
+    try:
+        x = sql.un_fban_user(fed_id, user_id)
+        if not x:
+            await send_message(
+                message,
+                "Could not remove the federation ban. The ban may already be removed.",
+            )
+            return
+    except SQLAlchemyError:
+        LOGGER.exception("Unable to un-fedban %s from fed %s", user_id, fed_id)
+        return
+
     unfbanned_in_chats = 0
     for fedchats in chat_list:
         unfbanned_in_chats += 1
@@ -1091,18 +1105,6 @@ async def unfban(client, message: Message):
                 LOGGER.warning(
                     "Could not unfban on {} because: {}".format(fedchats, excp),
                 )
-
-    try:
-        x = sql.un_fban_user(fed_id, user_id)
-        if not x:
-            await send_message(
-                message,
-                "Could not remove the federation ban. The ban may already be removed.",
-            )
-            return
-    except SQLAlchemyError:
-        LOGGER.exception("Unable to un-fedban %s from fed %s", user_id, fed_id)
-        return
 
     # UnFban for fed subscriber
     subscriber = list(sql.get_subscriber(fed_id))
