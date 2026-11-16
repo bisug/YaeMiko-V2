@@ -7,6 +7,27 @@ import sys
 import pytest
 
 
+async def test_chat_migration_runs_in_a_worker(monkeypatch):
+    from unittest.mock import MagicMock
+
+    import Mikobot.__main__ as main
+
+    migrated = []
+
+    class Module:
+        def __migrate__(self, old, new):
+            migrated.append((old, new))
+
+    monkeypatch.setattr(main, "MIGRATEABLE", [Module()])
+    message = MagicMock()
+    message.migrate_to_chat_id = -100222
+    message.migrate_from_chat_id = None
+    message.chat.id = -100111
+
+    await main.migrate_chats(None, message)
+    assert migrated == [(-100111, -100222)]
+
+
 def test_env_bool_parser():
     from Mikobot import env_bool
 

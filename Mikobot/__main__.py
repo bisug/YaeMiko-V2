@@ -797,7 +797,8 @@ async def migrate_chats(client, message: Message):
     LOGGER.info("Migrating from %s to %s", str(old_chat), str(new_chat))
     for mod in MIGRATEABLE:
         with contextlib.suppress(KeyError, AttributeError):
-            mod.__migrate__(old_chat, new_chat)
+            # These helpers write to the database; keep them off the loop.
+            await asyncio.to_thread(mod.__migrate__, old_chat, new_chat)
 
     LOGGER.info("Successfully Migrated!")
 
