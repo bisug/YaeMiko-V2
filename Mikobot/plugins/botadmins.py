@@ -33,20 +33,20 @@ async def get_users_list(user_ids):
 @on_message(filters.command("botadmins"), chained=True)
 async def botstaff(client, message: Message):
     owner_info = mention_html(OWNER_ID, "Owner")
-    reply = f"✪ <b>OWNER :</b> {owner_info} (<code>{OWNER_ID}</code>)\n"
+    reply = f"<b>Owner:</b> {owner_info} (<code>{OWNER_ID}</code>)\n"
 
     true_dev = list(set(DEV_USERS) - {OWNER_ID})
-    reply += "\n\n➪ <b>SPECIAL GRADE USERS :</b>\n"
+    reply += "\n\n<b>Special grade users:</b>\n"
     reply += "\n".join(await get_users_list(true_dev)) or "No Dev Users"
 
     true_sudo = list(set(DRAGONS) - set(DEV_USERS))
-    reply += "\n\n➪ <b>A GRADE USERS :</b>\n"
+    reply += "\n\n<b>A grade users:</b>\n"
     reply += "\n".join(await get_users_list(true_sudo)) or "No Sudo Users"
 
-    reply += "\n\n➪ <b>B GRADE USERS :</b>\n"
+    reply += "\n\n<b>B grade users:</b>\n"
     reply += "\n".join(await get_users_list(DEMONS)) or "No Demon Users"
 
-    reply += "\n\n➪ <b>NORMAL GRADE USERS :</b>\n"
+    reply += "\n\n<b>Normal grade users:</b>\n"
     reply += (
         "\n".join(await get_users_list(WOLVES)) or "No additional whitelisted users"
     )
@@ -56,27 +56,18 @@ async def botstaff(client, message: Message):
 
 
 __help__ = """
-➠ *BOT ADMINS ONLY:*
+Bot admins only:
+/stats: Show bot stats.
+/ping: Check the bot's ping.
+/gban: Ban a user globally.
+/gbanlist: Show the global ban list.
+/botadmins: Show the bot admin lists.
+/gcast: Broadcast a message. Reply to the message to broadcast it.
 
-» /stats: Shows bot stats.
-
-» /ping: check the bot's ping.
-
-» /gban: Global ban.
-
-» /gbanlist: Shows gban list.
-
-» /botadmins: Opens Bot admin lists.
-
-» /gcast: Advanced broadcast system. Just reply to any message.
-
-➠ *Write with text message*
-
-» /broadcastall
-
-» /broadcastusers
-
-» /broadcastgroups
+Commands:
+/broadcastall: Broadcast to all chats.
+/broadcastusers: Broadcast to all users.
+/broadcastgroups: Broadcast to all groups.
 """
 
-__mod_name__ = "BOT-ADMIN"
+__mod_name__ = "Bot Admin"

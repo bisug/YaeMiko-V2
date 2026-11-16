@@ -46,7 +46,7 @@ async def allow_connections(client, message: Message):
             else:
                 await send_message(
                     message,
-                    "Please enter 'yes' or 'no'!",
+                    "Enter yes or no.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
         else:
@@ -54,19 +54,19 @@ async def allow_connections(client, message: Message):
             if get_settings:
                 await send_message(
                     message,
-                    "Connections to this group are *allowed* for members!",
+                    "Members may connect to this group.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             else:
                 await send_message(
                     message,
-                    "Connection to this group is *not allowed* for members!",
+                    "Members may not connect to this group.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
     else:
         await send_message(
             message,
-            "This command is for groups only, not in PM!",
+            "Use this command in a group, not in PM.",
         )
 
 
@@ -118,10 +118,10 @@ async def connect_chat(client, message: Message):
                         message.from_user.id,
                     )
                 except RPCError:
-                    await send_message(message, "Invalid Chat ID!")
+                    await send_message(message, "Invalid chat ID.")
                     return
             except RPCError:
-                await send_message(message, "Invalid Chat ID!")
+                await send_message(message, "Invalid chat ID.")
                 return
 
             isadmin = getstatusadmin.status in (
@@ -154,11 +154,11 @@ async def connect_chat(client, message: Message):
                         sql.add_history_conn, user.id, str(conn_chat.id), chat_name
                     )
                 else:
-                    await send_message(message, "Connection failed!")
+                    await send_message(message, "Connection failed.")
             else:
                 await send_message(
                     message,
-                    "Connection to this chat is not allowed!",
+                    "Connections to this chat are not allowed.",
                 )
         else:
             gethistory = await asyncio.to_thread(sql.get_history_conn, user.id)
@@ -280,11 +280,11 @@ async def connect_chat(client, message: Message):
                 except RPCError:
                     pass
             else:
-                await send_message(message, "ᴄᴏɴɴᴇᴄᴛɪᴏɴ ғᴀɪʟᴇᴅ!")
+                await send_message(message, "Connection failed.")
         else:
             await send_message(
                 message,
-                "Connection to this chat is not allowed!",
+                "Connections to this chat are not allowed.",
             )
 
 
@@ -297,12 +297,12 @@ async def disconnect_chat(client, message: Message):
         if disconnection_status:
             sql.disconnected_chat = await send_message(
                 message,
-                "Disconnected from chat!",
+                "Disconnected from the chat.",
             )
         else:
-            await send_message(message, "You're not connected!")
+            await send_message(message, "You are not connected.")
     else:
-        await send_message(message, "This command is only available in PM.")
+        await send_message(message, "This command is available only in PM.")
 
 
 async def connected(client_obj, message: Message, chat, user_id, need_admin=True):
@@ -338,7 +338,7 @@ async def connected(client_obj, message: Message, chat, user_id, need_admin=True
                 else:
                     await send_message(
                         message,
-                        "You must be an admin in the connected group!",
+                        "You must be an admin in the connected group.",
                     )
             else:
                 return conn_id
@@ -419,11 +419,11 @@ async def connect_button(client, query: CallbackQuery):
                 )
                 await query.answer()
             else:
-                await query.message.edit_text("Connection failed!")
+                await query.message.edit_text("Connection failed.")
                 await query.answer("Connection failed.", show_alert=True)
         else:
             await query.answer(
-                "Connection to this chat is not allowed!",
+                "Connections to this chat are not allowed.",
                 show_alert=True,
             )
     elif disconnect_match:
@@ -432,17 +432,17 @@ async def connect_button(client, query: CallbackQuery):
         )
         if disconnection_status:
             sql.disconnected_chat = await query.message.edit_text(
-                "Disconnected from chat!"
+                "Disconnected from the chat."
             )
             await query.answer()
         else:
             await query.answer(
-                "You're not connected!",
+                "You are not connected.",
                 show_alert=True,
             )
     elif clear_match:
         await asyncio.to_thread(sql.clear_history_conn, query.from_user.id)
-        await query.message.edit_text("Connection history has been cleared!")
+        await query.message.edit_text("Connection history cleared.")
         await query.answer()
     elif connect_close:
         await query.message.edit_text("Closed. To open again, type /connect")
@@ -451,22 +451,19 @@ async def connect_button(client, query: CallbackQuery):
         await query.answer("Invalid callback data.", show_alert=True)
 
 
-__mod_name__ = "CONNECT"
+__mod_name__ = "Connect"
 
 __help__ = """
-➠ *Sometimes, you just want to add some notes and filters to a group chat, but you don't want everyone to see; this is where connections come in. This allows you to connect to a chat's database and add things to it without the commands appearing in chat! For obvious reasons, you need to be an admin to add things, but any member in the group can view your data.*
+Commands:
+/connect: Connect to a chat. In a group, use /connect; in PM, use /connect <chat id>.
+/connection: List connected chats.
+/disconnect: Disconnect from a chat.
+/helpconnect: List commands available through a connection.
 
-» /connect: Connects to chat (can be done in a group by /connect or /connect <chat id> in PM)
+Admin only:
+/allowconnect <yes/no>: Allow members to connect to a chat.
 
-» /connection: List connected chats
-
-» /disconnect: Disconnect from a chat
-
-» /helpconnect: List available commands that can be used remotely
-
-➠ *Admin Only:*
-
-» /allowconnect <yes/no>: Allow a user to connect to a chat
+Connections let you manage a group's notes and filters from PM without the commands appearing in chat. You must be an admin to add content; any member can view it.
 """
 
 

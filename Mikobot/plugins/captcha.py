@@ -227,8 +227,8 @@ async def _fail(chat_id, user_id, message: Message = None) -> None:
     if message is not None:
         try:
             await message.reply_text(
-                "That was not right, so you have been banned for a minute."
-                " Try joining again afterwards.",
+                "Incorrect answer. You have been banned for a minute."
+                " Try joining again later.",
             )
         except RPCError:
             pass
@@ -467,7 +467,7 @@ async def button_callback(client, query: CallbackQuery) -> str:
             f"is verified, and has been unmuted.",
             parse_mode=ParseMode.HTML,
         )
-        await query.answer("Thanks, you're unmuted.")
+        await query.answer("Correct. You are unmuted.")
         return ""
 
     # captcha_pm: hand the challenge over to private chat.
@@ -509,7 +509,7 @@ async def answer_callback(client, query: CallbackQuery) -> str:
         # approve=True so a join-request user is actually admitted, not just
         # marked as verified while still stuck outside.
         await _pass(chat_id, user_id, approve=True)
-        await query.answer("Correct, you're verified.", show_alert=True)
+        await query.answer("Correct. You are verified.", show_alert=True)
     else:
         await _fail(chat_id, user_id, query.message)
         await query.answer("Wrong answer.", show_alert=True)
@@ -570,7 +570,7 @@ async def join_button(client, query: CallbackQuery) -> str:
             await query.answer("I could not admit you right now.", show_alert=True)
             return ""
         await asyncio.to_thread(sql.mark_solved, chat_id, user_id)
-        await query.answer("Approved, welcome!", show_alert=True)
+        await query.answer("You are verified and admitted.", show_alert=True)
         return ""
 
     if await _send_private_challenge(query.from_user, chat_id, settings):
@@ -614,7 +614,7 @@ async def math_answer(client, message: Message) -> str:
 
     if text == entry["answer"]:
         await _pass(*match, approve=True)
-        await message.reply_text("Correct, you're verified.")
+        await message.reply_text("Correct. You are verified.")
     else:
         await _fail(*match, message)
     return ""
@@ -847,7 +847,7 @@ async def captcha_mute_time(client, message: Message):
 
     if args[0].lower() == "off":
         await asyncio.to_thread(sql.set_mute_time, chat.id, 0)
-        await message.reply_text("Members now stay muted until they solve it.")
+        await message.reply_text("Members stay muted until they solve it.")
         return ""
 
     expiry = await extract_time(message, args[0])
@@ -897,31 +897,23 @@ def __chat_settings__(chat_id, user_id):
     )
 
 
-__mod_name__ = "CAPTCHA"
+__mod_name__ = "Captcha"
 
 __help__ = """
-\u27a1 Stop bots joining by muting new members until they prove they are human.
-A wrong answer is a short ban, since a bot will not get it right by chance.
+The CAPTCHA mutes new members until they prove they are human. A wrong answer results in a short ban.
 
-\u27a1 Requires welcome messages to be enabled, or there is nowhere to show the prompt.
-A user is asked once per chat. Leaving and rejoining does not reset that; an
-admin can use `/resetcaptcha <id>` to make someone redo it.
+Welcome messages must be enabled to show the prompt. Each user is asked once per chat. Leaving and rejoining does not reset that; an admin can use `/resetcaptcha <id>` to make a user redo it.
 
-\u00bb /captcha <on/off>: Turn the CAPTCHA on or off.
-\u00bb /captchamode <button/text/math/text2>: `button` asks for one press.
-`text` and `math` are answered in private. `text2` is the hardest: the
-decoys are near-misses and capitalisation counts.
-\u00bb /captchabuttons <text>: Change the button label. Plain text only.
-\u00bb /resetcaptchatext: Restore the default button label.
+Commands:
+/captcha <on/off>: Turn the CAPTCHA on or off.
+/captchamode <button/text/math/text2>: Set the challenge type. `button` needs one press. `text` and `math` are answered in private. `text2` uses close decoys and is case-sensitive.
+/captchabuttons <text>: Set the button label. Plain text only.
+/resetcaptchatext: Restore the default button label.
+/captchakick <on/off>: Kick members who never solve the CAPTCHA. They are asked again when they rejoin.
+/captchakicktime <time>: Set the delay before that kick, between 5m and 1d.
+/captchamutetime <time>: Unmute automatically after this long, or `off` to keep members muted until they solve it.
+/captcharules <on/off>: Show the group rules as part of the CAPTCHA.
+/resetcaptcha <user id>: Make that user solve the CAPTCHA again.
 
-\u00bb /captchakick <on/off>: Kick members who never solve it, so they are not
-left sitting muted and are asked again when they rejoin.
-\u00bb /captchakicktime <time>: How long before that kick. Between 5m and 1d.
-\u00bb /captchamutetime <time>: Unmute automatically after this long, or
-`off` to keep them muted until they solve. Use with care.
-\u00bb /captcharules <on/off>: Show the group rules as part of the CAPTCHA.
-\u00bb /resetcaptcha <user id>: Make that user solve it again.
-
-\u27a1 With a join-request link, the CAPTCHA is sent in private and the user is
-admitted once they pass. The bot needs the add users permission.
+With a join-request link, the CAPTCHA is sent in private and the user is admitted once they pass. The bot needs the add users permission.
 """

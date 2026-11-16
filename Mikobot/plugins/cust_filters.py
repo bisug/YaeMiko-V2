@@ -148,7 +148,7 @@ async def filter_cmd(client, message: Message):
     if not msg.reply_to_message and len(args) < 2:
         await send_message(
             message,
-            "Please provide keyboard keyword for this filter to reply with!",
+            "Provide a keyword for the filter's reply keyboard.",
         )
         return
 
@@ -156,7 +156,7 @@ async def filter_cmd(client, message: Message):
         if len(args) < 2:
             await send_message(
                 message,
-                "Please provide keyword for this filter to reply with!",
+                "Provide a keyword for this filter's reply.",
             )
             return
         else:
@@ -179,7 +179,7 @@ async def filter_cmd(client, message: Message):
         if not text:
             await send_message(
                 message,
-                "There is no message. You can't have only buttons; you need a message with them!",
+                "A filter needs a message. Buttons alone are not enough.",
             )
             return
 
@@ -196,7 +196,7 @@ async def filter_cmd(client, message: Message):
                 if not text:
                     await send_message(
                         message,
-                        "There is no message. You can't have only buttons; you need a message with them!",
+                        "A filter needs a message. Buttons alone are not enough.",
                     )
                     return
             else:
@@ -220,7 +220,7 @@ async def filter_cmd(client, message: Message):
     elif not text and not file_type:
         await send_message(
             message,
-            "Please provide a keyword for this filter to reply with!",
+            "Provide a keyword for this filter's reply.",
         )
         return
 
@@ -244,12 +244,12 @@ async def filter_cmd(client, message: Message):
         if (msg.reply_to_message.text or msg.reply_to_message.caption) and not text:
             await send_message(
                 message,
-                "There is no message. You can't have only buttons; you need a message with them!",
+                "A filter needs a message. Buttons alone are not enough.",
             )
             return
 
     else:
-        await send_message(message, "Invalid filter!")
+        await send_message(message, "Invalid filter.")
         return
 
     add = await addnew_filter(
@@ -285,13 +285,13 @@ async def stop_filter(client, message: Message):
             chat_name = chat.title
 
     if len(args) < 2:
-        await send_message(message, "What should I stop?")
+        await send_message(message, "Specify the filter to stop.")
         return
 
     chat_filters = sql.get_chat_triggers(chat_id)
 
     if not chat_filters:
-        await send_message(message, "No filters active here!")
+        await send_message(message, "No filters are active here.")
         return
 
     for keyword in chat_filters:
@@ -306,7 +306,7 @@ async def stop_filter(client, message: Message):
 
     await send_message(
         message,
-        "That's not a filter. Use /filters to see the currently active filters.",
+        "That is not a filter. Use /filters to see active filters.",
     )
 
 
@@ -371,7 +371,7 @@ async def reply_filter(client, message: Message):
                             ):
                                 await client.send_message(
                                     chat.id,
-                                    "Message couldn't be sent. Is the sticker ID valid?",
+                                    "Could not send the message. Check the sticker ID.",
                                     message_thread_id=(
                                         message.message_thread_id
                                         if chat.is_forum
@@ -476,7 +476,7 @@ async def reply_filter(client, message: Message):
                     except RPCError:
                         await send_message(
                             message,
-                            "I don't have the permission to send the content of the filter.",
+                            "I cannot send the filter's content here.",
                         )
                 break
             else:
@@ -530,7 +530,7 @@ async def reply_filter(client, message: Message):
                             try:
                                 await send_message(
                                     message,
-                                    "This message couldn't be sent as it's incorrectly formatted.",
+                                    "Could not send the message. Its formatting is invalid.",
                                 )
                             except RPCError as excp:
                                 LOGGER.exception("Error in filters: " + excp.message)
@@ -587,7 +587,7 @@ async def rmall_filters(client, message: Message):
             ],
         )
         await message.reply_text(
-            f"Are you sure you would like to stop ALL filters in {escape_markdown(chat.title)}? This action cannot be undone.",
+            f"Stop all filters in {escape_markdown(chat.title)}? This cannot be undone.",
             reply_markup=buttons,
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -602,7 +602,7 @@ async def rmall_callback(client, query: CallbackQuery):
         if member.status == ChatMemberStatus.OWNER or query.from_user.id in DRAGONS:
             allfilters = sql.get_chat_triggers(chat.id)
             if not allfilters:
-                await msg.edit_text("No filters in this chat, nothing to stop!")
+                await msg.edit_text("There are no filters to stop.")
                 await query.answer("There are no filters to remove.")
                 return
 
@@ -615,7 +615,7 @@ async def rmall_callback(client, query: CallbackQuery):
             for i in filterlist:
                 sql.remove_filter(chat.id, i)
 
-            await msg.edit_text(f"Cleaned {count} filters in {escape(chat.title)}")
+            await msg.edit_text(f"Removed {count} filters in {escape(chat.title)}")
             await query.answer("All filters removed.")
 
         if member.status == ChatMemberStatus.ADMINISTRATOR:
@@ -625,7 +625,7 @@ async def rmall_callback(client, query: CallbackQuery):
             await query.answer("You need to be admin to do this.")
     elif query.data == "filters_cancel":
         if member.status == ChatMemberStatus.OWNER or query.from_user.id in DRAGONS:
-            await msg.edit_text("Clearing of all filters has been cancelled.")
+            await msg.edit_text("Filter removal cancelled.")
             await query.answer()
             return
         if member.status == ChatMemberStatus.ADMINISTRATOR:
@@ -655,7 +655,7 @@ async def addnew_filter(
     msg = message
     totalfilt = sql.get_chat_triggers(chat_id)
     if len(totalfilt) >= 150:
-        await msg.reply_text("This group has reached its max filters limit of 150.")
+        await msg.reply_text("This group has reached the limit of 150 filters.")
         return False
     else:
         sql.new_add_filter(
@@ -684,32 +684,26 @@ def __chat_settings__(chat_id, user_id):
 
 
 __help__ = """
-» `/filters`*:* List all active filters saved in the chat.
+Commands:
+/filters: List active filters in this chat.
 
-➠ *Admin only:*
+Admin only:
+/filter <keyword> <reply message>: Add a filter. When the keyword is mentioned, the bot replies with the given message. Replying to a sticker with a keyword makes the bot reply with that sticker. Keywords are lowercase. Use quotes for a multi-word keyword, for example /filter "hey there" How you doin?
 
-» `/filter <keyword> <reply message>`*:* Add a filter to this chat. The bot will now reply that message whenever 'keyword'\
-is mentioned. If you reply to a sticker with a keyword, the bot will reply with that sticker. NOTE: all filter \
-keywords are in lowercase. If you want your keyword to be a sentence, use quotes. e.g.: /filter "hey there" How you \
-doin?
-
-➠ Separate different replies with `%%%` to get random replies
-➠ *Example:*
-
-» `/filter "filtername"
+Separate replies with %%% to get random replies. Example:
+/filter "filtername"
  Reply 1
  %%%
  Reply 2
  %%%
- Reply 3`
+ Reply 3
 
-» `/stop <filter keyword>`*:* Stop that filter.
+/stop <filter keyword>: Stop a filter.
 
-➠ *Chat creator only:*
-» `/removeallfilters`*:* Remove all chat filters at once.
+Chat creator only:
+/removeallfilters: Remove all filters in this chat at once.
 
-➠ *Note*: Filters also support markdown formatters like: {first}, {last} etc. and buttons.
-➠ Now supports media spoilers and media captions.
+Filters support formatters such as {first} and {last}, and buttons. Media spoilers and media captions are supported.
 """
 
-__mod_name__ = "FILTERS"
+__mod_name__ = "Filters"

@@ -140,7 +140,7 @@ async def add_blackliststicker(client, message: Message):
         if trigger is None:
             await send_message(
                 message,
-                "Sticker is invalid!",
+                "Invalid sticker.",
             )
             return
         try:
@@ -168,7 +168,7 @@ async def add_blackliststicker(client, message: Message):
     else:
         await send_message(
             message,
-            "Tell me what stickers you want to add to the blacklist.",
+            "Provide the stickers to add to the blacklist.",
         )
 
 
@@ -216,7 +216,7 @@ async def unblackliststicker(client, message: Message):
             else:
                 await send_message(
                     message,
-                    "This sticker is not on the blacklist...!",
+                    "That sticker is not on the blacklist.",
                 )
 
         elif successful == len(to_unblacklist):
@@ -232,7 +232,7 @@ async def unblackliststicker(client, message: Message):
         elif not successful:
             await send_message(
                 message,
-                "None of these stickers exist, so they cannot be removed.",
+                "None of those stickers exist.",
                 parse_mode=ParseMode.HTML,
             )
 
@@ -250,7 +250,7 @@ async def unblackliststicker(client, message: Message):
         if trigger is None:
             await send_message(
                 message,
-                "Sticker is invalid!",
+                "Invalid sticker.",
             )
             return
         success = sql.rm_from_stickers(chat_id, trigger.lower())
@@ -272,7 +272,7 @@ async def unblackliststicker(client, message: Message):
     else:
         await send_message(
             message,
-            "Tell me what stickers you want to add to the blacklist.",
+            "Provide the stickers to add to the blacklist.",
         )
 
 
@@ -293,7 +293,7 @@ async def blacklist_mode(client, message: Message):
         if message.chat.type == ChatType.PRIVATE:
             await send_message(
                 message,
-                "You can use this command in groups, not in PM.",
+                "Use this command in groups, not in PM.",
             )
             return ""
         chat = message.chat
@@ -346,7 +346,7 @@ async def blacklist_mode(client, message: Message):
         else:
             await send_message(
                 message,
-                "I only understand off/del/warn/ban/kick/mute/tban/tmute!",
+                "Valid modes: off, del, warn, ban, kick, mute, tban, tmute.",
             )
             return ""
         if conn:

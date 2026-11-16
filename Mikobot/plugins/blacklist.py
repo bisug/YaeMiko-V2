@@ -323,7 +323,7 @@ async def add_blacklist(client, message: Message):
     else:
         await send_message(
             message,
-            "Tell me which words you would like to add in blacklist.",
+            "Provide the words to add to the blacklist.",
         )
 
 
@@ -372,7 +372,7 @@ async def unblacklist(client, message: Message):
             else:
                 await send_message(
                     message,
-                    "This is not a blacklist trigger!",
+                    "That is not a blacklist trigger.",
                 )
 
         elif successful == len(to_unblacklist):
@@ -388,7 +388,7 @@ async def unblacklist(client, message: Message):
         elif not successful:
             await send_message(
                 message,
-                "None of these triggers exist, so they can't be removed.",
+                "None of those triggers exist.",
                 parse_mode=ParseMode.HTML,
             )
 
@@ -405,7 +405,7 @@ async def unblacklist(client, message: Message):
     else:
         await send_message(
             message,
-            "Tell me which words you would like to remove from blacklist!",
+            "Provide the words to remove from the blacklist.",
         )
 
 
@@ -428,7 +428,7 @@ async def blacklist_mode(client, message: Message):
         if message.chat.type == ChatType.PRIVATE:
             await send_message(
                 message,
-                "This command can only be used in a group, not in PM.",
+                "Use this command in a group, not in PM.",
             )
             return ""
         chat = message.chat
@@ -481,7 +481,7 @@ async def blacklist_mode(client, message: Message):
         else:
             await send_message(
                 message,
-                "I only understand off/del/warn/ban/kick/mute/tban/tmute!",
+                "Valid modes: off, del, warn, ban, kick, mute, tban, tmute.",
             )
             return ""
         if conn:
@@ -557,9 +557,7 @@ async def silent_actions(client, message: Message):
         chat_id = conn
     else:
         if message.chat.type == ChatType.PRIVATE:
-            await send_message(
-                message, "This command can only be used in a group, not in PM."
-            )
+            await send_message(message, "Use this command in a group, not in PM.")
             return ""
         chat = message.chat
         chat_id = message.chat.id
@@ -615,7 +613,7 @@ async def silent_actions(client, message: Message):
         sql.set_silent_type(chat_id, mode, True)
         await send_message(
             message,
-            f"Blocklist **{action[1:]}** actions are now silent.",
+            f"Blocklist {action[1:]} actions are silent.",
             parse_mode=ParseMode.MARKDOWN,
         )
         return (
@@ -631,7 +629,7 @@ async def silent_actions(client, message: Message):
             sql.set_silent_type(chat_id, wanted_mode, False)
             await send_message(
                 message,
-                f"Blocklist **{action[3:]}** actions are loud again.",
+                f"Blocklist {action[3:]} actions are no longer silent.",
                 parse_mode=ParseMode.MARKDOWN,
             )
             return ""
@@ -661,9 +659,7 @@ async def blocklist_delete(client, message: Message):
         chat_id = conn
     else:
         if message.chat.type == ChatType.PRIVATE:
-            await send_message(
-                message, "This command can only be used in a group, not in PM."
-            )
+            await send_message(message, "Use this command in a group, not in PM.")
             return ""
         chat = message.chat
         chat_id = message.chat.id
@@ -841,7 +837,7 @@ async def del_blacklist(client, message: Message):
                     )
                     await client.send_message(
                         chat.id,
-                        f"Muted {html.escape(user.first_name)} for using Blacklisted word: {html.escape(trigger)}!",
+                        f"Muted {html.escape(user.first_name)} for using a blacklisted word: {html.escape(trigger)}!",
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -852,7 +848,7 @@ async def del_blacklist(client, message: Message):
                     await client.unban_chat_member(chat.id, user.id)
                     await client.send_message(
                         chat.id,
-                        f"Kicked {html.escape(user.first_name)} for using Blacklisted word: {html.escape(trigger)}!",
+                        f"Kicked {html.escape(user.first_name)} for using a blacklisted word: {html.escape(trigger)}!",
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -863,7 +859,7 @@ async def del_blacklist(client, message: Message):
                     await client.ban_chat_member(chat.id, user.id)
                     await client.send_message(
                         chat.id,
-                        f"Banned {html.escape(user.first_name)} for using Blacklisted word: {html.escape(trigger)}",
+                        f"Banned {html.escape(user.first_name)} for using a blacklisted word: {html.escape(trigger)}",
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -878,7 +874,7 @@ async def del_blacklist(client, message: Message):
                     await client.ban_chat_member(chat.id, user.id, until_date=ban_until)
                     await client.send_message(
                         chat.id,
-                        f"Banned {html.escape(user.first_name)} until '{html.escape(value)}' for using Blacklisted word: {html.escape(trigger)}!",
+                        f"Banned {html.escape(user.first_name)} until '{html.escape(value)}' for using a blacklisted word: {html.escape(trigger)}!",
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -898,7 +894,7 @@ async def del_blacklist(client, message: Message):
                     )
                     await client.send_message(
                         chat.id,
-                        f"Muted {html.escape(user.first_name)} until '{html.escape(value)}' for using Blacklisted word: {html.escape(trigger)}!",
+                        f"Muted {html.escape(user.first_name)} until '{html.escape(value)}' for using a blacklisted word: {html.escape(trigger)}!",
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -932,42 +928,38 @@ def __stats__():
     )
 
 
-__mod_name__ = "BLACKLIST"
+__mod_name__ = "Blacklist"
 
 __help__ = """
-
-➠ Blacklists stop certain triggers from being said in a group. Any time a trigger is mentioned, the message is deleted immediately. Blacklists pair well with warn filters!
-
-➠ *NOTE*: Blacklists do not affect group admins.
-
-» /blacklist: View the current blacklisted words.
+Commands:
+/blacklist: Show the current blacklisted words.
 
 Admin only:
-» /addblacklist <triggers>: Add a trigger to the blacklist. Each line is considered one trigger, so using different lines will allow you to add multiple triggers.
-» /unblacklist <triggers>: Remove triggers from the blacklist. Same newline logic applies here, so you can remove multiple triggers at once.
-» /blacklistmode <off/del/warn/ban/kick/mute/tban/tmute>: Action to perform when someone sends blacklisted words.
+/addblacklist <triggers>: Add triggers to the blacklist. Each line is one trigger, so use separate lines to add several.
+/unblacklist <triggers>: Remove triggers from the blacklist. Each line is one trigger, so use separate lines to remove several.
+/blacklistmode <off/del/warn/ban/kick/mute/tban/tmute>: Set the action for messages that contain blacklisted words.
+/blocklistdelete <on/off>: Set whether a matched message is deleted. This is separate from the action above.
 
-» /blocklistdelete <on/off>: Whether a matched message is deleted. Separate from the action above, so you can ban without removing the text.
+Owner only:
+/silentactions <on/off>: Master switch for applying actions without announcing them. A log channel must be set first.
+/silentactions sban/skick/smute: Mark a single action as silent.
 
-➠ *Owner only:*
-» /silentactions <on/off>: Master switch for applying actions without announcing them. A log channel must be set first, or a silent ban would leave no record.
-» /silentactions sban/skick/smute: Mark a single action as silent.
+Trigger modifiers:
+`?` matches one character; `*` matches any run of characters.
+`prefix:<trigger>` matches only at the start of a message; `exact:<trigger>` matches the whole message.
+`lookalike:<trigger>` also matches visually similar words, such as `b0t` or Cyrillic spellings.
+`name:<pattern>` and `username:<pattern>` match the speaker; `file:<pattern>` matches filenames, such as `*.pdf`; `forward:<id/@username>` and `inline:<id/@username>` match the origin; `stickerpack:<>` matches the pack of a replied sticker.
 
-➠ *Trigger modifiers:*
-» `?` matches exactly one character, `*` matches any run of them, so `/addblacklist bit?` catches "bits".
-» `prefix:<trigger>` only fires at the start of a message, `exact:<trigger>` only when the whole message matches.
-» `lookalike:<trigger>` also catches visually similar words, e.g. `b0t` or the Cyrillic spelling.
-» `name:<pattern>` and `username:<pattern>` match who is speaking, `file:<pattern>` matches filenames (e.g. `*.pdf`), `forward:<id/@username>` and `inline:<id/@username>` match the origin, and `stickerpack:<>` uses the pack of a replied sticker.
+Sticker blacklists delete matching stickers. Admins are exempt.
 
-➠ Blacklist stickers stop certain stickers. Whenever a sticker is sent, the message is deleted immediately.
-➠ *NOTE:* Blacklist stickers do not affect group admins
-» /blsticker: See the current blacklisted stickers
-➠ *Only admin:*
-» /addblsticker <sticker link>: Add a sticker trigger to the blacklist. You can also reply to a sticker
-» /unblsticker <sticker link>: Remove triggers from the blacklist. The same newline logic applies here, so you can delete multiple triggers at once
-» /rmblsticker <sticker link>: Same as above
-» /blstickermode <delete/ban/tban/mute/tmute>: Set the default action for users who send blacklisted stickers
-Note:
-» <sticker link> can be https://t.me/addstickers/<sticker> or just <sticker> or reply to the sticker message
+Commands:
+/blsticker: Show the current blacklisted stickers.
 
+Admin only:
+/addblsticker <sticker link>: Add a sticker trigger. You can also reply to a sticker.
+/unblsticker <sticker link>: Remove sticker triggers. Each line is one trigger.
+/rmblsticker <sticker link>: Same as /unblsticker.
+/blstickermode <delete/ban/tban/mute/tmute>: Set the action for users who send blacklisted stickers.
+
+A <sticker link> can be https://t.me/addstickers/<sticker>, a sticker name, or a reply to a sticker message.
 """

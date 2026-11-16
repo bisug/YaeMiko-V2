@@ -186,7 +186,7 @@ async def review_callback(client, query: CallbackQuery) -> str:
     try:
         member = await client.get_chat_member(chat_id, query.from_user.id)
     except RPCError:
-        await query.answer("I can't check your permissions there.", show_alert=True)
+        await query.answer("I cannot check permissions there.", show_alert=True)
         return ""
 
     if member.status not in (
@@ -237,20 +237,16 @@ def __chat_settings__(chat_id, user_id):
     return f"Bot-to-bot is `{mode}` and command review is `{'off' if skip else 'on'}`."
 
 
-__mod_name__ = "BOT2BOT"
+__mod_name__ = "Bot2Bot"
 
 __help__ = """
-➡ Let other bots run commands here, and review the ones that change settings.
+Let other bots run commands here, and review commands that change settings.
 
-➡ Telegram only delivers one bot's messages to another when "bot to bot
-communication" is enabled in @BotFather, so most groups will never need this.
+Telegram delivers one bot's messages to another only when bot-to-bot communication is enabled in @BotFather.
 
-» /bot2bot <off/admin/all>: Whether bots may run commands. `off` ignores
-them entirely, `admin` allows bots that are admins here, `all` allows any client.
-» /bot2botskipreview <on/off>: When on, bot commands that change settings
-are applied without asking a human first.
+Commands:
+/bot2bot <off/admin/all>: Set whether bots may run commands. `off` ignores them, `admin` allows bots that are admins here, `all` allows any bot.
+/bot2botskipreview <on/off>: When on, bot commands that change settings are applied without admin approval.
 
-➡ A bot with admin rights can be prompted by anyone who can talk to it, so
-commands that change configuration are shown to an admin for approval by
-default. Turning review off gives those bots direct access to your settings.
+A bot with admin rights can be prompted by anyone who can message it, so configuration commands need admin approval by default. Turning review off gives those bots direct access to settings.
 """

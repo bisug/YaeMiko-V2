@@ -118,7 +118,7 @@ async def check_flood(client, message: Message):
 
     except RPCError:
         await msg.reply_text(
-            "I can't restrict people here, give me permissions first! Until then, I'll disable anti-flood.",
+            "I cannot restrict members here. Grant the required permission; antiflood is disabled until then.",
         )
         await asyncio.to_thread(sql.set_flood, chat.id, 0)
         return (
@@ -225,7 +225,7 @@ async def set_flood(client, message: Message):
             elif amount <= 3:
                 await send_message(
                     message,
-                    "Antiflood must be either 0 (disabled) or a number greater than 3!",
+                    "Antiflood must be 0 (disabled) or a number greater than 3.",
                 )
                 return ""
 
@@ -254,9 +254,7 @@ async def set_flood(client, message: Message):
                 )
 
         else:
-            await message.reply_text(
-                "Invalid argument, please use a number, 'off', or 'no'."
-            )
+            await message.reply_text("Provide a number, off, or no.")
     else:
         await message.reply_text(
             (
@@ -295,7 +293,7 @@ async def flood(client, message: Message):
                 "I'm not enforcing any flood control in {}!".format(chat_name),
             )
         else:
-            await msg.reply_text("I'm not enforcing any flood control here!")
+            await msg.reply_text("Flood control is not active here.")
     else:
         if conn:
             await msg.reply_text(
@@ -365,7 +363,7 @@ Examples of time values: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks
         else:
             await send_message(
                 message,
-                "I only understand ban/kick/mute/tban/tmute!",
+                "Valid actions: ban, kick, mute, tban, tmute.",
             )
             return ""
         if conn:
@@ -560,19 +558,12 @@ def __chat_settings__(chat_id, user_id):
 
 
 __help__ = """
-➠ *Antiflood allows you to take action on users that send more than x messages in a row. Exceeding the set flood will result in restricting that user.*
-
-➠ *Admin Only*
-
-» /flood: Get the current antiflood settings.
-
-» /setflood <number/off/no>: Set the number of messages after which to take action on a user. Set to '0', 'off', or 'no' to disable.
-
-» /setfloodmode <action type>: Choose which action to take on a user who has been flooding. Options: ban/kick/mute/tban/tmute.
-
-» /setfloodtimer <number> <duration>: Act on a user who sends more than `number` messages within `duration`, instead of in a row. Use `/setflood off` to go back to consecutive mode.
-
-» /clearflood on/off: When on, deletes every message from the flooding burst instead of only the ones past the limit.
+Admin only:
+/flood: Show the current antiflood settings.
+/setflood <number/off/no>: Set the number of messages after which action is taken. Use 0, off, or no to disable.
+/setfloodmode <action type>: Set the action for flooding users. Options: ban, kick, mute, tban, tmute.
+/setfloodtimer <number> <duration>: Act on users who send more than number messages within duration instead of in a row. Use /setflood off for consecutive mode.
+/clearflood on/off: When on, delete every message in a flooding burst instead of only those past the limit.
 """
 
-__mod_name__ = "ANTI-FLOOD"
+__mod_name__ = "Anti-Flood"

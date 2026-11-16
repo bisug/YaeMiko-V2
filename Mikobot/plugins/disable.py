@@ -96,7 +96,7 @@ if is_module_loaded(FILENAME):
                     parse_mode=ParseMode.MARKDOWN,
                 )
             else:
-                await message.reply_text("That command can't be disabled")
+                await message.reply_text("That command cannot be disabled.")
 
         else:
             await message.reply_text("What should I disable?")
@@ -112,13 +112,13 @@ if is_module_loaded(FILENAME):
             try:
                 module = importlib.import_module(module_path)
             except Exception:
-                await message.reply_text("Does that module even exist?")
+                await message.reply_text("That module does not exist.")
                 return
 
             try:
                 command_list = module.__command_list__
             except Exception:
-                await message.reply_text("Module does not contain command list!")
+                await message.reply_text("That module has no commands to toggle.")
                 return
 
             disabled_cmds = []
@@ -144,7 +144,7 @@ if is_module_loaded(FILENAME):
             if failed_disabled_cmds:
                 failed_disabled_cmds_string = ", ".join(failed_disabled_cmds)
                 await message.reply_text(
-                    f"Commands `{failed_disabled_cmds_string}` can't be disabled",
+                    f"Commands `{failed_disabled_cmds_string}` cannot be disabled.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
 
@@ -167,7 +167,7 @@ if is_module_loaded(FILENAME):
                     parse_mode=ParseMode.MARKDOWN,
                 )
             else:
-                await message.reply_text("Is that even disabled?")
+                await message.reply_text("That command is not disabled.")
 
         else:
             await message.reply_text("What should I enable?")
@@ -184,13 +184,13 @@ if is_module_loaded(FILENAME):
             try:
                 module = importlib.import_module(module_path)
             except Exception:
-                await message.reply_text("Does that module even exist?")
+                await message.reply_text("That module does not exist.")
                 return
 
             try:
                 command_list = module.__command_list__
             except Exception:
-                await message.reply_text("Module does not contain command list!")
+                await message.reply_text("That module has no commands to toggle.")
                 return
 
             enabled_cmds = []
@@ -215,7 +215,7 @@ if is_module_loaded(FILENAME):
             if failed_enabled_cmds:
                 failed_enabled_cmds_string = ", ".join(failed_enabled_cmds)
                 await message.reply_text(
-                    f"Are the commands `{failed_enabled_cmds_string}` even disabled?",
+                    f"Commands `{failed_enabled_cmds_string}` are not disabled.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
 
@@ -267,19 +267,15 @@ if is_module_loaded(FILENAME):
         return build_curr_disabled(chat_id)
 
     __help__ = """
-    » /cmds: Check the current status of disabled commands
+    Commands:
+    /cmds: Show the status of disabled commands.
 
-    ➠ *Admins only*:
-
-    » /enable < cmd name >: Enable that command.
-
-    » /disable < cmd name >: Disable that command.
-
-    » /enablemodule < module name >: Enable all commands in that module.
-
-    » /disablemodule < module name >: Disable all commands in that module.
-
-    » /listcmds: List all possible toggleable commands.
+    Admin only:
+    /enable <cmd name>: Enable a command.
+    /disable <cmd name>: Disable a command.
+    /enablemodule <module name>: Enable all commands in a module.
+    /disablemodule <module name>: Disable all commands in a module.
+    /listcmds: List all commands that can be disabled.
     """
 
-    __mod_name__ = "DISABLE"
+    __mod_name__ = "Disable"

@@ -34,7 +34,7 @@ ELEVATED_USERS_LOCK = asyncio.Lock()
 
 async def check_user_id(user_id: int) -> str | None:
     if not user_id:
-        return "That...is a chat! baka ka omae?"
+        return "That is a chat, not a user."
     return None
 
 
@@ -114,7 +114,7 @@ async def add_disaster_level(client, message: Message, level: str) -> str:
 
         for disaster_level, disaster_users in DISASTER_LEVELS.items():
             if user_id in data[disaster_users]:
-                rt += f"Requested HA to promote this {disaster_level} to {level}."
+                rt += f"Requested promotion from {disaster_level} to {level}."
                 data[disaster_users].remove(user_id)
 
         data[target_key].append(user_id)
@@ -122,7 +122,7 @@ async def add_disaster_level(client, message: Message, level: str) -> str:
         apply_elevated_users(data)
 
     await message.reply_text(
-        rt + f"\nSuccessfully set Disaster level of {target_name} to {level}!"
+        rt + f"\nSet the disaster level of {target_name} to {level}!"
     )
 
     log_message = (

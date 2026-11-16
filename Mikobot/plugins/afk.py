@@ -34,7 +34,7 @@ async def afk(client, message: Message):
         reason = args[1]
         if len(reason) > 100:
             reason = reason[:100]
-            notice = "\nYour afk reason was shortened to 100 characters."
+            notice = "\nAFK reason shortened to 100 characters."
     else:
         reason = ""
 
@@ -43,11 +43,11 @@ async def afk(client, message: Message):
     try:
         if reason:
             await message.reply_text(
-                f"➲ {html.escape(fname or str(user.id))} is now away! \n\n➦ Reason: <code>{html.escape(reason)}</code> \n {notice}",
+                f"{html.escape(fname or str(user.id))} is now away.\n\nReason: <code>{html.escape(reason)}</code>\n{notice}",
                 parse_mode=ParseMode.HTML,
             )
         else:
-            await message.reply_text("➲ {} is now away!{}".format(fname, notice))
+            await message.reply_text("{} is now away.{}".format(fname, notice))
     except RPCError:
         pass
 
@@ -81,13 +81,13 @@ async def no_longer_afk(client, message: Message):
         firstname = user.first_name
         try:
             options = [
-                "➲ {} is here!",
-                "➲ {} is back!",
-                "➲ {} is now in the chat!",
-                "➲ {} is awake!",
-                "➲ {} is back online!",
-                "➲ {} is finally here!",
-                "➲ Welcome back! {}",
+                "{} is here.",
+                "{} is back.",
+                "{} is now in the chat.",
+                "{} is awake.",
+                "{} is back online.",
+                "{} is here.",
+                "Welcome back, {}.",
             ]
             chosen_option = random.choice(options)
             await message.reply_text(
@@ -166,34 +166,32 @@ async def check_afk(
         time = humanize.naturaldelta(datetime.now() - user.time)
 
         if not user.reason:
-            res = "➲ {} is afk.\n\n➦ Last seen {} ago.".format(
+            res = "{} is AFK.\n\nLast seen {} ago.".format(
                 fst_name,
                 time,
             )
             await message.reply_text(res)
         else:
-            res = (
-                "➲ {} is afk.\n\n➦ Reason: <code>{}</code>\n➦ Last seen {} ago.".format(
-                    html.escape(fst_name),
-                    html.escape(user.reason),
-                    time,
-                )
+            res = "{} is AFK.\n\nReason: <code>{}</code>\nLast seen {} ago.".format(
+                html.escape(fst_name),
+                html.escape(user.reason),
+                time,
             )
             await message.reply_text(res, parse_mode=ParseMode.HTML)
 
 
 __help__ = """
-» /afk <reason>*:* mark yourself as AFK (away from keyboard).
+Commands:
+/afk <reason>: Mark yourself as AFK.
+/bye [reason]: Tell others you are AFK.
+/bye [reply to media]: Set an AFK status with media.
+/byedel: Toggle automatic deletion of AFK messages in groups. Admin only. Enabled by default.
 
-» brb, !afk <reason>*:* same as the afk command, but not a command.
+Trigger modifiers:
+brb <reason>: Same as /afk.
+!afk <reason>: Same as /afk.
 
-» /bye [Reason > Optional] - Tell others that you are AFK (Away From Keyboard).
-
-» /bye [reply to media] - AFK with media.
-
-» /byedel - Enable auto-delete of AFK messages in group (group admins only). Default is **Enable**.
-
-➠ *When marked as AFK, any mention gets a reply saying you're not available!*
+While you are AFK, any mention gets a reply saying you are unavailable.
 """
 
 __mod_name__ = "AFK"

@@ -455,14 +455,12 @@ async def nsfw_enable_disable(client, message):
         await message.reply_text("Unknown suffix. Use /antinsfw [on/off]")
 
 
-__mod_name__ = "ANTI-NSFW"
+__mod_name__ = "Anti-NSFW"
 
 __help__ = """
-*🔞 Detects NSFW material and removes it.*
+🔞 Detects NSFW material and removes it.
 
-➠ *Usage:*
-
-» /antinsfw [on/off]: Enables Anti-NSFW system.
-
-» /nsfwscan <reply to message>: Scans the replied-to file.
+Commands:
+/antinsfw [on/off]: Enable or disable NSFW filtering in this group.
+/nsfwscan <reply to message>: Scan the replied-to file for NSFW content.
 """

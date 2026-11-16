@@ -38,6 +38,6 @@ async def bug_command_handler(client, message):
     else:
         await client.send_message(
             message.chat.id,
-            "To report a bug, please reply to the message with **/bug** cmd.",
+            "Reply to a message with /bug to report it.",
             parse_mode=ParseMode.MARKDOWN,
         )

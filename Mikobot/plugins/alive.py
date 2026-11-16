@@ -41,19 +41,17 @@ async def alive(client, message: Message):
     }
 
     library_versions_text = "\n".join(
-        [f"➲ **{key}:** `{value}`" for key, value in library_versions.items()]
+        [f"{key}: `{value}`" for key, value in library_versions.items()]
     )
 
-    caption = f"""**HEY, I AM {BOT_NAME}**
+    caption = f"""{BOT_NAME}
 
-━━━━━━ 🌟✿🌟 ━━━━━━
-✪ **CREATOR:** [🄺🄰🅁🄼🄰](https://t.me/O_oKarma)
+Creator: [KARMA](https://t.me/O_oKarma)
 
 {library_versions_text}
 
-➲ **PYTHON:** `{version_info[0]}.{version_info[1]}.{version_info[2]}`
-➲ **BOT VERSION:** `2.1 Rx`
-━━━━━━ 🌟✿🌟 ━━━━━━"""
+Python: `{version_info[0]}.{version_info[1]}.{version_info[2]}`
+Bot version: `2.1 Rx`"""
 
     await message.reply_animation(
         random.choice(ALIVE_ANIMATION),
@@ -62,4 +60,4 @@ async def alive(client, message: Message):
     )
 
 
-__mod_name__ = "ALIVE"
+__mod_name__ = "Alive"

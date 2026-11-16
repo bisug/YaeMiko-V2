@@ -41,7 +41,7 @@ from Mikobot.utils.consts import ChatID
 from Mikobot.utils.filters import GROUPS
 from Mikobot.utils.parser import mention_html
 
-__mod_name__ = "BAN"
+__mod_name__ = "Ban"
 
 
 @on_message(*disableable(["ban", "sban", "dban"]))
@@ -54,19 +54,19 @@ async def ban(client, message: Message) -> str:
     args = message.command[1:] if len(message.command) > 1 else []
     user_id, reason = await extract_user_and_text(message, args)
     if user_id is None:
-        return await message.reply_text("That looks like an invalid User ID to me.")
+        return await message.reply_text("That is not a valid user ID.")
 
     SILENT = bool(message.text.startswith("/s"))
     # /dban is the delete-then-act shortcut: the offending message goes too.
     DELETE_MESSAGE = bool(message.text.startswith("/d"))
     if DELETE_MESSAGE and not message.reply_to_message:
-        await message.reply_text("Reply to the message you want deleted with that.")
+        await message.reply_text("Reply to the message you want deleted.")
         return ""
 
     # Anonymous admins appear as a service account, so confirm via a button.
     if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
         if SILENT:
-            await message.reply_text("Currently /sban won't work for anonymous admins.")
+            await message.reply_text("/sban does not work for anonymous admins.")
             return log_message
         # Keep the chat title with the pending action to mention the channel after banning.
         try:
@@ -107,12 +107,12 @@ async def ban(client, message: Message) -> str:
         and user.id not in DRAGONS
     ):
         await message.reply_text(
-            "Sorry son, but you're not worthy to wield the banhammer.",
+            "You do not have permission to ban that user.",
         )
         return log_message
 
     if user_id == client.me.id:
-        await message.reply_text("Oh yeah, ban myself, noob!")
+        await message.reply_text("I cannot ban myself.")
         return log_message
 
     if user_id is not None and user_id < 0:
@@ -126,20 +126,18 @@ async def ban(client, message: Message) -> str:
             if "user not found" in str(excp.message or excp).lower():
                 raise
             elif "invalid user_id" in str(excp.message or excp).lower():
-                await message.reply_text("I doubt that's a user.")
-            await message.reply_text("Can't find this person here.")
+                await message.reply_text("That is not a user.")
+            await message.reply_text("I cannot find that user here.")
             return log_message
 
         if await is_user_ban_protected(chat, user_id, member) and user not in DEV_USERS:
             if user_id == OWNER_ID:
-                await message.reply_text(
-                    "Trying to put me against a God level disaster huh?"
-                )
+                await message.reply_text("I cannot act against that user.")
             elif user_id in DEV_USERS:
-                await message.reply_text("I can't act against our own.")
+                await message.reply_text("I cannot act against a protected user.")
             elif user_id in DRAGONS:
                 await message.reply_text(
-                    "Fighting this Dragon here will put me and my people at risk.",
+                    "I cannot act against a Dragon.",
                 )
             else:
                 await message.reply_text("This user has immunity and cannot be banned.")
@@ -210,7 +208,7 @@ async def ban(client, message: Message) -> str:
             # Do not reply
             if silent:
                 return log
-            await message.reply_text("Banned!")
+            await message.reply_text("User banned.")
             return log
         else:
             LOGGER.exception(
@@ -220,7 +218,7 @@ async def ban(client, message: Message) -> str:
                 chat.id,
                 excp,
             )
-            await message.reply_text("Uhm...that didn't work...")
+            await message.reply_text("That did not work.")
 
     return log_message
 
@@ -236,10 +234,10 @@ async def temp_ban(client, message: Message) -> str:
     args = message.command[1:] if len(message.command) > 1 else []
     user_id, reason = await extract_user_and_text(message, args)
     if user_id is None:
-        return await message.reply_text("That looks like an invalid User ID to me.")
+        return await message.reply_text("That is not a valid user ID.")
 
     if not user_id:
-        await message.reply_text("I doubt that's a user.")
+        await message.reply_text("That is not a user.")
         return log_message
 
     try:
@@ -247,18 +245,18 @@ async def temp_ban(client, message: Message) -> str:
     except RPCError as excp:
         if "user not found" not in str(excp.message or excp).lower():
             raise
-        await message.reply_text("I can't seem to find this user.")
+        await message.reply_text("I cannot find that user.")
         return log_message
     if user_id == client.me.id:
-        await message.reply_text("I'm not gonna BAN myself, are you crazy?")
+        await message.reply_text("I cannot ban myself.")
         return log_message
 
     if await is_user_ban_protected(chat, user_id, member):
-        await message.reply_text("I don't feel like it.")
+        await message.reply_text("I cannot do that.")
         return log_message
 
     if not reason:
-        await message.reply_text("You haven't specified a time to ban this user for!")
+        await message.reply_text("Specify a ban duration.")
         return log_message
 
     split_reason = reason.split(None, 1)
@@ -290,7 +288,7 @@ async def temp_ban(client, message: Message) -> str:
         )
         await client.send_message(
             chat.id,
-            f"Banned! User {mention_html(member.user.id, member.user.first_name)} "
+            f"User banned. User {mention_html(member.user.id, member.user.first_name)} "
             f"will be banned for {time_val}.",
             parse_mode=ParseMode.HTML,
             message_thread_id=message.message_thread_id if chat.is_forum else None,
@@ -301,7 +299,7 @@ async def temp_ban(client, message: Message) -> str:
         if "reply message not found" in str(excp.message or excp).lower():
             # Do not reply
             await message.reply_text(
-                f"Banned! User will be banned for {time_val}.",
+                f"User banned. User will be banned for {time_val}.",
             )
             return log
         else:
@@ -312,7 +310,7 @@ async def temp_ban(client, message: Message) -> str:
                 chat.id,
                 excp,
             )
-            await message.reply_text("Well damn, I can't ban that user.")
+            await message.reply_text("I cannot ban that user.")
 
     return log_message
 
@@ -328,14 +326,14 @@ async def kick(client, message: Message) -> str:
     args = message.command[1:] if len(message.command) > 1 else []
     DELETE_MESSAGE = bool(message.text.startswith("/d"))
     if DELETE_MESSAGE and not message.reply_to_message:
-        await message.reply_text("Reply to the message you want deleted with that.")
+        await message.reply_text("Reply to the message you want deleted.")
         return ""
     user_id, reason = await extract_user_and_text(message, args)
     if user_id is None:
-        return await message.reply_text("That looks like an invalid User ID to me.")
+        return await message.reply_text("That is not a valid user ID.")
 
     if not user_id:
-        await message.reply_text("I doubt that's a user.")
+        await message.reply_text("That is not a user.")
         return log_message
 
     try:
@@ -344,14 +342,14 @@ async def kick(client, message: Message) -> str:
         if "user not found" not in str(excp.message or excp).lower():
             raise
 
-        await message.reply_text("I can't seem to find this user.")
+        await message.reply_text("I cannot find that user.")
         return log_message
     if user_id == client.me.id:
-        await message.reply_text("Yeahhh I'm not gonna do that.")
+        await message.reply_text("I cannot do that.")
         return log_message
 
     if await is_user_ban_protected(chat, user_id):
-        await message.reply_text("I really wish I could kick this user....")
+        await message.reply_text("I cannot kick that user.")
         return log_message
 
     # Unban on the current user = kick.
@@ -375,7 +373,7 @@ async def kick(client, message: Message) -> str:
         )
         await client.send_message(
             chat.id,
-            f"Captain, I have kicked {mention_html(member.user.id, member.user.first_name)}.",
+            f"Kicked {mention_html(member.user.id, member.user.first_name)}.",
             parse_mode=ParseMode.HTML,
             message_thread_id=message.message_thread_id if chat.is_forum else None,
         )
@@ -391,7 +389,7 @@ async def kick(client, message: Message) -> str:
         return log
 
     else:
-        await message.reply_text("Well damn, I can't kick that user.")
+        await message.reply_text("I cannot kick that user.")
 
     return log_message
 
@@ -401,14 +399,14 @@ async def kick(client, message: Message) -> str:
 async def kickme(client, message: Message):
     user_id = message.from_user.id
     if await is_user_admin(message.chat, user_id):
-        await message.reply_text("I wish I could... but you're an admin.")
+        await message.reply_text("I cannot kick an admin.")
         return
 
     # Unban on the current user = kick.
     try:
         await client.unban_chat_member(message.chat.id, user_id)
     except RPCError:
-        await message.reply_text("Huh? I can't :/")
+        await message.reply_text("I cannot do that.")
         return
 
     await message.reply_text(
@@ -428,7 +426,7 @@ async def unban(client, message: Message) -> str:
     args = message.command[1:] if len(message.command) > 1 else []
     user_id, reason = await extract_user_and_text(message, args)
     if user_id is None:
-        return await message.reply_text("That looks like an invalid User ID to me.")
+        return await message.reply_text("That is not a valid user ID.")
 
     if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
         try:
@@ -459,11 +457,11 @@ async def unban(client, message: Message) -> str:
         return log_message
 
     if not user_id:
-        await message.reply_text("I doubt that's a user.")
+        await message.reply_text("That is not a user.")
         return log_message
 
     if user_id == client.me.id:
-        await message.reply_text("How would I unban myself if I wasn't here...?")
+        await message.reply_text("I cannot unban myself.")
         return log_message
 
     if user_id is not None and user_id < 0:
@@ -477,19 +475,17 @@ async def unban(client, message: Message) -> str:
             member = await client.get_chat_member(chat.id, user_id)
 
             if member.status == ChatMemberStatus.ADMINISTRATOR:
-                await message.reply_text(
-                    "This person is an admin here, Are you drunk???"
-                )
+                await message.reply_text("That user is an admin here.")
                 return log_message
 
         except RPCError as excp:
             if "user not found" not in str(excp.message or excp).lower():
                 raise
-            await message.reply_text("I can't seem to find this user.")
+            await message.reply_text("I cannot find that user.")
             return log_message
 
         if await is_user_in_chat(chat, user_id):
-            await message.reply_text("Isn't this person already here??")
+            await message.reply_text("That user is already here.")
             return log_message
 
     admin_text = mention_html(user.id, user.first_name) if user else "Admin"
@@ -504,11 +500,11 @@ async def unban(client, message: Message) -> str:
         target_id = chat_sender.id if chat_sender else user_id
         log += f"<b>User:</b> {mention_username(target_id, target_name)}"
         await client.unban_chat_member(chat.id, target_id)
-        await message.reply_text("Yeah, this channel can speak again.")
+        await message.reply_text("This channel can speak again.")
     else:
         log += f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
         await client.unban_chat_member(chat.id, user_id)
-        await message.reply_text("Yeah, this user can join!")
+        await message.reply_text("This user can join.")
 
     if reason:
         log += f"\n<b>Reason:</b> {html.escape(reason)}"
@@ -529,7 +525,7 @@ async def selfunban(client, message: Message) -> str:
     try:
         chat_id = int(args[0])
     except RPCError, IndexError, ValueError, TypeError:
-        await message.reply_text("Give a valid chat ID.")
+        await message.reply_text("Provide a valid chat ID.")
         return
 
     chat = await client.get_chat(chat_id)
@@ -538,17 +534,17 @@ async def selfunban(client, message: Message) -> str:
         member = await client.get_chat_member(chat.id, user.id)
     except RPCError as excp:
         if "user not found" in str(excp.message or excp).lower():
-            await message.reply_text("I can't seem to find this user.")
+            await message.reply_text("I cannot find that user.")
             return
         else:
             raise
 
     if await is_user_in_chat(chat, user.id):
-        await message.reply_text("Aren't you already in the chat??")
+        await message.reply_text("You are already in this chat.")
         return
 
     await client.unban_chat_member(chat.id, user.id)
-    await message.reply_text("Yep, I have unbanned you.")
+    await message.reply_text("You have been unbanned.")
 
     log = (
         f"<b>{html.escape(chat.title)}:</b>\n"
@@ -607,11 +603,11 @@ async def bans_callback(client, query: CallbackQuery):
         chat_name = pending.get("chat_title")
 
         if user_id == client.me.id:
-            await message.edit_text("Oh yeah, ban myself, noob!")
+            await message.edit_text("I cannot ban myself.")
             return log_message
 
         if isinstance(user_id, str):
-            await message.edit_text("I doubt that's a user.")
+            await message.edit_text("That is not a user.")
             return log_message
 
         if user_id < 0:
@@ -625,8 +621,8 @@ async def bans_callback(client, query: CallbackQuery):
                 if "user not found" in err_msg:
                     raise
                 elif "invalid user_id" in err_msg or "user_id_invalid" in err_msg:
-                    await message.edit_text("I doubt that's a user.")
-                await message.edit_text("Can't find this person here.")
+                    await message.edit_text("That is not a user.")
+                await message.edit_text("I cannot find that user here.")
 
                 return log_message
 
@@ -635,14 +631,12 @@ async def bans_callback(client, query: CallbackQuery):
                 and admin_user not in DEV_USERS
             ):
                 if user_id == OWNER_ID:
-                    await message.edit_text(
-                        "Trying to put me against a God level disaster huh?"
-                    )
+                    await message.edit_text("I cannot act against that user.")
                 elif user_id in DEV_USERS:
-                    await message.edit_text("I can't act against our own.")
+                    await message.edit_text("I cannot act against a protected user.")
                 elif user_id in DRAGONS:
                     await message.edit_text(
-                        "Fighting this Dragon here will put me and my people at risk.",
+                        "I cannot act against a Dragon.",
                     )
                 else:
                     await message.edit_text(
@@ -691,13 +685,13 @@ async def bans_callback(client, query: CallbackQuery):
                 parse_mode=ParseMode.HTML,
                 message_thread_id=message.message_thread_id if chat.is_forum else None,
             )
-            await query.answer("Done Banned User.")
+            await query.answer("User banned.")
             return log
 
         except RPCError as excp:
             if "reply message not found" in str(excp.message or excp).lower():
                 # Do not reply
-                await message.edit_text("Banned!")
+                await message.edit_text("User banned.")
                 return log
             LOGGER.exception(
                 "ERROR banning user %s in chat %s (%s) due to %s",
@@ -706,7 +700,7 @@ async def bans_callback(client, query: CallbackQuery):
                 chat.id,
                 excp,
             )
-            await message.edit_text("Uhm...that didn't work...")
+            await message.edit_text("That did not work.")
 
         return log_message
 
@@ -719,11 +713,11 @@ async def bans_callback(client, query: CallbackQuery):
         reason = pending.get("reason", "")
 
         if isinstance(user_id, str):
-            await message.edit_text("I doubt that's a user.")
+            await message.edit_text("That is not a user.")
             return log_message
 
         if user_id == client.me.id:
-            await message.edit_text("How would i unban myself if i wasn't here...?")
+            await message.edit_text("I cannot unban myself.")
             return log_message
 
         if user_id < 0:
@@ -737,11 +731,11 @@ async def bans_callback(client, query: CallbackQuery):
             except RPCError as excp:
                 if "user not found" not in str(excp.message or excp).lower():
                     raise
-                await message.edit_text("I can't seem to find this user.")
+                await message.edit_text("I cannot find that user.")
                 return log_message
 
             if await is_user_in_chat(chat, user_id):
-                await message.edit_text("Isn't this person already here??")
+                await message.edit_text("That user is already here.")
                 return log_message
 
         log = (
@@ -753,39 +747,33 @@ async def bans_callback(client, query: CallbackQuery):
         if CHAT_SENDER:
             log += f"<b>User:</b> {html.escape(chat_title)}"
             await client.unban_chat_member(chat.id, user_id)
-            await message.reply_text("Yeah, this channel can speak again.")
+            await message.reply_text("This channel can speak again.")
         else:
             log += (
                 f"<b>User:</b> {mention_html(member.user.id, member.user.first_name)}"
             )
             await client.unban_chat_member(chat.id, user_id)
-            await message.reply_text("Yeah, this user can join!")
+            await message.reply_text("This user can join.")
 
         if reason:
             log += f"\n<b>Reason:</b> {html.escape(reason)}"
 
-        await query.answer("Done unbanned user.")
+        await query.answer("User unbanned.")
         return log
 
 
 __help__ = """
-» /kickme: kicks the user who issued the command
+Commands:
+/kickme: Kick yourself from the group.
 
-➠ *Admins only:*
-» /ban <userhandle>: bans a user/channel. (via handle, or reply)
+Admin only:
+/ban <userhandle>: Ban a user or channel. Accepts a handle or a reply.
+/sban <userhandle>: Silently ban a user. Deletes the command and the replied message, and sends no reply. Accepts a handle or a reply.
+/dban <userhandle>: Delete the replied message and ban the user. Requires a reply.
+/dkick <userhandle>: Delete the replied message and kick the user. Requires a reply.
+/tban <userhandle> x(m/h/d): Ban a user for x time. Units: m minutes, h hours, d days. Accepts a handle or a reply.
+/unban <userhandle>: Unban a user or channel. Accepts a handle or a reply.
+/kick <userhandle>: Kick a user from the group. Accepts a handle or a reply.
 
-» /sban <userhandle>: Silently ban a user. Deletes the command and the replied message, and doesn't reply. (via handle, or reply)
-
-» /dban <userhandle>: Delete the replied message and ban the user. Must be a reply.
-
-» /dkick <userhandle>: Delete the replied message and kick the user. Must be a reply.
-
-» /tban <userhandle> x(m/h/d): bans a user for `x` time. (via handle, or reply). `m` = `minutes`, `h` = `hours`, `d` = `days`.
-
-» /unban <userhandle>: unbans a user/channel. (via handle, or reply)
-
-» /kick <userhandle>: kicks a user out of the group, (via handle, or reply)
-
-➠ NOTE:
-    Banning or unbanning channels only works if you reply to their message, so don't use their username to ban/unban.
+Channels can be banned or unbanned only by replying to their message, not by username.
 """

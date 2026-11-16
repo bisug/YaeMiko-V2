@@ -67,7 +67,7 @@ async def promote(client, message: Message):
 
     if not user_id:
         await message.reply_text(
-            "You don't seem to be referring to a user, or the ID specified is incorrect.",
+            "Specify a user or provide a valid ID.",
         )
         return
 
@@ -77,20 +77,18 @@ async def promote(client, message: Message):
         LOGGER.warning(
             "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
         )
-        await message.reply_text("I can't find this user.")
+        await message.reply_text("I cannot find that user.")
         return
 
     if (
         user_member.status == ChatMemberStatus.ADMINISTRATOR
         or user_member.status == ChatMemberStatus.OWNER
     ):
-        await message.reply_text("How can I promote someone who is already an admin?")
+        await message.reply_text("That user is already an admin.")
         return
 
     if user_id == client.me.id:
-        await message.reply_text(
-            "I can't promote myself! Get an admin to do it for me."
-        )
+        await message.reply_text("I cannot promote myself. An admin must do that.")
         return
 
     # Set the same permissions as the bot - the bot can't assign higher permissions than itself!
@@ -120,11 +118,9 @@ async def promote(client, message: Message):
                 "user_not_mutual_contact"
                 in str(getattr(err, "message", None) or err).lower()
             ):
-                await message.reply_text(
-                    "I can't promote someone who isn't in the group."
-                )
+                await message.reply_text("That user is not in this group.")
             else:
-                await message.reply_text("An error occurred while promoting.")
+                await message.reply_text("Could not promote that user.")
             return
 
     await client.send_message(
@@ -176,7 +172,7 @@ async def fullpromote(client, message: Message):
 
     if not user_id:
         await message.reply_text(
-            "You don't seem to be referring to a user, or the ID specified is incorrect.",
+            "Specify a user or provide a valid ID.",
         )
         return
 
@@ -186,20 +182,18 @@ async def fullpromote(client, message: Message):
         LOGGER.warning(
             "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
         )
-        await message.reply_text("I can't find this user.")
+        await message.reply_text("I cannot find that user.")
         return
 
     if (
         user_member.status == ChatMemberStatus.ADMINISTRATOR
         or user_member.status == ChatMemberStatus.OWNER
     ):
-        await message.reply_text("How can I promote someone who is already an admin?")
+        await message.reply_text("That user is already an admin.")
         return
 
     if user_id == client.me.id:
-        await message.reply_text(
-            "I can't promote myself! Get an admin to do it for me."
-        )
+        await message.reply_text("I cannot promote myself. An admin must do that.")
         return
 
     # Set the same permissions as the bot - the bot can't assign higher perms than itself!
@@ -230,11 +224,9 @@ async def fullpromote(client, message: Message):
                 "user_not_mutual_contact"
                 in str(getattr(err, "message", None) or err).lower()
             ):
-                await message.reply_text(
-                    "I can't promote someone who isn't in the group."
-                )
+                await message.reply_text("That user is not in this group.")
             else:
-                await message.reply_text("An error occurred while promoting.")
+                await message.reply_text("Could not promote that user.")
             return
 
     await client.send_message(
@@ -286,7 +278,7 @@ async def demote(client, message: Message):
 
     if not user_id:
         await message.reply_text(
-            "You don't seem to be referring to a user, or the ID specified is incorrect.",
+            "Specify a user or provide a valid ID.",
         )
         return
 
@@ -296,21 +288,19 @@ async def demote(client, message: Message):
         LOGGER.warning(
             "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
         )
-        await message.reply_text("I can't find this user.")
+        await message.reply_text("I cannot find that user.")
         return
 
     if user_member.status == ChatMemberStatus.OWNER:
-        await message.reply_text(
-            "This person created the chat. How could I demote them?"
-        )
+        await message.reply_text("That user created the chat and cannot be demoted.")
         return
 
     if user_member.status != ChatMemberStatus.ADMINISTRATOR:
-        await message.reply_text("Can't demote who isn't promoted!")
+        await message.reply_text("That user is not promoted.")
         return
 
     if user_id == client.me.id:
-        await message.reply_text("I can't demote myself!")
+        await message.reply_text("I cannot demote myself.")
         return
 
     try:
@@ -334,7 +324,7 @@ async def demote(client, message: Message):
 
         await client.send_message(
             chat.id,
-            f"SUCCESSFULLY DEMOTED <b>{html.escape(user_member.user.first_name or str(user_id))}</b>!",
+            f"Demoted <b>{html.escape(user_member.user.first_name or str(user_id))}</b>!",
             parse_mode=ParseMode.HTML,
             message_thread_id=message.message_thread_id if chat.is_forum else None,
         )
@@ -349,8 +339,8 @@ async def demote(client, message: Message):
         return log_message
     except RPCError:
         await message.reply_text(
-            "Could not demote. I might not be an admin here, or the admin status was"
-            " granted by someone else, so I can't act on them.",
+            "Could not demote. I may lack admin rights, or the admin status was"
+            " granted by someone else.",
         )
         raise
 
@@ -363,7 +353,7 @@ async def refresh_admin(client, message: Message):
     except KeyError:
         pass
 
-    await message.reply_text("Admin cache refreshed!")
+    await message.reply_text("Admin list refreshed.")
 
 
 @connection_status
@@ -402,7 +392,7 @@ async def set_title(client, message: Message):
 
     if not user_id:
         await message.reply_text(
-            "You don't seem to be referring to a user, or the ID specified is incorrect.",
+            "Specify a user or provide a valid ID.",
         )
         return
 
@@ -412,41 +402,41 @@ async def set_title(client, message: Message):
         LOGGER.warning(
             "Unable to look up user %s in chat %s: %s", user_id, chat.id, exc.message
         )
-        await message.reply_text("I can't find this user.")
+        await message.reply_text("I cannot find that user.")
         return
 
     if user_member.status == ChatMemberStatus.OWNER:
         await message.reply_text(
-            "This person created the chat. How can I set a custom title for them?",
+            "That user created the chat and cannot be given a custom title.",
         )
         return
 
     if user_member.status != ChatMemberStatus.ADMINISTRATOR:
         await message.reply_text(
-            "Can't set a title for non-admins!\nPromote them first to set a custom title!",
+            "Only admins can have a custom title. Promote the user first.",
         )
         return
 
     if user_id == client.me.id:
         await message.reply_text(
-            "I can't set my own title! Get the admin who promoted me to do it.",
+            "I cannot set my own title. The admin who promoted me must do it.",
         )
         return
 
     if not title:
-        await message.reply_text("Setting a blank title doesn't do anything!")
+        await message.reply_text("A blank title has no effect.")
         return
 
     if len(title) > 16:
         await message.reply_text(
-            "The title length is longer than 16 characters.\nTruncating it to 16 characters.",
+            "Titles are limited to 16 characters. Truncating to 16 characters.",
         )
 
     try:
         await client.set_administrator_title(chat.id, user_id, title)
     except RPCError:
         await message.reply_text(
-            "Either I didn't promote them, or the title text cannot be set."
+            "I either did not promote that user, or the title cannot be set."
         )
         raise
 
@@ -480,7 +470,7 @@ async def pin(client, message: Message) -> None:
         )
 
     if not prev_message:
-        await message.reply_text("Please reply to message which you want to pin.")
+        await message.reply_text("Reply to the message you want to pin.")
         return
 
     if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
@@ -555,7 +545,7 @@ async def unpin(client, message: Message):
         if "chat_not_modified" in err_msg:
             pass
         elif "message to unpin not found" in err_msg or "message_not_found" in err_msg:
-            await message.reply_text("No pinned message found")
+            await message.reply_text("No pinned message found.")
             return
         else:
             raise
@@ -595,7 +585,7 @@ async def unpinall(client, message: Message):
     if not (admin_member and admin_member.status == ChatMemberStatus.OWNER) and not (
         user and user.id in DRAGONS
     ):
-        await message.reply_text("Only chat OWNER can unpin all messages.")
+        await message.reply_text("Only the chat owner can unpin all messages.")
         return
 
     try:
@@ -633,11 +623,11 @@ async def invite(client, message: Message):
             await message.reply_text(invitelink)
         else:
             await message.reply_text(
-                "I don't have access to the invite link, try changing my permissions!",
+                "I cannot access the invite link. Check my permissions.",
             )
     else:
         await message.reply_text(
-            "I can only give you invite links for supergroups and channels, sorry!",
+            "Invite links are available only in supergroups and channels.",
         )
 
 
@@ -646,30 +636,26 @@ async def invite(client, message: Message):
 async def adminlist(client, message: Message):
     user = message.from_user  # type: Optional[User]
     if message.chat.type == ChatType.PRIVATE:
-        await send_message(message, "This command only works in Groups.")
+        await send_message(message, "This command works only in groups.")
         return
     chat_id = message.chat.id
     try:
-        msg = await message.reply_text(
-            "Fetching group admins...", parse_mode=ParseMode.HTML
-        )
+        msg = await message.reply_text("Fetching admins...", parse_mode=ParseMode.HTML)
     except RPCError:
-        msg = await message.reply_text(
-            "Fetching group admins...", parse_mode=ParseMode.HTML
-        )
+        msg = await message.reply_text("Fetching admins...", parse_mode=ParseMode.HTML)
     administrators_list = []
     async for member in client.get_chat_members(
         chat_id, filter=ChatMembersFilter.ADMINISTRATORS
     ):
         administrators_list.append(member)
-    text = "「 𝗔𝗗𝗠𝗜𝗡𝗦 𝗜𝗡 <b>{}</b>:".format(html.escape(message.chat.title))
+    text = "Admins in <b>{}</b>:".format(html.escape(message.chat.title))
     bot_admin_list = []
     for admin in administrators_list:
         user = admin.user
         status = admin.status
         custom_title = admin.custom_title
         if user.first_name == "":
-            name = "☠ Deleted Account"
+            name = "Deleted Account"
         else:
             name = "{}".format(
                 mention_html(user.id, user.first_name + " " + (user.last_name or ""))
@@ -679,11 +665,11 @@ async def adminlist(client, message: Message):
             administrators_list.remove(admin)
             continue
         if status == ChatMemberStatus.OWNER:
-            text += "\n\n 👑 <b>Creator:</b>"
-            text += "\n<code> ╰─➽ </code>{}\n".format(name)
+            text += "\n\n<b>Creator:</b>"
+            text += "\n- {}\n".format(name)
             if custom_title:
-                text += f"<code> ┗━ {html.escape(custom_title)}</code>\n"
-    text += "\n🚓 <b>Admins:</b>"
+                text += f"- {html.escape(custom_title)}\n"
+    text += "\n<b>Admins:</b>"
     custom_admin_list = {}
     normal_admin_list = []
     for admin in administrators_list:
@@ -691,7 +677,7 @@ async def adminlist(client, message: Message):
         status = admin.status
         custom_title = admin.custom_title
         if user.first_name == "":
-            name = "☠ Deleted Account"
+            name = "Deleted Account"
         else:
             name = "{}".format(
                 mention_html(user.id, user.first_name + " " + (user.last_name or ""))
@@ -705,22 +691,22 @@ async def adminlist(client, message: Message):
             else:
                 normal_admin_list.append(name)
     for admin in normal_admin_list:
-        text += "\n<code> ╰─➽ </code>{}".format(admin)
+        text += "\n- {}".format(admin)
     for admin_group in custom_admin_list.copy():
         if len(custom_admin_list[admin_group]) == 1:
-            text += "\n<code> ╰─➽ </code>{} | <code>{}</code>".format(
+            text += "\n- {} | {}".format(
                 custom_admin_list[admin_group][0], html.escape(admin_group)
             )
             custom_admin_list.pop(admin_group)
     text += "\n"
     for admin_group in custom_admin_list:
-        text += "\n🚨 <code>{}</code>".format(admin_group)
+        text += "\n{}".format(admin_group)
         for admin in custom_admin_list[admin_group]:
-            text += "\n<code> ╰─➽ </code>{}".format(admin)
+            text += "\n- {}".format(admin)
         text += "\n"
-    text += "\n🤖 <b>Bots:</b>"
+    text += "\n<b>Bots:</b>"
     for each_bot in bot_admin_list:
-        text += "\n<code> ╰─➽ </code>{}".format(each_bot)
+        text += "\n- {}".format(each_bot)
     try:
         await msg.edit_text(text, parse_mode=ParseMode.HTML)
     except RPCError:  # the original message may have been deleted
@@ -790,7 +776,7 @@ async def admin_callback(client, query: CallbackQuery):
             and admin_user.id not in DRAGONS
         ):
             await query.answer(
-                "You don't have the necessary rights to do that!", show_alert=True
+                "You do not have the rights to do that.", show_alert=True
             )
             return
 
@@ -812,9 +798,7 @@ async def admin_callback(client, query: CallbackQuery):
             user_member.status == ChatMemberStatus.ADMINISTRATOR
             or user_member.status == ChatMemberStatus.OWNER
         ):
-            await message.edit_text(
-                "How am I meant to promote someone that's already an admin?"
-            )
+            await message.edit_text("That user is already an admin.")
             return
 
         bot_member = await client.get_chat_member(chat.id, client.me.id)
@@ -847,11 +831,9 @@ async def admin_callback(client, query: CallbackQuery):
                     "user_not_mutual_contact"
                     in str(getattr(err, "message", None) or err).lower()
                 ):
-                    await message.edit_text(
-                        "I can't promote someone who isn't in the group"
-                    )
+                    await message.edit_text("That user is not in this group.")
                 else:
-                    await message.edit_text("An error occurred while promoting.")
+                    await message.edit_text("Could not promote that user.")
                 return
 
         await message.edit_text(
@@ -880,7 +862,7 @@ async def admin_callback(client, query: CallbackQuery):
             and admin_user.id not in DRAGONS
         ):
             await query.answer(
-                "You don't have the necessary rights to do that!", show_alert=True
+                "You do not have the rights to do that.", show_alert=True
             )
             return
 
@@ -899,19 +881,15 @@ async def admin_callback(client, query: CallbackQuery):
             return
 
         if user_member.status == ChatMemberStatus.OWNER:
-            await message.edit_text(
-                "This person created the chat. How would I demote them?"
-            )
+            await message.edit_text("That user created the chat and cannot be demoted.")
             return
 
         if user_member.status != ChatMemberStatus.ADMINISTRATOR:
-            await message.edit_text("Can't demote what wasn't promoted!")
+            await message.edit_text("That user is not promoted.")
             return
 
         if user_id == client.me.id:
-            await message.edit_text(
-                "I can't demote myself! Get an admin to do it for me."
-            )
+            await message.edit_text("I cannot demote myself. An admin must do that.")
             return
 
         try:
@@ -948,7 +926,7 @@ async def admin_callback(client, query: CallbackQuery):
             return log_message
         except RPCError:
             await message.edit_text(
-                "Could not demote. I might not be an admin, or the admin status was"
+                "Could not demote. I may lack admin rights, or the admin status was"
                 " granted by another user, so I can't act on them!"
             )
             return
@@ -966,7 +944,7 @@ async def admin_callback(client, query: CallbackQuery):
             )
             and admin_user.id not in DRAGONS
         ):
-            await query.answer("You don't have the necessary rights to do that!")
+            await query.answer("You do not have the rights to do that.")
             return
 
         user_id = payload
@@ -985,36 +963,36 @@ async def admin_callback(client, query: CallbackQuery):
 
         if user_member.status == ChatMemberStatus.OWNER:
             await message.edit_text(
-                "This person created the chat. How can I set a custom title for them?",
+                "That user created the chat and cannot be given a custom title.",
             )
             return
 
         if user_member.status != ChatMemberStatus.ADMINISTRATOR:
             await message.edit_text(
-                "Can't set a title for non-admins! Promote them first to set a custom title!",
+                "Only admins can have a custom title. Promote the user first.",
             )
             return
 
         if user_id == client.me.id:
             await message.edit_text(
-                "I can't set my own title! Get the admin who promoted me to do it.",
+                "I cannot set my own title. The admin who promoted me must do it.",
             )
             return
 
         if not title:
-            await message.edit_text("Setting a blank title doesn't do anything!")
+            await message.edit_text("A blank title has no effect.")
             return
 
         if len(title) > 16:
             await message.edit_text(
-                "The title length is longer than 16 characters. Truncating it to 16 characters.",
+                "Titles are limited to 16 characters. Truncating to 16 characters.",
             )
 
         try:
             await client.set_administrator_title(chat.id, user_id, title)
         except RPCError:
             await message.edit_text(
-                "Either I didn't promote them, or the title text cannot be set."
+                "I either did not promote that user, or the title cannot be set."
             )
             return
 
@@ -1036,7 +1014,7 @@ async def admin_callback(client, query: CallbackQuery):
             and admin_user.id not in DRAGONS
         ):
             await query.answer(
-                "You don't have the necessary rights to do that!", show_alert=True
+                "You do not have the rights to do that.", show_alert=True
             )
             return
 
@@ -1087,7 +1065,7 @@ async def admin_callback(client, query: CallbackQuery):
             and admin_user.id not in DRAGONS
         ):
             await query.answer(
-                "You don't have the necessary rights to do that!",
+                "You do not have the rights to do that.",
                 show_alert=True,
             )
             return
@@ -1103,7 +1081,7 @@ async def admin_callback(client, query: CallbackQuery):
                 or "message to unpin not found" in err_msg
                 or "message_not_found" in err_msg
             ):
-                await message.edit_text("No pinned message found")
+                await message.edit_text("No pinned message found.")
                 return
             else:
                 raise
@@ -1124,7 +1102,7 @@ async def admin_callback(client, query: CallbackQuery):
             admin_member.status != ChatMemberStatus.OWNER
             and admin_user.id not in DRAGONS
         ):
-            await query.answer("Only chat OWNER can unpin all messages.")
+            await query.answer("Only the chat owner can unpin all messages.")
             return
 
         try:
@@ -1155,31 +1133,23 @@ async def admin_callback(client, query: CallbackQuery):
 
 
 __help__ = """
-» /adminlist: List of admins in the chat.
+Commands:
+/adminlist: List the chat's admins.
 
-➠ *Admins only:*
-
-» /pin: Silently pins the message replied to. Add 'loud' or 'notify' to notify users.
-
-» /unpin: Unpins the currently pinned message.
-
-» /unpinall: Unpins all the pinned messages. Works in topics too (only OWNER can do this).
-
-» /invitelink: Get an invite link.
-
-» /promote: Promotes the user replied to.
-
-» /fullpromote: Fully promotes the user replied to.
-
-» /demote: Demotes the user replied to.
-
-» /title <Title here>: Sets a custom title for an admin that the bot promoted.
-
-» /admincache: Force a refresh of the admin list.
+Admin only:
+/pin: Silently pin the replied-to message. Add "loud" or "notify" to notify users.
+/unpin: Unpin the current pinned message.
+/unpinall: Unpin all pinned messages, including in topics. Owner only.
+/invitelink: Get an invite link.
+/promote: Promote the replied-to user.
+/fullpromote: Give the replied-to user full admin rights.
+/demote: Demote the replied-to user.
+/title <Title here>: Set a custom title for an admin the bot promoted.
+/admincache: Refresh the admin list.
 """
 
 
-__mod_name__ = "ADMIN"
+__mod_name__ = "Admin"
 __command_list__ = [
     "adminlist",
     "admins",

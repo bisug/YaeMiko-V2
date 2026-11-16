@@ -34,7 +34,7 @@ async def approve(client, message: Message):
     user_id = await extract_user(message, args)
     if not user_id:
         await message.reply_text(
-            "I don't know who you're talking about; you need to specify a user!",
+            "Specify a user.",
         )
         return ""
     try:
@@ -43,7 +43,7 @@ async def approve(client, message: Message):
         return ""
     if member.status in ADMIN_OR_OWNER:
         await message.reply_text(
-            "User is already admin - locks, blocklists, and antiflood already don't apply to them.",
+            "That user is an admin. Locks, blocklists, and antiflood already do not apply to them.",
         )
         return ""
     if sql.is_approved(message.chat.id, user_id):
@@ -78,7 +78,7 @@ async def disapprove(client, message: Message):
     user_id = await extract_user(message, args)
     if not user_id:
         await message.reply_text(
-            "I don't know who you're talking about; you need to specify a user!",
+            "Specify a user.",
         )
         return ""
     try:
@@ -86,11 +86,11 @@ async def disapprove(client, message: Message):
     except RPCError:
         return ""
     if member.status in ADMIN_OR_OWNER:
-        await message.reply_text("This user is an admin, they can't be unapproved.")
+        await message.reply_text("Admins cannot be unapproved.")
         return ""
     if not sql.is_approved(message.chat.id, user_id):
         await message.reply_text(
-            f"{html.escape(member.user.first_name)} isn't approved yet!"
+            f"{html.escape(member.user.first_name)} is not approved."
         )
         return ""
     sql.disapprove(message.chat.id, user_id)
@@ -143,13 +143,13 @@ async def approval(client, message: Message):
 
     if not user_id:
         await message.reply_text(
-            "I don't know who you're talking about; you need to specify a user!",
+            "Specify a user.",
         )
         return ""
     member = await client.get_chat_member(chat.id, int(user_id))
     if sql.is_approved(message.chat.id, user_id):
         await message.reply_text(
-            f"{html.escape(member.user.first_name)} is an approved user. Locks, antiflood, and blocklists won't apply to them.",
+            f"{html.escape(member.user.first_name)} is an approved user. Locks, antiflood, and blocklists do not apply to them.",
         )
     else:
         await message.reply_text(
@@ -192,7 +192,7 @@ async def unapproveall(client, message: Message):
             ],
         )
         await message.reply_text(
-            f"Are you sure you would like to unapprove ALL users in {escape_markdown(chat.title)}? This action cannot be undone.",
+            f"Unapprove all users in {escape_markdown(chat.title)}? This cannot be undone.",
             reply_markup=buttons,
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -209,46 +209,38 @@ async def unapproveall_btn(client, query: CallbackQuery):
             users = [int(i.user_id) for i in approved_users]
             for user_id in users:
                 sql.disapprove(chat.id, user_id)
-            await message.edit_text("Successfully unapproved all users in this chat.")
+            await message.edit_text("All users in this chat have been unapproved.")
             await query.answer("All users unapproved.")
             return
 
         if member.status == ChatMemberStatus.ADMINISTRATOR:
-            await query.answer("Only owner of the chat can do this.")
+            await query.answer("Only the chat owner can do that.")
 
         if member.status == ChatMemberStatus.MEMBER:
-            await query.answer("You need to be admin to do this.")
+            await query.answer("You need to be an admin to do that.")
     elif query.data == "unapproveall_cancel":
         if member.status == ChatMemberStatus.OWNER or query.from_user.id in DRAGONS:
             await message.edit_text("Removing all approved users has been cancelled.")
             await query.answer()
             return ""
         if member.status == ChatMemberStatus.ADMINISTRATOR:
-            await query.answer("Only owner of the chat can do this.")
+            await query.answer("Only the chat owner can do that.")
         if member.status == ChatMemberStatus.MEMBER:
-            await query.answer("You need to be admin to do this.")
+            await query.answer("You need to be an admin to do that.")
 
 
 __help__ = """
-➠ Sometimes, you might trust a user not to send unwanted content.
-Maybe not enough to make them admin, but you might be okay with locks, blacklists, and antiflood not applying to them.
+Approvals let trusted users bypass locks, blacklists, and antiflood without becoming admins.
 
-➠ That's what approvals are for: approve trustworthy users and these checks will skip them.
-
-➠ *Admin commands:*
-
-» /approval: Check a user's approval status in this chat.
-
-» /approve: Approve of a user. Locks, blacklists, and antiflood won't apply to them anymore.
-
-» /unapprove: Unapprove a user. They will now be subject to locks, blacklists, and antiflood again.
-
-» /approved: List all approved users.
-
-» /unapproveall: Unapprove *ALL* users in a chat. This cannot be undone.
+Admin only:
+/approval: Check a user's approval status in this chat.
+/approve: Approve a user. Locks, blacklists, and antiflood no longer apply to them.
+/unapprove: Remove a user's approval. Locks, blacklists, and antiflood apply again.
+/approved: List approved users.
+/unapproveall: Remove all approvals in this chat. This cannot be undone.
 """
 
-__mod_name__ = "APPROVALS"
+__mod_name__ = "Approvals"
 __command_list__ = ["approve", "unapprove", "approved", "approval"]
 
 

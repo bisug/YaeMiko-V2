@@ -42,7 +42,7 @@ async def _send_echo(client, message: Message) -> None:
     replied = message.reply_to_message
     text = " ".join(message.command[1:])
     if not text and replied is None:
-        await message.reply_text("Give me something to say, or reply to a message.")
+        await message.reply_text("Provide text or reply to a message.")
         return
 
     try:
@@ -71,7 +71,7 @@ async def _broadcast(client, message: Message) -> None:
     replied = message.reply_to_message
     text = " ".join(message.command[1:])
     if not text and replied is None:
-        await message.reply_text("Give me something to broadcast, or reply to one.")
+        await message.reply_text("Provide text or reply to a message to broadcast.")
         return
 
     chats = await asyncio.to_thread(users_sql.get_all_chats) or []
@@ -118,19 +118,15 @@ async def _broadcast(client, message: Message) -> None:
     )
 
 
-__mod_name__ = "ECHO"
+__mod_name__ = "Echo"
 
 __help__ = """
-➡ Post a message through the bot, or send one to every chat it knows.
+Bot owners only. These commands post as the bot.
 
-➡ Bot owners only. These speak with the bot's authority, so leaving them
-open to group admins would let anyone put words in the bot's mouth.
-
-» /echo <text>: Send text as the client. Reply to a message to copy it with
-its formatting intact.
-» /say <text>: The same as /echo.
-» /broadcast <text>: Send to every chat the bot is in. Reply to copy
-formatting instead.
+Commands:
+/echo <text>: Send text as the bot. Reply to a message to copy it with its formatting intact.
+/say <text>: Same as /echo.
+/broadcast <text>: Send text to every chat the bot is in. Reply to copy formatting instead.
 """
 
 

@@ -46,5 +46,5 @@ async def cosplay(client, message: Message):
             pass
 
 
-__mod_name__ = "COSPLAY"
+__mod_name__ = "Cosplay"
 __command_list__ = ["cosplay"]

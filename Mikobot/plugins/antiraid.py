@@ -377,25 +377,20 @@ def __chat_settings__(chat_id, user_id):
     )
 
 
-__mod_name__ = "ANTIRAID"
+__mod_name__ = "Antiraid"
 
 __help__ = """
-\u27a1 Some spammers join a group in bulk to flood it with spam. AntiRaid bans every new
-member while it is enabled, so you can sit the raid out instead of fighting it live.
+AntiRaid bans new members while enabled.
 
-\u27a1 *Admin commands:*
+Admin only:
+/antiraid: Show the current state or toggle it with a button.
+/antiraid on: Enable AntiRaid for the duration set by `/raidtime`.
+/antiraid off: Disable AntiRaid immediately.
+/antiraid <time>: Enable AntiRaid for a custom duration, for example `3h`.
+/raidtime <time>: Set how long AntiRaid stays on when enabled. Default is 6h.
+/raidactiontime <time>: Set how long a raider is banned. Default is 1h.
+/autoantiraid <number>: Enable AntiRaid automatically when more than this many users join within a minute.
+/autoantiraid off: Disable automatic AntiRaid.
 
-\u00bb /antiraid: Check the current state, or toggle it with the button.
-\u00bb /antiraid on: Enable AntiRaid for the duration set by `/raidtime`.
-\u00bb /antiraid off: Disable AntiRaid immediately.
-\u00bb /antiraid <time>: Enable AntiRaid for a custom duration, e.g. `3h`.
-
-\u00bb /raidtime <time>: How long AntiRaid stays on when enabled. Default 6h.
-\u00bb /raidactiontime <time>: How long a raider is banned for. Default 1h.
-
-\u00bb /autoantiraid <number>: Enable AntiRaid automatically when more than this many
-users join within a minute.
-\u00bb /autoantiraid off: Disable automatic AntiRaid.
-
-\u27a1 Durations accept `m`, `h`, `d` or `w` (e.g. `90m`, `12h`, `3d`, `2w`).
+Durations accept `m`, `h`, `d`, and `w`, for example `90m`, `12h`, `3d`, `2w`.
 """

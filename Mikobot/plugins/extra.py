@@ -27,8 +27,8 @@ async def _id(client, message: Message):
     message_id = message.id
     reply = message.reply_to_message
 
-    text = f"**๏ [ᴍᴇssᴀɢᴇ ɪᴅ]({message.link})** » `{message_id}`\n"
-    text += f"**๏ [{mention_user}](tg://user?id={your_id})** » `{your_id}`\n"
+    text = f"Message ID: [{message_id}]({message.link})\n"
+    text += f"User: [{mention_user}](tg://user?id={your_id}) `{your_id}`\n"
 
     if not message.command:
         message.command = message.text.split()
@@ -41,12 +41,12 @@ async def _id(client, message: Message):
             split = message.text.split(None, 1)[1].strip()
             user_id = (await client.get_users(split)).id
             user_mention = (await client.get_users(split)).mention
-            text += f"**๏ [{user_mention}](tg://user?id={user_id})** » `{user_id}`\n"
+            text += f"User: [{user_mention}](tg://user?id={user_id}) `{user_id}`\n"
 
         except Exception:
-            return await message.reply_text("**🪄 ᴛʜɪs ᴜsᴇʀ ᴅᴏᴇsɴ'ᴛ ᴇxɪsᴛ.**")
+            return await message.reply_text("That user does not exist.")
 
-    text += f"**๏ [ᴄʜᴀᴛ ɪᴅ ](https://t.me/{chat.username})** » `{chat.id}`\n\n"
+    text += f"Chat ID: [{chat.id}](https://t.me/{chat.username})\n\n"
 
     forward_chat = None
     if getattr(message, "forward_origin", None):
@@ -55,8 +55,8 @@ async def _id(client, message: Message):
         )
 
     if not getattr(reply, "empty", True) and not forward_chat and not reply.sender_chat:
-        text += f"**๏ [ʀᴇᴘʟɪᴇᴅ ᴍᴇssᴀɢᴇ ɪᴅ]({reply.link})** » `{message.reply_to_message.id}`\n"
-        text += f"**๏ [ʀᴇᴘʟɪᴇᴅ ᴜsᴇʀ ɪᴅ](tg://user?id={reply.from_user.id})** » `{reply.from_user.id}`\n\n"
+        text += f"Replied message ID: [{message.reply_to_message.id}]({reply.link})\n"
+        text += f"Replied user ID: [{reply.from_user.id}](tg://user?id={reply.from_user.id})\n\n"
 
     reply_forward_chat = None
     if reply and getattr(reply, "forward_origin", None):
@@ -65,10 +65,10 @@ async def _id(client, message: Message):
         )
 
     if reply_forward_chat:
-        text += f"๏ ᴛʜᴇ ғᴏʀᴡᴀʀᴅᴇᴅ ᴄʜᴀɴɴᴇʟ, {reply_forward_chat.title}, ʜᴀs ᴀɴ ɪᴅ ᴏғ `{reply_forward_chat.id}`\n\n"
+        text += f"Forwarded channel {reply_forward_chat.title} has ID `{reply_forward_chat.id}`\n\n"
 
     if reply and reply.sender_chat:
-        text += f"๏ ID ᴏғ ᴛʜᴇ ʀᴇᴘʟɪᴇᴅ ᴄʜᴀᴛ/ᴄʜᴀɴɴᴇʟ, ɪs `{reply.sender_chat.id}`"
+        text += f"ID of the replied chat or channel: `{reply.sender_chat.id}`"
 
     sticker_id = (
         "CAACAgIAAx0EdppwYAABAgotZg5rBL4P05Xjmy80p7DdNdneDmUAAnccAALIWZhJPyYLf3FzPHs0BA"
@@ -83,7 +83,7 @@ async def _id(client, message: Message):
 @check_admin(only_dev=True)
 async def logs(client, message: Message):
     with open("Logs.txt", "rb") as f:
-        caption = "Here is your log"
+        caption = "Log file:"
         reply_markup = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
@@ -141,16 +141,13 @@ async def ping(client, m: Message):
 
 
 __help__ = """
-➠ *Commands*:
-
-» /instadl, /insta <link>: Get Instagram content such as reels or images.
-
-» /pyroping: check the bot's ping.
-
-» /hyperlink <text> <link>: Creates a markdown hyperlink with the provided text and link.
-
-» /pickwinner <participant1> <participant2> ...: Picks a random winner from the provided list of participants.
+Commands:
+/instadl <link>: Get Instagram content such as reels or images.
+/insta <link>: Same as /instadl.
+/pyroping: Check the bot's ping.
+/hyperlink <text> <link>: Create a Markdown hyperlink from the given text and link.
+/pickwinner <participant1> <participant2> ...: Pick a random winner from the list.
 """
 
-__mod_name__ = "EXTRA"
+__mod_name__ = "Extra"
 __command_list__ = ["id", "pyroping"]

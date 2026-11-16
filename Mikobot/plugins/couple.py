@@ -29,35 +29,20 @@ tomorrow = dt_tom()
 today = datetime.now().strftime("%d/%m/%Y")
 
 C = """
-•➵💞࿐ 𝐇𝐚𝐩𝐩𝐲 𝐜𝐨𝐮𝐩𝐥𝐞 𝐨𝐟 𝐭𝐡𝐞 𝐝𝐚𝐲
-╭──────────────
-┊•➢ {} + ( PGM🎀😶 (https://t.me/Chalnayaaaaaarr) + 花火 (https://t.me/zd_sr07) + ゼロツー (https://t.me/wewewe_x) ) = 💞
-╰───•➢♡
-╭──────────────
-┊•➢ 𝗡𝗲𝘄 𝗰𝗼𝘂𝗽𝗹𝗲 𝗼𝗳 𝘁𝗵𝗲 𝗱𝗮𝘆 𝗺𝗮𝘆𝗯𝗲
-┊ 𝗰𝗵𝗼𝘀𝗲𝗻 𝗮𝘁 12AM {}
-╰───•➢♡
+Couple of the day:
+{} + PGM (https://t.me/Chalnayaaaaaarr) + 花火 (https://t.me/zd_sr07) + ゼロツー (https://t.me/wewewe_x) = 💞
+New couple of the day, chosen at 12AM: {}
 """
 CAP = """
-•➵💞࿐ 𝐇𝐚𝐩𝐩𝐲 𝐜𝐨𝐮𝐩𝐥𝐞 𝐨𝐟 𝐭𝐡𝐞 𝐝𝐚𝐲
-╭──────────────
-┊•➢ {} + {} = 💞
-╰───•➢♡
-╭──────────────
-┊•➢ 𝗡𝗲𝘄 𝗰𝗼𝘂𝗽𝗹𝗲 𝗼𝗳 𝘁𝗵𝗲 𝗱𝗮𝘆 𝗺𝗮𝘆𝗯𝗲
-┊ 𝗰𝗵𝗼𝘀𝗲𝗻 𝗮𝘁 12AM {}
-╰───•➢♡
+Couple of the day:
+{} + {} = 💞
+New couple of the day, chosen at 12AM: {}
 """
 
 CAP2 = """
-•➵💞࿐ 𝐇𝐚𝐩𝐩𝐲 𝐜𝐨𝐮𝐩𝐥𝐞 𝐨𝐟 𝐭𝐡𝐞 𝐝𝐚𝐲
-╭──────────────
-┊{} (tg://openmessage?user_id={}) + {} (tg://openmessage?user_id={}) = 💞\n
-╰───•➢♡
-╭──────────────
-┊•➢ 𝗡𝗲𝘄 𝗰𝗼𝘂𝗽𝗹𝗲 𝗼𝗳 𝘁𝗵𝗲 𝗱𝗮𝘆 𝗺𝗮𝘆𝗯𝗲
-┊ 𝗰𝗵𝗼𝘀𝗲𝗻 𝗮𝘁 12AM {}
-╰───•➢♡
+Couple of the day:
+{} (tg://openmessage?user_id={}) + {} (tg://openmessage?user_id={}) = 💞
+New couple of the day, chosen at 12AM: {}
 """
 
 
@@ -115,9 +100,10 @@ async def nibba_nibbi(_, message):
 
 
 __help__ = """
-💘 *Choose couples in your chat*
-
-➦ /couple, /couples, /shipping *:* Choose 2 users and send their names as couples in your chat.
+Commands:
+/couple: Choose two users and post them as a couple in the chat.
+/couples: Same as /couple.
+/shipping: Same as /couple.
 """
 
-__mod_name__ = "COUPLE"
+__mod_name__ = "Couple"

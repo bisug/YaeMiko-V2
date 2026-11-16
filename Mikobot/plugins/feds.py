@@ -126,7 +126,7 @@ async def new_fed(client, message: Message):
         x = sql.new_fed(user.id, fed_name, fed_id)
         if not x:
             await message.reply_text(
-                f"Can't federate! Please contact @{SUPPORT_CHAT} if the problem persist.",
+                f"Could not create the federation. Contact @{SUPPORT_CHAT} if the problem persists.",
             )
             return
 
@@ -216,17 +216,17 @@ async def rename_fed(client, message: Message):
     args = msg.text.split(None, 2)
 
     if len(args) < 3:
-        return await msg.reply_text("usage: /renamefed <fed_id> <newname>")
+        return await msg.reply_text("Usage: /renamefed <fed_id> <newname>")
 
     fed_id, newname = args[1], args[2]
     verify_fed = sql.get_fed_info(fed_id)
 
     if not verify_fed:
-        return await msg.reply_text("This fed not exist in my database!")
+        return await msg.reply_text("That federation does not exist.")
 
     if is_user_fed_owner(fed_id, user.id):
         sql.rename_fed(fed_id, user.id, newname)
-        await msg.reply_text(f"Successfully renamed your fed name to {newname}!")
+        await msg.reply_text(f"Federation renamed to {newname}.")
     else:
         await msg.reply_text("Only federation owner can do this!")
 
@@ -239,7 +239,7 @@ async def fed_chat(client, message: Message):
     user_id = message.from_user.id
     if not await is_user_admin(message.chat, user_id):
         await message.reply_text(
-            "You must be an admin to execute this command",
+            "You must be an admin to run this command.",
         )
         return
 
@@ -265,7 +265,7 @@ async def join_fed(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -283,7 +283,7 @@ async def join_fed(client, message: Message):
             )
             return
     if fed_id:
-        await message.reply_text("You cannot join two federations from one chat")
+        await message.reply_text("A chat can join only one federation.")
         return
 
     if len(args) >= 1:
@@ -295,7 +295,7 @@ async def join_fed(client, message: Message):
         x = sql.chat_join_fed(args[0], chat.title, chat.id)
         if not x:
             await message.reply_text(
-                f"Failed to join federation! Please contact @{SUPPORT_CHAT} should this problem persist!",
+                f"Could not join the federation. Contact @{SUPPORT_CHAT} if the problem persists.",
             )
             return
 
@@ -327,7 +327,7 @@ async def leave_fed(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our PM!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -377,7 +377,7 @@ async def user_join_fed(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -408,24 +408,24 @@ async def user_join_fed(client, message: Message):
         get_owner = ast.literal_eval(info["fusers"])["owner"]
         if int(user_id) == int(get_owner):
             await message.reply_text(
-                "You do know that the user is the federation owner, right? RIGHT?",
+                "That user is the federation owner.",
             )
             return
         if getuser:
             await message.reply_text(
-                "I cannot promote users who are already federation admins! Can remove them if you want!",
+                "That user is already a federation admin.",
             )
             return
         if user_id == client.me.id:
             await message.reply_text(
-                "I already am a federation admin in all federations!",
+                "I am already a federation admin in every federation.",
             )
             return
         res = sql.user_join_fed(fed_id, user_id)
         if res:
-            await message.reply_text("Successfully Promoted!")
+            await message.reply_text("User promoted.")
         else:
-            await message.reply_text("Failed to promote!")
+            await message.reply_text("Could not promote.")
     else:
         await message.reply_text("Only federation owners can do this!")
 
@@ -439,7 +439,7 @@ async def user_demote_fed(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -467,7 +467,7 @@ async def user_demote_fed(client, message: Message):
 
         if user_id == client.me.id:
             await message.reply_text(
-                "The thing you are trying to demote me from will fail to work without me! Just saying.",
+                "I cannot demote myself.",
             )
             return
 
@@ -479,9 +479,9 @@ async def user_demote_fed(client, message: Message):
 
         res = sql.user_demote_fed(fed_id, user_id)
         if res is True:
-            await message.reply_text("Demoted from a Fed Admin!")
+            await message.reply_text("User demoted.")
         else:
-            await message.reply_text("Demotion failed!")
+            await message.reply_text("Could not demote.")
     else:
         await message.reply_text("Only federation owners can do this!")
         return
@@ -527,7 +527,7 @@ async def fed_info(client, message: Message):
     chat = message.chat
     info = sql.get_fed_info(fed_id)
 
-    text = "<b>ℹ️ Federation Information:</b>"
+    text = "<b>Federation Information:</b>"
     text += "\nFedID: <code>{}</code>".format(fed_id)
     text += "\nName: {}".format(info["fname"])
     text += "\nCreator: {}".format(mention_html(owner.id, owner_name))
@@ -550,7 +550,7 @@ async def fed_admin(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -569,7 +569,7 @@ async def fed_admin(client, message: Message):
     info = sql.get_fed_info(fed_id)
 
     text = "<b>Federation Admin {}:</b>\n\n".format(info["fname"])
-    text += "👑 Owner:\n"
+    text += "Owner:\n"
     owner = await client.get_chat(info["owner"])
     try:
         owner_name = owner.first_name + " " + owner.last_name
@@ -598,7 +598,7 @@ async def fed_ban(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -627,28 +627,28 @@ async def fed_ban(client, message: Message):
 
     if user_id == client.me.id:
         await message.reply_text(
-            "What is funnier than kicking the group creator? Self sacrifice.",
+            "I cannot kick the group creator.",
         )
         return
 
     if is_user_fed_owner(fed_id, user_id) is True:
-        await message.reply_text("Why did you try the federation fban?")
+        await message.reply_text("That user cannot be fed-banned.")
         return
 
     if is_user_fed_admin(fed_id, user_id) is True:
-        await message.reply_text("He is a federation admin, I can't fban him.")
+        await message.reply_text("Federation admins cannot be fed-banned.")
         return
 
     if user_id == OWNER_ID:
-        await message.reply_text("Disaster level God cannot be fed banned!")
+        await message.reply_text("Users at the God level cannot be fed-banned.")
         return
 
     if int(user_id) in DRAGONS:
-        await message.reply_text("Dragons cannot be fed banned!")
+        await message.reply_text("Dragons cannot be fed-banned.")
         return
 
     if user_id in [777000, 1087968824]:
-        await message.reply_text("Fool! You can't attack Telegram's native tech!")
+        await message.reply_text("I cannot act on that user.")
         return
 
     fban_user_id = int(user_id)
@@ -966,7 +966,7 @@ async def unfban(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -1078,7 +1078,7 @@ async def unfban(client, message: Message):
         if not x:
             await send_message(
                 message,
-                "Un-fban failed, this user may already be un-fedbanned!",
+                "Could not remove the federation ban. The ban may already be removed.",
             )
             return
     except SQLAlchemyError:
@@ -1155,7 +1155,7 @@ async def set_frules(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -1180,7 +1180,7 @@ async def set_frules(client, message: Message):
         x = sql.set_frules(fed_id, markdown_rules)
         if not x:
             await message.reply_text(
-                f"Whoa! There was an error while setting federation rules! If you wondered why please ask it in @{SUPPORT_CHAT}!",
+                f"Could not set federation rules. Contact @{SUPPORT_CHAT} if the problem persists.",
             )
             return
 
@@ -1200,7 +1200,7 @@ async def set_frules(client, message: Message):
                         message.message_thread_id if chat.is_forum else None
                     ),
                 )
-        await message.reply_text(f"Rules have been changed to :\n{rules}!")
+        await message.reply_text(f"Federation rules updated:\n{rules}!")
     else:
         await message.reply_text("Please write rules to set this up!")
 
@@ -1212,7 +1212,7 @@ async def get_frules(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -1237,7 +1237,7 @@ async def fed_broadcast(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -1300,7 +1300,7 @@ async def fed_ban_list(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -1498,17 +1498,15 @@ async def fed_notif(client, message: Message):
         if args[0] in ("yes", "on"):
             sql.set_feds_setting(user.id, True)
             await msg.reply_text(
-                "Reporting Federation back up! Every user who is fban / unfban you will be notified via PM.",
+                "Federation notifications enabled. You will be notified in PM when users are fed-banned or unbanned.",
             )
         elif args[0] in ("no", "off"):
             sql.set_feds_setting(user.id, False)
             await msg.reply_text(
-                "Reporting Federation has stopped! Every user who is fban / unfban you will not be notified via PM.",
+                "Federation notifications disabled.",
             )
         else:
-            await msg.reply_text(
-                "Please enter `on`/`off`", parse_mode=ParseMode.MARKDOWN
-            )
+            await msg.reply_text("Enter on or off.", parse_mode=ParseMode.MARKDOWN)
     else:
         getreport = sql.user_feds_report(user.id)
         await msg.reply_text(
@@ -1525,7 +1523,7 @@ async def fed_chats(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -1592,7 +1590,7 @@ async def fed_import_bans(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -1642,7 +1640,7 @@ async def fed_import_bans(client, message: Message):
                 raise RPCError
         except Exception:
             await msg.reply_text(
-                "Try downloading and re-uploading the file, this one seems broken!",
+                "The file could not be read. Try downloading and uploading it again.",
             )
             return
         fileformat = msg.reply_to_message.document.file_name.split(".")[-1]
@@ -1929,7 +1927,7 @@ async def set_fed_log(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -1971,7 +1969,7 @@ async def unset_fed_log(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -2013,7 +2011,7 @@ async def subs_feds(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -2085,7 +2083,7 @@ async def unsubs_feds(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -2156,7 +2154,7 @@ async def get_myfedsubs(client, message: Message):
     if chat.type == ChatType.PRIVATE:
         await send_message(
             message,
-            "This command is specific to the group, not to our pm!",
+            "This command works only in groups, not in PM.",
         )
         return
 
@@ -2240,7 +2238,7 @@ async def welcome_fed(client, message: Message):
     fban, fbanreason, fbantime = sql.get_fban_user(fed_id, user.id)
     if fban:
         await message.reply_text(
-            "This user is banned in current federation! I will remove him.",
+            "That user is banned in this federation. Removing the ban.",
         )
         await client.ban_chat_member(chat.id, user.id)
         return True
@@ -2298,18 +2296,18 @@ def get_chat(chat_id, chat_data):
 @on_message(filters.command("fedownerhelp"), chained=True)
 async def fed_owner_help(client, message: Message):
     await message.reply_text(
-        """*👑 Fed Owner Only:*
- » `/newfed <fed_name>`*:* Creates a Federation, One allowed per user
- » `/renamefed <fed_id> <new_fed_name>`*:* Renames the fed id to a new name
- » `/delfed <fed_id>`*:* Delete a Federation and any information related to it. Already banned users stay banned
- » `/fpromote <user>`*:* Assigns the user as a federation admin. Enables all commands for the user under `Fed Admins`
- » `/fdemote <user>`*:* Demotes a federation admin to a normal user
- » `/subfed <fed_id>`*:* Subscribes to a given fed ID, bans from that subscribed fed will also happen in your fed
- » `/unsubfed <fed_id>`*:* Unsubscribes from a given fed ID
- » `/setfedlog <fed_id>`*:* Sets the group as a fed log report base for the federation
- » `/unsetfedlog <fed_id>`*:* Removes the group as a fed log for the federation
- » `/fbroadcast <message>`*:* Broadcasts a message to all groups that have joined your fed
- » `/fedsubs`*:* Shows the feds your group is subscribed to `(broken rn)`""",
+        """Fed owner only:
+/newfed <fed\\_name>: Create a federation. One per user.
+/renamefed <fed\\_id> <new\\_fed\\_name>: Rename a federation.
+/delfed <fed\\_id>: Delete a federation and its data. Banned users stay banned.
+/fpromote <user>: Make a user a federation admin.
+/fdemote <user>: Demote a federation admin.
+/subfed <fed\\_id>: Subscribe to a federation. Bans there also apply in your federation.
+/unsubfed <fed\\_id>: Unsubscribe from a federation.
+/setfedlog <fed\\_id>: Set this group as the federation log.
+/unsetfedlog <fed\\_id>: Remove this group as the federation log.
+/fbroadcast <message>: Broadcast a message to all groups in your federation.
+/fedsubs: Show the federations your group is subscribed to. This command is currently broken.""",
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -2317,17 +2315,17 @@ async def fed_owner_help(client, message: Message):
 @on_message(filters.command("fedadminhelp"), chained=True)
 async def fed_admin_help(client, message: Message):
     await message.reply_text(
-        """*🔱 Fed Admins:*
- » `/fban <user> <reason>`*:* Fed bans a user
- » `/unfban <user> <reason>`*:* Removes a user from a fed ban
- » `/fedinfo <fed_id>`*:* Information about the specified Federation
- » `/joinfed <fed_id>`*:* Join the current chat to the Federation. Only chat owners can do this. Every chat can only be in one Federation
- » `/leavefed <fed_id>`*:* Leave the Federation given. Only chat owners can do this
- » `/setfrules <rules>`*:* Arrange Federation rules
- » `/fedadmins`*:* Show Federation admin
- » `/fbanlist`*:* Displays all users currently banned in the Federation
- » `/fedchats`*:* Get all the chats that are connected in the Federation
- » `/chatfed `*:* See the Federation in the current chat\n""",
+        """Federation admins:
+/fban <user> <reason>: Fed-ban a user.
+/unfban <user> <reason>: Remove a federation ban.
+/fedinfo <fed\\_id>: Show information about a federation.
+/joinfed <fed\\_id>: Join a federation. Chat owners only. A chat can be in one federation.
+/leavefed <fed\\_id>: Leave a federation. Chat owners only.
+/setfrules <rules>: Set federation rules.
+/fedadmins: Show federation admins.
+/fbanlist: Show all users banned in the federation.
+/fedchats: Show all chats in the federation.
+/chatfed: Show the federation this chat belongs to.\n""",
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -2335,31 +2333,23 @@ async def fed_admin_help(client, message: Message):
 @on_message(filters.command("feduserhelp"), chained=True)
 async def fed_user_help(client, message: Message):
     await message.reply_text(
-        """*🎩 Any user:*
- » `/fbanstat`*:* Shows whether you, the user you reply to, or a username is fbanned anywhere
- » `/fednotif <on/off>`*:* Turn federation notifications in PM on or off for fban and unfban events
- » `/frules`*:* See Federation regulations\n""",
+        """Any user:
+/fbanstat: Check whether you, a replied-to user, or a username is fed-banned anywhere.
+/fednotif <on/off>: Turn federation ban and unban notifications in PM on or off.
+/frules: Show the federation rules.\n""",
         parse_mode=ParseMode.MARKDOWN,
     )
 
 
-__mod_name__ = "FEDS"
+__mod_name__ = "Feds"
 
 __help__ = """
-➠ *Everything is fun, until a spammer starts entering your group, and you have to block it. Then you need to start banning more, and more, and it hurts*.
-*But then you have many groups, and you don't want this spammer to be in one of your groups - how can you deal? Do you have to manually block it, in all your groups*?\n
-*No longer!* *With Federation, you can make a ban in one chat overlap with all other chats*.\n
-*You can even designate federation admins, so your trusted admin can ban all the spammers from chats you want to protect*.\n
+Commands:
+/fedownerhelp: Show help for creating and owning federations.
+/fedadminhelp: Show help for federation administration.
+/feduserhelp: Show help for commands anyone can use.
 
-➠ *Commands:*
-➠ Federations are divided into three sections for ease of use.
-
-» /fedownerhelp: Provides help for fed creation and owner only commands.
-
-» /fedadminhelp: Provides help for fed administration commands.
-
-» /feduserhelp: Provides help for commands anyone can use.
-
+A federation shares bans across all your groups. You can also assign federation admins to ban spammers in the groups you protect.
 """
 
 

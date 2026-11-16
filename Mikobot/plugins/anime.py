@@ -565,7 +565,7 @@ def check_user(func):
                     )
             else:
                 await c_q.answer(
-                    "Not your query!!!",
+                    "That is not your query.",
                     show_alert=True,
                 )
 
@@ -574,7 +574,7 @@ def check_user(func):
 
 async def media_to_image(client: app, message: Message, x: Message, replied: Message):
     if not (replied.photo or replied.sticker or replied.animation or replied.video):
-        await x.edit_text("Media Type Is Invalid !")
+        await x.edit_text("Invalid media type.")
         delete_later(x, 5)
         return
     media = replied.photo or replied.sticker or replied.animation or replied.video
@@ -593,7 +593,7 @@ async def media_to_image(client: app, message: Message, x: Message, replied: Mes
         stdout, stderr = (await runcmd(cmd))[:2]
         os.remove(dls_loc)
         if not os.path.lexists(png_file):
-            await x.edit_text("This sticker is Gey, Task Failed Successfully ≧ω≦")
+            await x.edit_text("Could not process this sticker.")
             delete_later(x, 5)
             raise Exception(stdout + stderr)
         dls_loc = png_file
@@ -601,17 +601,17 @@ async def media_to_image(client: app, message: Message, x: Message, replied: Mes
         stkr_file = os.path.join(DOWN_PATH, f"{rand_key()}.png")
         os.rename(dls_loc, stkr_file)
         if not os.path.lexists(stkr_file):
-            await x.edit_text("```Sticker not found...```")
+            await x.edit_text("Sticker not found.")
             delete_later(x, 5)
             return
         dls_loc = stkr_file
     elif replied.animation or replied.video:
-        await x.edit_text("`Converting Media To Image ...`")
+        await x.edit_text("Converting media to an image...")
         jpg_file = os.path.join(DOWN_PATH, f"{rand_key()}.jpg")
         await take_screen_shot(dls_loc, 0, jpg_file)
         os.remove(dls_loc)
         if not os.path.lexists(jpg_file):
-            await x.edit_text("This Gif is Gey (｡ì _ í｡), Task Failed Successfully !")
+            await x.edit_text("Could not process this GIF.")
             delete_later(x, 5)
             return
         dls_loc = jpg_file
@@ -2224,13 +2224,13 @@ async def get_recommendations(id_):
         ii = i["node"]["mediaRecommendation"]
         rc_ls.append([ii["title"]["romaji"], ii["id"], ii["siteUrl"]])
     if rc_ls == []:
-        return "No Recommendations available related to given anime!!!"
+        return "No recommendations are available for that anime."
     outstr = "Recommended animes:\n\n"
     for i in rc_ls:
         outstr += (
-            f"**{i[0]}**\n ➥[Synopsis]"
+            f"**{i[0]}**\n[Synopsis]"
             + f"(https://t.me/{BOT_USERNAME}?astart=anime_{i[1]})"
-            + f"\n ➥[Official Site]({i[2]})\n\n"
+            + f"\n[Official Site]({i[2]})\n\n"
         )
     return outstr
 
@@ -3180,9 +3180,7 @@ async def anime_cmd(client: Client, message: Message, mdata: dict):
             return
     if len(text) == 1:
         k = await message.reply_text(
-            """Please give a query to search about
-
-example: /anime Sword Art Online"""
+            """Provide a search query. Example: /anime Sword Art Online"""
         )
         delete_later(k, 5)
         return
@@ -3207,7 +3205,7 @@ example: /anime Sword Art Online"""
         await client.send_photo(
             gid,
             no_pic[random.randint(0, 4)],
-            caption="This anime is marked 18+ and not allowed in this group",
+            caption="This anime is marked 18+ and is not allowed in this group.",
         )
         return
     try:
@@ -3239,9 +3237,7 @@ async def manga_cmd(client: Client, message: Message, mdata: dict):
         return
     if len(text) == 1:
         k = await message.reply_text(
-            """Please give a query to search about
-
-example: /manga Sword Art Online"""
+            """Provide a search query. Example: /manga Sword Art Online"""
         )
         delete_later(k, 5)
         return
@@ -3275,7 +3271,7 @@ example: /manga Sword Art Online"""
         await client.send_photo(
             gid,
             no_pic[random.randint(0, 4)],
-            caption="This manga is marked 18+ and not allowed in this group",
+            caption="This manga is marked 18+ and is not allowed in this group.",
             reply_markup=buttons,
         )
         return
@@ -3308,7 +3304,7 @@ async def character_cmd(client: Client, message: Message, mdata: dict):
         return
     if len(text) == 1:
         k = await message.reply_text(
-            "Please give a query to search about\nexample: /character Luffy"
+            "Provide a search query. Example: /character Luffy"
         )
         delete_later(k, 5)
         return
@@ -3356,7 +3352,7 @@ async def anilist_cmd(client: Client, message: Message, mdata: dict):
         return
     if len(text) == 1:
         k = await message.reply_text(
-            "Please give a query to search about\nexample: /anilist Sword Art Online"
+            "Provide a search query. Example: /anilist Sword Art Online"
         )
         delete_later(k, 5)
         return
@@ -3390,7 +3386,7 @@ async def anilist_cmd(client: Client, message: Message, mdata: dict):
         await client.send_photo(
             gid,
             no_pic[random.randint(0, 4)],
-            caption="This anime is marked 18+ and not allowed in this group",
+            caption="This anime is marked 18+ and is not allowed in this group.",
             reply_markup=buttons,
         )
         return
@@ -3421,7 +3417,7 @@ async def top_tags_cmd(client: Client, message: Message, mdata: dict):
         delete_later(k, 5)
         return
     if db.exists("SFW_GRPS", gid) and str(result[0][1]) == "True":
-        return await message.reply_text("No nsfw stuff allowed in this group!!!")
+        return await message.reply_text("NSFW content is not allowed in this group.")
     msg, buttons = result
     await client.send_message(
         gid, msg[0], reply_markup=buttons if buttons != "" else None
@@ -3439,7 +3435,7 @@ async def studio_cmd(client: Client, message: Message, mdata: dict):
         return
     if len(text) == 1:
         x = await message.reply_text(
-            "Please give a query to search about!!!\nExample: /studio ufotable"
+            "Provide a search query. Example: /studio ufotable"
         )
         delete_later(x, 5)
         return
@@ -3461,7 +3457,7 @@ async def studio_cmd(client: Client, message: Message, mdata: dict):
         auth = True
     result = await get_studios(qdb, 1, user=auser, duser=user, auth=auth)
     if len(result) == 1:
-        x = await message.reply_text("No results found!!!")
+        x = await message.reply_text("No results found.")
         delete_later(x, 5)
         return
     msg, buttons = result[0], result[1]
@@ -3480,9 +3476,7 @@ async def airing_cmd(client: Client, message: Message, mdata: dict):
         return
     if len(text) == 1:
         k = await message.reply_text(
-            """Please give a query to search about
-
-example: /airing Sword Art Online"""
+            """Provide a search query. Example: /airing Sword Art Online"""
         )
         delete_later(k, 5)
         return
@@ -3522,7 +3516,7 @@ example: /airing Sword Art Online"""
         await client.send_photo(
             gid,
             no_pic[random.randint(0, 4)],
-            caption="This anime is marked 18+ and not allowed in this group",
+            caption="This anime is marked 18+ and is not allowed in this group.",
             reply_markup=btn,
         )
         return
@@ -3689,7 +3683,7 @@ async def list_tags_genres_cmd(client, message: Message, mdata: dict):
     if db.command_disabled(gid, "getgenres"):
         return
     if db.exists("SFW_GRPS", gid) and "nsfw" in text:
-        return await message.reply_text("No nsfw allowed here!!!")
+        return await message.reply_text("NSFW content is not allowed here.")
     msg = (
         (await get_all_tags(text))
         if "gettags" in text.split()[0]
@@ -3707,22 +3701,30 @@ async def page_btn(client: Client, cq: CallbackQuery, cdata: dict):
         try:
             ANIME_DB[query]
         except KeyError:
-            return await cq.answer("Query Expired!!!\nCreate new one", show_alert=True)
+            return await cq.answer(
+                "Query expired. Create a new query.", show_alert=True
+            )
     if media == "MANGA":
         try:
             MANGA_DB[query]
         except KeyError:
-            return await cq.answer("Query Expired!!!\nCreate new one", show_alert=True)
+            return await cq.answer(
+                "Query expired. Create a new query.", show_alert=True
+            )
     if media == "CHARACTER":
         try:
             CHAR_DB[query]
         except KeyError:
-            return await cq.answer("Query Expired!!!\nCreate new one", show_alert=True)
+            return await cq.answer(
+                "Query expired. Create a new query.", show_alert=True
+            )
     if media == "AIRING":
         try:
             AIRING_DB[query]
         except KeyError:
-            return await cq.answer("Query Expired!!!\nCreate new one", show_alert=True)
+            return await cq.answer(
+                "Query expired. Create a new query.", show_alert=True
+            )
     authbool = bool(1) if auth == "True" else bool(0)
     if "-100" in str(user):
         auser = await gcc(user)
@@ -3741,7 +3743,7 @@ async def page_btn(client: Client, cq: CallbackQuery, cdata: dict):
             query, int(page), auth=authbool, user=int(auser)
         )
     if "No results Found" in result:
-        await cq.answer("No more results available!!!", show_alert=True)
+        await cq.answer("No more results are available.", show_alert=True)
         return
     pic, msg = result[0], result[1][0]
     if media == "AIRING":
@@ -3792,14 +3794,14 @@ async def studio_pg_btn(client: Client, cq: CallbackQuery, cdata: dict):
     try:
         STUDIO_DB[qry]
     except KeyError:
-        return await cq.answer("Query Expired!!!\nCreate new one", show_alert=True)
+        return await cq.answer("Query expired. Create a new query.", show_alert=True)
     if "-100" in str(user):
         auser = await gcc(user)
     else:
         auser = user
     result = await get_studios(qry, page=page, user=auser, duser=user, auth=authbool)
     if len(result) == 1:
-        return await cq.answer("No more results available!!!", show_alert=True)
+        return await cq.answer("No more results are available.", show_alert=True)
     msg, buttons = result[0], result[1]
     await cq.message.edit_text(msg, reply_markup=buttons)
 
@@ -3815,7 +3817,7 @@ async def studio_ani_btn(client: Client, cq: CallbackQuery, cdata: dict):
         auser = user
     result = await get_studio_animes(id_, page, qry, rp, auser, user, authbool)
     if len(result) == 1:
-        return await cq.answer("No results available!!!", show_alert=True)
+        return await cq.answer("No results are available.", show_alert=True)
     msg, buttons = result[0], result[1]
     await cq.message.edit_text(msg, reply_markup=buttons)
 
@@ -3870,9 +3872,7 @@ async def nsfw_toggle_btn(client: Client, cq: CallbackQuery):
         await cq.answer()
         return
     if cus not in BOT_OWNER and k == MEMBER:
-        await cq.answer(
-            "You don't have enough permissions to change this!!!", show_alert=True
-        )
+        await cq.answer("You do not have permission to change this.", show_alert=True)
         return
     query = cq.data.split("_")
     if db.exists("SFW_GRPS", int(query[2])):
@@ -4104,22 +4104,30 @@ async def toggle_favourites_btn(client: Client, cq: CallbackQuery, cdata: dict):
         try:
             ANIME_DB[query[3]]
         except KeyError:
-            return await cq.answer("Query Expired!!!\nCreate new one", show_alert=True)
+            return await cq.answer(
+                "Query expired. Create a new query.", show_alert=True
+            )
     if query[1] == "MANGA":
         try:
             MANGA_DB[query[3]]
         except KeyError:
-            return await cq.answer("Query Expired!!!\nCreate new one", show_alert=True)
+            return await cq.answer(
+                "Query expired. Create a new query.", show_alert=True
+            )
     if query[1] == "CHARACTER":
         try:
             CHAR_DB[query[3]]
         except KeyError:
-            return await cq.answer("Query Expired!!!\nCreate new one", show_alert=True)
+            return await cq.answer(
+                "Query expired. Create a new query.", show_alert=True
+            )
     if query[1] == "STUDIO":
         try:
             STUDIO_DB[query[3]]
         except KeyError:
-            return await cq.answer("Query Expired!!!\nCreate new one", show_alert=True)
+            return await cq.answer(
+                "Query expired. Create a new query.", show_alert=True
+            )
     idm = int(query[2])
     user = int(query.pop())
     if "-100" in str(user):
@@ -4131,7 +4139,7 @@ async def toggle_favourites_btn(client: Client, cq: CallbackQuery, cdata: dict):
     if rslt == "ok":
         await cq.answer("Updated", show_alert=True)
     else:
-        return await cq.answer("Failed to update!!!", show_alert=True)
+        return await cq.answer("Could not update.", show_alert=True)
     result = (
         (
             await get_anime(
@@ -4302,14 +4310,14 @@ async def update_anilist_btn(client: Client, cq: CallbackQuery, cdata: dict):
                 ANIME_DB[query[4]]
             except KeyError:
                 return await cq.answer(
-                    "Query Expired!!!\nCreate new one", show_alert=True
+                    "Query expired. Create a new query.", show_alert=True
                 )
         if len(query) == 8:
             try:
                 ANIME_DB[query[5]]
             except KeyError:
                 return await cq.answer(
-                    "Query Expired!!!\nCreate new one", show_alert=True
+                    "Query expired. Create a new query.", show_alert=True
                 )
     if query[2] == "MANGA":
         if len(query) == 7:
@@ -4317,14 +4325,14 @@ async def update_anilist_btn(client: Client, cq: CallbackQuery, cdata: dict):
                 MANGA_DB[query[4]]
             except KeyError:
                 return await cq.answer(
-                    "Query Expired!!!\nCreate new one", show_alert=True
+                    "Query expired. Create a new query.", show_alert=True
                 )
         if len(query) == 8:
             try:
                 MANGA_DB[query[5]]
             except KeyError:
                 return await cq.answer(
-                    "Query Expired!!!\nCreate new one", show_alert=True
+                    "Query expired. Create a new query.", show_alert=True
                 )
     idm = int(query[3])
     user = int(query.pop())
@@ -4343,7 +4351,7 @@ async def update_anilist_btn(client: Client, cq: CallbackQuery, cdata: dict):
         await cq.answer("Updated", show_alert=True)
     else:
         await cq.answer(
-            "Something unexpected happened and operation failed successfully",
+            "The operation failed.",
             show_alert=True,
         )
         return
@@ -4466,7 +4474,7 @@ async def additional_info_btn(client: Client, cq: CallbackQuery, cdata: dict):
     spoiler = False
     bot = BOT_USERNAME
     if result is None:
-        await cq.answer("No description available!!!", show_alert=True)
+        await cq.answer("No description is available.", show_alert=True)
         return
     if "~!" in result and "!~" in result:
         result = re.sub(r"~!.*!~", "[Spoiler]", result)
@@ -4570,7 +4578,7 @@ async def featured_in_btn(client: Client, cq: CallbackQuery, cdata: dict):
         result = await get_featured_in_lists(int(idm), "MAN")
         req = None
         if result[0] is False:
-            await cq.answer("No Data Available!!!", show_alert=True)
+            await cq.answer("No data is available.", show_alert=True)
             return
     [msg, total], pic = result
     button = []
@@ -4629,7 +4637,7 @@ async def featured_in_switch_btn(client: Client, cq: CallbackQuery, cdata: dict)
     reqb = "lsca" if req == "lscm" else "lscm"
     bt = "Anime" if req == "lscm" else "Manga"
     if result[0] is False:
-        await cq.answer("No Data Available!!!", show_alert=True)
+        await cq.answer("No data is available.", show_alert=True)
         return
     [msg, total], pic = result
     totalpg, kek = divmod(total, 15)
@@ -4717,9 +4725,7 @@ async def headlines_btn(client: Client, cq: CallbackQuery):
         await cq.answer()
         return
     if cus not in BOT_OWNER and k == MEMBER:
-        await cq.answer(
-            "You don't have enough permissions to change this!!!", show_alert=True
-        )
+        await cq.answer("You do not have permission to change this.", show_alert=True)
         return
     lcdata = db.key_exists("HD", gid, "on")
     maldata = db.key_exists("MHD", gid, "on")
@@ -4771,7 +4777,7 @@ async def headlines_btn(client: Client, cq: CallbackQuery):
                 db.set_value(coll, gid, "pin", "ON")
                 pin_msg = "Auto Pin: ON"
         else:
-            await cq.answer(f"Please enable {srcname} first!!!", show_alert=True)
+            await cq.answer(f"Enable {srcname} first.", show_alert=True)
     if "mal" in qry:
         malhdpin = pin_msg
         malhd = src_status
@@ -4854,9 +4860,7 @@ async def auto_unpin(client: Client, cq: CallbackQuery):
         await cq.answer()
         return
     if cus not in BOT_OWNER and k == MEMBER:
-        await cq.answer(
-            "You don't have enough permissions to change this!!!", show_alert=True
-        )
+        await cq.answer("You do not have permission to change this.", show_alert=True)
         return
     cancel = False
     if src == "lc":
@@ -4875,7 +4879,7 @@ async def auto_unpin(client: Client, cq: CallbackQuery):
         cancel = True
     if cancel:
         return await cq.answer(
-            f"Please enable {srcname} and Auto Pin option for them!!!", show_alert=True
+            f"Enable {srcname} and auto-pin for them.", show_alert=True
         )
     setting = {}
     if qry == "None":
@@ -4926,7 +4930,7 @@ async def auto_unpin(client: Client, cq: CallbackQuery):
     else:
         unpindata = "OFF"
     await cq.message.edit_text(
-        f"Auto Unpin options for {srcname}\nCurrently set to: {unpindata}",
+        f"Auto-unpin settings for {srcname}\nCurrent value: {unpindata}",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=btn),
     )
     await cq.answer()
@@ -4946,9 +4950,7 @@ async def change_ui_btn(client: Client, cq: CallbackQuery):
         await cq.answer()
         return
     if cus not in BOT_OWNER and k == MEMBER:
-        await cq.answer(
-            "You don't have enough permissions to change this!!!", show_alert=True
-        )
+        await cq.answer("You do not have permission to change this.", show_alert=True)
         return
     await cq.answer()
     row, btn = [], []
@@ -5091,7 +5093,7 @@ async def get_schuled(client: Client, message: Message, mdata: dict):
     gid = mdata["chat"]["id"]
     if db.command_disabled(gid, "schedule"):
         return
-    x = await client.send_message(gid, "<code>Fetching Scheduled Animes</code>")
+    x = await client.send_message(gid, "<code>Fetching scheduled anime</code>")
     try:
         user = mdata["from_user"]["id"]
     except KeyError:
@@ -5129,7 +5131,7 @@ async def get_watch_order(client: Client, message: Message, mdata: dict):
         return
     x = message.text.split(" ", 1)
     if len(x) == 1:
-        await message.reply_text("Nothing given to search for!!!")
+        await message.reply_text("Provide something to search for.")
         return
     try:
         user = mdata["from_user"]["id"]
@@ -5139,7 +5141,7 @@ async def get_watch_order(client: Client, message: Message, mdata: dict):
     msg = f"Found related animes for the query {x[1]}"
     buttons = []
     if data == []:
-        await client.send_message(gid, "No results found!!!")
+        await client.send_message(gid, "No results found.")
         return
     for i in data:
         buttons.append(
@@ -5261,12 +5263,11 @@ async def fillers_cmd(client: app, message: Message, mdata: dict):
     qry = mdata["text"].split(" ", 1)
     if len(qry) == 1:
         return await message.reply_text(
-            """Give some anime name to search fillers for
-example: /fillers Detective Conan"""
+            """Provide an anime name. Example: /fillers Detective Conan"""
         )
     k = await search_filler(qry[1])
     if k == {}:
-        await message.reply_text("No fillers found for the given anime...")
+        await message.reply_text("No fillers found for that anime.")
         return
     button = []
     list_ = list(k.keys())
@@ -5297,7 +5298,7 @@ example: /fillers Detective Conan"""
             ]
         )
     await message.reply_text(
-        "Pick anime you want to see fillers list for:",
+        "Pick an anime to see its filler list:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=button),
     )
 
@@ -5439,31 +5440,24 @@ QUOTES_IMG = [
 
 
 __help__ = """
-⛩ *Anime:*
-
-➠ *Dazai provides you the best anime-based commands including anime news and much more!*
-
-➠ *Commands:*
-
-» /anime: fetches info on a single anime (includes buttons to look up prequels and sequels)
-» /character: fetches info on multiple possible characters related to query
-» /manga: fetches info on multiple possible manga related to query
-» /airing: fetches info on airing data for anime
-» /studio: fetches info on multiple possible studios related to query
-» /schedule: fetches scheduled anime
-» /browse: get popular, trending or upcoming anime
-
-➠ /animequotes: get random anime quotes
-
-» /anisettings: to toggle NSFW lock and airing notifications and other settings in groups (anime news)
-» /top: to retrieve top anime for a genre or tag
-» /watch: fetches watch order for anime series
-» /fillers: to get a list of anime fillers
-» /gettags: get a list of available tags
-» /getgenres - Get a list of available genres
+Commands:
+/anime: Show info for a single anime, with buttons for prequels and sequels.
+/character: Show possible characters matching a query.
+/manga: Show possible manga matching a query.
+/airing: Show airing data for an anime.
+/studio: Show possible studios matching a query.
+/schedule: Show the airing schedule.
+/browse: Show popular, trending, or upcoming anime.
+/animequotes: Show a random anime quote.
+/anisettings: Toggle the NSFW lock, airing notifications, and other group settings.
+/top: Show top anime for a genre or tag.
+/watch: Show the watch order for an anime series.
+/fillers: List filler episodes for an anime.
+/gettags: List available tags.
+/getgenres: List available genres.
 """
 
-__mod_name__ = "ANIME"
+__mod_name__ = "Anime"
 
 
 def __migrate__(old_chat_id, new_chat_id):

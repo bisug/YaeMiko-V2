@@ -385,19 +385,19 @@ for command_name, callback in COMMANDS.items():
     on_message(filters.command(command_name), chained=True)(callback)
 
 __help__ = """
-➠ <b>Chat management:</b>
-» /chatinfo — chat information and member count
-» /members — member count
-» /invitelink export|create|edit|revoke — invite-link management
-» /joins approve|decline &lt;user_id&gt; — join requests
-» /setchat title|description|description- — chat metadata
-» /setchatphoto, /delchatphoto — chat photo
-» /topic create|edit|close|reopen|delete — forum topics
-» /menubutton commands|default|webapp &lt;url&gt; — menu button
-» /stickerset set &lt;name&gt;|delete — chat sticker set
-» /membertag &lt;user_id&gt; [tag|remove] — member tag
-» /clearreactions or /deleteallreactions — remove all reactions from a replied message
-» /deletereaction [user_id] — remove a user reaction from a replied message
+Chat management:
+/chatinfo: Show chat information and member count.
+/members: Show the member count.
+/invitelink export|create|edit|revoke: Manage invite links.
+/joins approve|decline <user\\_id>: Handle join requests.
+/setchat title|description|description-: Edit chat metadata.
+/setchatphoto, /delchatphoto: Set or delete the chat photo.
+/topic create|edit|close|reopen|delete: Manage forum topics.
+/menubutton commands|default|webapp <url>: Manage the menu button.
+/stickerset set <name>|delete: Manage the chat sticker set.
+/membertag <user\\_id> [tag|remove]: Set or remove a member tag.
+/clearreactions, /deleteallreactions: Remove all reactions from a replied message.
+/deletereaction [user\\_id]: Remove a user's reaction from a replied message.
 """
 
-__mod_name__ = "CHAT ADMIN"
+__mod_name__ = "Chat Admin"
