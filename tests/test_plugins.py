@@ -5,10 +5,9 @@ import importlib
 import re
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).resolve().parents[1]
 PLUGINS_DIR = ROOT / "Mikobot" / "plugins"
+DUMMY_BOT_INFO = (123456789, "YaeMikoTest", "YaeMikoTestBot")
 
 
 def test_every_plugin_module_imports(monkeypatch):
@@ -21,9 +20,7 @@ def test_every_plugin_module_imports(monkeypatch):
     import Mikobot
     from Mikobot.plugins import ALL_MODULES
 
-    monkeypatch.setattr(
-        Mikobot, "_BOT_INFO", (123456789, "YaeMikoTest", "YaeMikoTestBot")
-    )
+    monkeypatch.setattr(Mikobot, "_BOT_INFO", DUMMY_BOT_INFO)
 
     failures = []
     for name in ALL_MODULES:
@@ -58,7 +55,10 @@ def test_quotely_entity_type_name_falls_back_to_the_enum_name():
 
 
 def test_quotely_command_regex():
-    pattern = re.compile(r"^[!/?]q(?:@\S+)?(?: |$)(.*)")
+    source = (PLUGINS_DIR / "quotely.py").read_text(encoding="utf-8")
+    declared = re.search(r'@register\(pattern=r"(.*?)"\)', source)
+    assert declared, "quotely command pattern is missing"
+    pattern = re.compile(declared.group(1))
     assert pattern.match("/q")
     assert pattern.match("!q")
     assert pattern.match("?q")
@@ -287,9 +287,7 @@ def test_every_helpable_plugin_defines_mod_name(monkeypatch):
     import Mikobot
     from Mikobot.plugins import ALL_MODULES
 
-    monkeypatch.setattr(
-        Mikobot, "_BOT_INFO", (123456789, "YaeMikoTest", "YaeMikoTestBot")
-    )
+    monkeypatch.setattr(Mikobot, "_BOT_INFO", DUMMY_BOT_INFO)
 
     bad = []
     for name in ALL_MODULES:
@@ -346,7 +344,6 @@ def test_load_plugins_fallback_and_none_guard(monkeypatch):
     assert "dummy none plugin" in main.HELPABLE
 
 
-@pytest.mark.asyncio
 async def test_blacklist_del_blacklist_filter_on_various_messages(monkeypatch):
     from unittest.mock import MagicMock
 
@@ -357,9 +354,7 @@ async def test_blacklist_del_blacklist_filter_on_various_messages(monkeypatch):
     from Mikobot import events
     from Mikobot.plugins import blacklist
 
-    monkeypatch.setattr(
-        Mikobot, "_BOT_INFO", (123456789, "YaeMikoTest", "YaeMikoTestBot")
-    )
+    monkeypatch.setattr(Mikobot, "_BOT_INFO", DUMMY_BOT_INFO)
 
     del_bl_regs = [
         r for r in events.registry.messages if r.handler == blacklist.del_blacklist

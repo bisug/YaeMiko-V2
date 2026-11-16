@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 # Configure dummy test environment variables before importing bot
@@ -22,22 +21,6 @@ import pytest
 
 import Mikobot  # noqa: F401
 
-ROOT = Path(__file__).resolve().parents[1]
-
-
-@pytest.fixture(scope="session")
-def repo_root() -> Path:
-    return ROOT
-
-
-@pytest.fixture
-def mock_bot():
-    bot = AsyncMock()
-    bot.id = 123456789
-    bot.first_name = "YaeMikoTest"
-    bot.username = "YaeMikoTestBot"
-    return bot
-
 
 @pytest.fixture
 def mock_client():
@@ -49,20 +32,13 @@ def mock_client():
 
 
 @pytest.fixture
-def sample_chat():
-    chat = MagicMock()
-    chat.id = -1001234567890
-    chat.title = "Test Group"
-    chat.type = "supergroup"
-    chat.is_forum = False
-    chat.has_forum_sidebar = False
-    return chat
-
-
-@pytest.fixture
-def sample_user():
-    user = MagicMock()
-    user.id = 987654321
-    user.first_name = "Test"
-    user.username = "test_user"
-    return user
+def sample_message():
+    """A group message with the fields the event registry filters on."""
+    message = MagicMock()
+    message.chat.type = "supergroup"
+    message.chat.id = -1001234567890
+    message.from_user.id = 987654321
+    message.from_user.is_bot = False
+    message.text = "/ping"
+    message.command = None
+    return message

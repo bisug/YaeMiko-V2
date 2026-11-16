@@ -9,6 +9,22 @@ ROOT = Path(__file__).resolve().parents[1]
 SQL_INIT = ROOT / "Database" / "sql" / "__init__.py"
 
 
+def _sql_init_source() -> str:
+    return SQL_INIT.read_text(encoding="utf-8")
+
+
+def _sql_modules():
+    return sorted((ROOT / "Database" / "sql").glob("*_sql.py"))
+
+
+def _function(source: str, name: str) -> ast.FunctionDef:
+    return next(
+        node
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.FunctionDef) and node.name == name
+    )
+
+
 def test_base_models_defined():
     from Database.sql import BASE
 
@@ -48,11 +64,11 @@ def test_raid_reset_runs_after_table_creation():
         and getattr(node.value.func, "id", "") == "_ResetRaidOnRestart"
     ]
     assert not at_import, "raid reset must not be called at module import"
-    assert "welcome_sql._ResetRaidOnRestart()" in SQL_INIT.read_text(encoding="utf-8")
+    assert "welcome_sql._ResetRaidOnRestart()" in _sql_init_source()
 
 
 def test_guard_structure_and_discards():
-    source = SQL_INIT.read_text(encoding="utf-8")
+    source = _sql_init_source()
     assert "def unit_of_work_guard" in source
     assert "begin_unit_of_work()" in source
     assert "finally:" in source
@@ -60,38 +76,23 @@ def test_guard_structure_and_discards():
 
 
 def test_registry_remove_precedes_rollback():
-    source = SQL_INIT.read_text(encoding="utf-8")
-    method = next(
-        node
-        for node in ast.walk(ast.parse(source))
-        if isinstance(node, ast.FunctionDef) and node.name == "end_unit_of_work"
-    )
-    body = ast.unparse(method)
+    source = _sql_init_source()
+    body = ast.unparse(_function(source, "end_unit_of_work"))
     assert body.index("remove()") < body.index("rollback()")
 
 
 def test_guard_is_reentrant():
-    source = SQL_INIT.read_text(encoding="utf-8")
-    guard = next(
-        node
-        for node in ast.walk(ast.parse(source))
-        if isinstance(node, ast.FunctionDef) and node.name == "unit_of_work_guard"
-    )
-    body = ast.unparse(guard)
+    source = _sql_init_source()
+    body = ast.unparse(_function(source, "unit_of_work_guard"))
     assert "outermost" in body
     assert "force=True" in body
 
-    ender = next(
-        node
-        for node in ast.walk(ast.parse(source))
-        if isinstance(node, ast.FunctionDef) and node.name == "end_unit_of_work"
-    )
-    assert "force" in ast.unparse(ender.args)
+    assert "force" in ast.unparse(_function(source, "end_unit_of_work").args)
 
 
 def test_every_data_helper_is_wrapped():
     unwrapped = []
-    for path in sorted((ROOT / "Database" / "sql").glob("*_sql.py")):
+    for path in _sql_modules():
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in tree.body:
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -141,7 +142,7 @@ def test_where_clauses_pass_criteria_positionally():
     failed.
     """
     offenders = []
-    for path in sorted((ROOT / "Database" / "sql").glob("*_sql.py")):
+    for path in _sql_modules():
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
@@ -190,7 +191,7 @@ def test_pool_fits_the_server_limit():
     already", and the checkout then waits on the socket instead of
     failing.
     """
-    source = SQL_INIT.read_text(encoding="utf-8")
+    source = _sql_init_source()
     assert 'env_int("DB_POOL_SIZE", min(8,' in source
     assert 'env_int("DB_MAX_OVERFLOW", 4)' in source
 
@@ -202,7 +203,7 @@ def test_a_stalled_connection_fails_instead_of_hanging():
     to give up, which can be minutes, and the worker that holds it waits
     with no log line.
     """
-    source = SQL_INIT.read_text(encoding="utf-8")
+    source = _sql_init_source()
     assert 'env_int("DB_CONNECT_TIMEOUT", 10)' in source
     assert '"connect_timeout": connect_timeout' in source
     assert '"keepalives": 1' in source
@@ -234,7 +235,7 @@ def test_media_spoiler_flag_is_stored():
 def test_index_names_are_unique():
     """Two indexes with one name would make the second creation a no-op."""
     names = []
-    for path in sorted((ROOT / "Database" / "sql").glob("*_sql.py")):
+    for path in _sql_modules():
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if (
@@ -264,7 +265,7 @@ def test_sangmata_get_userdata_empty():
 
 
 def test_no_tuple_unpacking_on_scalar_chat_ids():
-    for path in sorted((ROOT / "Database" / "sql").glob("*_sql.py")):
+    for path in _sql_modules():
         content = path.read_text(encoding="utf-8")
         assert "for (chat_id,) in" not in content, (
             f"found tuple unpacking in {path.name}"
@@ -286,7 +287,7 @@ def test_action_topic_cache():
 
 
 def test_no_string_14_in_sql_models():
-    for path in sorted((ROOT / "Database" / "sql").glob("*_sql.py")):
+    for path in _sql_modules():
         content = path.read_text(encoding="utf-8")
         assert "String(14)" not in content, f"found String(14) in {path.name}"
 

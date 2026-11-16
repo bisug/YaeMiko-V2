@@ -6,8 +6,6 @@ import subprocess
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
 ROOT = Path(__file__).resolve().parents[1]
 TOKEN_PATTERN = re.compile(r"(^|[^A-Za-z0-9_])[0-9]{6,10}:[A-Za-z0-9_-]{30,}")
 
@@ -63,10 +61,10 @@ def test_elevated_users_json():
             )
 
 
-@pytest.mark.asyncio
-async def test_can_restrict_decorator_handles_owner():
+async def test_can_restrict_decorator_handles_owner(monkeypatch):
     from pyrogram.enums import ChatMemberStatus
 
+    from Mikobot import app
     from Mikobot.utils.can_restrict import can_restrict
 
     mock_func = AsyncMock(return_value="executed")
@@ -81,16 +79,13 @@ async def test_can_restrict_decorator_handles_owner():
     member.status = ChatMemberStatus.OWNER
     member.privileges = None
 
-    from Mikobot import app
-
-    app.get_chat_member = AsyncMock(return_value=member)
+    monkeypatch.setattr(app, "get_chat_member", AsyncMock(return_value=member))
 
     res = await decorated(None, mock_msg)
     assert res == "executed"
     mock_func.assert_called_once_with(None, mock_msg)
 
 
-@pytest.mark.asyncio
 async def test_can_restrict_supports_anonymous_group_admin():
     from Mikobot.utils.can_restrict import can_restrict
 

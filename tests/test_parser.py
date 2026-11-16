@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 from pyrogram import enums, raw
 from pyrogram.parser.parser import Parser
 
@@ -119,7 +118,6 @@ def test_markdown_to_html_helper():
     )
 
 
-@pytest.mark.asyncio
 async def test_smart_parser_entities():
     parser = SmartParser(None)
 
@@ -158,7 +156,6 @@ async def test_smart_parser_entities():
     assert mention_res["entities"][0].user_id == 987654
 
 
-@pytest.mark.asyncio
 async def test_app_client_parser_hook():
     # app.parser must be hooked to SmartParser
     assert isinstance(app.parser, SmartParser)
@@ -171,7 +168,6 @@ async def test_app_client_parser_hook():
     assert isinstance(res["entities"][0], raw.types.MessageEntityBold)
 
 
-@pytest.mark.asyncio
 async def test_extraction_with_caption():
     from unittest.mock import MagicMock
 

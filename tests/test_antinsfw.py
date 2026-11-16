@@ -1,27 +1,52 @@
 from __future__ import annotations
 
 import tempfile
+from collections import namedtuple
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from PIL import Image
 from pyrogram.types import Message, Photo, Sticker, Thumbnail, Video
 
 from Mikobot.plugins import antinsfw
 
+Prediction = namedtuple("Prediction", ["sfw", "nsfw"])
+
+NSFW_CHAT_ID = -10012345
+SCAN_PATH = "/tmp/test.png"
+NSFW_PREDICTION = Prediction(sfw=0.1, nsfw=0.9)
+
+MEDIA_ATTRS = ("document", "photo", "animation", "video", "video_note", "sticker")
+
+
+def _media_message(spec=Message, **media):
+    """A message with every media slot initialized, so tests set only what matters."""
+    msg = MagicMock(spec=spec)
+    for name in MEDIA_ATTRS:
+        setattr(msg, name, media.get(name))
+    return msg
+
+
+def _nsfw_message(
+    *, user_id=99999, mention="@user", photo_id="test_photo_id", unique_id=None
+):
+    msg = _media_message(spec=None, photo=MagicMock(file_size=500, file_id=photo_id))
+    if unique_id is not None:
+        msg.photo.file_unique_id = unique_id
+    msg.chat.id = NSFW_CHAT_ID
+    msg.message_thread_id = None
+    msg.from_user = MagicMock(id=user_id, mention=mention)
+    msg.sender_chat = None
+    msg.delete = AsyncMock()
+    return msg
+
 
 def test_get_media_from_message_animated_sticker():
-    msg = MagicMock(spec=Message)
-    msg.document = None
-    msg.photo = None
-    msg.animation = None
-    msg.video = None
-    msg.video_note = None
-    msg.sticker = MagicMock(spec=Sticker)
-    msg.sticker.is_animated = True
-    msg.sticker.is_video = False
-    msg.sticker.file_size = 1000
+    msg = _media_message(
+        sticker=MagicMock(
+            spec=Sticker, is_animated=True, is_video=False, file_size=1000
+        )
+    )
 
     file_id, media_type = antinsfw.get_media_from_message(msg)
     assert file_id is None
@@ -29,17 +54,15 @@ def test_get_media_from_message_animated_sticker():
 
 
 def test_get_media_from_message_video_sticker():
-    msg = MagicMock(spec=Message)
-    msg.document = None
-    msg.photo = None
-    msg.animation = None
-    msg.video = None
-    msg.video_note = None
-    msg.sticker = MagicMock(spec=Sticker)
-    msg.sticker.is_animated = False
-    msg.sticker.is_video = True
-    msg.sticker.file_id = "video_sticker_file_id"
-    msg.sticker.file_size = 1000
+    msg = _media_message(
+        sticker=MagicMock(
+            spec=Sticker,
+            is_animated=False,
+            is_video=True,
+            file_id="video_sticker_file_id",
+            file_size=1000,
+        )
+    )
 
     file_id, media_type = antinsfw.get_media_from_message(msg)
     assert file_id == "video_sticker_file_id"
@@ -47,17 +70,15 @@ def test_get_media_from_message_video_sticker():
 
 
 def test_get_media_from_message_static_sticker():
-    msg = MagicMock(spec=Message)
-    msg.document = None
-    msg.photo = None
-    msg.animation = None
-    msg.video = None
-    msg.video_note = None
-    msg.sticker = MagicMock(spec=Sticker)
-    msg.sticker.is_animated = False
-    msg.sticker.is_video = False
-    msg.sticker.file_id = "static_sticker_file_id"
-    msg.sticker.file_size = 1000
+    msg = _media_message(
+        sticker=MagicMock(
+            spec=Sticker,
+            is_animated=False,
+            is_video=False,
+            file_id="static_sticker_file_id",
+            file_size=1000,
+        )
+    )
 
     file_id, media_type = antinsfw.get_media_from_message(msg)
     assert file_id == "static_sticker_file_id"
@@ -65,24 +86,15 @@ def test_get_media_from_message_static_sticker():
 
 
 def test_get_media_from_message_video_with_thumbs():
-    msg = MagicMock(spec=Message)
-    msg.document = None
-    msg.photo = None
-    msg.sticker = None
-    msg.animation = None
-    msg.video_note = None
-    msg.video = MagicMock(spec=Video)
-    msg.video.file_size = 10_000_000  # large video
-    thumb = MagicMock(spec=Thumbnail)
-    thumb.file_id = "thumb_file_id"
-    msg.video.thumbs = [thumb]
+    thumb = MagicMock(spec=Thumbnail, file_id="thumb_file_id")
+    video = MagicMock(spec=Video, file_size=10_000_000, thumbs=[thumb])
+    msg = _media_message(video=video)
 
     file_id, media_type = antinsfw.get_media_from_message(msg)
     assert file_id == "thumb_file_id"
     assert media_type == "image"
 
 
-@pytest.mark.asyncio
 async def test_prepare_scan_file_valid_image():
     client = AsyncMock()
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -90,33 +102,19 @@ async def test_prepare_scan_file_valid_image():
         Image.new("RGB", (50, 50)).save(test_img)
         client.download_media.return_value = test_img
 
-        msg = MagicMock(spec=Message)
-        msg.document = None
-        msg.sticker = None
-        msg.animation = None
-        msg.video = None
-        msg.video_note = None
-        msg.photo = MagicMock(spec=Photo)
-        msg.photo.file_size = 500
-        msg.photo.file_id = "photo_123"
+        msg = _media_message(
+            photo=MagicMock(spec=Photo, file_size=500, file_id="photo_123")
+        )
 
         scannable = await antinsfw.prepare_scan_file(client, msg, temp_dir)
         assert scannable == str(test_img)
 
 
-@pytest.mark.asyncio
 async def test_detect_nsfw_ignores_animated_sticker():
     client = AsyncMock()
-    msg = MagicMock()
-    msg.chat.id = -10012345
+    msg = _media_message(spec=None, sticker=MagicMock(is_animated=True))
+    msg.chat.id = NSFW_CHAT_ID
     msg.from_user.id = 999
-    msg.document = None
-    msg.photo = None
-    msg.animation = None
-    msg.video = None
-    msg.video_note = None
-    msg.sticker = MagicMock()
-    msg.sticker.is_animated = True
 
     with patch("Database.sql.toggle_sql.is_nsfw_on", return_value=True):
         await antinsfw.detect_nsfw(client, msg)
@@ -126,20 +124,12 @@ async def test_detect_nsfw_ignores_animated_sticker():
     msg.reply_text.assert_not_called()
 
 
-@pytest.mark.asyncio
 async def test_nsfwscan_command_animated_sticker_friendly_message():
     client = AsyncMock()
     msg = MagicMock(spec=Message)
-    reply = MagicMock(spec=Message)
-    msg.reply_to_message = reply
-
-    reply.document = None
-    reply.photo = None
-    reply.animation = None
-    reply.video = None
-    reply.video_note = None
-    reply.sticker = MagicMock(spec=Sticker)
-    reply.sticker.is_animated = True
+    msg.reply_to_message = _media_message(
+        sticker=MagicMock(spec=Sticker, is_animated=True)
+    )
 
     msg.reply_text = AsyncMock()
 
@@ -152,39 +142,14 @@ async def test_nsfwscan_command_animated_sticker_friendly_message():
     )
 
 
-@pytest.mark.asyncio
 async def test_detect_nsfw_deletes_and_notifies_even_for_dev_user():
-    from collections import namedtuple
-
-    Prediction = namedtuple("Prediction", ["sfw", "nsfw"])
-
     client = AsyncMock()
-    msg = MagicMock()
-    msg.chat.id = -10012345
-    msg.message_thread_id = None
-    msg.from_user = MagicMock()
-    msg.from_user.id = 123456  # Even if dev/owner
-    msg.from_user.mention = "@owner"
-    msg.sender_chat = None
-    msg.document = None
-    msg.photo = MagicMock()
-    msg.photo.file_size = 500
-    msg.photo.file_id = "test_photo_id"
-    msg.sticker = None
-    msg.animation = None
-    msg.video = None
-    msg.video_note = None
-
-    msg.delete = AsyncMock()
+    msg = _nsfw_message(user_id=123456, mention="@owner")  # Even if dev/owner
 
     with (
         patch("Database.sql.toggle_sql.is_nsfw_on", return_value=True),
-        patch(
-            "Mikobot.plugins.antinsfw.prepare_scan_file", return_value="/tmp/test.png"
-        ),
-        patch(
-            "Mikobot.plugins.antinsfw._scan", return_value=Prediction(sfw=0.1, nsfw=0.9)
-        ),
+        patch("Mikobot.plugins.antinsfw.prepare_scan_file", return_value=SCAN_PATH),
+        patch("Mikobot.plugins.antinsfw._scan", return_value=NSFW_PREDICTION),
     ):
         await antinsfw.detect_nsfw(client, msg)
 
@@ -196,39 +161,15 @@ async def test_detect_nsfw_deletes_and_notifies_even_for_dev_user():
     )
 
 
-@pytest.mark.asyncio
 async def test_detect_nsfw_warns_when_bot_cannot_delete():
-    from collections import namedtuple
-
-    Prediction = namedtuple("Prediction", ["sfw", "nsfw"])
-
     client = AsyncMock()
-    msg = MagicMock()
-    msg.chat.id = -10012345
-    msg.message_thread_id = None
-    msg.from_user = MagicMock()
-    msg.from_user.id = 99999
-    msg.from_user.mention = "@user"
-    msg.sender_chat = None
-    msg.document = None
-    msg.photo = MagicMock()
-    msg.photo.file_size = 500
-    msg.photo.file_id = "test_photo_id"
-    msg.sticker = None
-    msg.animation = None
-    msg.video = None
-    msg.video_note = None
-
-    msg.delete = AsyncMock(side_effect=Exception("ChatAdminRequired"))
+    msg = _nsfw_message()
+    msg.delete.side_effect = Exception("ChatAdminRequired")
 
     with (
         patch("Database.sql.toggle_sql.is_nsfw_on", return_value=True),
-        patch(
-            "Mikobot.plugins.antinsfw.prepare_scan_file", return_value="/tmp/test.png"
-        ),
-        patch(
-            "Mikobot.plugins.antinsfw._scan", return_value=Prediction(sfw=0.1, nsfw=0.9)
-        ),
+        patch("Mikobot.plugins.antinsfw.prepare_scan_file", return_value=SCAN_PATH),
+        patch("Mikobot.plugins.antinsfw._scan", return_value=NSFW_PREDICTION),
     ):
         await antinsfw.detect_nsfw(client, msg)
 
@@ -237,11 +178,10 @@ async def test_detect_nsfw_warns_when_bot_cannot_delete():
     assert "Could not delete message" in client.send_message.call_args[1]["text"]
 
 
-@pytest.mark.asyncio
 async def test_nsfw_enable_disable_status_query():
     client = AsyncMock()
     msg = MagicMock()
-    msg.chat.id = -10012345
+    msg.chat.id = NSFW_CHAT_ID
     msg.command = ["antinsfw"]
     msg.reply_text = AsyncMock()
 
@@ -252,13 +192,12 @@ async def test_nsfw_enable_disable_status_query():
     assert "AntiNSFW is currently **disabled**" in msg.reply_text.call_args[0][0]
 
 
-@pytest.mark.asyncio
 async def test_nsfw_enable_disable_warns_when_bot_lacks_delete_rights():
     from pyrogram.enums import ChatMemberStatus
 
     client = AsyncMock()
     msg = MagicMock()
-    msg.chat.id = -10012345
+    msg.chat.id = NSFW_CHAT_ID
     msg.command = ["antinsfw", "on"]
     msg.text = "/antinsfw on"
     msg.reply_text = AsyncMock()
@@ -274,13 +213,12 @@ async def test_nsfw_enable_disable_warns_when_bot_lacks_delete_rights():
     ):
         await antinsfw.nsfw_enable_disable.__wrapped__(client, msg)
 
-    mock_on.assert_called_once_with(-10012345)
+    mock_on.assert_called_once_with(NSFW_CHAT_ID)
     msg.reply_text.assert_called_once()
     assert "Warning" in msg.reply_text.call_args[0][0]
     assert "permission to delete messages" in msg.reply_text.call_args[0][0]
 
 
-@pytest.mark.asyncio
 async def test_prepare_scan_file_in_memory_fast_path():
     import io
 
@@ -288,16 +226,10 @@ async def test_prepare_scan_file_in_memory_fast_path():
     fake_bio = io.BytesIO(b"fake_image_bytes")
     client.download_media.return_value = fake_bio
 
-    msg = MagicMock()
-    msg.document = None
-    msg.sticker = None
-    msg.animation = None
-    msg.video = None
-    msg.video_note = None
-    msg.photo = MagicMock()
-    msg.photo.file_size = 500
-    msg.photo.file_id = "photo_in_mem_123"
-    msg.photo.thumbs = None
+    msg = _media_message(
+        spec=None,
+        photo=MagicMock(file_size=500, file_id="photo_in_mem_123", thumbs=None),
+    )
 
     result = await antinsfw.prepare_scan_file(client, msg)
 
@@ -305,32 +237,11 @@ async def test_prepare_scan_file_in_memory_fast_path():
     assert result is fake_bio
 
 
-@pytest.mark.asyncio
 async def test_lru_cache_deduplicates_media_scans():
-    from collections import namedtuple
-
-    Prediction = namedtuple("Prediction", ["sfw", "nsfw"])
-
     client = AsyncMock()
-    msg = MagicMock()
-    msg.chat.id = -10012345
-    msg.message_thread_id = None
-    msg.from_user = MagicMock()
-    msg.from_user.id = 555
-    msg.from_user.mention = "@user"
-    msg.sender_chat = None
-    msg.document = None
-    msg.photo = MagicMock()
-    msg.photo.file_size = 500
-    msg.photo.file_id = "repeat_photo_id"
-    msg.photo.file_unique_id = "unique_hash_999"
-    msg.photo.thumbs = None
-    msg.sticker = None
-    msg.animation = None
-    msg.video = None
-    msg.video_note = None
-
-    msg.delete = AsyncMock()
+    msg = _nsfw_message(
+        user_id=555, photo_id="repeat_photo_id", unique_id="unique_hash_999"
+    )
 
     # Pre-populate cache
     antinsfw.set_cached_result("unique_hash_999", Prediction(sfw=0.05, nsfw=0.95))

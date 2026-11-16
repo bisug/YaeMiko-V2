@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
-import pytest
-
 from Mikobot.plugins import genshin
+
+IMG = "https://pub-1ad.r2.dev"
 
 
 def test_rarity_stars():
@@ -47,35 +47,30 @@ def test_image_url_extraction():
     char_entry = {
         "key": "albedo",
         "img": {
-            "portrait": "https://pub-1ad.r2.dev/albedo/portrait.png",
-            "icon": "https://pub-1ad.r2.dev/albedo/icon.png",
+            "portrait": f"{IMG}/albedo/portrait.png",
+            "icon": f"{IMG}/albedo/icon.png",
         },
     }
-    assert (
-        genshin._image_url(char_entry, "characters")
-        == "https://pub-1ad.r2.dev/albedo/portrait.png"
-    )
+    assert genshin._image_url(char_entry, "characters") == f"{IMG}/albedo/portrait.png"
 
     # Material with direct string url
     mat_entry = {
         "key": "cecilia",
-        "img": "https://pub-1ad.r2.dev/materials/cecilia/icon.png",
+        "img": f"{IMG}/materials/cecilia/icon.png",
     }
     assert (
         genshin._image_url(mat_entry, "materials")
-        == "https://pub-1ad.r2.dev/materials/cecilia/icon.png"
+        == f"{IMG}/materials/cecilia/icon.png"
     )
 
     # Artifact with pieces dict
     art_entry = {
         "key": "emblem",
-        "pieces": {
-            "flower": {"img": "https://pub-1ad.r2.dev/artifacts/emblem/flower.png"}
-        },
+        "pieces": {"flower": {"img": f"{IMG}/artifacts/emblem/flower.png"}},
     }
     assert (
         genshin._image_url(art_entry, "artifacts")
-        == "https://pub-1ad.r2.dev/artifacts/emblem/flower.png"
+        == f"{IMG}/artifacts/emblem/flower.png"
     )
 
 
@@ -106,7 +101,7 @@ def test_render_character():
                 ],
             }
         ],
-        "img": {"portrait": "https://pub-1ad.r2.dev/albedo/portrait.png"},
+        "img": {"portrait": f"{IMG}/albedo/portrait.png"},
     }
 
     # Bio tab
@@ -115,7 +110,7 @@ def test_render_character():
     assert "Kreideprinz" in text
     assert "Geo" in text
     assert markup
-    assert img_url == "https://pub-1ad.r2.dev/albedo/portrait.png"
+    assert img_url == f"{IMG}/albedo/portrait.png"
 
     # Talents tab
     text, _, _ = genshin._render_character(payload, "talents")
@@ -137,7 +132,7 @@ def test_render_weapon():
         "sub_stat": "CRIT DMG",
         "passive_name": "Reckless Cinnabar",
         "passive_desc": "HP increased by 20%.",
-        "img": {"icon": "https://pub-1ad.r2.dev/weapons/staff-of-homa/icon.png"},
+        "img": {"icon": f"{IMG}/weapons/staff-of-homa/icon.png"},
     }
     text, markup, img_url = genshin._render_weapon(payload)
     assert "Staff of Homa" in text
@@ -151,7 +146,7 @@ def test_render_artifact():
         "name": "Emblem of Severed Fate",
         "rarity": 5,
         "bonus": {"2pc": "Energy Recharge +20%", "4pc": "Burst DMG up"},
-        "pieces": {"flower": {"img": "https://pub-1ad.r2.dev/flower.png"}},
+        "pieces": {"flower": {"img": f"{IMG}/flower.png"}},
     }
     text, markup, img_url = genshin._render_artifact(payload)
     assert "Emblem of Severed Fate" in text
@@ -168,7 +163,7 @@ def test_render_material():
         "region": "Mondstadt",
         "description": "A beautiful flower.",
         "used_by": {"characters": ["albedo", "venti"]},
-        "img": "https://pub-1ad.r2.dev/cecilia.png",
+        "img": f"{IMG}/cecilia.png",
     }
     text, markup, img_url = genshin._render_material(payload)
     assert "Cecilia" in text
@@ -182,7 +177,7 @@ def test_render_enemy():
         "name": "Hilichurl",
         "type": "Common Monsters",
         "drops": [{"name": "Damaged Mask", "rarity": 1}],
-        "img": "https://pub-1ad.r2.dev/hilichurl.png",
+        "img": f"{IMG}/hilichurl.png",
     }
     text, markup, img_url = genshin._render_enemy(payload)
     assert "Hilichurl" in text
@@ -190,7 +185,6 @@ def test_render_enemy():
     assert markup
 
 
-@pytest.mark.asyncio
 async def test_fetch_roster_parsing():
     from unittest.mock import MagicMock
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-import subprocess
 import xml.dom.minidom
 from pathlib import Path
 
@@ -28,13 +27,6 @@ def _slugify(heading: str) -> str:
     text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text)
     text = re.sub(r"[^a-z0-9\s-]", "", text.lower())
     return re.sub(r"\s+", "-", text.strip())
-
-
-def _root_files() -> list[Path]:
-    tracked = subprocess.run(
-        ["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True
-    ).stdout.split()
-    return [ROOT / name for name in tracked if (ROOT / name).exists()]
 
 
 def test_relative_targets():

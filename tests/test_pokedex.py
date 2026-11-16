@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from pyrogram.errors import MessageNotModified
 
 from Mikobot.plugins import pokedex
@@ -102,7 +101,6 @@ def test_moves_text():
     assert "Move 24" in txt
 
 
-@pytest.mark.asyncio
 async def test_pokemon_caching():
     pokedex._POKEMON_CACHE.clear()
     mock_data = {"id": 25, "name": "pikachu"}
@@ -120,7 +118,6 @@ async def test_pokemon_caching():
         assert mock_get.call_count == 1
 
 
-@pytest.mark.asyncio
 async def test_callback_handles_message_not_modified():
     query = MagicMock()
     query.data = "pk:25:info:0"
