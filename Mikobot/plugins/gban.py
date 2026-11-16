@@ -85,8 +85,8 @@ async def check_and_ban(client, message: Message, user_id, should_message=True):
         await client.ban_chat_member(message.chat.id, user_id)
         if should_message:
             text = (
-                f"<b>Alert</b>: this user is globally banned.\n"
-                f"<code>*bans them from here*</code>.\n"
+                f"<b>Alert</b>: This user is globally banned.\n"
+                f"<code>Banned from this chat</code>.\n"
                 f"<b>Appeal chat</b>: @{SUPPORT_CHAT}\n"
                 f"<b>User ID</b>: <code>{user_id}</code>"
             )
@@ -155,28 +155,30 @@ async def gban(client, message: Message):
 
     if not user_id:
         await message.reply_text(
-            "You don't seem to be referring to a user or the ID specified is incorrect.",
+            "Mention a user or provide a valid ID.",
         )
         return
 
     if int(user_id) in DEV_USERS:
         await message.reply_text(
-            "That user is part of the Association\nI can't act against our own.",
+            "That user is part of the Association.\nThe bot cannot act against its own.",
         )
         return
 
     if int(user_id) in DRAGONS:
         await message.reply_text(
-            "I spy, with my little eye... a disaster! Why are you guys turning on each other?",
+            "That user is a dragon and cannot be banned.",
         )
         return
 
     if user_id == client.me.id:
-        await message.reply_text("You uhh...want me to kick myself?")
+        await message.reply_text("The bot cannot ban itself.")
         return
 
     if user_id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN):
-        await message.reply_text("Fool! You can't attack Telegram's native tech!")
+        await message.reply_text(
+            "The bot cannot act against Telegram's native accounts."
+        )
         return
 
     user_info = get_user_info(user_id) or {}
@@ -187,16 +189,16 @@ async def gban(client, message: Message):
     if sql.is_user_gbanned(user_id):
         if not reason:
             await message.reply_text(
-                "This user is already gbanned; I'd change the reason, but you haven't given me one...",
+                "This user is already globally banned. Provide a reason to change it.",
             )
             return
 
         old_reason = sql.update_gban_reason(user_id, user_username or user_name, reason)
         if old_reason:
             await message.reply_text(
-                "This user is already gbanned, for the following reason:\n"
+                "This user is already globally banned for this reason:\n"
                 "<code>{}</code>\n"
-                "I've gone and updated it with your new reason!".format(
+                "The reason has been updated.".format(
                     html.escape(old_reason),
                 ),
                 parse_mode=ParseMode.HTML,
@@ -204,12 +206,12 @@ async def gban(client, message: Message):
 
         else:
             await message.reply_text(
-                "This user is already gbanned, but had no reason set; I've gone and updated it!",
+                "This user is already globally banned. The reason has been set.",
             )
 
         return
 
-    await message.reply_text("On it!")
+    await message.reply_text("Banning the user.")
 
     start_time = time.time()
     datetime_fmt = "%Y-%m-%dT%H:%M"
@@ -269,18 +271,18 @@ async def gban(client, message: Message):
             if _matches_gban_error(excp, GBAN_ERRORS):
                 pass
             else:
-                await message.reply_text(f"Could not gban due to: {excp.message}")
+                await message.reply_text(f"Could not globally ban: {excp.message}")
                 if EVENT_LOGS:
                     await client.send_message(
                         EVENT_LOGS,
-                        f"Could not gban due to {excp.message}",
+                        f"Could not globally ban: {excp.message}",
                         parse_mode=ParseMode.HTML,
                     )
                 else:
                     await send_to_list(
                         client,
                         DRAGONS,
-                        f"Could not gban due to: {excp.message}",
+                        f"Could not globally ban: {excp.message}",
                     )
                 sql.ungban_user(user_id)
                 return
@@ -294,7 +296,7 @@ async def gban(client, message: Message):
         await send_to_list(
             client,
             DRAGONS,
-            f"Gban complete! (User banned in <code>{gbanned_chats}</code> chats)",
+            f"Global ban complete (user banned in <code>{gbanned_chats}</code> chats).",
             html=True,
         )
 
@@ -303,17 +305,17 @@ async def gban(client, message: Message):
 
     if gban_time > 60:
         gban_time = round((gban_time / 60), 2)
-        await message.reply_text("Done! Gbanned.", parse_mode=ParseMode.HTML)
+        await message.reply_text("Global ban complete.", parse_mode=ParseMode.HTML)
     else:
-        await message.reply_text("Done! Gbanned.", parse_mode=ParseMode.HTML)
+        await message.reply_text("Global ban complete.", parse_mode=ParseMode.HTML)
 
     try:
         await client.send_message(
             user_id,
-            "#EVENT"
-            "You have been marked as Malicious and as such have been banned from any future groups we manage."
+            "#EVENT\n"
+            "You have been marked as malicious and banned from all groups this bot manages."
             f"\n<b>Reason:</b> <code>{html.escape(reason or 'No reason provided')}</code>"
-            f"</b>Appeal Chat:</b> @{SUPPORT_CHAT}",
+            f"\n<b>Appeal Chat:</b> @{SUPPORT_CHAT}",
             parse_mode=ParseMode.HTML,
         )
     except RPCError:
@@ -334,7 +336,7 @@ async def ungban(client, message: Message):
 
     if not user_id:
         await message.reply_text(
-            "You don't seem to be referring to a user or the ID specified is incorrect.",
+            "Mention a user or provide a valid ID.",
         )
         return
 
@@ -343,10 +345,10 @@ async def ungban(client, message: Message):
     user_target = mention_html(user_id, user_name)
 
     if not sql.is_user_gbanned(user_id):
-        await message.reply_text("This user is not gbanned!")
+        await message.reply_text("This user is not globally banned.")
         return
 
-    await message.reply_text(f"I'll give {user_name} a second chance, globally.")
+    await message.reply_text(f"Giving {user_name} a second chance globally.")
 
     start_time = time.time()
     datetime_fmt = "%Y-%m-%dT%H:%M"
@@ -399,17 +401,19 @@ async def ungban(client, message: Message):
             if _matches_gban_error(excp, UNGBAN_ERRORS):
                 pass
             else:
-                await message.reply_text(f"Could not un-gban due to: {excp.message}")
+                await message.reply_text(
+                    f"Could not remove the global ban: {excp.message}"
+                )
                 if EVENT_LOGS:
                     await client.send_message(
                         EVENT_LOGS,
-                        f"Could not un-gban due to: {excp.message}",
+                        f"Could not remove the global ban: {excp.message}",
                         parse_mode=ParseMode.HTML,
                     )
                 else:
                     await client.send_message(
                         OWNER_ID,
-                        f"Could not un-gban due to: {excp.message}",
+                        f"Could not remove the global ban: {excp.message}",
                     )
                 return
 
@@ -421,16 +425,16 @@ async def ungban(client, message: Message):
             parse_mode=ParseMode.HTML,
         )
     else:
-        await send_to_list(client, DRAGONS, "un-gban complete!")
+        await send_to_list(client, DRAGONS, "Global ban removed.")
 
     end_time = time.time()
     ungban_time = round((end_time - start_time), 2)
 
     if ungban_time > 60:
         ungban_time = round((ungban_time / 60), 2)
-        await message.reply_text(f"Person has been un-gbanned. Took {ungban_time} min")
+        await message.reply_text(f"Global ban removed. Took {ungban_time} min")
     else:
-        await message.reply_text(f"Person has been un-gbanned. Took {ungban_time} sec")
+        await message.reply_text(f"Global ban removed. Took {ungban_time} sec")
 
 
 @support_plus
@@ -440,11 +444,11 @@ async def gbanlist(client, message: Message):
 
     if not banned_users:
         await message.reply_text(
-            "There aren't any gbanned users! You're kinder than I expected...",
+            "There are no globally banned users.",
         )
         return
 
-    banfile = "Screw these guys.\n"
+    banfile = "Globally banned users:\n"
     for user in banned_users:
         banfile += f"[x] {user['name']} - {user['user_id']}\n"
         if user["reason"]:
@@ -454,7 +458,7 @@ async def gbanlist(client, message: Message):
         output.name = "gbanlist.txt"
         await message.reply_document(
             document=output,
-            caption="Here is the list of currently gbanned users.",
+            caption="Globally banned users.",
         )
 
 
@@ -466,26 +470,24 @@ async def gbanstat(client, message: Message):
         if args[0].lower() in ["on", "yes"]:
             sql.enable_gbans(message.chat.id)
             await message.reply_text(
-                "Antispam is now enabled ✅ "
-                "I am now protecting your group from potential remote threats!",
+                "Antispam is enabled. The bot now protects this group from remote threats."
             )
         elif args[0].lower() in ["off", "no"]:
             sql.disable_gbans(message.chat.id)
             await message.reply_text(
-                "I am not now protecting your group from potential remote threats!",
+                "Antispam is disabled. The bot no longer protects this group from remote threats."
             )
     else:
         await message.reply_text(
-            "Give me some arguments to choose a setting! on/off, yes/no!\n\n"
-            "Your current setting is: {}\n"
-            "When True, any gbans that happen will also happen in your group. "
-            "When False, they won't, leaving you at the possible mercy of "
-            "spammers.".format(sql.does_chat_gban(message.chat.id)),
+            "Provide a setting: on/off or yes/no.\n\n"
+            "Current setting: {}\n"
+            "When enabled, global bans also apply in this group. "
+            "When disabled, they do not.".format(sql.does_chat_gban(message.chat.id)),
         )
 
 
 def __stats__():
-    return f"• {sql.num_gbanned_users()} gbanned users."
+    return f"• {sql.num_gbanned_users()} globally banned users."
 
 
 def __user_info__(user_id):
@@ -513,18 +515,17 @@ def __migrate__(old_chat_id, new_chat_id):
 
 
 def __chat_settings__(chat_id, user_id):
-    return f"This chat is enforcing *gbans*: `{sql.does_chat_gban(chat_id)}`."
+    return f"This chat enforces global bans: `{sql.does_chat_gban(chat_id)}`."
 
 
 __help__ = """
-➠ *Admins only:*
+Admins only:
+/antispam <on/off/yes/no>: Toggle antispam or show the current setting.
 
-» /antispam <on/off/yes/no>: Will toggle our antispam tech or return your current settings.
+Anti-spam bans spammers across all groups that use it and removes spam floods quickly.
 
-➠ Anti-Spam, used by bot devs to ban spammers across all groups. This helps protect \
-you and your groups by removing spam flooders as quickly as possible.
-➠ *Note:* Users can appeal gbans or report spammers at @hydraX2support
+Users can appeal a global ban or report spammers at @hydraX2support.
 """
 
 
-__mod_name__ = "ANTI-SPAM"
+__mod_name__ = "Anti-Spam"

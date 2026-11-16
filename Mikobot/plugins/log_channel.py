@@ -126,13 +126,13 @@ if is_module_loaded(FILENAME):
                 try:
                     await client.send_message(
                         orig_chat_id,
-                        "This log channel has been deleted - unsetting.",
+                        "This log channel was deleted. Unsetting it.",
                         message_thread_id=1,
                     )
                 except RPCError:
                     await client.send_message(
                         orig_chat_id,
-                        "This log channel has been deleted - unsetting.",
+                        "This log channel was deleted. Unsetting it.",
                     )
                 sql.stop_chat_logging(orig_chat_id)
             else:
@@ -166,7 +166,7 @@ if is_module_loaded(FILENAME):
             )
 
         else:
-            await message.reply_text("No log channel has been set for this group!")
+            await message.reply_text("No log channel is set for this group.")
 
     @on_message(filters.command("setlog"), chained=True)
     @check_admin(is_user=True)
@@ -181,7 +181,7 @@ if is_module_loaded(FILENAME):
         if chat.type == ChatType.CHANNEL:
             await client.send_message(
                 chat.id,
-                "Now, forward the /setlog to the group you want to tie this channel to!",
+                "Forward the /setlog to the group you want to link this channel to.",
             )
 
         elif f_chat:
@@ -198,16 +198,16 @@ if is_module_loaded(FILENAME):
             if chat.is_forum:
                 await client.send_message(
                     chat.id,
-                    "Successfully set log channel!",
+                    "Log channel set.",
                     message_thread_id=message.message_thread_id,
                 )
             else:
-                await client.send_message(chat.id, "Successfully set log channel!")
+                await client.send_message(chat.id, "Log channel set.")
 
         else:
             await message.reply_text(
-                "The steps to set a log channel are:\n"
-                " - Add bot to the desired channel (as an admin!)\n"
+                "To set a log channel:\n"
+                " - Add the bot to the desired channel as an admin\n"
                 " - Send /setlog in the channel\n"
                 " - Forward the /setlog to the group\n",
             )
@@ -223,10 +223,10 @@ if is_module_loaded(FILENAME):
                 log_channel,
                 f"Channel has been unlinked from {html.escape(chat.title)}",
             )
-            await message.reply_text("Log channel has been un-set.")
+            await message.reply_text("Log channel unset.")
 
         else:
-            await message.reply_text("No log channel is set yet!")
+            await message.reply_text("No log channel is set yet.")
 
     def __stats__():
         return f"• {sql.num_logchannels()} log channels set."
@@ -239,10 +239,10 @@ if is_module_loaded(FILENAME):
         if log_channel:
             log_channel_info = await client.get_chat(log_channel)
             return f"This group has all its logs sent to: {escape_markdown(log_channel_info.title)} (`{log_channel}`)"
-        return "No log channel is set for this group!"
+        return "No log channel is set for this group."
 
     __help__ = """
-➠ *Admins Only*
+➠ *Admin only:*
 
 » /logchannel: Get log channel info.
 
@@ -250,14 +250,14 @@ if is_module_loaded(FILENAME):
 
 » /unsetlog: Unset the log channel.
 
-➠ *Setting the log channel is done by:*
-➠ *Adding the bot to the desired channel (as an admin!)*
+➠ *To set the log channel:*
+➠ *Add the bot to the desired channel as an admin*
 
-» Sending /setlog in the channel
-» Forwarding the /setlog to the group
+» Send /setlog in the channel
+» Forward the /setlog to the group
 """
 
-    __mod_name__ = "LOG-SET"
+    __mod_name__ = "Log-Set"
 
 else:
     # run anyway if module not loaded

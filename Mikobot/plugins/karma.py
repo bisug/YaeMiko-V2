@@ -44,7 +44,7 @@ async def upvote(_, message):
     if not (reply_user and current_user):
         return
     if reply_user.id == OWNER_ID:
-        await message.reply_text("How so pro?")
+        await message.reply_text("The owner cannot receive karma.")
         return
     if reply_user.id == current_user.id:
         return
@@ -57,7 +57,7 @@ async def upvote(_, message):
     new_karma = {"karma": karma}
     await asyncio.to_thread(update_karma, chat_id, int_to_alpha(user_id), new_karma)
     await message.reply_text(
-        f"𝗜𝗻𝗰𝗿𝗲𝗺𝗲𝗻𝘁𝗲𝗱 𝗸𝗮𝗿𝗺𝗮 𝗼𝗳 {user_mention} 𝗯𝘆 1.\n**⭐️ 𝗧𝗢𝗧𝗔𝗟 𝗣𝗢𝗜𝗡𝗧𝗦:** {karma}"
+        f"Incremented karma of {user_mention} by 1.\n**Total points:** {karma}"
     )
 
 
@@ -80,7 +80,7 @@ async def downvote(_, message):
     if not (reply_user and current_user):
         return
     if reply_user.id == OWNER_ID:
-        await message.reply_text("I know him, so I'm not gonna do that, baby.")
+        await message.reply_text("The owner cannot lose karma.")
         return
     if reply_user.id == current_user.id:
         return
@@ -96,7 +96,7 @@ async def downvote(_, message):
         update_karma, message.chat.id, int_to_alpha(user_id), new_karma
     )
     await message.reply_text(
-        f"𝗗𝗲𝗰𝗿𝗲𝗺𝗲𝗻𝘁𝗲𝗱 𝗸𝗮𝗿𝗺𝗮 𝗼𝗳 {user_mention} 𝗯𝘆 1.\n**⭐️ 𝗧𝗢𝗧𝗔𝗟 𝗣𝗢𝗜𝗡𝗧𝗦:** {karma}"
+        f"Decremented karma of {user_mention} by 1.\n**Total points:** {karma}"
     )
 
 
@@ -104,12 +104,12 @@ async def downvote(_, message):
 @capture_err
 async def karma(_, message):
     if not message.reply_to_message:
-        m = await message.reply_text("Analyzing karma... This may take a while.")
+        m = await message.reply_text("Analyzing karma...")
         karma = await asyncio.to_thread(get_karmas, message.chat.id)
         if not karma:
             await m.edit_text("No karma in the database for this chat.")
             return
-        msg = f"**🎖 𝗞𝗔𝗥𝗠𝗔 𝗟𝗜𝗦𝗧 𝗢𝗙 {message.chat.title} :**\n"
+        msg = f"**Karma list for {message.chat.title}:**\n"
         limit = 0
         karma_dicc = {}
         for i in karma:
@@ -144,7 +144,7 @@ async def karma(_, message):
         user_id = message.reply_to_message.from_user.id
         karma = get_karma(message.chat.id, int_to_alpha(user_id))
         karma = karma["karma"] if karma else 0
-        await message.reply_text(f"**⭐️ 𝗧𝗢𝗧𝗔𝗟 𝗣𝗢𝗜𝗡𝗧𝗦:** {karma}")
+        await message.reply_text(f"**Total points:** {karma}")
 
 
 @app.on_message(filters.command("karma"))
@@ -172,7 +172,7 @@ async def karma_toggle_xd(_, message):
         await message.reply_text(usage)
 
 
-__mod_name__ = "KARMA"
+__mod_name__ = "Karma"
 
 
 def __migrate__(old_chat_id, new_chat_id):
@@ -181,15 +181,14 @@ def __migrate__(old_chat_id, new_chat_id):
 
 
 __help__ = """
+Upvote:
+Use a keyword such as "+", "+1", or "thanks" in a reply to add karma.
 
-➠ *UPVOTE* - Use upvote keywords like "+", "+1", "thanks", etc. to upvote a message.
-➠ *DOWNVOTE* - Use downvote keywords like "-", "-1", etc. to downvote a message.
+Downvote:
+Use a keyword such as "-" or "-1" in a reply to remove karma.
 
-➠ *Commands*
-
-» /karmastat:- `Reply to a user to check that user's karma points`
-
-» /karmastat:- `Send without replying to any message to check karma point list of top 10`
-
-» /karma [OFF|ON] - `Enable or disable karma system in your chat.`
+Commands:
+/karmastat: Reply to a user to check their karma.
+/karmastat: Send without a reply to list the top 10 by karma.
+/karma [OFF|ON]: Enable or disable the karma system in this chat.
 """

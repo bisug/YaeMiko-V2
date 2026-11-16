@@ -47,7 +47,7 @@ async def force_subscribe(message):
             return await message.reply_text("You need to be an admin to do this.")
         if member.status != ChatMemberStatus.OWNER:
             return await message.reply_text(
-                "❗ Group creator required\nYou have to be the group creator to do that."
+                "Group creator required.\nOnly the group creator can do that."
             )
     parts = message.text.split(None, 1)
     channel = parts[1] if len(parts) > 1 else None
@@ -57,14 +57,14 @@ async def force_subscribe(message):
             await message.reply_text("Force subscribe is disabled in this chat.")
         else:
             await message.reply_text(
-                f"Force subscribe is currently enabled. Users are forced to join @{chat_db['channel']} to speak here."
+                f"Force subscribe is enabled. Members must join @{chat_db['channel']} to speak here."
             )
         return
     if channel.lower() in FORCESUBSCRIBE_ON:
         return await message.reply_text("Please specify the channel username.")
     if channel.lower() in FORCESUBSCRIBE_OFF:
         db.disapprove(message.chat.id)
-        return await message.reply_text("**Force subscribe is disabled successfully.**")
+        return await message.reply_text("**Force subscribe is disabled.**")
     try:
         channel_entity = await app.get_chat(channel)
     except Exception:
@@ -74,7 +74,7 @@ async def force_subscribe(message):
         return await message.reply_text("That's not a valid channel.")
     if not await participant_check(username, BOT_ID):
         return await message.reply_text(
-            f"**Not an admin in the channel**\nI am not an admin in the [channel](https://t.me/{username}). Add me as an admin to enable force subscribe."
+            f"**Not an admin in the channel**\nThe bot is not an admin in the [channel](https://t.me/{username}). Add the bot as an admin to enable force subscribe."
         )
     db.add_channel(message.chat.id, str(username))
     await message.reply_text(f"Force subscribe is enabled for @{username}.")
@@ -133,7 +133,7 @@ async def force_subscribe_new_message(client, message):
         ]
     )
     await message.reply_text(
-        f'<b><a href="tg://user?id={message.from_user.id}">{name}</a></b>, you have <b>not subscribed</b> to our <b><a href="https://t.me/{channel}">channel</a></b> yet. Please join and press the button below to unmute yourself.',
+        f'<b><a href="tg://user?id={message.from_user.id}">{name}</a></b>, you have <b>not subscribed</b> to the <b><a href="https://t.me/{channel}">channel</a></b>. Join it and press the button below to unmute yourself.',
         reply_markup=markup,
     )
     await client.restrict_chat_member(
@@ -153,7 +153,7 @@ async def unmute_force_subscribe(client, callback):
     channel = settings["channel"]
     if not await participant_check(channel, user_id):
         return await callback.answer(
-            "You have to join the channel first to get unmuted!", show_alert=True
+            "Join the channel first to be unmuted.", show_alert=True
         )
     await app.restrict_chat_member(
         callback.message.chat.id, user_id, ChatPermissions(can_send_messages=True)
@@ -170,20 +170,17 @@ def __migrate__(old_chat_id, new_chat_id):
 
 
 __help__ = r"""
-➠ *Dazai has the capability to hush members who haven't yet subscribed to your channel until they decide to hit that subscribe button.*
-➠ *When activated, I'll silence those who are not subscribed and provide them with an option to unmute. Once they click the button, I'll lift the mute.*
+Force subscribe mutes members who have not joined your channel until they subscribe. When active, the bot mutes unsubscribed members and offers an unmute button. Pressing the button lifts the mute.
 
-➠ Configuration Process
-➠ Exclusively for Creators
-➠ Grant me admin privileges in your group
-➠ Designate me as an admin in your channel
+Setup:
+- Only the group creator can configure force subscribe.
+- Add the bot as an admin in your group.
+- Add the bot as an admin in your channel.
 
-➠ *Commands*
-» /fsub channel\_username - to initiate and customize settings for the channel.
+Commands:
+/fsub <channel\_username>: Set the channel and enable force subscribe.
+/fsub: Show the current settings.
+/fsub off: Disable force subscribe.
 
-➠ *Kick things off with...*
-» /fsub - to review the current settings.
-» /fsub off - to deactivate the force subscription feature.
-
-➠ *If you disable fsub, you'll need to set it up again for it to take effect. Utilize /fsub channel\_username.*
+After disabling force subscribe, set it again with /fsub <channel\_username> to take effect.
 """

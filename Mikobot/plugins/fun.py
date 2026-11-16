@@ -23,7 +23,7 @@ async def truth(client, message: Message):
     try:
         question = await make_request("https://api.truthordarebot.xyz/v1/truth")
     except Exception:
-        question = "The truth service is unavailable. Please try again later."
+        question = "The truth service is unavailable. Try again later."
     await message.reply_text(question)
 
 
@@ -31,7 +31,7 @@ async def dare(client, message: Message):
     try:
         question = await make_request("https://api.truthordarebot.xyz/v1/dare")
     except Exception:
-        question = "The dare service is unavailable. Please try again later."
+        question = "The dare service is unavailable. Try again later."
     await message.reply_text(question)
 
 
@@ -155,7 +155,7 @@ async def webify(client, message: Message):
 
     if not string:
         await message.reply_text(
-            "Usage is `/weebify <text>`", parse_mode=ParseMode.MARKDOWN
+            "Usage: `/weebify <text>`", parse_mode=ParseMode.MARKDOWN
         )
         return
 
@@ -171,30 +171,21 @@ async def webify(client, message: Message):
 
 
 __help__ = """
-» /decide: randomly answers yes/no/maybe.
-
-» /truth: sends a random truth string.
-
-» /dare: sends a random dare string.
-
-» /toss: tosses a coin.
-
-» /shrug: get shrug xd.
-
-» /bluetext: check yourself :V.
-
-» /roll: roll a dice.
-
-» /rlg: join ears, nose, mouth and create an emo ;-;
-
-» /weebify <text>: returns a weebified text.
-
-» /flirt: returns a random flirt line.
-
-» /joke: tells a random joke.
+Commands:
+/decide: Answer yes, no, or maybe.
+/truth: Send a random truth question.
+/dare: Send a random dare.
+/toss: Toss a coin.
+/shrug: Reply with a shrug.
+/bluetext: Reply with blue text.
+/roll: Roll a six-sided die.
+/rlg: Build a random face from ears, nose, and mouth.
+/weebify <text>: Convert text to the weeb alphabet.
+/flirt: Send a random flirt line.
+/joke: Tell a random joke.
 """
 
-__mod_name__ = "FUN"
+__mod_name__ = "Fun"
 
 # Eleven single-purpose commands; the loop keeps them from needing eleven
 # near-identical registration lines.

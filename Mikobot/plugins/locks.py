@@ -380,18 +380,18 @@ async def lock(client, message: Message) -> str:
                 chat = await client.get_chat(conn)
                 chat_id = conn
                 chat_name = chat.title
-                text = "Locked {} for non-admins in {}!".format(ltype, chat_name)
+                text = "Locked {} for non-admins in {}.".format(ltype, chat_name)
             else:
                 if message.chat.type == ChatType.PRIVATE:
                     await send_message(
                         message,
-                        "This command is meant to be used in a group, not in PM",
+                        "This command only works in a group.",
                     )
                     return ""
                 chat = message.chat
                 chat_id = message.chat.id
                 chat_name = message.chat.title
-                text = "Locked {} for non-admins!".format(ltype)
+                text = "Locked {} for non-admins.".format(ltype)
             sql.update_lock(chat.id, ltype, locked=True)
             await send_message(message, text, parse_mode=ParseMode.MARKDOWN)
 
@@ -409,7 +409,7 @@ async def lock(client, message: Message) -> str:
                 chat = await client.get_chat(conn)
                 chat_id = conn
                 chat_name = chat.title
-                text = "Locked {} for all non-admins in {}!".format(
+                text = "Locked {} for all non-admins in {}.".format(
                     ltype,
                     chat_name,
                 )
@@ -417,13 +417,13 @@ async def lock(client, message: Message) -> str:
                 if message.chat.type == ChatType.PRIVATE:
                     await send_message(
                         message,
-                        "This command is meant to be used in a group, not in PM",
+                        "This command only works in a group.",
                     )
                     return ""
                 chat = message.chat
                 chat_id = message.chat.id
                 chat_name = message.chat.title
-                text = "Locked {} for all non-admins!".format(ltype)
+                text = "Locked {} for all non-admins.".format(ltype)
 
             chat_obj = await client.get_chat(chat_id)
             current_permission = chat_obj.permissions
@@ -497,10 +497,10 @@ async def lock(client, message: Message) -> str:
         else:
             await send_message(
                 message,
-                "What are you trying to lock...? Try /locktypes for the list of lockables",
+                "Specify a lock type. Use /locktypes for the list.",
             )
     else:
-        await send_message(message, "What are you trying to lock...?")
+        await send_message(message, "Specify a lock type.")
 
     return ""
 
@@ -522,18 +522,18 @@ async def unlock(client, message: Message) -> str:
                 chat = await client.get_chat(conn)
                 chat_id = conn
                 chat_name = chat.title
-                text = "Unlocked {} for everyone in {}!".format(ltype, chat_name)
+                text = "Unlocked {} for everyone in {}.".format(ltype, chat_name)
             else:
                 if message.chat.type == ChatType.PRIVATE:
                     await send_message(
                         message,
-                        "This command is meant to be used in a group, not in PM",
+                        "This command only works in a group.",
                     )
                     return ""
                 chat = message.chat
                 chat_id = message.chat.id
                 chat_name = message.chat.title
-                text = "Unlocked {} for everyone!".format(ltype)
+                text = "Unlocked {} for everyone.".format(ltype)
             sql.update_lock(chat.id, ltype, locked=False)
             await send_message(message, text, parse_mode=ParseMode.MARKDOWN)
             return (
@@ -553,18 +553,18 @@ async def unlock(client, message: Message) -> str:
                 chat = await client.get_chat(conn)
                 chat_id = conn
                 chat_name = chat.title
-                text = "Unlocked {} for everyone in {}!".format(ltype, chat_name)
+                text = "Unlocked {} for everyone in {}.".format(ltype, chat_name)
             else:
                 if message.chat.type == ChatType.PRIVATE:
                     await send_message(
                         message,
-                        "This command is meant to be used in a group, not in PM",
+                        "This command only works in a group.",
                     )
                     return ""
                 chat = message.chat
                 chat_id = message.chat.id
                 chat_name = message.chat.title
-                text = "Unlocked {} for everyone!".format(ltype)
+                text = "Unlocked {} for everyone.".format(ltype)
 
             member = await client.get_chat_member(chat.id, client.me.id)
 
@@ -576,7 +576,7 @@ async def unlock(client, message: Message) -> str:
             if not can_change_info:
                 await send_message(
                     message,
-                    "I don't have permission to change group info.",
+                    "The bot lacks permission to change group info.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
                 return
@@ -615,11 +615,11 @@ async def unlock(client, message: Message) -> str:
         else:
             await send_message(
                 message,
-                "What are you trying to unlock...? Try /locktypes for the list of lockables.",
+                "Specify an unlock type. Use /locktypes for the list.",
             )
 
     else:
-        await send_message(message, "What are you trying to unlock...?")
+        await send_message(message, "Specify an unlock type.")
 
 
 def _message_matches_lock(lockable, filter, locks, message) -> bool:
@@ -828,15 +828,14 @@ async def del_lockables(client, message: Message):
                         if not await is_bot_admin(chat, client.me.id):
                             await send_message(
                                 message,
-                                "I see a bot and I've been told to stop them from joining..."
-                                "but I'm not admin!",
+                                "A bot tried to join, but the bot is not an admin.",
                             )
                             return
 
                         await client.ban_chat_member(chat.id, new_mem.id)
                         await send_message(
                             message,
-                            "Only admins are allowed to add bots in this chat! Get outta here.",
+                            "Only admins may add bots in this chat.",
                         )
                         break
             else:
@@ -860,7 +859,7 @@ async def build_lock_message(chat_id):
     locklist = []
     permslist = []
     if locks:
-        res += "*" + "These are the current locks in this Chat:" + "*"
+        res += "*" + "Current locks in this chat:" + "*"
         if locks:
             locklist.append("sticker = `{}`".format(locks.sticker))
             locklist.append("audio = `{}`".format(locks.audio))
@@ -919,7 +918,7 @@ async def build_lock_message(chat_id):
         locklist.sort()
         for x in locklist:
             res += "\n • {}".format(x)
-    res += "\n\n*" + "These are the current chat permissions:" + "*"
+    res += "\n\n*" + "Current chat permissions:" + "*"
     for x in permslist:
         res += "\n • {}".format(x)
     return res
@@ -940,7 +939,7 @@ async def list_locks(client, message: Message):
         if message.chat.type == ChatType.PRIVATE:
             await send_message(
                 message,
-                "This command is meant to be used in a group, not in PM",
+                "This command only works in a group.",
             )
             return ""
         chat = message.chat
@@ -977,7 +976,7 @@ async def _allowlist_target(message: Message):
         chat = await client.get_chat(conn)
         return conn, chat
     if message.chat.type == ChatType.PRIVATE:
-        await message.reply_text("This command is meant to be used in a group.")
+        await message.reply_text("This command only works in a group.")
         return None, None
     return message.chat.id, message.chat
 
@@ -1011,7 +1010,7 @@ async def allowlist(client, message: Message) -> str:
             for lockable, item in sorted(current)
         )
         await message.reply_text(
-            f"Allowlisted items here:\n{lines}", parse_mode=ParseMode.HTML
+            f"Allowlisted items:\n{lines}", parse_mode=ParseMode.HTML
         )
         return ""
 
@@ -1026,7 +1025,7 @@ async def allowlist(client, message: Message) -> str:
 
     if not values:
         await message.reply_text(
-            f"Give me something to allow for <code>{lockable}</code>."
+            f"Provide an item to allow for <code>{lockable}</code>."
         )
         return ""
 
@@ -1082,7 +1081,7 @@ async def rmallowlist(client, message: Message) -> str:
     args = message.command[1:] if len(message.command) > 1 else []
     user = message.from_user
     if not args:
-        await message.reply_text("Give me the type and item to remove.")
+        await message.reply_text("Provide the type and item to remove.")
         return ""
 
     lockable, values = args[0].lower(), args[1:]
@@ -1128,7 +1127,7 @@ async def rmallowlistall(client, message: Message) -> str:
         f"<b>{html.escape(chat.title)}:</b>\n"
         f"#ALLOWLIST\n"
         f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
-        f"Has cleared the whole allowlist."
+        f"Cleared the whole allowlist."
     )
 
 
@@ -1175,40 +1174,36 @@ async def __chat_settings__(chat_id, user_id):
 
 
 __help__ = """
-➠ Do stickers annoy you? or want to avoid people sharing links? or pictures? \
-You're in the right place!
-The locks module allows you to lock away some common items in the \
-telegram world; our bot will automatically delete them!
+➠ Lock common message types in a group. Locked messages are deleted automatically.
 
-» /locktypes: Lists all possible locktypes
+» /locktypes: List all available lock types.
 
 ➠ *Admins only:*
-» /lock <type>: Lock items of a certain type (not available in private)
-» /unlock <type>: Unlock items of a certain type (not available in private)
-» /locks: The current list of locks in this chat.
+» /lock <type>: Lock a message type for non-admins. Not available in private chats.
+» /unlock <type>: Unlock a message type for non-admins. Not available in private chats.
+» /locks: Show the current locks in this chat.
 
 ➠ *Allowlisting:* relax a lock for specific items instead of turning it off.
 » /allowlist: Show the current allowlist.
 » /allowlist <type> <item> ...: Allow items. `type` is one of url, button,
 invitelink, inline, anonchannel, forward, command, sticker, emojicustom.
-For url and button give a domain; for the others an id, @username or pack name.
+For url and button, give a domain; for the others, an id, @username, or pack name.
 Multiple items can be added at once: `/allowlist url example.org wikipedia.org`
 » /allowlist stickerpack:<>: Reply to a sticker to allow its whole pack.
 » /rmallowlist <type> <item> ...: Remove those items.
 » /rmallowlistall: Clear the allowlist entirely. Owner only.
 
-➠ Locks can be used to restrict a group's users.
+➠ Locks restrict a group's members.
 eg:
-Locking urls will auto-delete all messages with urls, locking stickers will restrict all \
-non-admin users from sending stickers, etc.
-Locking bots will stop non-admins from adding bots to the chat.
-Locking anonchannel will stop anonymous channel from messaging in your group.
+Locking urls deletes messages with urls. Locking stickers stops non-admins from sending stickers.
+Locking bots stops non-admins from adding bots to the chat.
+Locking anonchannel stops anonymous channels from messaging in your group.
 
 ➠ *Note:*
 
-» Unlocking permission *info* will allow members (non-admins) to change the group information, such as the description or the group name
+» Unlocking permission *info* lets members (non-admins) change group information, such as the description or group name.
 
-» Unlocking permission *pin* will allow members (non-admins) to pin a message in a group
+» Unlocking permission *pin* lets members (non-admins) pin a message in a group.
 """
 
-__mod_name__ = "LOCKS"
+__mod_name__ = "Locks"

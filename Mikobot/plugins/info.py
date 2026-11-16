@@ -50,7 +50,7 @@ async def info(client, message: Message):
                 userid = chat_obj.id
             except RPCError:
                 await reply_with_text(
-                    "I can't get information about this user/channel/group."
+                    "Unable to get information for this user, channel, or group."
                 )
                 return
         else:
@@ -84,44 +84,48 @@ async def info(client, message: Message):
             userid = message.sender_chat.id
 
     if not userid:
-        await reply_with_text("I can't get information about this user/channel/group.")
+        await reply_with_text(
+            "Unable to get information for this user, channel, or group."
+        )
         return
 
     try:
         chat_obj = await client.get_chat(userid)
     except RPCError, Exception:
-        await reply_with_text("I can't get information about this user/channel/group.")
+        await reply_with_text(
+            "Unable to get information for this user, channel, or group."
+        )
         return
 
     if chat_obj.type == ChatType.PRIVATE:
         if chat_obj.username:
-            head = "⇨【 <b>USER INFORMATION</b> 】⇦\n\n"
+            head = "<b>User information</b>\n\n"
             if chat_obj.username.endswith("bot"):
-                head = "⇨【 <b>BOT INFORMATION</b> 】⇦\n\n"
+                head = "<b>Bot information</b>\n\n"
 
-        head += f"➲ <b>ID:</b> <code>{chat_obj.id}</code>"
-        head += f"\n➲ <b>First Name:</b> {chat_obj.first_name}"
+        head += f"<b>ID:</b> <code>{chat_obj.id}</code>"
+        head += f"\n<b>First Name:</b> {chat_obj.first_name}"
         if chat_obj.last_name:
-            head += f"\n➲ <b>Last Name:</b> {chat_obj.last_name}"
+            head += f"\n<b>Last Name:</b> {chat_obj.last_name}"
         if chat_obj.username:
-            head += f"\n➲ <b>Username:</b> @{chat_obj.username}"
-        head += f"\n➲ <b>Permalink:</b> {mention_html(chat_obj.id, 'link')}"
+            head += f"\n<b>Username:</b> @{chat_obj.username}"
+        head += f"\n<b>Permalink:</b> {mention_html(chat_obj.id, 'link')}"
 
         if chat_obj.username and not chat_obj.username.endswith("bot"):
-            head += f"\n\n💎 <b>Premium User:</b> {premium}"
+            head += f"\n\n<b>Premium User:</b> {premium}"
 
         if chat_obj.bio:
-            head += f"\n\n<b>➲ Bio:</b> {chat_obj.bio}"
+            head += f"\n\n<b>Bio:</b> {chat_obj.bio}"
 
         if chat.type in (ChatType.GROUP, ChatType.SUPERGROUP):
             try:
                 chat_member = await client.get_chat_member(chat.id, chat_obj.id)
                 if chat_member.status == ChatMemberStatus.ADMINISTRATOR:
-                    head += f"\n➲ <b>Presence:</b> {chat_member.status}"
+                    head += f"\n<b>Presence:</b> {chat_member.status}"
                     if chat_member.custom_title:
                         head += f"\n➲ <b>Admin Title:</b> {chat_member.custom_title}"
                 else:
-                    head += f"\n➲ <b>Presence:</b> {chat_member.status}"
+                    head += f"\n<b>Presence:</b> {chat_member.status}"
             except RPCError, ValueError:
                 pass
 
@@ -133,13 +137,13 @@ async def info(client, message: Message):
         disaster_level_present = False
 
         if chat_obj.id == OWNER_ID:
-            head += "\n\n👑 <b>The disaster level of this person is My Owner.</b>"
+            head += "\n\n<b>Role: Owner.</b>"
             disaster_level_present = True
         elif chat_obj.id in DEV_USERS:
-            head += "\n\n🐉 <b>This user is a member of Infamous Hydra.</b>"
+            head += "\n\n<b>Role: Developer.</b>"
             disaster_level_present = True
         elif chat_obj.id in DRAGONS:
-            head += "\n\n🐲 <b>The disaster level of this person is Dragon.</b>"
+            head += "\n\n<b>Role: Dragon.</b>"
             disaster_level_present = True
         if disaster_level_present:
             head += " [?]"
@@ -154,7 +158,7 @@ async def info(client, message: Message):
 
     elif chat_obj.type == ChatType.CHANNEL:
         head = "Channel Information:\n"
-        await reply_with_text("Found channel, getting information...")
+        await reply_with_text("Fetching channel information...")
         head += f"<b>ID:</b> <code>{chat_obj.id}</code>"
         if chat_obj.title:
             head += f"\n<b>Title:</b> {chat_obj.title}"
@@ -168,7 +172,7 @@ async def info(client, message: Message):
 
     elif chat_obj.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
         head = "Group Information:\n"
-        await reply_with_text("Found group, getting information...")
+        await reply_with_text("Fetching group information...")
         head += f"<b>ID:</b> <code>{chat_obj.id}</code>"
         if chat_obj.title:
             head += f"\n<b>Title:</b> {chat_obj.title}"
@@ -212,7 +216,7 @@ async def info(client, message: Message):
 async def stats(client, message: Message):
     from Mikobot.__main__ import STATS
 
-    stats = f"📊 <b>{escape(BOT_NAME)}'s Statistics:</b>\n\n" + "\n".join(
+    stats = f"<b>{escape(BOT_NAME)}'s Statistics:</b>\n\n" + "\n".join(
         [mod.__stats__() for mod in STATS]
     )
     result = re.sub(r"(\d+)", r"<code>\1</code>", stats)
@@ -220,7 +224,7 @@ async def stats(client, message: Message):
     keyboard = [
         [
             InlineKeyboardButton(
-                text="㊋ Infamous • Hydra",
+                text="Infamous Hydra",
                 url="https://t.me/Infamous_Hydra",
                 style=ButtonStyle.PRIMARY,
             ),
@@ -238,13 +242,11 @@ async def stats(client, message: Message):
 
 
 __help__ = """
-*Overall information about user:*
-
-» /info : Fetch user information.
-
-» /uinfo : Fetch user information in banner.
+Commands:
+/info: Fetch user information.
+/uinfo: Fetch user information in a banner.
 """
 
 
-__mod_name__ = "INFO"
+__mod_name__ = "Info"
 __command_list__ = ["info"]

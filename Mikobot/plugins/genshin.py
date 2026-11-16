@@ -938,7 +938,7 @@ async def _universal_lookup(message: Message, query: str):
     thread_id = message.message_thread_id if message.chat.is_forum else None
     if len(matches) > 1:
         shown, page, total = _paginate(matches, 1)
-        text = _format_list_text("⛩ Genshin Search", query, len(matches), page, total)
+        text = _format_list_text("Genshin Search", query, len(matches), page, total)
         markup = _list_keyboard("all", query, 1, total, shown)
         await message.reply_text(
             text=text,
@@ -1048,20 +1048,20 @@ async def genshin_universal(client, message: Message):
     parts = (message.text or "").split(None, 1)
     if len(parts) <= 1 or not parts[1].strip():
         await message.reply_text(
-            "⛩ <b>Genshin Impact Lookup</b>\n\n"
-            "Search anything: characters, weapons, artifacts, materials, enemies, etc.\n\n"
+            "<b>Genshin Impact Lookup</b>\n\n"
+            "Search characters, weapons, artifacts, materials, and enemies.\n\n"
             "<b>Usage:</b> <code>/gi &lt;name&gt;</code> or <code>/genshin &lt;name&gt;</code>\n"
             "<b>Example:</b> <code>/gi albedo</code>\n\n"
-            "<b>Direct Category Commands:</b>\n"
-            "🧝 <code>/gchar</code> — characters\n"
-            "⚔️ <code>/gweapon</code> — weapons\n"
-            "💍 <code>/gartifact</code> — artifact sets\n"
-            "🍲 <code>/gconsumable</code> — consumables\n"
-            "🪵 <code>/gmaterial</code> — materials\n"
-            "👹 <code>/genemy</code> — enemies\n"
-            "🏛️ <code>/gdomain</code> — domains\n"
-            "🗺️ <code>/gnation</code> — nations\n"
-            "⚗️ <code>/gelement</code> — elements",
+            "<b>Category Commands:</b>\n"
+            "<code>/gchar</code>: characters\n"
+            "<code>/gweapon</code>: weapons\n"
+            "<code>/gartifact</code>: artifact sets\n"
+            "<code>/gconsumable</code>: consumables\n"
+            "<code>/gmaterial</code>: materials\n"
+            "<code>/genemy</code>: enemies\n"
+            "<code>/gdomain</code>: domains\n"
+            "<code>/gnation</code>: nations\n"
+            "<code>/gelement</code>: elements",
             parse_mode=ParseMode.HTML,
         )
         return
@@ -1203,7 +1203,7 @@ async def genshin_page(client, query: CallbackQuery):
 
     if kind == "all":
         matches = await _search_all(term)
-        title = "⛩ Genshin Search"
+        title = "Genshin Search"
     else:
         matches = _match(await _search(kind), term)
         title = f"{ENTITY_TYPES[kind].emoji} {ENTITY_TYPES[kind].label}s"
@@ -1254,21 +1254,20 @@ async def genshin_legacy_cb(client, query: CallbackQuery):
 
 
 __help__ = """
-⛩ *Genshin Impact Lookup*
+Commands:
+/gi <name>: Search all categories.
+/genshin <name>: Search all categories.
+/gchar <name>: Search characters, including talents, constellations, and ascension.
+/gweapon <name>: Search weapons for type, base attack, substat, and passive.
+/gartifact <name>: Search artifact sets and their bonuses.
+/gconsumable <name>: Search food, potions, and effects.
+/gmaterial <name>: Search materials and the characters that use them.
+/genemy <name>: Search enemies for family, faction, and drops.
+/gdomain <name>: Search domains for type, location, and rewards.
+/gnation <name>: Search nations for archon and ruling body.
+/gelement <name>: Search elements for reactions and descriptions.
 
-» */gi* or */genshin* `<name>` — universal search across all categories
-» */gchar* `<name>` — characters, talents, constellations & ascension
-» */gweapon* `<name>` — type, base ATK, substat and passive
-» */gartifact* `<name>` — set bonuses
-» */gconsumable* `<name>` — food, potions and effects
-» */gmaterial* `<name>` — ascension materials and who uses them
-» */genemy* `<name>` — family, faction and drops
-» */gdomain* `<name>` — type, location and rewards
-» */gnation* `<name>` — archon and ruling body
-» */gelement* `<name>` — reactions and descriptions
-
-➠ Search results feature interactive tap-to-view buttons and instant page navigation.
-➠ Character profiles include tabbed navigation for Talents, Constellations, and Ascension.
+Search results have tap-to-view buttons and page navigation. Character profiles have tabs for Talents, Constellations, and Ascension.
 """
 
 __mod_name__ = "Genshin"

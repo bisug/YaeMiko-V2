@@ -43,7 +43,7 @@ async def instadl_command_handler(client, message: Message):
                 await message.reply_text("Unsupported content type.")
         else:
             await message.reply_text(
-                "Unable to fetch content. Please check the Instagram URL or try with another Instagram link."
+                "Unable to fetch content. Check the URL or try another Instagram link."
             )
 
     except Exception:
@@ -58,5 +58,5 @@ async def instadl_command_handler(client, message: Message):
                 pass
 
 
-__mod_name__ = "INSTADL"
+__mod_name__ = "Instadl"
 __command_list__ = ["ig", "instagram", "insta", "instadl"]

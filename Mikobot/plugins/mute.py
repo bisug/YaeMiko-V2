@@ -24,23 +24,20 @@ LEFT_OR_BANNED = ("left", "kicked")
 
 async def check_user(user_id: int, client, chat: Chat) -> str | None:
     if not user_id:
-        reply = (
-            "You don't seem to be referring to a user or the ID specified is"
-            " incorrect.."
-        )
+        reply = "Mention a user or provide a valid ID."
         return reply
 
     try:
         await client.get_chat_member(chat.id, user_id)
     except RPCError:
-        return "I can't seem to find this user"
+        return "Unable to find this user."
 
     if user_id == client.me.id:
-        reply = "I'm not gonna MUTE myself, How high are you?"
+        reply = "The bot cannot mute itself."
         return reply
 
     if await is_user_admin(chat, user_id):
-        reply = "Sorry can't do that, this user is admin here."
+        reply = "This user is an admin here."
         return reply
 
     return None
@@ -56,7 +53,7 @@ async def _delete_replied(message: Message) -> None:
     if not cmd.startswith("d"):
         return
     if not message.reply_to_message:
-        await message.reply_text("Reply to the message you want deleted with that.")
+        await message.reply_text("Reply to the message you want deleted.")
         raise _StopCommand
     try:
         await message.reply_to_message.delete()
@@ -106,15 +103,14 @@ async def mute(client, message: Message) -> str:
         await client.restrict_chat_member(chat.id, user_id, chat_permissions)
         await client.send_message(
             chat.id,
-            f"Muted <b>{html.escape(member.user.first_name)}</b> with no expiration"
-            " date!",
+            f"Muted <b>{html.escape(member.user.first_name)}</b> with no expiration date.",
             parse_mode=ParseMode.HTML,
             message_thread_id=message.message_thread_id if chat.is_forum else None,
         )
         return log
 
     else:
-        await message.reply_text("This user is already muted!")
+        await message.reply_text("This user is already muted.")
 
     return ""
 
@@ -131,8 +127,7 @@ async def unmute(client, message: Message) -> str:
     user_id = await extract_user(message, args)
     if not user_id:
         await message.reply_text(
-            "You'll need to either give me a username to unmute, or reply to someone"
-            " to be unmuted.",
+            "Provide a username to unmute, or reply to the user to unmute.",
         )
         return ""
 
@@ -164,7 +159,7 @@ async def unmute(client, message: Message) -> str:
                 pass
             await client.send_message(
                 chat.id,
-                f"I shall allow <b>{html.escape(member.user.first_name)}</b> to text!",
+                f"Unmuted <b>{html.escape(member.user.first_name)}</b>.",
                 parse_mode=ParseMode.HTML,
                 message_thread_id=message.message_thread_id if chat.is_forum else None,
             )
@@ -176,8 +171,7 @@ async def unmute(client, message: Message) -> str:
             )
     else:
         await message.reply_text(
-            "This user isn't even in the chat, unmuting them won't make them talk"
-            " more than they already do!",
+            "This user is not in the chat. Unmuting them has no effect.",
         )
 
     return ""
@@ -207,7 +201,7 @@ async def temp_mute(client, message: Message) -> str:
     member = await client.get_chat_member(chat.id, user_id)
 
     if not reason:
-        await message.reply_text("You haven't specified a time to mute this user for!")
+        await message.reply_text("Specify a mute duration.")
         return ""
 
     split_reason = reason.split(None, 1)
@@ -245,7 +239,7 @@ async def temp_mute(client, message: Message) -> str:
             )
             await client.send_message(
                 chat.id,
-                f"Muted <b>{html.escape(member.user.first_name)}</b> for {time_val}!",
+                f"Muted <b>{html.escape(member.user.first_name)}</b> for {time_val}.",
                 parse_mode=ParseMode.HTML,
                 message_thread_id=message.message_thread_id if chat.is_forum else None,
             )
@@ -255,7 +249,7 @@ async def temp_mute(client, message: Message) -> str:
 
     except RPCError as excp:
         if "reply message not found" in str(excp.message or excp).lower():
-            await message.reply_text(f"Muted for {time_val}!")
+            await message.reply_text(f"Muted for {time_val}.")
             return log
         else:
             LOGGER.exception(
@@ -265,7 +259,7 @@ async def temp_mute(client, message: Message) -> str:
                 chat.id,
                 excp,
             )
-            await message.reply_text("Well damn, I can't mute that user.")
+            await message.reply_text("Unable to mute that user.")
 
     return ""
 
@@ -273,13 +267,13 @@ async def temp_mute(client, message: Message) -> str:
 __help__ = """
 ➠ *Admins only:*
 
-» /mute <userhandle>: silences a user. Can also be used as a reply, muting the replied to user.
+» /mute <userhandle>: Silence a user. Also works as a reply to mute the replied-to user.
 
-» /tmute <userhandle> x(m/h/d): mutes a user for x time. (via handle, or reply). `m` = `minutes`, `h` = `hours`, `d` = `days`.
+» /tmute <userhandle> x(m/h/d): Mute a user for a set time, by handle or reply. `m` = `minutes`, `h` = `hours`, `d` = `days`.
 » /dmute <userhandle>: Delete the replied message and mute the user. Must be a reply.
-» /dtmute <userhandle> x(m/h/d): Same as above, but mutes temporarily.
+» /dtmute <userhandle> x(m/h/d): Delete the replied message and mute the user temporarily.
 
-» /unmute <userhandle>: unmutes a user. Can also be used as a reply, unmuting the replied to user.
+» /unmute <userhandle>: Unmute a user. Also works as a reply to unmute the replied-to user.
 """
 
-__mod_name__ = "MUTE"
+__mod_name__ = "Mute"

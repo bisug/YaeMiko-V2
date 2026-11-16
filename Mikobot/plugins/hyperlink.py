@@ -19,9 +19,9 @@ async def pick_winner(client, message: Message):
     if participants:
         winner = random.choice(participants)
 
-        await message.reply_text(f"🎉 The winner is: {winner}")
+        await message.reply_text(f"Winner: {winner}")
     else:
-        await message.reply_text("Please provide a list of participants.")
+        await message.reply_text("Provide a list of participants.")
 
 
 @on_message(filters.command("hyperlink"))
@@ -48,6 +48,4 @@ async def hyperlink_command(client, message: Message):
                 link_preview_options=LinkPreviewOptions(is_disabled=True),
             )
         else:
-            await message.reply_text(
-                "❌ Invalid format! Please use the format: /hyperlink <text> <link>."
-            )
+            await message.reply_text("Invalid format. Use: /hyperlink <text> <link>.")

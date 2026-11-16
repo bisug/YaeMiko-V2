@@ -83,8 +83,8 @@ async def extract_user_and_text(
     result = await _resolve_target(message, args)
     if result == (None, None) and len(args) >= 1 and args[0][0] == "@":
         await message.reply_text(
-            "No idea who this user is. You'll be able to interact with them if "
-            "you reply to that person's message instead, or forward one of that user's messages.",
+            "This user could not be identified. Reply to their message or "
+            "forward one of their messages instead.",
         )
     return result
 
@@ -101,8 +101,8 @@ async def extract_unt_fedban(message: Message, args: list[str]) -> tuple:
     result = await _resolve_target(message, args)
     if result == (None, None) and len(args) >= 1 and args[0][0] == "@":
         await message.reply_text(
-            "I don't have that user in my db. "
-            "You'll be able to interact with them if you reply to that person's message instead, or forward one of that user's messages.",
+            "This user is not in the database. "
+            "Reply to their message or forward one of their messages instead.",
         )
     return result
 
