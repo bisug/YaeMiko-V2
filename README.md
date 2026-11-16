@@ -51,10 +51,10 @@ state in PostgreSQL, and ships 62 plugin modules.
 | **Runtime** | Python 3.14.10, single `asyncio` event loop |
 | **Telegram** | Kurigram 2.2.27 on MTProto with `Mikobot.events` registry |
 | **Storage** | PostgreSQL 18 through SQLAlchemy 2.1 |
-| **Modules** | 62 auto discovered plugins under `Mikobot/plugins` |
+| **Modules** | 62 auto-discovered plugins under `Mikobot/plugins` |
 | **Requirements** | 512 MB RAM minimum, 1 GB recommended, Python 3.14.10 |
 | **Deployment** | Render, Railway, Heroku, Docker, or a bare VPS |
-| **Guarantees** | CI compile, lint, unit, JSON and whitespace gates, weekly CodeQL, Dependabot updates |
+| **Checks** | CI compile, lint, unit, JSON and whitespace gates, weekly CodeQL, Dependabot updates |
 
 > **Maintained fork.** This repository is the main home of YaeMiko and is forked from
 > [Infamous-Hydra/YaeMiko](https://github.com/Infamous-Hydra/YaeMiko). Upstream remains credited
@@ -64,14 +64,14 @@ state in PostgreSQL, and ships 62 plugin modules.
 
 ## Highlights
 
-- **Pure MTProto runtime.** Powered by the Kurigram MTProto client and `Mikobot.events` registry
-  for direct MTProto performance, native Telegram features, and unified handler registration.
+- **Pure MTProto runtime.** Uses the Kurigram MTProto client and `Mikobot.events` registry for all
+  Telegram updates.
 - **Semantic inline buttons.** Buttons use explicit styles: `PRIMARY` for navigation, `SUCCESS`
   for confirming actions, `DANGER` for destructive actions.
 - **Shared HTTP client and durable state.** `Mikobot.state` holds one `httpx.AsyncClient`, and chat
   settings live in PostgreSQL rather than process memory, so a dyno bounce does not lose moderation
   state. Plugins that fan out messages throttle their own sends.
-- **Token safe logging.** A `RedactingFormatter` strips anything shaped like a bot token, and the
+- **Token-safe logging.** A `RedactingFormatter` strips anything shaped like a bot token, and the
   `httpx` and `httpcore` loggers are pinned to `WARNING` because their INFO output contains the
   full Telegram API URL.
 - **One store.** Everything lives in PostgreSQL: chat state, users, AFK, whispers, karma,
@@ -84,13 +84,13 @@ state in PostgreSQL, and ships 62 plugin modules.
   silences text as a side effect.
 - **Command approvals.** Bot-initiated setting changes need admin approval before they apply, and
   an anonymous admin must confirm a ban through a button.
-- **Self service.** `/echo`, `/say` and `/broadcast` relay messages, and `/export`, `/import` and
+- **Self-service.** `/echo`, `/say` and `/broadcast` relay messages, and `/export`, `/import` and
   `/reset` move a chat's configuration in and out as JSON.
 - **Forum support.** Topics are created and routed per action topic, so each action can have its own
   thread in a forum supergroup.
 - **Deploy anywhere.** The same `python -m Mikobot` entry point runs on Render, Railway, Heroku, in
-  the multi stage Docker image, or on a plain VPS. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-- **Modular by drop in.** Plugins are discovered with `glob`; `LOAD` controls ordering and
+  the multi-stage Docker image, or on a plain VPS. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+- **Modular by drop-in.** Plugins are discovered with `glob`; `LOAD` controls ordering and
   `NO_LOAD` excludes modules, so no code change is needed to trim the bot.
 
 ---
@@ -111,7 +111,7 @@ PostgreSQL is the only store. MongoDB was retired after every feature moved acro
 | Core runtime | [`Mikobot/__init__.py`](Mikobot/__init__.py) | Configuration, logging, event loop, Kurigram client |
 | Plugin bus | [`Mikobot/events.py`](Mikobot/events.py) | Registers Kurigram handlers behind one signature |
 | HTTP client | [`Mikobot/state.py`](Mikobot/state.py) | One shared `httpx.AsyncClient` with HTTP/2 and a 20 second timeout |
-| Plugins | [`Mikobot/plugins`](Mikobot/plugins) | 62 feature modules, auto discovered |
+| Plugins | [`Mikobot/plugins`](Mikobot/plugins) | 62 feature modules, auto-discovered |
 | SQL layer | [`Database/sql`](Database/sql) | 29 SQLAlchemy model modules, 56 tables, backed by PostgreSQL; see [docs/DATABASE.md](docs/DATABASE.md) |
 | Shared helpers | [`Mikobot/utils`](Mikobot/utils), [`Mikobot/plugins/helper_funcs`](Mikobot/plugins/helper_funcs) | Caching, custom filters, error capture, localization, message parsing, readable sizes |
 | Static assets | [`Extra`](Extra), [`locales`](locales) | Fonts, default avatars, catalogs for `en-US`, `id-ID`, `id-JW` |
@@ -139,7 +139,7 @@ PostgreSQL is the only store. MongoDB was retired after every feature moved acro
 ![Update handling flow](docs/assets/update-flow.svg)
 
 Every update travels the same path: transport, handler match, permission gate, rate limiter,
-execution. Persistence, reply construction and error handling surround that spine.
+execution. Persistence, reply construction and error handling wrap that flow.
 
 ---
 
@@ -177,9 +177,9 @@ execution. Persistence, reply construction and error handling surround that spin
 | httpx with HTTP/2 | 0.28.1 | Shared async HTTP client | [PyPI](https://pypi.org/project/httpx/) |
 | Pillow | 13.0.0 | Image composition and text rendering | [PyPI](https://pypi.org/project/pillow/) |
 | ONNX Runtime | 1.31.1 | NSFW detection inference | [PyPI](https://pypi.org/project/onnxruntime/) |
-| opennsfw-onnx | 0.1.0 | Pre trained NSFW classifier | [PyPI](https://pypi.org/project/opennsfw-onnx/) |
+| opennsfw-onnx | 0.1.0 | Pre-trained NSFW classifier | [PyPI](https://pypi.org/project/opennsfw-onnx/) |
 | beautifulsoup4 | 4.15.0 | HTML scraping for search modules | [PyPI](https://pypi.org/project/beautifulsoup4/) |
-| cachetools | 8.0.0 | Short lived caching in hot paths | [PyPI](https://pypi.org/project/cachetools/) |
+| cachetools | 8.0.0 | Short-lived caching in hot paths | [PyPI](https://pypi.org/project/cachetools/) |
 | pyrate-limiter | 4.5.1 | Extra outbound throttling | [PyPI](https://pypi.org/project/pyrate-limiter/) |
 | psutil | 7.2.2 | Runtime and host stats for `/alive` | [PyPI](https://pypi.org/project/psutil/) |
 | speedtest-cli | 2.1.3 | Bandwidth checks | [PyPI](https://pypi.org/project/speedtest-cli/) |
@@ -283,7 +283,7 @@ YaeMiko/
 ├── app.json                     Heroku app manifest
 ├── render.yaml                  Render blueprint, worker plus Postgres
 ├── railway.json                 Railway config, Dockerfile and restart policy
-├── Dockerfile                   Multi stage image
+├── Dockerfile                   Multi-stage image
 ├── heroku.yml                   Heroku Docker build and run
 ├── Procfile                     Heroku worker entry
 ├── pyproject.toml               Project metadata and dependencies
@@ -309,7 +309,7 @@ YaeMiko/
 | Search and translation | `bug`, `instadl`, `pkang`, `quotely`, `reverse`, `search`, `tr` |
 | Reference data | `anime`, `antinsfw`, `disasters`, `genshin`, `pokedex`, `sports` |
 
-`LOAD` forces a start order and `NO_LOAD` skips modules entirely. Both accept a space separated list
+`LOAD` forces a start order and `NO_LOAD` skips modules entirely. Both accept a space-separated list
 of module file names without the `.py` suffix.
 
 ---
@@ -335,7 +335,7 @@ Full reference with defaults and elevated user ranks:
 | `TOKEN` | Bot token from [@BotFather](https://t.me/BotFather) | `123456:AA...` |
 | `OWNER_ID` | Your numeric Telegram user ID | `123456789` |
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/db` |
-| `EVENT_LOGS` | Channel ID for bot level event logs | `-1001234567890` |
+| `EVENT_LOGS` | Channel ID for bot-level event logs | `-1001234567890` |
 | `MESSAGE_DUMP` | Dump chat ID for archived messages | `-1001234567890` |
 | `SUPPORT_CHAT` | Support group username without the `@` | `MySupportGroup` |
 | `SUPPORT_ID` | Support group numeric ID | `-1001234567890` |
@@ -344,12 +344,12 @@ Full reference with defaults and elevated user ranks:
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `DEV_USERS` | empty | Space separated sudo user IDs |
-| `DRAGONS` | empty | Space separated sudo user IDs |
+| `DEV_USERS` | empty | Space-separated sudo user IDs |
+| `DRAGONS` | empty | Space-separated sudo user IDs |
 | `DEMONS` | empty | Users allowed to run the global ban command |
 | `WOLVES` | empty | Whitelisted users that cannot be banned |
 | `TIGERS` | empty | Users the bot may never ban |
-| `BL_CHATS` | empty | Space separated blacklisted chat IDs |
+| `BL_CHATS` | empty | Space-separated blacklisted chat IDs |
 | `LOAD` | empty | Force a plugin start order |
 | `NO_LOAD` | empty | Skip plugins by file name |
 | `DEL_CMDS` | `False` | Delete command messages from unprivileged users |
@@ -463,7 +463,7 @@ Steps:
 
 ### Docker
 
-[`Dockerfile`](Dockerfile) is a two stage build: a `builder` stage installs the wheels with a pinned
+[`Dockerfile`](Dockerfile) is a two-stage build: a `builder` stage installs the wheels with a pinned
 uv, and the runtime stage is `python:3.14.10-slim-trixie` with `ffmpeg` and `libgomp1` for ONNX
 Runtime.
 
@@ -599,7 +599,7 @@ Meaningful changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 ### Services
 
 - [Heroku](https://www.heroku.com/) for worker hosting and the PostgreSQL addon
-- [Render](https://render.com/) and [Railway](https://railway.app/) for one click container deploys
+- [Render](https://render.com/) and [Railway](https://railway.app/) for one-click container deploys
 - [GitHub Actions](https://github.com/features/actions),
   [CodeQL](https://github.com/github/codeql) and
   [Dependabot](https://docs.github.com/en/code-security/dependabot) for CI and security

@@ -37,7 +37,7 @@ Back to [README](../README.md).
 
 Minimum means the bot starts, connects, and answers commands. It is not comfortable: the first ONNX
 inference and the first ffmpeg frame extraction are slow on 512 MB, and a busy group can push it into
-swap. Recommended is the tier most deployments should pick. Best is for large groups, media heavy
+swap. Recommended is the tier most deployments should pick. Best is for large groups, media-heavy
 groups, and anyone running the anti-NSFW checks on every image.
 
 ## What is measured and what is estimated
@@ -64,7 +64,7 @@ What you give up:
 
 - The anti-NSFW module loads its classifier model into an ONNX Runtime session on first use. On
   512 MB this is the largest single allocation in the process.
-- ffmpeg frame extraction for video and animated stickers is CPU bound, and one shared vCPU means
+- ffmpeg frame extraction for video and animated stickers is CPU-bound, and one shared vCPU means
   commands queue behind it.
 - `WORKERS` (default `min(8, cpu*2)`) sets both the client worker count and the thread pool size.
   On one core, a high value means more context switching than replying; set `WORKERS=2` to cut it.
@@ -163,11 +163,11 @@ Three things are lazy on purpose, so you are not paying for them at startup:
 
 - **Python 3.15+ native lazy imports** (`sys.set_lazy_imports('all')`) defer all third-party modules
   until their first use. SQLAlchemy and `Database.sql.*` are excluded from this to keep ORM
-  class-body execution correct. On Python 3.14 the call is skipped, the interpreter has no such API.
+  class-body execution correct. On Python 3.14 the call is skipped; the interpreter has no such API.
 - The ONNX classifier is imported inside the function that needs it, not at module import, so the
   20.9 MB model is only loaded when an anti-NSFW check actually runs.
-- The Kurigram MTProto client starts with connection to Telegram MTProto, and no other heavy work
-  happens during import.
+- The Kurigram MTProto client is created at import without connecting to Telegram, and no other
+  heavy work happens there.
 
 ## How to measure your own usage
 

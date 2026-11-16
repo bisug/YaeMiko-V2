@@ -8,9 +8,9 @@ All notable changes to YaeMiko are recorded here. The format follows
 
 ### Added
 
-- **Kurigram 2.2.27 & kuricrypt integration** — migrated fast cryptography backend from `tgcrypto-c` to
+- **Kurigram 2.2.27 & kuricrypt integration**: migrated fast cryptography backend from `tgcrypto-c` to
   `kuricrypt==0.1.1` (Rust/PyO3) and updated Kurigram to `2.2.27`.
-- **Python 3.14.10 pin** — `.python-version`, `pyproject.toml` (`requires-python = ">=3.14"`),
+- **Python 3.14.10 pin**: `.python-version`, `pyproject.toml` (`requires-python = ">=3.14"`),
   `Dockerfile` (`python:3.14.10-slim`), and CI workflow (`python-version: "3.14.10"`).
 - **Native lazy imports** (`sys.set_lazy_imports('all')`) enabled in `Mikobot/__init__.py` and
   `Mikobot/__main__.py`, with a filter that excludes `sqlalchemy.*` and `Database.sql.*` to keep
@@ -49,7 +49,7 @@ All notable changes to YaeMiko are recorded here. The format follows
     `int()`. The migration checks that every row holds a number first and leaves the column
     alone with a warning if one does not.
   - `cust_filters` gained the missing column migration, so a deployment whose table predates
-    `reply_text`, `file_type` and `file_id` keeps the old shape no longer, and the legacy
+    `reply_text`, `file_type` and `file_id` no longer keeps the old shape, and the legacy
     `has_markdown` column is dropped because the model no longer declares it.
   - Dead columns removed from the models: `notes.is_reply`, `notes.has_buttons`,
     `cust_filters.has_markdown`, `antiflood.count`, `antiflood.user_id` and `raid_chats.notified`.

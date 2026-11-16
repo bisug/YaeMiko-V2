@@ -85,7 +85,7 @@ unified `Mikobot.events` registry (`@on_message`, `@on_callback`, `@on_inline_qu
 `@on_chat_join_request`, `@on_chat_member_updated`). Rather than relying on separate dispatchers,
 one handler per update type walks the registry in registration order, running permission checks
 before handlers and supporting chaining where multiple plugins need to inspect the same update.
-Moderation settings and bot state persist directly to PostgreSQL, sharing state cleanly across workers.
+Moderation settings and bot state persist directly to PostgreSQL, so all workers see the same state.
 
 ## Plugin discovery
 
@@ -123,7 +123,7 @@ Every inline button call must pass a `style` keyword:
 There is no automated check that every button follows the contract; it is a convention for new
 code.
 
-Note on subclassing: the style is a constructor argument, not a class argument. Declaring
+The style is a constructor argument, not a class argument. Declaring
 `class EqInlineKeyboardButton(InlineKeyboardButton, style=...)` fails, because Python forwards class
 keywords to `__init_subclass__`, which takes no keywords.
 
@@ -188,5 +188,5 @@ through the redacting formatter, so users get feedback and operators get the sta
 | Target | Mechanism |
 | --- | --- |
 | Heroku worker dyno | `app.json` manifest, `heroku.yml` Docker build, `Procfile` fallback |
-| Docker | Two stage build, runtime stage `python:3.14.10-slim-trixie` with `ffmpeg`, `libgomp1` |
+| Docker | Two-stage build, runtime stage `python:3.14.10-slim-trixie` with `ffmpeg`, `libgomp1` |
 | VPS | Virtual environment, `python -m Mikobot`, tmux or a process supervisor |

@@ -36,7 +36,7 @@ pickle `DataStore` are files, not tables.
 There is no migration tool and no version table. `create_all_tables()` in
 `Database/sql/__init__.py` imports every model module first, then calls
 `BASE.metadata.create_all(ENGINE)` and replays the indexes the modules requested. Adding a column
-to a table that already exists needs the hand written `ALTER TABLE` described in
+to a table that already exists needs the hand-written `ALTER TABLE` described in
 [Schema evolution](#schema-evolution).
 
 ## Connection and pool
@@ -196,7 +196,7 @@ the ban handlers mention people by.
 
 The key shape is repeated on purpose: almost every table is `(chat_id, ...)`, and chat keys are
 `String` columns (PostgreSQL `TEXT`); a start-up pass widens legacy `VARCHAR(14)` columns. Every
-user keyed table uses a `BIGINT` user id.
+user-keyed table uses a `BIGINT` user id.
 
 ## Identity and directory
 
@@ -587,8 +587,8 @@ erDiagram
 
 ## Indexes
 
-Primary keys cover lookups by key. The queries that were not one of those, and each had nothing
-to fall back on, because `create_all` never adds an index to a table it did not create:
+Primary keys cover lookups by key. The queries below do not filter on a primary key and had no
+index to fall back on, because `create_all` never adds an index to a table it did not create:
 
 | Index | Serves |
 | --- | --- |

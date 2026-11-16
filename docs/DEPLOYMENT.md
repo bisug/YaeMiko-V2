@@ -53,7 +53,7 @@ YaeMiko needs four things. Gather them first, because every platform below asks 
 | `OWNER_ID` | Your Telegram user ID | [userid.bot](https://t.me/userid_bot) reports it |
 | PostgreSQL connection | Provided by the platform, or your own | Free tier is enough |
 
-Two more IDs come from the group you want the bot to log into:
+Four more values come from the group you want the bot to log into:
 
 - `EVENT_LOGS`: a channel ID where the bot posts events.
 - `MESSAGE_DUMP`: a chat ID used as a dump.
@@ -116,7 +116,7 @@ to 10 minutes. When the deploy log shows `Mikobot is starting`, send `/start` to
 
 If you prefer the dashboard, choose New, then Background Worker, set Runtime to Docker, leave the
 Dockerfile path as `./Dockerfile`, and copy the environment variables from
-[CONFIGURATION.md](CONFIGURATION.md). Do not use a free web service, it will never pass health checks.
+[CONFIGURATION.md](CONFIGURATION.md). Do not use a free web service; it will never pass health checks.
 
 ## Railway
 
@@ -334,7 +334,7 @@ service on the same box, open only the ports that service needs.
 
 ## Docker anywhere
 
-The [Dockerfile](../Dockerfile) is a two stage build. The builder installs the wheels with a pinned
+The [Dockerfile](../Dockerfile) is a two-stage build. The builder installs the wheels with a pinned
 uv, and the runtime stage is `python:3.14.10-slim-trixie` with `ffmpeg` and `libgomp1`.
 
 ```bash

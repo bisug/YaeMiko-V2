@@ -37,7 +37,7 @@ environment variables.
 | `TOKEN` | string | Kurigram MTProto client session | From [@BotFather](https://t.me/BotFather) |
 | `OWNER_ID` | integer | Rank checks | Parsed with `int()`, a bad value raises at startup |
 | `DATABASE_URL` | string | `Database/sql` | `postgres://` and `postgresql://` are rewritten to `postgresql+psycopg://` |
-| `EVENT_LOGS` | integer | Logging plugins | Channel ID for bot level events |
+| `EVENT_LOGS` | integer | Logging plugins | Channel ID for bot-level events |
 | `MESSAGE_DUMP` | integer | Logging plugins | Dump chat ID |
 | `SUPPORT_CHAT` | string | Start and about keyboards | Username without the `@` |
 | `SUPPORT_ID` | integer | Boot message | Numeric support chat ID |
@@ -74,7 +74,7 @@ An unrecognised `LOG_LEVEL` falls back to `INFO` instead of raising.
 
 ## User lists
 
-All user lists accept space separated numeric IDs. A non numeric entry raises at startup rather than
+All user lists accept space-separated numeric IDs. A non-numeric entry raises at startup rather than
 being skipped, because a silently dropped admin is worse than a failed boot.
 
 | Variable | Rank | Effect |
@@ -84,7 +84,7 @@ being skipped, because a silently dropped admin is worse than a failed boot.
 | `DEMONS` | Demon | May run the global ban command |
 | `WOLVES` | Wolf | Cannot be banned by the bot |
 | `TIGERS` | Tiger | Never bannable |
-| `BL_CHATS` | n/a | Space separated blacklisted chat IDs |
+| `BL_CHATS` | n/a | Space-separated blacklisted chat IDs |
 
 `Mikobot/elevated_users.json` adds runtime users under the keys `sudos`, `supports`, `whitelists` and
 `tigers`. The file also has `devs` and `spammers` keys that no code reads. The four active keys are
@@ -116,9 +116,9 @@ or not. The `pyrogram` and `pyrate_limiter` loggers are pinned to `ERROR`, and `
 `httpcore` to `WARNING`, because their INFO output contains the complete Telegram API URL with
 the bot token in the path.
 
-Redaction rewrites any token shaped like `bot<digits>:<20 or more characters>` and bearer tokens
-to `<redacted>`, and blankets known sensitive context fields (passwords, API hashes, credentials,
-and similar).
+Redaction rewrites tokens shaped like `bot<digits>:<20 or more characters>` to `bot<redacted>` and
+bearer tokens to `Bearer <redacted>`. It masks known sensitive context fields (passwords, API
+hashes, credentials, and similar) to `<redacted>`.
 
 ## Where each value is read
 

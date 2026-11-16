@@ -43,7 +43,7 @@ name in that list, so dropping a new file into the directory is enough to regist
 | `warns` | WARN | `warns`, `addwarn`, `strongwarn`, `warnlimit` |
 | `purge` | PURGE | Bulk message deletion |
 | `zombies` | ZOMBIES | Removes accounts that left |
-| `unbanall` | Unbanll | Lifts every ban in a chat |
+| `unbanall` | Unbanall | Lifts every ban in a chat |
 | `blacklist` | BLACKLIST | `addblacklist`, `unblacklist`, `blacklist`, `blacklistmode`, `blocklistdelete`, `silentactions` |
 | `blacklist_stickers` | Stickers Blacklist | `blsticker`, `addblsticker`, `blstickermode` |
 | `feds` | FEDS | Federation owner, admin and user help, plus `newfed`, `joinfed`, `leavefed`, `subfed`, `fban`, `fbanlist`, `unfban`, `importfbans`, `fbroadcast`, `fedinfo`, `frules`, `setfrules`, `fedchats`, `renamefed`, `delfed`, `setfedlog`, `unsetfedlog` |
