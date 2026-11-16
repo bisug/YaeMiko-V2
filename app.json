@@ -35,12 +35,12 @@
          "value": "True"
       },
       "ENV": {
-         "description": "Setting this to ANYTHING will enable environment variables. Leave it as it is.",
+         "description": "Set to a truthy value such as True or 1 to enable environment variables. Leave as is.",
          "required": true,
          "value": "True"
       },
       "EVENT_LOGS": {
-         "description": "Channel for event logs to note down important bot-level events. Recommend making this public. Example: '-123456'",
+         "description": "Channel for event logs. Records important bot-level events; make it public. Example: '-123456'",
          "required": true,
          "value": "-100"
       },
@@ -60,36 +60,36 @@
          "value": ""
       },
       "DEV_USERS": {
-         "description": "A space separated list of user IDs who you want to assign as sudo users.",
+         "description": "Space-separated list of user IDs to assign as sudo users.",
          "required": false,
          "value": ""
       },
       "DRAGONS": {
-         "description": "A space separated list of user IDs who you want to assign as sudo users.",
+         "description": "Space-separated list of user IDs to assign as sudo users.",
          "required": false,
          "value": ""
       },
       "STRICT_GBAN": {
-         "description": "Enforce gbans across new groups as well as old groups. When a gbanned user talks, he will be banned.",
+         "description": "Enforce global bans in new and old groups. A gbanned user who talks is banned.",
          "value": "True"
       },
       "DEMONS": {
-         "description": "A space separated list of user IDs who can use Gban From Your Bot",
+         "description": "Space-separated list of user IDs allowed to run the global ban command.",
          "required": false,
          "value": ""
       },
       "TIGERS": {
-         "description": "A space separated list of user IDs who can not be banned by your Bot",
+         "description": "Space-separated list of user IDs the bot cannot ban.",
          "required": false,
          "value": ""
       },
       "WOLVES": {
-         "description": "A space separated list of user IDs who you want to assign as whitelisted - can't be banned with your bot.",
+         "description": "Space-separated list of user IDs to whitelist. The bot cannot ban them.",
          "required": false,
          "value": ""
       },
       "SUPPORT_CHAT": {
-         "description": "Your Telegram support group chat username. Users will reach out for assistance. Example: MyGroupChatUsernameBlah. Avoid pointing to Miko Support to prevent conflicts.",
+         "description": "Your Telegram support group username. Users reach out there for help. Example: MyGroupChatUsernameBlah. Avoid pointing to Miko Support to prevent conflicts.",
          "required": true,
          "value": ""
       },
@@ -104,7 +104,7 @@
          "value": ""
       },
       "LOGGER": {
-         "description": "Enable file logging.",
+         "description": "Unused. Log files are always written.",
          "required": false,
          "value": "True"
       },

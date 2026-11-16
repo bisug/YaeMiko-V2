@@ -1,7 +1,7 @@
 [project]
 name = "yaemiko"
 version = "2.0.0"
-description = "A powerful Telegram group management bot"
+description = "A modular Telegram group management bot"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [

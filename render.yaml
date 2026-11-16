@@ -17,7 +17,7 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     dockerCommand: python -m Mikobot
-    # Long polling is the only traffic source, so there is no health check path.
+    # MTProto updates are the only traffic source, so there is no health check path.
     maxShutdownDelaySeconds: 120
     autoDeployTrigger: commit
     envVars:
