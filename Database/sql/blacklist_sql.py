@@ -46,7 +46,7 @@ class BlackListFilters(BASE):
     trigger = Column(UnicodeText, primary_key=True, nullable=False)
 
     def __init__(self, chat_id, trigger):
-        self.chat_id = str(chat_id)  # ensure string
+        self.chat_id = str(chat_id)
         self.trigger = trigger
 
     def __repr__(self):
@@ -145,7 +145,7 @@ def rm_from_blacklist(chat_id, trigger):
     with BLACKLIST_FILTER_INSERTION_LOCK:
         blacklist_filt = SESSION.get(BlackListFilters, (str(chat_id), trigger))
         if blacklist_filt:
-            if trigger in CHAT_BLACKLISTS.get(str(chat_id), set()):  # sanity check
+            if trigger in CHAT_BLACKLISTS.get(str(chat_id), set()):
                 CHAT_BLACKLISTS.get(str(chat_id), set()).remove(trigger)
 
             SESSION.delete(blacklist_filt)
@@ -338,7 +338,7 @@ def __load_chat_settings_blacklists():
         return
     try:
         chats_settings = SESSION.scalars(select(BlacklistSettings)).all()
-        for x in chats_settings:  # remove tuple by ( ,)
+        for x in chats_settings:
             CHAT_SETTINGS_BLACKLISTS[x.chat_id] = {
                 "blacklist_type": x.blacklist_type,
                 "value": x.value,

@@ -64,7 +64,7 @@ class CustomFilters(BASE):
         file_id=None,
         has_media_spoiler=False,
     ):
-        self.chat_id = str(chat_id)  # ensure string
+        self.chat_id = str(chat_id)
         self.keyword = keyword
         self.reply = reply
         self.is_sticker = is_sticker
@@ -290,7 +290,7 @@ def remove_filter(chat_id, keyword):
     with CUST_FILT_LOCK:
         filt = SESSION.get(CustomFilters, (str(chat_id), keyword))
         if filt:
-            if keyword in CHAT_FILTERS.get(str(chat_id), []):  # Sanity check
+            if keyword in CHAT_FILTERS.get(str(chat_id), []):
                 CHAT_FILTERS.get(str(chat_id), []).remove(keyword)
 
             with BUTTON_LOCK:

@@ -61,7 +61,7 @@ def rm_afk(user_id):
     with INSERTION_LOCK:
         curr = SESSION.get(AFK, user_id)
         if curr:
-            if user_id in AFK_USERS:  # sanity check
+            if user_id in AFK_USERS:
                 del AFK_USERS[user_id]
 
             SESSION.delete(curr)

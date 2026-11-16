@@ -22,7 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-# New chat added -> setup permissions
 import threading
 from dataclasses import dataclass
 
@@ -34,7 +33,7 @@ from Database.sql import BASE, SESSION, unit_of_work_guard
 class Permissions(BASE):
     __tablename__ = "permissions"
     chat_id = Column(String, primary_key=True)
-    # Booleans are for "is this locked", _NOT_ "is this allowed"
+    # Booleans mean "is this locked", NOT "is this allowed"
     audio = Column(Boolean, default=False)
     voice = Column(Boolean, default=False)
     contact = Column(Boolean, default=False)
@@ -54,7 +53,7 @@ class Permissions(BASE):
     inline = Column(Boolean, default=False)
 
     def __init__(self, chat_id):
-        self.chat_id = str(chat_id)  # ensure string
+        self.chat_id = str(chat_id)
         self.audio = False
         self.voice = False
         self.contact = False
@@ -98,14 +97,14 @@ class AllowedItem(BASE):
 class Restrictions(BASE):
     __tablename__ = "restrictions"
     chat_id = Column(String, primary_key=True)
-    # Booleans are for "is this restricted", _NOT_ "is this allowed"
+    # Booleans mean "is this restricted", NOT "is this allowed"
     messages = Column(Boolean, default=False)
     media = Column(Boolean, default=False)
     other = Column(Boolean, default=False)
     preview = Column(Boolean, default=False)
 
     def __init__(self, chat_id):
-        self.chat_id = str(chat_id)  # ensure string
+        self.chat_id = str(chat_id)
         self.messages = False
         self.media = False
         self.other = False
@@ -115,8 +114,7 @@ class Restrictions(BASE):
         return "<ʀᴇsᴛʀɪᴄᴛɪᴏɴs ғᴏʀ %s>" % self.chat_id
 
 
-# For those who faced database error, Just uncomment the
-# line below and run bot for 1 time & remove that line!
+# Corrupt schema: uncomment the drop below, run the bot once, then re-comment it.
 
 # Permissions.__table__.drop()
 

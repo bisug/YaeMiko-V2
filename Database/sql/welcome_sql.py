@@ -144,7 +144,7 @@ class WelcomeMute(BASE):
     welcomemutes = Column(String(16), default="off")
 
     def __init__(self, chat_id, welcomemutes):
-        self.chat_id = str(chat_id)  # ensure string
+        self.chat_id = str(chat_id)
         self.welcomemutes = welcomemutes
 
 
@@ -155,7 +155,7 @@ class WelcomeMuteUsers(BASE):
     human_check = Column(Boolean, nullable=False, default=False)
 
     def __init__(self, user_id, chat_id, human_check):
-        self.user_id = user_id  # ensure string
+        self.user_id = user_id
         self.chat_id = str(chat_id)
         self.human_check = human_check
 
@@ -370,7 +370,6 @@ def get_welc_pref(chat_id):
         )
 
     else:
-        # Welcome by default.
         return True, DEFAULT_WELCOME, None, Types.TEXT
 
 
@@ -381,7 +380,6 @@ def get_gdbye_pref(chat_id):
     if welc:
         return welc.should_goodbye, welc.custom_leave, welc.leave_type
     else:
-        # Welcome by default.
         return True, DEFAULT_GOODBYE, Types.TEXT
 
 

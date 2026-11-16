@@ -555,7 +555,6 @@ def rename_fed(fed_id, owner_id, newname):
         fed.fed_name = newname
         SESSION.commit()
 
-        # Update the dicts
         oldname = FEDERATION_BYFEDID[str(fed_id)]["fname"]
         tempdata = FEDERATION_BYNAME[oldname]
         FEDERATION_BYNAME.pop(oldname)
@@ -625,7 +624,6 @@ def search_user_in_fed(fed_id, user_id):
 def user_demote_fed(fed_id, user_id):
     with FEDS_LOCK:
         global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME
-        # Variables
         getfed = FEDERATION_BYFEDID.get(str(fed_id))
         if getfed is None:
             return False
@@ -633,7 +631,6 @@ def user_demote_fed(fed_id, user_id):
         fed_name = getfed["fname"]
         fed_rules = getfed["frules"]
         fed_log = getfed["flog"]
-        # Temp set
         members = _fed_members(getfed["fusers"])
         # remove() raises ValueError when the id is not there, which the caller
         # only reaches after a stale read, and that used to surface as a crash
@@ -672,7 +669,6 @@ def user_demote_fed(fed_id, user_id):
 def user_join_fed(fed_id, user_id):
     with FEDS_LOCK:
         global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME
-        # Variables
         getfed = FEDERATION_BYFEDID.get(str(fed_id))
         if getfed is None:
             return False
@@ -680,7 +676,6 @@ def user_join_fed(fed_id, user_id):
         fed_name = getfed["fname"]
         fed_rules = getfed["frules"]
         fed_log = getfed["flog"]
-        # Temp set
         members = _fed_members(getfed["fusers"])
         try:
             uid = int(user_id)
@@ -715,7 +710,6 @@ def user_join_fed(fed_id, user_id):
 def chat_leave_fed(chat_id):
     with FEDS_LOCK:
         global FEDERATION_CHATS, FEDERATION_CHATS_BYID
-        # Set variables
         fed_info = FEDERATION_CHATS.get(str(chat_id))
         if fed_info is None:
             return False
@@ -767,7 +761,6 @@ def all_fed_members(fed_id):
 def set_frules(fed_id, rules):
     with FEDS_LOCK:
         global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME
-        # Variables
         getfed = FEDERATION_BYFEDID.get(str(fed_id))
         owner_id = getfed["owner"]
         fed_name = getfed["fname"]
@@ -1033,7 +1026,6 @@ async def get_fed_log(fed_id):
 def set_fed_log(fed_id, chat_id):
     with FEDS_LOCK:
         global FEDERATION_BYOWNER, FEDERATION_BYFEDID, FEDERATION_BYNAME
-        # Variables
         getfed = FEDERATION_BYFEDID.get(str(fed_id))
         owner_id = getfed["owner"]
         fed_name = getfed["fname"]
@@ -1126,7 +1118,6 @@ def __load_all_feds():
                 "fusers": str(x.fed_users),
                 "members_set": members_set,
             }
-            # Fed By FedId
             FEDERATION_BYFEDID[str(x.fed_id)] = {
                 "owner": str(x.owner_id),
                 "fname": x.fed_name,
@@ -1135,7 +1126,6 @@ def __load_all_feds():
                 "fusers": str(x.fed_users),
                 "members_set": members_set,
             }
-            # Fed By Name
             FEDERATION_BYNAME[x.fed_name] = {
                 "fid": str(x.fed_id),
                 "owner": str(x.owner_id),
@@ -1159,12 +1149,10 @@ def __load_all_feds_chats():
         FEDERATION_CHATS = {}
         FEDERATION_CHATS_BYID = {}
         for x in qall:
-            # Federation Chats
             check = FEDERATION_CHATS.get(x.chat_id)
             if check is None:
                 FEDERATION_CHATS[x.chat_id] = {}
             FEDERATION_CHATS[x.chat_id] = {"chat_name": x.chat_name, "fid": x.fed_id}
-            # Federation Chats By ID
             check = FEDERATION_CHATS_BYID.get(x.fed_id)
             if check is None:
                 FEDERATION_CHATS_BYID[x.fed_id] = []

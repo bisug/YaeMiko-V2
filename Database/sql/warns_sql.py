@@ -69,7 +69,7 @@ class WarnFilters(BASE):
     reply = Column(UnicodeText, nullable=False)
 
     def __init__(self, chat_id, keyword, reply):
-        self.chat_id = str(chat_id)  # ensure string
+        self.chat_id = str(chat_id)
         self.keyword = keyword
         self.reply = reply
 
@@ -193,7 +193,7 @@ def remove_warn_filter(chat_id, keyword):
     with WARN_FILTER_INSERTION_LOCK:
         warn_filt = SESSION.get(WarnFilters, (str(chat_id), keyword))
         if warn_filt:
-            if keyword in WARN_FILTERS.get(str(chat_id), []):  # sanity check
+            if keyword in WARN_FILTERS.get(str(chat_id), []):
                 WARN_FILTERS.get(str(chat_id), []).remove(keyword)
 
             SESSION.delete(warn_filt)

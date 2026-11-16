@@ -35,7 +35,7 @@ class StickersFilters(BASE):
     trigger = Column(UnicodeText, primary_key=True, nullable=False)
 
     def __init__(self, chat_id, trigger):
-        self.chat_id = str(chat_id)  # ensure string
+        self.chat_id = str(chat_id)
         self.trigger = trigger
 
     def __repr__(self):
@@ -93,7 +93,7 @@ def rm_from_stickers(chat_id, trigger):
     with STICKERS_FILTER_INSERTION_LOCK:
         stickers_filt = SESSION.get(StickersFilters, (str(chat_id), trigger))
         if stickers_filt:
-            if trigger in CHAT_STICKERS.get(str(chat_id), set()):  # sanity check
+            if trigger in CHAT_STICKERS.get(str(chat_id), set()):
                 CHAT_STICKERS.get(str(chat_id), set()).remove(trigger)
 
             SESSION.delete(stickers_filt)
@@ -209,7 +209,7 @@ def __load_chat_stickerset_blacklists():
         return
     try:
         chats_settings = SESSION.scalars(select(StickerSettings)).all()
-        for x in chats_settings:  # remove tuple by ( ,)
+        for x in chats_settings:
             CHAT_BLSTICK_BLACKLISTS[x.chat_id] = {
                 "blacklist_type": x.blacklist_type,
                 "value": x.value,

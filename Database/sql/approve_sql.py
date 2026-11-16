@@ -38,7 +38,7 @@ class Approvals(BASE):
     user_id = Column(BigInteger, primary_key=True)
 
     def __init__(self, chat_id, user_id):
-        self.chat_id = str(chat_id)  # ensure string
+        self.chat_id = str(chat_id)
         self.user_id = user_id
 
     def __repr__(self):

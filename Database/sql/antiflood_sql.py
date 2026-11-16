@@ -64,7 +64,7 @@ class FloodControl(BASE):
     clearflood = Column(Boolean, default=False)
 
     def __init__(self, chat_id):
-        self.chat_id = str(chat_id)  # ensure string
+        self.chat_id = str(chat_id)
         self.timer = 0
         self.clearflood = False
 
@@ -166,16 +166,15 @@ def update_flood(chat_id: str, user_id) -> bool:
     if limit == 0:  # no antiflood
         return False
 
-    if user_id != curr_user_id or user_id is None:  # other user
+    if user_id != curr_user_id or user_id is None:
         CHAT_FLOOD[str(chat_id)] = (user_id, DEF_COUNT, limit, timer, clearflood)
         return False
 
     count += 1
-    if count > limit:  # too many msgs, kick
+    if count > limit:
         CHAT_FLOOD[str(chat_id)] = (None, DEF_COUNT, limit, timer, clearflood)
         return True
 
-    # default -> update
     CHAT_FLOOD[str(chat_id)] = (user_id, count, limit, timer, clearflood)
     return False
 
@@ -186,13 +185,13 @@ def get_flood_limit(chat_id):
 
 @unit_of_work_guard
 def set_flood_strength(chat_id, flood_type, value):
-    # ғᴏʀ ғʟᴏᴏᴅ_ᴛʏᴘᴇ
+    # flood_type values:
     # 1 = ban
     # 2 = kick
     # 3 = mute
     # 4 = tban
     # 5 = tmute
-    # 6 = ᴅᴍᴜᴛᴇ sᴏᴏɴ
+    # 6 = dmute soon
     with INSERTION_FLOOD_SETTINGS_LOCK:
         curr_setting = SESSION.get(FloodSettings, str(chat_id))
         if not curr_setting:

@@ -70,7 +70,7 @@ def enable_command(chat_id, enable):
         disabled = SESSION.get(Disable, (str(chat_id), enable))
 
         if disabled:
-            if enable in DISABLED.get(str(chat_id)):  # sanity check
+            if enable in DISABLED.get(str(chat_id)):
                 DISABLED.setdefault(str(chat_id), set()).remove(enable)
 
             SESSION.delete(disabled)
