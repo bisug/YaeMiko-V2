@@ -31,6 +31,10 @@ All notable changes to YaeMiko are recorded here. The format follows
 
 ### Changed
 
+- **Activity logging now actually records what the bot handles.** The raw-update handler emits a
+  detailed `Activity:` line for every incoming update (type, chat, sender, and a message/command or
+  callback summary) and `ACTIVITY_LOG` now defaults to `True`, so logging works out of the box.
+  Set `ACTIVITY_LOG=False` to drop the per-update lines on a busy bot.
 - **The database layer was cleaned up.** The schema, the migrations and the queries were audited
   against the live database, and the following changed:
   - Nine indexes added: `warns_chat_id_idx`, `connection_history_chat_id_idx`,

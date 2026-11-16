@@ -360,7 +360,7 @@ Full reference with defaults and elevated user ranks:
 | `LOGGER` | `True` | Unused. Log files are always written; see [Logging](docs/CONFIGURATION.md#logging) |
 | `LOG_LEVEL` | `INFO` | Log level: `debug`, `info`, `warn`, `error` |
 | `LOG_FORMAT` | `json` | `json` for production, `text` for human-readable local development |
-| `ACTIVITY_LOG` | `False` | Log every incoming update summary |
+| `ACTIVITY_LOG` | `True` | Log a summary of every incoming update; set to `False` to reduce log volume |
 | `BAN_STICKER` | empty | Sticker file ID banned in all groups |
 | `TEMP_DOWNLOAD_DIRECTORY` | `./` | Scratch directory for media |
 
@@ -372,6 +372,11 @@ per entry with `timestamp`, `level`, `message`, `service` and `correlation_id`, 
 `LOG_FORMAT=text` renders the same fields for humans. Set `LOG_FORMAT=text` for local
 development and leave it at `json` in production. Output is queued so logging never blocks
 the bot, and bot tokens and other sensitive values are redacted.
+
+With the default `ACTIVITY_LOG=True`, every incoming update is logged at `INFO` with its
+type, chat, sender, and a message/command or callback summary, so you can see everything
+the bot handles. Set `ACTIVITY_LOG=False` on very busy bots to cut log volume; errors and
+lifecycle messages are always logged regardless.
 
 ---
 

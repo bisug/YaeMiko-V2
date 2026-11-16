@@ -97,8 +97,100 @@ def _activity_summary(event) -> str:
     return f"message user={user_id} chat={chat_id}"
 
 
+def _peer_id(peer) -> int | None:
+    """Pull the numeric id out of a raw MTProto Peer object."""
+    for attribute in ("user_id", "chat_id", "channel_id"):
+        value = getattr(peer, attribute, None)
+        if value is not None:
+            return value
+    return None
+
+
+def _entity_label(entity_id, entities) -> str:
+    """Render an id with its username/title when the update carried the entity."""
+    if entity_id is None:
+        return "?"
+    entity = entities.get(entity_id) if entities else None
+    if entity is None:
+        return str(entity_id)
+    name = (
+        getattr(entity, "username", None)
+        or getattr(entity, "first_name", None)
+        or getattr(entity, "title", None)
+    )
+    return f"{entity_id}({name})" if name else str(entity_id)
+
+
+def _raw_update_summary(update, users, chats) -> str:
+    """Describe a raw MTProto update for the activity log.
+
+    Everything here is defensive: a novel or partially populated update must
+    never raise inside the raw-update handler and stop the dispatch loop.
+    """
+    name = type(update).__name__
+    parts = [f"type={name}"]
+    try:
+        message = getattr(update, "message", None)
+        if message is not None and hasattr(message, "peer_id"):
+            peer = getattr(message, "peer_id", None)
+            chat_id = _peer_id(peer)
+            parts.append(f"msg={getattr(message, 'id', '')}")
+            parts.append(f"chat={_entity_label(chat_id, chats)}")
+            sender_id = _peer_id(getattr(message, "from_id", None))
+            if sender_id is None and getattr(peer, "user_id", None) is not None:
+                sender_id = peer.user_id
+            if sender_id is not None:
+                parts.append(f"user={_entity_label(sender_id, users)}")
+            text = getattr(message, "message", None)
+            if text:
+                text = str(text)
+                if text.lstrip().startswith("/"):
+                    parts.append(f"command={text.split(maxsplit=1)[0][:40]}")
+                else:
+                    parts.append("text")
+            if getattr(message, "media", None):
+                parts.append("media")
+        elif hasattr(update, "data") and hasattr(update, "msg_id"):
+            user_id = getattr(update, "user_id", None)
+            if user_id is not None:
+                parts.append(f"user={_entity_label(user_id, users)}")
+            chat_id = _peer_id(getattr(update, "peer", None))
+            if chat_id is None:
+                chat_id = getattr(update, "chat_id", None)
+            if chat_id is not None:
+                parts.append(f"chat={_entity_label(chat_id, chats)}")
+            parts.append(f"msg={getattr(update, 'msg_id', '')}")
+            data = getattr(update, "data", None)
+            if data:
+                preview = (
+                    bytes(data)[:40]
+                    if isinstance(data, (bytes, bytearray))
+                    else str(data)[:40]
+                )
+                parts.append(f"data={preview!r}")
+        elif hasattr(update, "query"):
+            user_id = getattr(update, "user_id", None)
+            if user_id is not None:
+                parts.append(f"user={_entity_label(user_id, users)}")
+            query = getattr(update, "query", None)
+            if query:
+                parts.append(f"query={str(query)[:40]!r}")
+        elif hasattr(update, "user_id"):
+            parts.append(f"user={_entity_label(update.user_id, users)}")
+            chat_id = getattr(update, "chat_id", None) or getattr(
+                update, "channel_id", None
+            )
+            if chat_id is not None:
+                parts.append(f"chat={_entity_label(chat_id, chats)}")
+    except Exception:
+        # Log the type we did manage to identify rather than lose the update.
+        pass
+    return " ".join(parts)
+
+
 async def log_kurigram_activity(client, update, users, chats):
-    LOGGER.info("Kurigram activity: update=%s", type(update).__name__)
+    """Log a summary of every raw update the bot receives."""
+    LOGGER.info("Activity: %s", _raw_update_summary(update, users, chats))
 
 
 IMPORTED = {}

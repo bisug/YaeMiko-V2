@@ -182,7 +182,7 @@ if ENV:
     LOAD = os.environ.get("LOAD", "").split()
     NO_LOAD = os.environ.get("NO_LOAD", "").split()
     STRICT_GBAN = env_bool("STRICT_GBAN", True)
-    ACTIVITY_LOG = env_bool("ACTIVITY_LOG", False)
+    ACTIVITY_LOG = env_bool("ACTIVITY_LOG", True)
     SUPPORT_ID = env_int("SUPPORT_ID", -100)  # Support group id
     SUPPORT_CHAT = os.environ.get("SUPPORT_CHAT", "Ecstasy_Realm")
     TEMP_DOWNLOAD_DIRECTORY = os.environ.get("TEMP_DOWNLOAD_DIRECTORY", "./")
@@ -244,7 +244,7 @@ else:
     LOAD = Config.LOAD
     NO_LOAD = Config.NO_LOAD
     STRICT_GBAN = Config.STRICT_GBAN
-    ACTIVITY_LOG = env_bool("ACTIVITY_LOG", False)
+    ACTIVITY_LOG = env_bool("ACTIVITY_LOG", True)
     SUPPORT_CHAT = Config.SUPPORT_CHAT
     TEMP_DOWNLOAD_DIRECTORY = Config.TEMP_DOWNLOAD_DIRECTORY
     TOKEN = Config.TOKEN

@@ -65,7 +65,7 @@ environment variables.
 | `LOGGER` | `True` | Unused, kept so existing deployments do not break. Log files are always written |
 | `LOG_LEVEL` | `INFO` | Log level: `debug`, `info` (default), `warn`, `error` |
 | `LOG_FORMAT` | `json` | `json` for production, `text` for human-readable local development |
-| `ACTIVITY_LOG` | `False` | Log a summary line for every incoming update |
+| `ACTIVITY_LOG` | `True` | Log a summary line for every incoming update; set `False` to cut volume |
 | `CATBOX_USERHASH` | empty | Optional user hash for Catbox uploads to authenticate and avoid datacenter IP blocks |
 | `LITTERBOX_HOURS` | `72h` | Expiry duration for temporary Litterbox uploads (`1h`, `12h`, `24h`, `72h`) |
 | `PREFERRED_LANGUAGE` | empty | Language code for anime synopsis and description translation |
@@ -119,6 +119,12 @@ the bot token in the path.
 Redaction rewrites tokens shaped like `bot<digits>:<20 or more characters>` to `bot<redacted>` and
 bearer tokens to `Bearer <redacted>`. It masks known sensitive context fields (passwords, API
 hashes, credentials, and similar) to `<redacted>`.
+
+With `ACTIVITY_LOG=True` (the default), a raw-update handler emits an `Activity:` line at `INFO`
+for every update the bot receives, including its type, chat, sender, and a message/command or
+callback data summary. This is what makes the log show everything happening with the bot.
+Errors and lifecycle events are logged regardless of this setting; set `ACTIVITY_LOG=False` to
+suppress the per-update lines on a very busy bot.
 
 ## Where each value is read
 
