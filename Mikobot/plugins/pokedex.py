@@ -113,7 +113,7 @@ def _keyboard(
                 InlineKeyboardButton(
                     text="⬅️ Previous",
                     callback_data=f"{prefix}:moves:{page - 1}",
-                    style=ButtonStyle.PRIMARY,
+                    style=ButtonStyle.DEFAULT,
                 )
             )
         buttons.append(
@@ -128,7 +128,7 @@ def _keyboard(
                 InlineKeyboardButton(
                     text="Next ➡️",
                     callback_data=f"{prefix}:moves:{page + 1}",
-                    style=ButtonStyle.PRIMARY,
+                    style=ButtonStyle.DEFAULT,
                 )
             )
         return InlineKeyboardMarkup(
@@ -138,7 +138,7 @@ def _keyboard(
                     InlineKeyboardButton(
                         text="« Back to Overview",
                         callback_data=f"{prefix}:info:0",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     )
                 ],
             ]

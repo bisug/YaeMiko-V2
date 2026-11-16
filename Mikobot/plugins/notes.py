@@ -350,7 +350,7 @@ async def clearall(client, message: Message):
                     InlineKeyboardButton(
                         text="Cancel",
                         callback_data="notes_cancel",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     )
                 ],
             ],

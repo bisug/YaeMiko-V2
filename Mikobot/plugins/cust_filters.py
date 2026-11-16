@@ -581,7 +581,7 @@ async def rmall_filters(client, message: Message):
                     InlineKeyboardButton(
                         text="CANCEL",
                         callback_data="filters_cancel",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     )
                 ],
             ],

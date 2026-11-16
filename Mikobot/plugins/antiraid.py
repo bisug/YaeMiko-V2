@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timezone
 
 from pyrogram import filters
-from pyrogram.enums import ChatMemberStatus, ChatType, ParseMode
+from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
 from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -83,6 +83,7 @@ async def antiraid(client, message: Message) -> str:
                             else "Disable AntiRaid",
                             callback_data=f"antiraid_{chat_id}_"
                             f"{'off' if active else 'on'}",
+                            style=ButtonStyle.SUCCESS,
                         )
                     ]
                 ]

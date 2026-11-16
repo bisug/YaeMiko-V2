@@ -88,7 +88,7 @@ async def logs(client, message: Message):
             inline_keyboard=[
                 [
                     InlineKeyboardButton(
-                        text="Close", callback_data="close", style=ButtonStyle.PRIMARY
+                        text="Close", callback_data="close", style=ButtonStyle.DEFAULT
                     )
                 ]
             ]

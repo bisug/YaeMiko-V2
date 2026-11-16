@@ -190,7 +190,7 @@ async def start(client, message: Message):
                                 InlineKeyboardButton(
                                     text="Back",
                                     callback_data="help_back",
-                                    style=ButtonStyle.PRIMARY,
+                                    style=ButtonStyle.DEFAULT,
                                 )
                             ]
                         ]
@@ -269,7 +269,7 @@ async def extra_command_callback(client, query: CallbackQuery):
                         InlineKeyboardButton(
                             text="Home",
                             callback_data="Miko_back",
-                            style=ButtonStyle.PRIMARY,
+                            style=ButtonStyle.DEFAULT,
                         ),
                     ],
                 ]
@@ -316,7 +316,7 @@ async def anime_command_callback(client, query: CallbackQuery):
                         InlineKeyboardButton(
                             text="Back",
                             callback_data="extra_command_handler",
-                            style=ButtonStyle.PRIMARY,
+                            style=ButtonStyle.DEFAULT,
                         ),
                     ],
                 ]
@@ -354,7 +354,7 @@ async def genshin_command_callback(client, query: CallbackQuery):
                         InlineKeyboardButton(
                             text="Back",
                             callback_data="extra_command_handler",
-                            style=ButtonStyle.PRIMARY,
+                            style=ButtonStyle.DEFAULT,
                         ),
                     ],
                 ]
@@ -401,7 +401,7 @@ async def Miko_about_callback(client, query: CallbackQuery):
                         InlineKeyboardButton(
                             text="Back",
                             callback_data="Miko_back",
-                            style=ButtonStyle.PRIMARY,
+                            style=ButtonStyle.DEFAULT,
                         ),
                     ],
                 ]
@@ -434,7 +434,7 @@ async def Miko_about_callback(client, query: CallbackQuery):
                         InlineKeyboardButton(
                             text="Back",
                             callback_data="Miko_",
-                            style=ButtonStyle.PRIMARY,
+                            style=ButtonStyle.DEFAULT,
                         ),
                     ],
                 ]
@@ -512,7 +512,7 @@ async def get_help(client, message: Message):
                         InlineKeyboardButton(
                             text="Back",
                             callback_data="help_back",
-                            style=ButtonStyle.PRIMARY,
+                            style=ButtonStyle.DEFAULT,
                         )
                     ]
                 ]
@@ -605,7 +605,7 @@ async def settings_button(client, query: CallbackQuery):
                             InlineKeyboardButton(
                                 text="Back",
                                 callback_data="stngs_back({})".format(chat_id),
-                                style=ButtonStyle.PRIMARY,
+                                style=ButtonStyle.DEFAULT,
                             )
                         ]
                     ]
@@ -737,7 +737,7 @@ async def help_button(client, query: CallbackQuery):
                             InlineKeyboardButton(
                                 text="Back",
                                 callback_data="help_back",
-                                style=ButtonStyle.PRIMARY,
+                                style=ButtonStyle.DEFAULT,
                             )
                         ]
                     ]
@@ -814,7 +814,7 @@ async def gitsource_callback(client, query: CallbackQuery):
         keyboard = [
             [
                 InlineKeyboardButton(
-                    text="Back", callback_data="Miko_back", style=ButtonStyle.PRIMARY
+                    text="Back", callback_data="Miko_back", style=ButtonStyle.DEFAULT
                 )
             ]
         ]

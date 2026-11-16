@@ -926,7 +926,7 @@ def get_btns(
                             callback_data=(
                                 f"page_{media}{qry}_{int(lspage) + 1}_{str(auth)}_{user}"
                             ),
-                            style=ButtonStyle.PRIMARY,
+                            style=ButtonStyle.DEFAULT,
                         )
                     ]
                 )
@@ -941,7 +941,7 @@ def get_btns(
                             callback_data=(
                                 f"page_{media}{qry}_{int(lspage) - 1}_{str(auth)}_{user}"
                             ),
-                            style=ButtonStyle.PRIMARY,
+                            style=ButtonStyle.DEFAULT,
                         )
                     ]
                 )
@@ -953,14 +953,14 @@ def get_btns(
                             callback_data=(
                                 f"page_{media}{qry}_{int(lspage) - 1}_{str(auth)}_{user}"
                             ),
-                            style=ButtonStyle.PRIMARY,
+                            style=ButtonStyle.DEFAULT,
                         ),
                         InlineKeyboardButton(
                             text="Next",
                             callback_data=(
                                 f"page_{media}{qry}_{int(lspage) + 1}_{str(auth)}_{user}"
                             ),
-                            style=ButtonStyle.PRIMARY,
+                            style=ButtonStyle.DEFAULT,
                         ),
                     ]
                 )
@@ -976,7 +976,7 @@ def get_auth_btns(media, user, data, lsqry: str = None, lspage: int = None):
             InlineKeyboardButton(
                 text=("Add to Favs" if data[1] is not True else "Remove from Favs"),
                 callback_data=f"fav_{media}_{data[0]}{qry}{pg}_{user}",
-                style=ButtonStyle.DANGER,
+                style=ButtonStyle.SUCCESS,
             )
         )
     else:
@@ -984,7 +984,7 @@ def get_auth_btns(media, user, data, lsqry: str = None, lspage: int = None):
             InlineKeyboardButton(
                 text=("Add to Favs" if data[3] is not True else "Remove from Favs"),
                 callback_data=f"fav_{media}_{data[0]}{qry}{pg}_{user}",
-                style=ButtonStyle.DANGER,
+                style=ButtonStyle.SUCCESS,
             )
         )
         btn.append(
@@ -995,7 +995,7 @@ def get_auth_btns(media, user, data, lsqry: str = None, lspage: int = None):
                     if data[1] is False
                     else f"lsupdt_{media}_{data[0]}_{data[2]}{qry}{pg}_{user}"
                 ),
-                style=ButtonStyle.PRIMARY,
+                style=ButtonStyle.SUCCESS,
             )
         )
     return btn
@@ -2023,7 +2023,7 @@ async def get_studios(qry, page, user, duser=None, auth: bool = False):
                 InlineKeyboardButton(
                     text="Remove from Favs" if isFav else "Add To Favs",
                     callback_data=f"fav_STUDIO_{data['id']}_{qry}_{page}_{duser}",
-                    style=ButtonStyle.DANGER,
+                    style=ButtonStyle.SUCCESS,
                 )
             ]
         )
@@ -2037,7 +2037,7 @@ async def get_studios(qry, page, user, duser=None, auth: bool = False):
                     InlineKeyboardButton(
                         text="Prev",
                         callback_data=f"pgstudio_{page - 1}_{qry}_{auth}_{duser}",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     )
                 ]
             )
@@ -2048,7 +2048,7 @@ async def get_studios(qry, page, user, duser=None, auth: bool = False):
                     InlineKeyboardButton(
                         text="Next",
                         callback_data=f"pgstudio_2_{qry}_{auth}_{duser}",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     )
                 ]
             )
@@ -2058,12 +2058,12 @@ async def get_studios(qry, page, user, duser=None, auth: bool = False):
                     InlineKeyboardButton(
                         text="Prev",
                         callback_data=f"pgstudio_{page - 1}_{qry}_{auth}_{duser}",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     ),
                     InlineKeyboardButton(
                         text="Next",
                         callback_data=f"pgstudio_{page + 1}_{qry}_{auth}_{duser}",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     ),
                 ]
             )
@@ -2093,7 +2093,7 @@ async def get_studio_animes(id_, page, qry, rp, user, duser=None, auth: bool = F
                     InlineKeyboardButton(
                         text="Back",
                         callback_data=f"pgstudio_{rp}_{qry}_{auth}_{duser}",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     )
                 ]
             )
@@ -2104,7 +2104,7 @@ async def get_studio_animes(id_, page, qry, rp, user, duser=None, auth: bool = F
                     InlineKeyboardButton(
                         text="Prev",
                         callback_data=f"stuani_{int(page) - 1}_{id_}_{rp}_{qry}_{auth}_{duser}",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     )
                 ]
             )
@@ -2115,7 +2115,7 @@ async def get_studio_animes(id_, page, qry, rp, user, duser=None, auth: bool = F
                     InlineKeyboardButton(
                         text="Next",
                         callback_data=f"stuani_2_{id_}_{rp}_{qry}_{auth}_{duser}",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     )
                 ]
             )
@@ -2125,12 +2125,12 @@ async def get_studio_animes(id_, page, qry, rp, user, duser=None, auth: bool = F
                     InlineKeyboardButton(
                         text="Prev",
                         callback_data=f"stuani_{int(page) - 1}_{id_}_{rp}_{qry}_{auth}_{duser}",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     ),
                     InlineKeyboardButton(
                         text="Next",
                         callback_data=f"stuani_{int(page) + 1}_{id_}_{rp}_{qry}_{auth}_{duser}",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     ),
                 ]
             )
@@ -2139,7 +2139,7 @@ async def get_studio_animes(id_, page, qry, rp, user, duser=None, auth: bool = F
             InlineKeyboardButton(
                 text="Back",
                 callback_data=f"pgstudio_{rp}_{qry}_{auth}_{duser}",
-                style=ButtonStyle.PRIMARY,
+                style=ButtonStyle.DEFAULT,
             )
         ]
     )
@@ -2204,7 +2204,7 @@ async def get_user_activity(id_, user, duser=None):
             InlineKeyboardButton(
                 text="Back",
                 callback_data=f"getusrbc_{duser}",
-                style=ButtonStyle.PRIMARY,
+                style=ButtonStyle.DEFAULT,
             )
         ]
     ]
@@ -2265,7 +2265,7 @@ async def get_top_animes(gnr: str, page, user):
                     InlineKeyboardButton(
                         text="Next",
                         callback_data=f"topanimu_{gnr}_{int(page) + 1}_{user}",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     )
                 ]
             )
@@ -2275,7 +2275,7 @@ async def get_top_animes(gnr: str, page, user):
                 InlineKeyboardButton(
                     text="Prev",
                     callback_data=f"topanimu_{gnr}_{int(page) - 1}_{user}",
-                    style=ButtonStyle.PRIMARY,
+                    style=ButtonStyle.DEFAULT,
                 )
             ]
         )
@@ -2285,12 +2285,12 @@ async def get_top_animes(gnr: str, page, user):
                 InlineKeyboardButton(
                     text="Prev",
                     callback_data=f"topanimu_{gnr}_{int(page) - 1}_{user}",
-                    style=ButtonStyle.PRIMARY,
+                    style=ButtonStyle.DEFAULT,
                 ),
                 InlineKeyboardButton(
                     text="Next",
                     callback_data=f"topanimu_{gnr}_{int(page) + 1}_{user}",
-                    style=ButtonStyle.PRIMARY,
+                    style=ButtonStyle.DEFAULT,
                 ),
             ]
         )
@@ -2341,7 +2341,7 @@ async def get_user_favourites(id_, user, req, page, sighs, duser=None):
                             f"myfavqry_{req}_{id_}_{str(int(page) + 1)}"
                             + f"_{sighs}_{duser}"
                         ),
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     )
                 ]
             )
@@ -2353,7 +2353,7 @@ async def get_user_favourites(id_, user, req, page, sighs, duser=None):
                     callback_data=(
                         f"myfavqry_{req}_{id_}_{str(int(page) - 1)}_{sighs}_{duser}"
                     ),
-                    style=ButtonStyle.PRIMARY,
+                    style=ButtonStyle.DEFAULT,
                 )
             ]
         )
@@ -2365,14 +2365,14 @@ async def get_user_favourites(id_, user, req, page, sighs, duser=None):
                     callback_data=(
                         f"myfavqry_{req}_{id_}_{str(int(page) - 1)}_{sighs}_{duser}"
                     ),
-                    style=ButtonStyle.PRIMARY,
+                    style=ButtonStyle.DEFAULT,
                 ),
                 InlineKeyboardButton(
                     text="Next",
                     callback_data=(
                         f"myfavqry_{req}_{id_}_{str(int(page) + 1)}_{sighs}_{duser}"
                     ),
-                    style=ButtonStyle.PRIMARY,
+                    style=ButtonStyle.DEFAULT,
                 ),
             ]
         )
@@ -2381,7 +2381,7 @@ async def get_user_favourites(id_, user, req, page, sighs, duser=None):
             InlineKeyboardButton(
                 text="Back",
                 callback_data=f"myfavs_{id_}_{sighs}_{user}",
-                style=ButtonStyle.PRIMARY,
+                style=ButtonStyle.DEFAULT,
             )
         ]
     )
@@ -4016,7 +4016,7 @@ async def list_favourites_btn(client: Client, cq: CallbackQuery, cdata: dict):
                 InlineKeyboardButton(
                     text="BACK",
                     callback_data=f"getusrbc_{q[3]}",
-                    style=ButtonStyle.PRIMARY,
+                    style=ButtonStyle.DEFAULT,
                 )
             ]
         )
@@ -4513,7 +4513,7 @@ async def additional_info_btn(client: Client, cq: CallbackQuery, cdata: dict):
                 button.append(
                     [
                         InlineKeyboardButton(
-                            text="NEXT", callback_data=nex, style=ButtonStyle.PRIMARY
+                            text="NEXT", callback_data=nex, style=ButtonStyle.DEFAULT
                         )
                     ]
                 )
@@ -4521,7 +4521,7 @@ async def additional_info_btn(client: Client, cq: CallbackQuery, cdata: dict):
                 button.append(
                     [
                         InlineKeyboardButton(
-                            text="PREV", callback_data=pre, style=ButtonStyle.PRIMARY
+                            text="PREV", callback_data=pre, style=ButtonStyle.DEFAULT
                         )
                     ]
                 )
@@ -4529,10 +4529,10 @@ async def additional_info_btn(client: Client, cq: CallbackQuery, cdata: dict):
                 button.append(
                     [
                         InlineKeyboardButton(
-                            text="PREV", callback_data=pre, style=ButtonStyle.PRIMARY
+                            text="PREV", callback_data=pre, style=ButtonStyle.DEFAULT
                         ),
                         InlineKeyboardButton(
-                            text="NEXT", callback_data=nex, style=ButtonStyle.PRIMARY
+                            text="NEXT", callback_data=nex, style=ButtonStyle.DEFAULT
                         ),
                     ]
                 )
@@ -4550,7 +4550,7 @@ async def additional_info_btn(client: Client, cq: CallbackQuery, cdata: dict):
     button.append(
         [
             InlineKeyboardButton(
-                text="BACK", callback_data=cbd, style=ButtonStyle.PRIMARY
+                text="BACK", callback_data=cbd, style=ButtonStyle.DEFAULT
             )
         ]
     )
@@ -4591,7 +4591,7 @@ async def featured_in_btn(client: Client, cq: CallbackQuery, cdata: dict):
                 InlineKeyboardButton(
                     text="NEXT",
                     callback_data=f"lsca_{idm}_1_{qry}_{pg}_{auth}_{usr}",
-                    style=ButtonStyle.PRIMARY,
+                    style=ButtonStyle.DEFAULT,
                 )
             ]
         )
@@ -4610,7 +4610,7 @@ async def featured_in_btn(client: Client, cq: CallbackQuery, cdata: dict):
             InlineKeyboardButton(
                 text="BACK",
                 callback_data=f"page_CHARACTER_{qry}_{pg}_{auth}_{usr}",
-                style=ButtonStyle.PRIMARY,
+                style=ButtonStyle.DEFAULT,
             )
         ]
     )
@@ -4651,7 +4651,7 @@ async def featured_in_switch_btn(client: Client, cq: CallbackQuery, cdata: dict)
             button.append(
                 [
                     InlineKeyboardButton(
-                        text="NEXT", callback_data=nex, style=ButtonStyle.PRIMARY
+                        text="NEXT", callback_data=nex, style=ButtonStyle.DEFAULT
                     )
                 ]
             )
@@ -4659,7 +4659,7 @@ async def featured_in_switch_btn(client: Client, cq: CallbackQuery, cdata: dict)
             button.append(
                 [
                     InlineKeyboardButton(
-                        text="BACK", callback_data=bac, style=ButtonStyle.PRIMARY
+                        text="BACK", callback_data=bac, style=ButtonStyle.DEFAULT
                     )
                 ]
             )
@@ -4667,10 +4667,10 @@ async def featured_in_switch_btn(client: Client, cq: CallbackQuery, cdata: dict)
             button.append(
                 [
                     InlineKeyboardButton(
-                        text="BACK", callback_data=bac, style=ButtonStyle.PRIMARY
+                        text="BACK", callback_data=bac, style=ButtonStyle.DEFAULT
                     ),
                     InlineKeyboardButton(
-                        text="NEXT", callback_data=nex, style=ButtonStyle.PRIMARY
+                        text="NEXT", callback_data=nex, style=ButtonStyle.DEFAULT
                     ),
                 ]
             )
@@ -4688,7 +4688,7 @@ async def featured_in_switch_btn(client: Client, cq: CallbackQuery, cdata: dict)
             InlineKeyboardButton(
                 text="BACK",
                 callback_data=f"page_CHARACTER_{qry}_{pg}_{auth}_{user}",
-                style=ButtonStyle.PRIMARY,
+                style=ButtonStyle.DEFAULT,
             )
         ]
     )
@@ -4802,7 +4802,7 @@ async def headlines_btn(client: Client, cq: CallbackQuery):
                 InlineKeyboardButton(
                     text="Auto Unpin (LC)",
                     callback_data=f"anpin_call_lc_{gid}",
-                    style=ButtonStyle.DANGER,
+                    style=ButtonStyle.PRIMARY,
                 ),
             ],
             [
@@ -4821,14 +4821,14 @@ async def headlines_btn(client: Client, cq: CallbackQuery):
                 InlineKeyboardButton(
                     text="Auto Unpin (MAL)",
                     callback_data=f"anpin_call_mal_{gid}",
-                    style=ButtonStyle.DANGER,
+                    style=ButtonStyle.PRIMARY,
                 ),
             ],
             [
                 InlineKeyboardButton(
                     text="BACK",
                     callback_data=f"settogl_call_{gid}",
-                    style=ButtonStyle.PRIMARY,
+                    style=ButtonStyle.DEFAULT,
                 )
             ],
         ]
@@ -4904,7 +4904,7 @@ async def auto_unpin(client: Client, cq: CallbackQuery):
             InlineKeyboardButton(
                 text=i,
                 callback_data=f"unpin_{TIMES[i]}_{src}_{gid}",
-                style=ButtonStyle.DANGER,
+                style=ButtonStyle.PRIMARY,
             )
         )
         if count == 3:
@@ -4918,7 +4918,7 @@ async def auto_unpin(client: Client, cq: CallbackQuery):
             InlineKeyboardButton(
                 text="BACK",
                 callback_data=f"headlines_call_{gid}",
-                style=ButtonStyle.PRIMARY,
+                style=ButtonStyle.DEFAULT,
             )
         ]
     )
@@ -4981,7 +4981,7 @@ async def change_ui_btn(client: Client, cq: CallbackQuery):
             InlineKeyboardButton(
                 text="BACK",
                 callback_data=f"settogl_call_{gid}",
-                style=ButtonStyle.PRIMARY,
+                style=ButtonStyle.DEFAULT,
             )
         ]
     )
@@ -5174,7 +5174,7 @@ async def watch_(client: app, cq: CallbackQuery, cdata: dict):
                     InlineKeyboardButton(
                         text="NEXT",
                         callback_data=f"{kek}_{id_}_{qry}_{int(req) + 1}_{user}",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     )
                 ]
             )
@@ -5184,7 +5184,7 @@ async def watch_(client: app, cq: CallbackQuery, cdata: dict):
                     InlineKeyboardButton(
                         text="PREV",
                         callback_data=f"{kek}_{id_}_{qry}_{int(req) - 1}_{user}",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     )
                 ]
             )
@@ -5194,12 +5194,12 @@ async def watch_(client: app, cq: CallbackQuery, cdata: dict):
                     InlineKeyboardButton(
                         text="PREV",
                         callback_data=f"{kek}_{id_}_{qry}_{int(req) - 1}_{user}",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     ),
                     InlineKeyboardButton(
                         text="NEXT",
                         callback_data=f"{kek}_{id_}_{qry}_{int(req) + 1}_{user}",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     ),
                 ]
             )
@@ -5208,7 +5208,7 @@ async def watch_(client: app, cq: CallbackQuery, cdata: dict):
             InlineKeyboardButton(
                 text="Back",
                 callback_data=f"wol_{qry}_{user}",
-                style=ButtonStyle.PRIMARY,
+                style=ButtonStyle.DEFAULT,
             )
         ]
     )

@@ -167,7 +167,7 @@ async def connect_chat(client, message: Message):
                     InlineKeyboardButton(
                         text="❎ Close Button",
                         callback_data="connect_close",
-                        style=ButtonStyle.SUCCESS,
+                        style=ButtonStyle.DEFAULT,
                     ),
                     InlineKeyboardButton(
                         text="🧹 Clear History",

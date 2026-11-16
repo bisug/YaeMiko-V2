@@ -8,7 +8,7 @@ import asyncio
 import html
 
 from pyrogram import filters
-from pyrogram.enums import ChatMemberStatus, ParseMode
+from pyrogram.enums import ButtonStyle, ChatMemberStatus, ParseMode
 from pyrogram.errors import RPCError
 from pyrogram.types import (
     CallbackQuery,
@@ -180,6 +180,7 @@ def _confirm_markup(chat_id, thread_id):
                 InlineKeyboardButton(
                     text="Yes, delete it",
                     callback_data=f"deltopic_{chat_id}_{thread_id}",
+                    style=ButtonStyle.DANGER,
                 ),
                 InlineKeyboardButton(
                     text="Cancel", callback_data=f"deltopic_cancel_{chat_id}"

@@ -11,7 +11,7 @@ import io
 import json
 
 from pyrogram import filters
-from pyrogram.enums import ChatMemberStatus, ChatType, ParseMode
+from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
 from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -260,6 +260,7 @@ async def reset(client, message: Message) -> str:
                     InlineKeyboardButton(
                         text="Yes, reset everything",
                         callback_data=f"settings_reset_{chat_id}",
+                        style=ButtonStyle.DANGER,
                     ),
                     InlineKeyboardButton(
                         text="Cancel",

@@ -53,7 +53,7 @@ async def _remove_deleted(message, status):
                     InlineKeyboardButton(
                         text="Close",
                         callback_data="zombies_close",
-                        style=ButtonStyle.PRIMARY,
+                        style=ButtonStyle.DEFAULT,
                     )
                 ]
             ]

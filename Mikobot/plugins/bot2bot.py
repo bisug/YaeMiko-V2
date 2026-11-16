@@ -13,7 +13,7 @@ import html
 
 from cachetools import TTLCache
 from pyrogram import filters
-from pyrogram.enums import ChatMemberStatus, ParseMode
+from pyrogram.enums import ButtonStyle, ChatMemberStatus, ParseMode
 from pyrogram.errors import RPCError
 from pyrogram.types import (
     CallbackQuery,
@@ -160,10 +160,12 @@ async def request_review(bot_user, chat, message) -> bool:
                         InlineKeyboardButton(
                             text="Approve",
                             callback_data=f"bot2bot_approve_{chat.id}_{msg_id}",
+                            style=ButtonStyle.SUCCESS,
                         ),
                         InlineKeyboardButton(
                             text="Reject",
                             callback_data=f"bot2bot_reject_{chat.id}_{msg_id}",
+                            style=ButtonStyle.DANGER,
                         ),
                     ]
                 ]
