@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import asyncio
 import tempfile
 import threading
@@ -15,10 +14,6 @@ from Mikobot.logger import LOGGER
 from Mikobot.utils.can_restrict import can_restrict
 from Mikobot.utils.errors import capture_err
 
-# <=======================================================================================================>
-
-
-# <================================================ FUNCTION =======================================================>
 classifier = None
 NSFW_THRESHOLD = 0.55
 MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -425,7 +420,7 @@ async def nsfw_enable_disable(client, message):
     status = message.text.split(None, 1)[1].strip().lower()
     if status in ("on", "yes"):
         if sql.is_nsfw_on(chat_id):
-            await message.reply_text("Antinsfw is already enabled.")
+            await message.reply_text("AntiNSFW is already enabled.")
             return
         sql.nsfw_on(chat_id)
 
@@ -452,26 +447,22 @@ async def nsfw_enable_disable(client, message):
             )
     elif status in ("off", "no"):
         if not sql.is_nsfw_on(chat_id):
-            await message.reply_text("Antinsfw is already disabled.")
+            await message.reply_text("AntiNSFW is already disabled.")
             return
         sql.nsfw_off(chat_id)
         await message.reply_text("Disabled AntiNSFW System.")
     else:
-        await message.reply_text("Unknown Suffix, Use /antinsfw [on/off]")
-
-
-# <=================================================== HELP ====================================================>
+        await message.reply_text("Unknown suffix. Use /antinsfw [on/off]")
 
 
 __mod_name__ = "ANTI-NSFW"
 
 __help__ = """
-*🔞 Helps in detecting NSFW material and removing it*.
+*🔞 Detects NSFW material and removes it.*
 
 ➠ *Usage:*
 
 » /antinsfw [on/off]: Enables Anti-NSFW system.
 
-» /nsfwscan <reply to message>: Scans the file replied to.
+» /nsfwscan <reply to message>: Scans the replied-to file.
 """
-# <================================================ END =======================================================>

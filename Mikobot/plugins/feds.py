@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import ast
 import csv
 import json
@@ -45,8 +44,6 @@ from Mikobot.plugins.helper_funcs.extraction import (
 )
 from Mikobot.plugins.helper_funcs.string_handling import markdown_parser
 from Mikobot.utils.parser import mention_html, mention_markdown
-
-# <=======================================================================================================>
 
 FBAN_ERRORS = {
     "user is an administrator of the chat",
@@ -104,7 +101,6 @@ def _is_user_id_invalid(excp: Exception) -> bool:
     )
 
 
-# <================================================ FUNCTION =======================================================>
 @on_message(filters.command("newfed"), chained=True)
 async def new_fed(client, message: Message):
     chat = message.chat
@@ -691,7 +687,6 @@ async def fed_ban(client, message: Message):
             return
 
         fed_chats = sql.all_fed_chats(fed_id)
-        # Will send to current chat
         await client.send_message(
             chat.id,
             "<b>FedBan reason updated</b>"
@@ -708,7 +703,6 @@ async def fed_ban(client, message: Message):
             ),
             parse_mode="HTML",
         )
-        # Send message to owner if fednotif is enabled
         if getfednotif:
             await client.send_message(
                 info["owner"],
@@ -726,7 +720,7 @@ async def fed_ban(client, message: Message):
                 ),
                 parse_mode="HTML",
             )
-        # If fedlog is set, then send message, except fedlog is current chat
+        # Skip the log channel itself so the action is not echoed there
         get_fedlog = await sql.get_fed_log(fed_id)
         if get_fedlog:
             if int(get_fedlog) != int(chat.id):
@@ -841,7 +835,6 @@ async def fed_ban(client, message: Message):
         return
 
     fed_chats = sql.all_fed_chats(fed_id)
-    # Will send to current chat
     await client.send_message(
         chat.id,
         "<b>New FedBan</b>"
@@ -858,7 +851,6 @@ async def fed_ban(client, message: Message):
         ),
         parse_mode="HTML",
     )
-    # Send message to owner if fednotif is enabled
     if getfednotif:
         await client.send_message(
             info["owner"],
@@ -876,7 +868,7 @@ async def fed_ban(client, message: Message):
             ),
             parse_mode="HTML",
         )
-    # If fedlog is set, then send message, except fedlog is current chat
+    # Skip the log channel itself so the action is not echoed there
     get_fedlog = await sql.get_fed_log(fed_id)
     if get_fedlog:
         if int(get_fedlog) != int(chat.id):
@@ -900,7 +892,7 @@ async def fed_ban(client, message: Message):
     for fedschat in fed_chats:
         chats_in_fed += 1
         try:
-            # Do not spamming all fed chats
+            # Do not spam all fed chats
             """
 			client.send_message(chat, "<b>FedBan reason updated</b>" \
 							"\n<b>Federation:</b> {}" \
@@ -920,7 +912,7 @@ async def fed_ban(client, message: Message):
                     "Could not fban on {} because: {}".format(fedschat, excp),
                 )
 
-        # Also do not spamming all fed admins
+        # Also do not spam all fed admins
         """
 		send_to_list(bot, FEDADMIN,
 				 "<b>FedBan reason updated</b>" \
@@ -1009,7 +1001,6 @@ async def unfban(client, message: Message):
         return
 
     chat_list = sql.all_fed_chats(fed_id)
-    # Will send to current chat
     await client.send_message(
         chat.id,
         "<b>Un-FedBan</b>"
@@ -1024,7 +1015,6 @@ async def unfban(client, message: Message):
         ),
         parse_mode="HTML",
     )
-    # Send message to owner if fednotif is enabled
     if getfednotif:
         await client.send_message(
             info["owner"],
@@ -1040,7 +1030,7 @@ async def unfban(client, message: Message):
             ),
             parse_mode="HTML",
         )
-    # If fedlog is set, then send message, except fedlog is current chat
+    # Skip the log channel itself so the action is not echoed there
     get_fedlog = await sql.get_fed_log(fed_id)
     if get_fedlog:
         if int(get_fedlog) != int(chat.id):
@@ -1065,7 +1055,7 @@ async def unfban(client, message: Message):
             member = await client.get_chat_member(fedchats, user_id)
             if member.status == ChatMemberStatus.BANNED:
                 await client.unban_chat_member(fedchats, user_id)
-            # Do not spamming all fed chats
+            # Do not spam all fed chats
             """
 			client.send_message(chat, "<b>Un-FedBan</b>" \
 						 "\n<b>Federation:</b> {}" \
@@ -1137,7 +1127,7 @@ async def unfban(client, message: Message):
             message,
             "This person has been un-fbanned in {} chats.".format(unfbanned_in_chats),
         )
-    # Also do not spamming all fed admins
+    # Also do not spam all fed admins
     """
 	FEDADMIN = sql.all_fed_users(fed_id)
 	for x in FEDADMIN:
@@ -1258,7 +1248,6 @@ async def fed_broadcast(client, message: Message):
         if is_user_fed_owner(fed_id, user.id) is False:
             await message.reply_text("Only federation owners can do this!")
             return
-        # Parsing md
         raw_text = msg.text
         args = raw_text.split(None, 1)  # use python's maxsplit to separate cmd and args
         txt = args[1]
@@ -2241,7 +2230,7 @@ def is_user_fed_owner(fed_id, user_id):
     return bool(str(user_id) == getfedowner or int(user_id) == OWNER_ID)
 
 
-# There's no handler for this yet, but updating for v12 in case its used
+# There's no handler for this yet, but updating for v12 in case it's used
 
 
 async def welcome_fed(client, message: Message):
@@ -2290,7 +2279,6 @@ def __user_info__(user_id, chat_id):
     return text
 
 
-# Temporary data
 def put_chat(chat_id, value, chat_data):
     if value is False:
         status = False
@@ -2313,14 +2301,14 @@ async def fed_owner_help(client, message: Message):
         """*👑 Fed Owner Only:*
  » `/newfed <fed_name>`*:* Creates a Federation, One allowed per user
  » `/renamefed <fed_id> <new_fed_name>`*:* Renames the fed id to a new name
- » `/delfed <fed_id>`*:* Delete a Federation, and any information related to it. Will not cancel blocked users
+ » `/delfed <fed_id>`*:* Delete a Federation and any information related to it. Already banned users stay banned
  » `/fpromote <user>`*:* Assigns the user as a federation admin. Enables all commands for the user under `Fed Admins`
- » `/fdemote <user>`*:* Drops the User from the admin Federation to a normal User
+ » `/fdemote <user>`*:* Demotes a federation admin to a normal user
  » `/subfed <fed_id>`*:* Subscribes to a given fed ID, bans from that subscribed fed will also happen in your fed
- » `/unsubfed <fed_id>`*:* Unsubscribes to a given fed ID
+ » `/unsubfed <fed_id>`*:* Unsubscribes from a given fed ID
  » `/setfedlog <fed_id>`*:* Sets the group as a fed log report base for the federation
- » `/unsetfedlog <fed_id>`*:* Removed the group as a fed log report base for the federation
- » `/fbroadcast <message>`*:* Broadcasts a messages to all groups that have joined your fed
+ » `/unsetfedlog <fed_id>`*:* Removes the group as a fed log for the federation
+ » `/fbroadcast <message>`*:* Broadcasts a message to all groups that have joined your fed
  » `/fedsubs`*:* Shows the feds your group is subscribed to `(broken rn)`""",
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -2337,7 +2325,7 @@ async def fed_admin_help(client, message: Message):
  » `/leavefed <fed_id>`*:* Leave the Federation given. Only chat owners can do this
  » `/setfrules <rules>`*:* Arrange Federation rules
  » `/fedadmins`*:* Show Federation admin
- » `/fbanlist`*:* Displays all users who are victimized at the Federation at this time
+ » `/fbanlist`*:* Displays all users currently banned in the Federation
  » `/fedchats`*:* Get all the chats that are connected in the Federation
  » `/chatfed `*:* See the Federation in the current chat\n""",
         parse_mode=ParseMode.MARKDOWN,
@@ -2348,14 +2336,11 @@ async def fed_admin_help(client, message: Message):
 async def fed_user_help(client, message: Message):
     await message.reply_text(
         """*🎩 Any user:*
- » `/fbanstat`*:* Shows if you/or the user you are replying to or their username is fbanned somewhere or not
- » `/fednotif <on/off>`*:* Federation settings not in PM when there are users who are fbaned/unfbanned
+ » `/fbanstat`*:* Shows whether you, the user you reply to, or a username is fbanned anywhere
+ » `/fednotif <on/off>`*:* Turn federation notifications in PM on or off for fban and unfban events
  » `/frules`*:* See Federation regulations\n""",
         parse_mode=ParseMode.MARKDOWN,
     )
-
-
-# <=================================================== HELP ====================================================>
 
 
 __mod_name__ = "FEDS"
@@ -2367,7 +2352,7 @@ __help__ = """
 *You can even designate federation admins, so your trusted admin can ban all the spammers from chats you want to protect*.\n
 
 ➠ *Commands:*
-➠ Feds are now divided into 3 sections for your ease.
+➠ Federations are divided into three sections for ease of use.
 
 » /fedownerhelp: Provides help for fed creation and owner only commands.
 
@@ -2380,6 +2365,3 @@ __help__ = """
 
 def __migrate__(old_chat_id, new_chat_id):
     sql.migrate_chat(old_chat_id, new_chat_id)
-
-
-# <================================================ END =======================================================>

@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import asyncio
 from io import BytesIO
 from threading import RLock
@@ -21,8 +20,6 @@ from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.utils.consts import ChatID
 from Mikobot.utils.errors import FLOOD_WAIT_ERRORS, flood_wait_seconds
 from Mikobot.utils.filters import GROUPS
-
-# <=======================================================================================================>
 
 BROADCAST_TARGETS = {"-all", "-group", "-user"}
 
@@ -49,8 +46,6 @@ def parse_broadcast_request(text: str, has_reply: bool = False):
     return targets, content or None
 
 
-# <================================================ FUNCTION =======================================================>
-# Broadcast Function
 @on_message(fil.command("gcast"), chained=True)
 async def broadcast_cmd(client: Client, message: Message):
     if not message.from_user:
@@ -97,10 +92,9 @@ async def broadcast_cmd(client: Client, message: Message):
             await client.send_message(target_id, content)
 
     async def fan_out(target_ids):
-        """One send per target, waiting out a FloodWait rather than failing.
+        """One send per target; wait out a FloodWait rather than fail.
 
-        A fan-out past a few hundred chats hits the rate limit by design, so
-        honouring the delay the API names is what actually delivers the rest.
+        Large fan-outs hit the rate limit by design, so honouring the API's delay is what delivers the rest.
         """
         sent = failed = 0
         for target_id in target_ids:
@@ -132,7 +126,7 @@ async def broadcast_cmd(client: Client, message: Message):
 
 
 async def get_user_id(username: str) -> int | None:
-    # ensure valid user ID
+    # Telegram usernames are at least five characters.
     if len(username) <= 5:
         return None
 
@@ -287,9 +281,8 @@ async def chats(client: Client, message: Message):
             )
             P = P + 1
         except RPCError:
-            # A single chat can be unreachable (kicked, renamed away, or the bot
-            # was removed). Skipping it keeps the export usable; the entry is
-            # simply missing from the listing.
+            # Skip unreachable chats (kicked, renamed, bot removed) so one bad
+            # entry does not spoil the export.
             LOGGER.debug("Skipped unreadable chat %s", chat.chat_id)
 
     with BytesIO(str.encode(chatfile)) as output:
@@ -331,7 +324,4 @@ def __migrate__(old_chat_id, new_chat_id):
     locale_sql.migrate_chat(old_chat_id, new_chat_id)
 
 
-# <================================================ END =======================================================>
-
 __mod_name__ = "USERS"
-# <================================================ END =======================================================>

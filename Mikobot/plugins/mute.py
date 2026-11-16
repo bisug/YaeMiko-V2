@@ -255,7 +255,6 @@ async def temp_mute(client, message: Message) -> str:
 
     except RPCError as excp:
         if "reply message not found" in str(excp.message or excp).lower():
-            # Do not reply
             await message.reply_text(f"Muted for {time_val}!")
             return log
         else:
@@ -280,7 +279,7 @@ __help__ = """
 » /dmute <userhandle>: Delete the replied message and mute the user. Must be a reply.
 » /dtmute <userhandle> x(m/h/d): Same as above, but mutes temporarily.
 
-» /unmute <userhandle>: unmutes a user. Can also be used as a reply, muting the replied to user.
+» /unmute <userhandle>: unmutes a user. Can also be used as a reply, unmuting the replied to user.
 """
 
 __mod_name__ = "MUTE"

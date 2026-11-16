@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import asyncio
 import html
 import time
@@ -21,9 +20,6 @@ from Mikobot.events import on_callback, on_message
 from Mikobot.logger import LOGGER
 from Mikobot.state import state
 
-# <=======================================================================================================>
-
-# <================================================= CONSTANTS =================================================>
 API = "https://genshin-api.deve.sh"
 REQUEST_TIMEOUT = 15
 
@@ -111,10 +107,7 @@ ENTITY_TYPES = {
     )
 }
 
-# <=======================================================================================================>
 
-
-# <================================================= HELPERS =================================================>
 def _cut(text, limit: int) -> str:
     """Trim to a character budget."""
     text = str(text or "").strip()
@@ -434,10 +427,6 @@ async def _character_names() -> dict:
     return names
 
 
-# <=======================================================================================================>
-
-
-# <=============================================== RENDERING ===============================================>
 def _character_keyboard(char_id: str, active_tab: str) -> InlineKeyboardMarkup:
     """Tab buttons for character cards."""
 
@@ -882,10 +871,6 @@ def _list_keyboard(
     return InlineKeyboardMarkup(keyboard)
 
 
-# <=======================================================================================================>
-
-
-# <================================================== SENDING ================================================>
 async def _send_card(
     chat_id: int,
     text: str,
@@ -931,10 +916,6 @@ async def _replace(status: Message, text: str):
             LOGGER.debug("Could not deliver a genshin notice", exc_info=True)
 
 
-# <=======================================================================================================>
-
-
-# <================================================= COMMANDS ================================================>
 async def _universal_lookup(message: Message, query: str):
     status = await message.reply_text(
         f"Looking up <b>{html_escape(query)}</b>…", parse_mode=ParseMode.HTML
@@ -1132,7 +1113,6 @@ async def genshin_element(client, message: Message):
     await _lookup(message, "elements")
 
 
-# <================================================= CALLBACKS ================================================>
 @on_callback(filters.regex(r"^gi:view:"), chained=True)
 async def genshin_view_item(client, query: CallbackQuery):
     """Open item details card directly when tapped from list."""
@@ -1273,7 +1253,6 @@ async def genshin_legacy_cb(client, query: CallbackQuery):
     )
 
 
-# <================================================= HELP ====================================================
 __help__ = """
 ⛩ *Genshin Impact Lookup*
 
@@ -1293,5 +1272,3 @@ __help__ = """
 """
 
 __mod_name__ = "Genshin"
-
-# <================================================== END ====================================================>

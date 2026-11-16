@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 from html import escape
 
 from pyrogram import filters
@@ -21,10 +20,7 @@ from Mikobot.plugins.helper_funcs.string_handling import (
 )
 from Mikobot.utils.filters import GROUPS
 
-# <=======================================================================================================>
 
-
-# <================================================ FUNCTION =======================================================>
 async def send_rules(client, message, chat_id, from_pm=False):
     user = message.from_user
     reply_msg = message.reply_to_message
@@ -35,7 +31,7 @@ async def send_rules(client, message, chat_id, from_pm=False):
             await client.send_message(
                 user.id,
                 "The rules shortcut for this chat hasn't been set properly! Ask admins to "
-                "fix it.\nMaybe they forgot the hyphen in ID",
+                "fix it.\nMaybe they forgot the hyphen in the ID",
             )
             return
         else:
@@ -126,7 +122,6 @@ def __stats__():
 
 
 async def __import_data__(chat_id, data, message):
-    # set chat rules
     rules = data.get("info", {}).get("rules", "")
     sql.set_rules(chat_id, rules)
 
@@ -139,10 +134,6 @@ def __chat_settings__(chat_id, user_id):
     return f"This chat has had its rules set: `{bool(sql.get_rules(chat_id))}`"
 
 
-# <=======================================================================================================>
-
-
-# <================================================= HELP ======================================================>
 __help__ = """
 ➠ /rules: Get the rules for this chat.
 
@@ -153,4 +144,3 @@ __help__ = """
 """
 
 __mod_name__ = "RULES"
-# <================================================== END =====================================================>

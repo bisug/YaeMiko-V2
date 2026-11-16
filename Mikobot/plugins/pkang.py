@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 from uuid import uuid4
 
 import pyrogram
@@ -8,14 +7,11 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from Mikobot import app
 
-# <=======================================================================================================>
 
-
-# <================================================ FUNCTION =======================================================>
 @app.on_message(filters.command("pkang"))
 async def _packkang(app, message):
     """
-    @MaybeSuraj on telegram. who helped me in making this module.
+    Thanks to @MaybeSuraj on Telegram, who helped build this module.
     """
     txt = await message.reply_text("Processing....")
     if not message.from_user:
@@ -81,7 +77,7 @@ async def _packkang(app, message):
             )
         )
         await txt.edit(
-            f"""Your sticker has been added! For fast update remove your pack & add again\n
+            f"""Your sticker has been added! For a faster update, remove your pack and add it again\n
 🎖 𝗧𝗢𝗧𝗔𝗟 𝗦𝗧𝗜𝗖𝗞𝗘𝗥: {len(sticks)}""",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
@@ -97,6 +93,3 @@ async def _packkang(app, message):
         )
     except Exception as e:
         await message.reply_text(str(e))
-
-
-# <================================================ END =======================================================>

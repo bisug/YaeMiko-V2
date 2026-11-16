@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import html
 import random
 from datetime import datetime
@@ -15,14 +14,11 @@ from Mikobot.plugins.disable import disableable, disableable_friendly
 from Mikobot.plugins.users import get_user_id
 from Mikobot.utils.filters import GROUPS
 
-# <=======================================================================================================>
-
-# kurigram keeps the entity type in an enum, and the mention entities are
-# the only ones that point at a user.
+# Kurigram keeps the entity type in an enum, and mention entities are the
+# only ones that point at a user.
 MENTION_ENTITIES = (MessageEntityType.TEXT_MENTION, MessageEntityType.MENTION)
 
 
-# <================================================ FUNCTION =======================================================>
 @on_message(*disableable("afk"), chained=True)
 async def afk(client, message: Message):
     if not message.text:
@@ -80,7 +76,7 @@ async def no_longer_afk(client, message: Message):
     time = humanize.naturaldelta(datetime.now() - afk_user.time)
     res = sql.rm_afk(user.id)
     if res:
-        if message.new_chat_members:  # dont say msg
+        if message.new_chat_members:  # a join notice is not a real return
             return
         firstname = user.first_name
         try:
@@ -109,7 +105,7 @@ async def reply_afk(client, message: Message):
     userc_id = userc.id
     chk_users = []
 
-    # The mention entities are read off the message itself: kurigram keeps
+    # The mention entities are read off the message itself: Kurigram keeps
     # the entity type in an enum and the mentioned user on the entity.
     mention = next(
         (ent for ent in (message.entities or []) if ent.type in MENTION_ENTITIES),
@@ -126,9 +122,8 @@ async def reply_afk(client, message: Message):
             if user_id in chk_users:
                 return
             chk_users.append(user_id)
-            # This branch used to fall through to the end of the if/elif/else
-            # without answering, so a mention of someone without a @username
-            # resolved the user and then reported nothing.
+            # This branch used to fall through without answering, so mentioning
+            # someone without a @username resolved them but reported nothing.
             await check_afk(message, user_id, fst_name, userc_id)
         else:
             text = (message.text or "")[
@@ -187,23 +182,19 @@ async def check_afk(
             await message.reply_text(res, parse_mode=ParseMode.HTML)
 
 
-# <=================================================== HELP ====================================================>
-
-
 __help__ = """
 » /afk <reason>*:* mark yourself as AFK (away from keyboard).
 
-» brb , !afk <reason>*:* same as the afk command - but not a command.
+» brb, !afk <reason>*:* same as the afk command, but not a command.
 
 » /bye [Reason > Optional] - Tell others that you are AFK (Away From Keyboard).
 
 » /bye [reply to media] - AFK with media.
 
-» /byedel - Enable auto delete AFK message in group (Only for group admin). Default is **Enable**.
+» /byedel - Enable auto-delete of AFK messages in group (group admins only). Default is **Enable**.
 
-➠ *When marked as AFK, any mentions will be replied to with a message to say you're not available!*
+➠ *When marked as AFK, any mention gets a reply saying you're not available!*
 """
 
 __mod_name__ = "AFK"
 __command_list__ = ["afk"]
-# <================================================ END =======================================================>

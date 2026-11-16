@@ -34,7 +34,7 @@ async def approve(client, message: Message):
     user_id = await extract_user(message, args)
     if not user_id:
         await message.reply_text(
-            "I don't know who you're talking about, you're going to need to specify a user!",
+            "I don't know who you're talking about; you need to specify a user!",
         )
         return ""
     try:
@@ -78,7 +78,7 @@ async def disapprove(client, message: Message):
     user_id = await extract_user(message, args)
     if not user_id:
         await message.reply_text(
-            "I don't know who you're talking about, you're going to need to specify a user!",
+            "I don't know who you're talking about; you need to specify a user!",
         )
         return ""
     try:
@@ -143,7 +143,7 @@ async def approval(client, message: Message):
 
     if not user_id:
         await message.reply_text(
-            "I don't know who you're talking about, you're going to need to specify a user!",
+            "I don't know who you're talking about; you need to specify a user!",
         )
         return ""
     member = await client.get_chat_member(chat.id, int(user_id))
@@ -209,7 +209,7 @@ async def unapproveall_btn(client, query: CallbackQuery):
             users = [int(i.user_id) for i in approved_users]
             for user_id in users:
                 sql.disapprove(chat.id, user_id)
-            await message.edit_text("Successfully Unapproved all user in this Chat.")
+            await message.edit_text("Successfully unapproved all users in this chat.")
             await query.answer("All users unapproved.")
             return
 
@@ -220,9 +220,7 @@ async def unapproveall_btn(client, query: CallbackQuery):
             await query.answer("You need to be admin to do this.")
     elif query.data == "unapproveall_cancel":
         if member.status == ChatMemberStatus.OWNER or query.from_user.id in DRAGONS:
-            await message.edit_text(
-                "Removing of all approved users has been cancelled."
-            )
+            await message.edit_text("Removing all approved users has been cancelled.")
             await query.answer()
             return ""
         if member.status == ChatMemberStatus.ADMINISTRATOR:
@@ -233,9 +231,9 @@ async def unapproveall_btn(client, query: CallbackQuery):
 
 __help__ = """
 ➠ Sometimes, you might trust a user not to send unwanted content.
-Maybe not enough to make them admin, but you might be ok with locks, blacklists, and antiflood not applying to them.
+Maybe not enough to make them admin, but you might be okay with locks, blacklists, and antiflood not applying to them.
 
-➠ That's what approvals are for - approve of trustworthy users to allow them to send
+➠ That's what approvals are for: approve trustworthy users and these checks will skip them.
 
 ➠ *Admin commands:*
 
@@ -243,7 +241,7 @@ Maybe not enough to make them admin, but you might be ok with locks, blacklists,
 
 » /approve: Approve of a user. Locks, blacklists, and antiflood won't apply to them anymore.
 
-» /unapprove: Unapprove of a user. They will now be subject to locks, blacklists, and antiflood again.
+» /unapprove: Unapprove a user. They will now be subject to locks, blacklists, and antiflood again.
 
 » /approved: List all approved users.
 

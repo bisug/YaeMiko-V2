@@ -1,25 +1,17 @@
 # SOURCE https://github.com/Team-ProjectCodeX
 # CREATED BY https://t.me/O_okarma
 # PROVIDED BY https://t.me/ProjectCodeX
-# NEKOS
 
-# <============================================== IMPORTS =========================================================>
 import asyncio
 
 from pyrogram import filters
 
 from Database.sql.toggle_sql import is_nekomode_on, nekomode_off, nekomode_on
 from Mikobot import app
-from Mikobot.state import state  # Import the state function
+from Mikobot.state import state
 
-# <=======================================================================================================>
-
-# api.waifu.pics stopped resolving, which took all 31 of the commands below with
-# it. nekos.life serves the same category names and is the backend the nekos.py
-# dependency already talks to, so the surviving ten are fetched from there.
-# Probed live: every name listed here returns a URL, and these are the ones
-# among the old list that the service actually answers. The removed twenty
-# return HTTP 500 and have no equivalent, so advertising them was the bug.
+# api.waifu.pics stopped resolving and took all 31 commands with it. nekos.life
+# serves the same category names, so the ten that still work are fetched from there; the other twenty return HTTP 500.
 url_sfw = "https://nekos.life/api/v2/img/"
 
 allowed_commands = [
@@ -36,7 +28,6 @@ allowed_commands = [
 ]
 
 
-# <================================================ FUNCTION =======================================================>
 @app.on_message(filters.regex(r"^/wallpaper(?:@\S+)?$"), group=1)
 async def wallpaper(_, event):
     chat_id = event.chat.id
@@ -52,9 +43,8 @@ async def wallpaper(_, event):
                 "The neko service is unavailable. Please try again later."
             )
             return
-        # The send is guarded separately from the fetch: a wallpaper the
-        # service hands out can still be refused by Telegram (an oversized
-        # or undecodable image), and that must not escape as a traceback.
+        # Sending is guarded separately: Telegram can refuse an oversized or
+        # undecodable image even after the service returns it.
         try:
             await event.reply_photo(img_url)
         except Exception:
@@ -84,9 +74,7 @@ async def nekomode_commands(_, event):
     chat_id = event.chat.id
     nekomode_status = is_nekomode_on(chat_id)
     if nekomode_status:
-        target = (
-            event.text.split()[0].split("@", 1)[0][1:].lower()
-        )  # Remove the slash before the command
+        target = event.text.split()[0].split("@", 1)[0][1:].lower()
         if target in allowed_commands:
             url = f"{url_sfw}{target}"
 
@@ -102,9 +90,8 @@ async def nekomode_commands(_, event):
                 )
                 return
 
-            # Most categories answer with a gif, but spank and neko return a
-            # still image often enough that sending everything as an animation
-            # fails on the upload.
+            # Most categories return a gif, but spank and neko often return a
+            # still image, so sending everything as an animation fails on upload.
             if media_url.lower().endswith((".gif", ".mp4")):
                 await event.reply_animation(media_url)
             else:
@@ -115,7 +102,7 @@ __help__ = """
 *✨ Sends fun Gifs/Images*
 
 ➥ /nekomode on : Enables fun neko mode.
-➥ /nekomode off : Disables fun neko mode
+➥ /nekomode off : Disables fun neko mode.
 
 » /waifu: sends a random waifu.
 » /neko: sends a random neko.
@@ -131,4 +118,3 @@ __help__ = """
 """
 
 __mod_name__ = "NEKO"
-# <================================================ END =======================================================>

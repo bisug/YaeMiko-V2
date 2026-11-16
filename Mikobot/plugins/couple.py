@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import asyncio
 import random
 from datetime import datetime, timedelta
@@ -8,9 +7,6 @@ from pyrogram import filters
 from Database.sql.karma_sql import get_couple, save_couple
 from Mikobot import app
 
-# <=======================================================================================================>
-
-# List of additional images
 ADDITIONAL_IMAGES = [
     "https://telegra.ph/file/7ef6006ed6e452a6fd871.jpg",
     "https://telegra.ph/file/16ede7c046f35e699ed3c.jpg",
@@ -18,7 +14,6 @@ ADDITIONAL_IMAGES = [
 ]
 
 
-# <================================================ FUNCTION =======================================================>
 def dt():
     now = datetime.now()
     dt_string = now.strftime("%d/%m/%Y %H:%M")
@@ -68,7 +63,7 @@ CAP2 = """
 
 @app.on_message(filters.command(["couple", "couples", "shipping"]) & ~filters.private)
 async def nibba_nibbi(_, message):
-    COUPLES_PIC = random.choice(ADDITIONAL_IMAGES)  # Move inside the command function
+    COUPLES_PIC = random.choice(ADDITIONAL_IMAGES)
     if not message.from_user or message.from_user.is_bot:
         return
     try:
@@ -83,8 +78,8 @@ async def nibba_nibbi(_, message):
                 return await message.reply_text("Not enough users in the group.")
             c1_id, c2_id = random.sample(list_of_users, 2)
             users = await _.get_users([c1_id, c2_id])
-            # kurigram keeps a None placeholder for an id it could not
-            # resolve, so a missing member would raise on .mention.
+            # Kurigram keeps a None placeholder for ids it could not resolve,
+            # so a missing member would raise on .mention.
             if users[0] is None or users[1] is None:
                 return await message.reply_text(
                     "I could not resolve both users. Please try again later."
@@ -119,7 +114,6 @@ async def nibba_nibbi(_, message):
         )
 
 
-# <=================================================== HELP ====================================================>
 __help__ = """
 💘 *Choose couples in your chat*
 
@@ -127,4 +121,3 @@ __help__ = """
 """
 
 __mod_name__ = "COUPLE"
-# <================================================ END =======================================================>

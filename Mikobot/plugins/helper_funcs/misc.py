@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 from html import escape
 from math import ceil
 from uuid import uuid4
@@ -16,10 +15,7 @@ from pyrogram.types import (
 from Mikobot import BOT_USERNAME, NO_LOAD
 from Mikobot.utils.consts import MessageLimit
 
-# <=======================================================================================================>
 
-
-# <================================================ FUNCTION =======================================================>
 class EqInlineKeyboardButton(InlineKeyboardButton):
     def __eq__(self, other):
         return self.text == other.text
@@ -213,13 +209,10 @@ def is_module_loaded(name):
 def mention_username(username: str, name: str) -> str:
     """
     Args:
-        username (:obj:`str`): The username of chat which you want to mention.
-        name (:obj:`str`): The name the mention is showing.
+        username (:obj:`str`): The username of the chat to mention.
+        name (:obj:`str`): The name shown for the mention.
 
     Returns:
         :obj:`str`: The inline mention for the user as HTML.
     """
     return f'<a href="t.me/{username}">{escape(name)}</a>'
-
-
-# <================================================ END =======================================================>

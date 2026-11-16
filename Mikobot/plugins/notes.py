@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import ast
 import random
 import re
@@ -34,8 +33,6 @@ from Mikobot.utils.parser import escape_markdown, mention_markdown
 
 from .cust_filters import MessageHandlerChecker
 
-# <=======================================================================================================>
-
 FILE_MATCHER = re.compile(r"^###file_id(!photo)?###:(.*?)(?:\s|$)")
 STICKER_MATCHER = re.compile(r"^###sticker(!photo)?###:")
 BUTTON_MATCHER = re.compile(r"^###button(!photo)?###:(.*?)(?:\s|$)")
@@ -47,7 +44,6 @@ MYVIDEO_MATCHER = re.compile(r"^###video(!photo)?###:")
 MYVIDEONOTE_MATCHER = re.compile(r"^###video_note(!photo)?###:")
 
 
-# <================================================ FUNCTION =======================================================>
 async def get(
     client,
     message: Message,
@@ -64,7 +60,7 @@ async def get(
     if note:
         if message.from_user and MessageHandlerChecker.check_user(message.from_user.id):
             return
-        # If we're replying to a message, reply to that message (unless it's an error)
+        # Reply in the thread the command targeted, not to the command itself.
         if (
             message.reply_to_message
             and not message.reply_to_message.forum_topic_created
@@ -390,7 +386,7 @@ async def clearall_btn(client, query: CallbackQuery):
                 return
 
         if member.status == ChatMemberStatus.ADMINISTRATOR:
-            await query.answer("Only owner of the chat can do this.")
+            await query.answer("Only the owner of the chat can do this.")
 
         if member.status == ChatMemberStatus.MEMBER:
             await query.answer("You need to be admin to do this.")
@@ -400,7 +396,7 @@ async def clearall_btn(client, query: CallbackQuery):
             await query.answer()
             return
         if member.status == ChatMemberStatus.ADMINISTRATOR:
-            await query.answer("Only owner of the chat can do this.")
+            await query.answer("Only the owner of the chat can do this.")
         if member.status == ChatMemberStatus.MEMBER:
             await query.answer("You need to be admin to do this.")
 
@@ -562,7 +558,7 @@ async def __import_data__(chat_id, data, message: Message):
                 document=output,
                 file_name="failed_imports.txt",
                 caption="These files/photos failed to import due to originating "
-                "from another client. This is a telegram API restriction, and can't "
+                "from another client. This is a Telegram API restriction, and can't "
                 "be avoided. Sorry for the inconvenience!",
                 message_thread_id=(
                     message.message_thread_id if message.chat.is_forum else None
@@ -596,9 +592,6 @@ def __chat_settings__(chat_id, user_id):
     return f"There are `{len(notes)}` notes in this chat."
 
 
-# <=================================================== HELP ====================================================>
-
-
 __help__ = """
  » /get <notename> : get the note with this notename
  » #<notename> : same as /get
@@ -612,7 +605,7 @@ be useful when updating a current note
  ➠ A button can be added to a note by using standard markdown link syntax - the link should just be prepended with a \
 `buttonurl:` section, as such: `[somelink](buttonurl:example.com)`.
  » /save <notename> : save the replied message as a note with name notename
- Separate diff replies by `%%%` to get random notes
+ Separate different replies with `%%%` to get random notes
  ➠ *Example:*
  `/save notename
  Reply 1
@@ -627,4 +620,3 @@ be useful when updating a current note
 """
 
 __mod_name__ = "NOTES"
-# <================================================ END =======================================================>

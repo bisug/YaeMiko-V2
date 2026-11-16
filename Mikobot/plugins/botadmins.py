@@ -2,7 +2,6 @@
 # CREATED BY https://t.me/O_okarma
 # PROVIDED BY https://t.me/ProjectCodeX
 
-# <============================================== IMPORTS =========================================================>
 
 from pyrogram import filters
 from pyrogram.enums import ParseMode
@@ -14,10 +13,7 @@ from Mikobot.logger import LOGGER
 from Mikobot.plugins.helper_funcs.chat_status import support_plus
 from Mikobot.utils.parser import mention_html
 
-# <=======================================================================================================>
 
-
-# <================================================ FUNCTION =======================================================>
 async def get_user_info(user_id):
     return str(user_id)
 
@@ -59,16 +55,12 @@ async def botstaff(client, message: Message):
     LOGGER.info(f"{message.from_user.id} fetched botstaff in {message.chat.id}")
 
 
-# <================================================ END =======================================================>
-
-
-# <=================================================== HELP ====================================================>
 __help__ = """
 ➠ *BOT ADMINS ONLY:*
 
 » /stats: Shows bot stats.
 
-» /ping: see ping.
+» /ping: check the bot's ping.
 
 » /gban: Global ban.
 
@@ -76,7 +68,7 @@ __help__ = """
 
 » /botadmins: Opens Bot admin lists.
 
-» /gcast: Advance broadcast system. Just reply to any message.
+» /gcast: Advanced broadcast system. Just reply to any message.
 
 ➠ *Write with text message*
 
@@ -88,4 +80,3 @@ __help__ = """
 """
 
 __mod_name__ = "BOT-ADMIN"
-# <================================================ HANDLER =======================================================>

@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import asyncio
 import random
 import re
@@ -40,8 +39,6 @@ from Mikobot.utils.consts import ChatID
 from Mikobot.utils.filters import GROUPS
 from Mikobot.utils.parser import escape_markdown, mention_html
 
-# <=======================================================================================================>
-
 ENUM_FUNC_MAP = {
     Types.TEXT.value: client.send_message,
     Types.BUTTON_TEXT.value: client.send_message,
@@ -76,7 +73,6 @@ class AntiSpam:
 MessageHandlerChecker = AntiSpam()
 
 
-# <================================================ FUNCTION =======================================================>
 @on_message(*disableable("filters", admin_ok=True), chained=True)
 @typing_action
 async def list_handlers(client, message: Message):
@@ -103,7 +99,7 @@ async def list_handlers(client, message: Message):
     if not all_handlers:
         await send_message(
             message,
-            f"No filters saving in {escape_markdown(chat_name)}!",
+            f"No filters saved in {escape_markdown(chat_name)}!",
             parse_mode=ParseMode.MARKDOWN,
         )
         return
@@ -183,7 +179,7 @@ async def filter_cmd(client, message: Message):
         if not text:
             await send_message(
                 message,
-                "There is no note message - You can't JUST have buttons, you need a message to go with it!",
+                "There is no message. You can't have only buttons; you need a message with them!",
             )
             return
 
@@ -200,7 +196,7 @@ async def filter_cmd(client, message: Message):
                 if not text:
                     await send_message(
                         message,
-                        "There is no note message - You can't JUST have buttons, you need a message to go with it!",
+                        "There is no message. You can't have only buttons; you need a message with them!",
                     )
                     return
             else:
@@ -224,7 +220,7 @@ async def filter_cmd(client, message: Message):
     elif not text and not file_type:
         await send_message(
             message,
-            "Please provide keyword for this filter reply with!",
+            "Please provide a keyword for this filter to reply with!",
         )
         return
 
@@ -248,7 +244,7 @@ async def filter_cmd(client, message: Message):
         if (msg.reply_to_message.text or msg.reply_to_message.caption) and not text:
             await send_message(
                 message,
-                "There is no note message - You can't JUST have buttons, you need a message to go with it!",
+                "There is no message. You can't have only buttons; you need a message with them!",
             )
             return
 
@@ -289,7 +285,7 @@ async def stop_filter(client, message: Message):
             chat_name = chat.title
 
     if len(args) < 2:
-        await send_message(message, "What should i stop?")
+        await send_message(message, "What should I stop?")
         return
 
     chat_filters = sql.get_chat_triggers(chat_id)
@@ -310,7 +306,7 @@ async def stop_filter(client, message: Message):
 
     await send_message(
         message,
-        "That's not a filter - Click: /filters to get currently active filters.",
+        "That's not a filter. Use /filters to see the currently active filters.",
     )
 
 
@@ -375,7 +371,7 @@ async def reply_filter(client, message: Message):
                             ):
                                 await client.send_message(
                                     chat.id,
-                                    "Message couldn't be sent, Is the sticker id valid?",
+                                    "Message couldn't be sent. Is the sticker ID valid?",
                                     message_thread_id=(
                                         message.message_thread_id
                                         if chat.is_forum
@@ -524,7 +520,7 @@ async def reply_filter(client, message: Message):
                             try:
                                 await send_message(
                                     message,
-                                    "You seem to be trying to use an unsupported url protocol. "
+                                    "You seem to be trying to use an unsupported URL protocol. "
                                     "Telegram doesn't support buttons for some protocols, such as tg://. Please try "
                                     "again...",
                                 )
@@ -569,7 +565,7 @@ async def rmall_filters(client, message: Message):
     member = await client.get_chat_member(chat.id, user.id)
     if member.status != ChatMemberStatus.OWNER and user.id not in DRAGONS:
         await message.reply_text(
-            "Only the chat owner can clear all notes at once.",
+            "Only the chat owner can clear all filters at once.",
         )
     else:
         buttons = InlineKeyboardMarkup(
@@ -640,7 +636,7 @@ async def rmall_callback(client, query: CallbackQuery):
 
 def get_exception(excp, filt, chat):
     if "unsupported url protocol" in str(excp.message or excp).lower():
-        return "You seem to be trying to use the URL protocol which is not supported. Telegram does not support key for multiple protocols, such as tg: //. Please try again!"
+        return "You seem to be trying to use an unsupported URL protocol. Telegram does not support buttons for some protocols, such as tg://. Please try again!"
     elif "reply message not found" in str(excp.message or excp).lower():
         return "noreply"
     else:
@@ -687,9 +683,6 @@ def __chat_settings__(chat_id, user_id):
     return "There are `{}` custom filters here.".format(len(cust_filters))
 
 
-# <=================================================== HELP ====================================================>
-
-
 __help__ = """
 » `/filters`*:* List all active filters saved in the chat.
 
@@ -697,10 +690,10 @@ __help__ = """
 
 » `/filter <keyword> <reply message>`*:* Add a filter to this chat. The bot will now reply that message whenever 'keyword'\
 is mentioned. If you reply to a sticker with a keyword, the bot will reply with that sticker. NOTE: all filter \
-keywords are in lowercase. If you want your keyword to be a sentence, use quotes. eg: /filter "hey there" How you \
+keywords are in lowercase. If you want your keyword to be a sentence, use quotes. e.g.: /filter "hey there" How you \
 doin?
 
-➠ Separate diff replies by `%%%` to get random replies
+➠ Separate different replies with `%%%` to get random replies
 ➠ *Example:*
 
 » `/filter "filtername"
@@ -715,8 +708,8 @@ doin?
 ➠ *Chat creator only:*
 » `/removeallfilters`*:* Remove all chat filters at once.
 
-➠ *Note*: Filters also support markdown formatters like: {first}, {last} etc.. and buttons.
-➠ Now Supports media spoilers too, and media caption.
+➠ *Note*: Filters also support markdown formatters like: {first}, {last} etc. and buttons.
+➠ Now supports media spoilers and media captions.
 """
 
 __mod_name__ = "FILTERS"

@@ -119,4 +119,3 @@ async def reverse_image_search(client, message: Message):
 
 __mod_name__ = "REVERSE"
 __command_list__ = ["reverse", "pp", "p", "grs", "sauce"]
-# <================================================ END =======================================================>

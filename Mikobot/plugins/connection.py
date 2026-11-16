@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import asyncio
 import re
 import time
@@ -19,12 +18,9 @@ from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.helper_funcs import chat_status
 from Mikobot.plugins.helper_funcs.alternate import send_message, typing_action
 
-# <=======================================================================================================>
-
 check_admin = chat_status.check_admin
 
 
-# <================================================ FUNCTION =======================================================>
 @on_message(filters.command("allowconnect"), chained=True)
 @check_admin(is_user=True)
 @typing_action
@@ -446,7 +442,7 @@ async def connect_button(client, query: CallbackQuery):
             )
     elif clear_match:
         await asyncio.to_thread(sql.clear_history_conn, query.from_user.id)
-        await query.message.edit_text("History connected has been cleared!")
+        await query.message.edit_text("Connection history has been cleared!")
         await query.answer()
     elif connect_close:
         await query.message.edit_text("Closed. To open again, type /connect")
@@ -455,7 +451,6 @@ async def connect_button(client, query: CallbackQuery):
         await query.answer("Invalid callback data.", show_alert=True)
 
 
-# <=================================================== HELP ====================================================>
 __mod_name__ = "CONNECT"
 
 __help__ = """
@@ -477,6 +472,3 @@ __help__ = """
 
 def __migrate__(old_chat_id, new_chat_id):
     sql.migrate_chat(old_chat_id, new_chat_id)
-
-
-# <================================================ END =======================================================>

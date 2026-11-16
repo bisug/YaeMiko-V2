@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 from asyncio import sleep
 
 from pyrogram import filters
@@ -9,10 +8,7 @@ from pyrogram.types import Message
 from Mikobot import SUPPORT_CHAT, app
 from Mikobot.utils.can_restrict import can_restrict
 
-# <=======================================================================================================>
 
-
-# <================================================ FUNCTION =======================================================>
 @app.on_message(filters.command("purge"))
 @can_restrict
 async def purge(c: app, m: Message):
@@ -27,7 +23,6 @@ async def purge(c: app, m: Message):
             for i in range(0, len(items), n):
                 yield items[i : i + n]
 
-        # Dielete messages in chunks of 100 messages
         m_list = list(divide_chunks(message_ids))
 
         try:
@@ -45,7 +40,7 @@ async def purge(c: app, m: Message):
             return
         except RPCError as ef:
             await m.reply_text(
-                text=f"""Some error occured, report to @{SUPPORT_CHAT}
+                text=f"""Some error occurred, report to @{SUPPORT_CHAT}
 
       <b>Error:</b> <code>{ef}</code>"""
             )
@@ -56,7 +51,7 @@ async def purge(c: app, m: Message):
         await sleep(3)
         await z.delete()
         return
-    await m.reply_text("Reply to a message to start purge !")
+    await m.reply_text("Reply to a message to start purge!")
     return
 
 
@@ -74,7 +69,6 @@ async def spurge(c: app, m: Message):
             for i in range(0, len(items), n):
                 yield items[i : i + n]
 
-        # Dielete messages in chunks of 100 messages
         m_list = list(divide_chunks(message_ids))
 
         try:
@@ -92,12 +86,12 @@ async def spurge(c: app, m: Message):
             return
         except RPCError as ef:
             await m.reply_text(
-                text=f"""Some error occured, report to @{SUPPORT_CHAT}
+                text=f"""Some error occurred, report to @{SUPPORT_CHAT}
 
       <b>Error:</b> <code>{ef}</code>"""
             )
         return
-    await m.reply_text("Reply to a message to start spurge !")
+    await m.reply_text("Reply to a message to start spurge!")
     return
 
 
@@ -121,15 +115,13 @@ async def del_msg(c: app, m: Message):
     return
 
 
-# <=================================================== HELP ====================================================>
 __help__ = """
 ❗️*Purge*
 
-» /purge: Deletes messages upto replied message.
+» /purge: Deletes messages up to the replied message.
 
-» /spurge: Deletes messages upto replied message without a success message.
+» /spurge: Deletes messages up to the replied message without a success message.
 
-» /del: Deletes a single message, used as a reply to message."""
+» /del: Deletes a single message, used as a reply to a message."""
 
 __mod_name__ = "PURGE"
-# <================================================ END =======================================================>

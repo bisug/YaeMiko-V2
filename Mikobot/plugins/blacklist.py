@@ -388,7 +388,7 @@ async def unblacklist(client, message: Message):
         elif not successful:
             await send_message(
                 message,
-                "None of these triggers exist so it can't be removed.",
+                "None of these triggers exist, so they can't be removed.",
                 parse_mode=ParseMode.HTML,
             )
 
@@ -428,7 +428,7 @@ async def blacklist_mode(client, message: Message):
         if message.chat.type == ChatType.PRIVATE:
             await send_message(
                 message,
-                "This command can be only used in group not in PM",
+                "This command can only be used in a group, not in PM.",
             )
             return ""
         chat = message.chat
@@ -456,8 +456,8 @@ async def blacklist_mode(client, message: Message):
             sql.set_blacklist_strength(chat_id, 5, "0")
         elif args[0].lower() == "tban":
             if len(args) == 1:
-                teks = """It looks like you are trying to set a temporary value to blacklist, but has not determined the time; use `/blacklistmode tban <timevalue>`.
-                                          Examples of time values: 4m = 4 minute, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
+                teks = """It looks like you are trying to set a temporary blacklist value, but have not specified a time; use `/blacklistmode tban <timevalue>`.
+                                          Examples of time values: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
                 await send_message(
                     message,
                     teks,
@@ -468,8 +468,8 @@ async def blacklist_mode(client, message: Message):
             sql.set_blacklist_strength(chat_id, 6, str(args[1]))
         elif args[0].lower() == "tmute":
             if len(args) == 1:
-                teks = """It looks like you are trying to set a temporary value to blacklist, but has not determined the time; use `/blacklistmode tmute <timevalue>`.
-                                          Examples of time values: 4m = 4 minute, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
+                teks = """It looks like you are trying to set a temporary blacklist value, but have not specified a time; use `/blacklistmode tmute <timevalue>`.
+                                          Examples of time values: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
                 await send_message(
                     message,
                     teks,
@@ -499,7 +499,7 @@ async def blacklist_mode(client, message: Message):
         return (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
-            f"Changed the blacklist mode. will {settypeblacklist}."
+            f"Changed the blacklist mode. Will {settypeblacklist}."
         )
     else:
         getmode, getvalue = sql.get_blacklist_setting(chat.id)
@@ -558,7 +558,7 @@ async def silent_actions(client, message: Message):
     else:
         if message.chat.type == ChatType.PRIVATE:
             await send_message(
-                message, "This command can be only used in group not in PM"
+                message, "This command can only be used in a group, not in PM."
             )
             return ""
         chat = message.chat
@@ -662,7 +662,7 @@ async def blocklist_delete(client, message: Message):
     else:
         if message.chat.type == ChatType.PRIVATE:
             await send_message(
-                message, "This command can be only used in group not in PM"
+                message, "This command can only be used in a group, not in PM."
             )
             return ""
         chat = message.chat
@@ -911,7 +911,6 @@ async def del_blacklist(client, message: Message):
 
 
 async def __import_data__(chat_id, data, message):
-    # set chat blacklist
     blacklist = data.get("blacklist", {})
     for trigger in blacklist:
         sql.add_to_blacklist(chat_id, trigger)
@@ -937,7 +936,7 @@ __mod_name__ = "BLACKLIST"
 
 __help__ = """
 
-➠ Blacklists are used to stop certain triggers from being said in a group. Any time the trigger is mentioned, the message will immediately be deleted. A good combo is sometimes to pair this up with warn filters!
+➠ Blacklists stop certain triggers from being said in a group. Any time a trigger is mentioned, the message is deleted immediately. Blacklists pair well with warn filters!
 
 ➠ *NOTE*: Blacklists do not affect group admins.
 
@@ -957,17 +956,17 @@ Admin only:
 ➠ *Trigger modifiers:*
 » `?` matches exactly one character, `*` matches any run of them, so `/addblacklist bit?` catches "bits".
 » `prefix:<trigger>` only fires at the start of a message, `exact:<trigger>` only when the whole message matches.
-» `lookalike:<trigger>` also catches visually similar words, eg `b0t` or the Cyrillic spelling.
-» `name:<pattern>` and `username:<pattern>` match who is speaking, `file:<pattern>` matches filenames (eg `*.pdf`), `forward:<id/@username>` and `inline:<id/@username>` match the origin, and `stickerpack:<>` uses the pack of a replied sticker.
+» `lookalike:<trigger>` also catches visually similar words, e.g. `b0t` or the Cyrillic spelling.
+» `name:<pattern>` and `username:<pattern>` match who is speaking, `file:<pattern>` matches filenames (e.g. `*.pdf`), `forward:<id/@username>` and `inline:<id/@username>` match the origin, and `stickerpack:<>` uses the pack of a replied sticker.
 
-➠ Blacklist sticker is used to stop certain stickers. Whenever a sticker is sent, the message will be deleted immediately.
-➠ *NOTE:* Blacklist stickers do not affect the group admin
-» /blsticker: See current blacklisted sticker
+➠ Blacklist stickers stop certain stickers. Whenever a sticker is sent, the message is deleted immediately.
+➠ *NOTE:* Blacklist stickers do not affect group admins
+» /blsticker: See the current blacklisted stickers
 ➠ *Only admin:*
-» /addblsticker <sticker link>: Add the sticker trigger to the black list. Can be added via reply sticker
-» /unblsticker <sticker link>: Remove triggers from blacklist. The same newline logic applies here, so you can delete multiple triggers at once
+» /addblsticker <sticker link>: Add a sticker trigger to the blacklist. You can also reply to a sticker
+» /unblsticker <sticker link>: Remove triggers from the blacklist. The same newline logic applies here, so you can delete multiple triggers at once
 » /rmblsticker <sticker link>: Same as above
-» /blstickermode <delete/ban/tban/mute/tmute>: sets up a default action on what to do if users use blacklisted stickers
+» /blstickermode <delete/ban/tban/mute/tmute>: Set the default action for users who send blacklisted stickers
 Note:
 » <sticker link> can be https://t.me/addstickers/<sticker> or just <sticker> or reply to the sticker message
 

@@ -56,11 +56,8 @@ def _is_command(message) -> bool:
     return text.startswith("/")
 
 
-# Plain predicates, not magic filters: del_lockables() deletes messages, so the
-# match must be obvious and unit-testable. aiogram's F.<attr> composes rather
-# than evaluates, which would have made every lockable match everything.
-# Telegram sends no dedicated entity for join links, so the shapes it
-# actually accepts are matched here instead.
+# Plain predicates, not filters: del_lockables() deletes messages, so matches
+# must be exact. Telegram sends no join-link entity, so its accepted URL shapes are matched directly.
 _INVITE_LINK_RE = re.compile(
     r"(?:t\.me|telegram\.me)/(?:joinchat/|join/|\+)[A-Za-z0-9_-]+"
     r"|(?:t\.me|telegram\.me)/[A-Za-z0-9_]{3,}\?start=",
@@ -290,7 +287,6 @@ PERM_GROUP = 1
 REST_GROUP = 2
 
 
-# NOT ASYNC
 async def restr_members(
     client,
     chat_id,
@@ -327,7 +323,6 @@ async def restr_members(
             pass
 
 
-# NOT ASYNC
 async def unrestr_members(
     client,
     chat_id,
@@ -380,7 +375,6 @@ async def lock(client, message: Message) -> str:
     if len(args) >= 1:
         ltype = args[0].lower()
         if ltype in LOCK_TYPES:
-            # Connection check
             conn = await connected(client, message, chat, user.id, need_admin=True)
             if conn:
                 chat = await client.get_chat(conn)
@@ -391,7 +385,7 @@ async def lock(client, message: Message) -> str:
                 if message.chat.type == ChatType.PRIVATE:
                     await send_message(
                         message,
-                        "This command is meant to use in group not in PM",
+                        "This command is meant to be used in a group, not in PM",
                     )
                     return ""
                 chat = message.chat
@@ -410,7 +404,6 @@ async def lock(client, message: Message) -> str:
             )
 
         elif ltype in LOCK_CHAT_RESTRICTION:
-            # Connection check
             conn = await connected(client, message, chat, user.id, need_admin=True)
             if conn:
                 chat = await client.get_chat(conn)
@@ -424,7 +417,7 @@ async def lock(client, message: Message) -> str:
                 if message.chat.type == ChatType.PRIVATE:
                     await send_message(
                         message,
-                        "This command is meant to use in group not in PM",
+                        "This command is meant to be used in a group, not in PM",
                     )
                     return ""
                 chat = message.chat
@@ -524,7 +517,6 @@ async def unlock(client, message: Message) -> str:
     if len(args) >= 1:
         ltype = args[0].lower()
         if ltype in LOCK_TYPES:
-            # Connection check
             conn = await connected(client, message, chat, user.id, need_admin=True)
             if conn:
                 chat = await client.get_chat(conn)
@@ -535,7 +527,7 @@ async def unlock(client, message: Message) -> str:
                 if message.chat.type == ChatType.PRIVATE:
                     await send_message(
                         message,
-                        "This command is meant to use in group not in PM",
+                        "This command is meant to be used in a group, not in PM",
                     )
                     return ""
                 chat = message.chat
@@ -556,7 +548,6 @@ async def unlock(client, message: Message) -> str:
             )
 
         elif ltype in UNLOCK_CHAT_RESTRICTION:
-            # Connection check
             conn = await connected(client, message, chat, user.id, need_admin=True)
             if conn:
                 chat = await client.get_chat(conn)
@@ -567,7 +558,7 @@ async def unlock(client, message: Message) -> str:
                 if message.chat.type == ChatType.PRIVATE:
                     await send_message(
                         message,
-                        "This command is meant to use in group not in PM",
+                        "This command is meant to be used in a group, not in PM",
                     )
                     return ""
                 chat = message.chat
@@ -747,7 +738,6 @@ async def del_lockables(client, message: Message):
         if lockable == "inline":
             if getattr(locks, lockable, False):
                 if message and message.via_bot:
-                    # allowlisted inline bots are exempt
                     if _is_allowlisted(message, "inline"):
                         continue
                     try:
@@ -829,8 +819,6 @@ async def del_lockables(client, message: Message):
                 continue
             continue
         if callable(filter) and filter(message) and getattr(locks, lockable, False):
-            # An allowlisted item is exempt, so the message is left alone even
-            # though this locktype is on.
             if lockable != "bots" and _is_allowlisted(message, lockable):
                 continue
             if lockable == "bots":
@@ -928,9 +916,7 @@ async def build_lock_message(chat_id):
         permslist.append("topics = `{}`".format(permissions.can_manage_topics))
 
     if locklist:
-        # Ordering lock list
         locklist.sort()
-        # Building lock list string
         for x in locklist:
             res += "\n • {}".format(x)
     res += "\n\n*" + "These are the current chat permissions:" + "*"
@@ -946,7 +932,6 @@ async def list_locks(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    # Connection check
     conn = await connected(client, message, chat, user.id, need_admin=True)
     if conn:
         chat = await client.get_chat(conn)
@@ -955,7 +940,7 @@ async def list_locks(client, message: Message):
         if message.chat.type == ChatType.PRIVATE:
             await send_message(
                 message,
-                "This command is meant to use in group not in PM",
+                "This command is meant to be used in a group, not in PM",
             )
             return ""
         chat = message.chat
@@ -1171,7 +1156,6 @@ def get_permission_list(current, new):
 
 
 async def __import_data__(chat_id, data, message):
-    # set chat locks
     locks = data.get("locks", {})
     for itemlock in locks:
         if itemlock in LOCK_TYPES:

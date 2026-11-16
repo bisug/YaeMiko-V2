@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import os
 import re
 import tempfile
@@ -23,10 +22,7 @@ from Mikobot.plugins.users import get_user_id
 from Mikobot.utils.consts import ChatID
 from Mikobot.utils.parser import mention_html
 
-# <=======================================================================================================>
 
-
-# <================================================ FUNCTION =======================================================>
 @on_message(filters.command(["info", "book"]), chained=True)
 async def info(client, message: Message):
     chat = message.chat
@@ -241,9 +237,6 @@ async def stats(client, message: Message):
     )
 
 
-# <=================================================== HELP ====================================================>
-
-
 __help__ = """
 *Overall information about user:*
 
@@ -252,8 +245,6 @@ __help__ = """
 » /uinfo : Fetch user information in banner.
 """
 
-# <================================================ END =======================================================>
 
 __mod_name__ = "INFO"
 __command_list__ = ["info"]
-# <================================================ END =======================================================>

@@ -42,7 +42,7 @@ def get_emoji_regex():
         for value in emoji.EMOJI_DATA
         if value and not value.startswith("*")
     ]
-    # to avoid re.error excluding char that start with '*'
+    # Exclude entries starting with '*' to avoid re.error.
     e_sort = sorted([x for x in e_list if not x.startswith("*")], reverse=True)
     # Sort emojis by length to make sure multi-character emojis are
     # matched first
@@ -67,7 +67,7 @@ async def getsticker_(self: Client, ctx: Message, strings):
         return await ctx.reply(strings("not_sticker"))
     sticker = ctx.reply_to_message.sticker
     if not sticker:
-        return await ctx.reply("Only support sticker..")
+        return await ctx.reply("Only stickers are supported.")
     if sticker.is_animated:
         return await ctx.reply(strings("no_anim_stick"))
     with tempfile.TemporaryDirectory(prefix="yae-sticker-") as tempdir:
@@ -79,7 +79,7 @@ async def getsticker_(self: Client, ctx: Message, strings):
             document=sticker_file,
             caption=f"<b>Emoji:</b> {sticker.emoji}\n"
             f"<b>Sticker ID:</b> <code>{sticker.file_id}</code>\n\n"
-            f"<b>Send by:</b> @{self.me.username}",
+            f"<b>Sent by:</b> @{self.me.username}",
         )
 
 
@@ -89,14 +89,16 @@ async def _vidstick(_, message):
     replied = message.reply_to_message
     if replied and replied.sticker:
         if not replied.sticker.is_video:
-            return await message.reply_text("Use /getsticker if sticker is not video.")
+            return await message.reply_text(
+                "Use /getsticker if the sticker is not a video."
+            )
         file_id = replied.sticker.file_id
         with tempfile.TemporaryDirectory(prefix="yae-vidstick-") as tempdir:
             dest = os.path.join(tempdir, "sticker.mp4")
             new_file = await _.download_media(file_id, file_name=dest)
             await _.send_animation(chat_id, new_file)
     else:
-        await message.reply_text("Please reply to a video sticker to upload it's MP4.")
+        await message.reply_text("Please reply to a video sticker to upload its MP4.")
 
 
 @app.on_message(filters.command("getvideo"), group=333)
@@ -110,7 +112,7 @@ async def _getvideo(_, message):
             new_file = await _.download_media(file_id, file_name=dest)
             await _.send_video(chat_id, video=new_file)
     else:
-        await message.reply_text("Please reply to a gif for me to get it's video.")
+        await message.reply_text("Please reply to a gif for me to get its video.")
 
 
 @app.on_message(filters.command("stickerid", PREFIX_HANDLER) & filters.reply, group=444)
@@ -130,7 +132,7 @@ async def unkangs(self: Client, ctx: Message, strings):
         return await ctx.reply("You're anon, unkang in my PM")
     if sticker := ctx.reply_to_message.sticker:
         if str(ctx.from_user.id) not in sticker.set_name:
-            return await ctx.reply("This sticker is not your pack, don't do it..")
+            return await ctx.reply("This sticker isn't from your pack, don't do that.")
         pp = await ctx.reply(strings("unkang_msg"))
         try:
             decoded = FileId.decode(sticker.file_id)
@@ -209,13 +211,12 @@ async def kang_sticker(self: Client, ctx: Message, strings):
                 and ctx.command[1].isdigit()
                 and int(ctx.command[1]) > 0
             ):
-                # provide pack number to kang in desired pack
+                # A trailing number selects which pack to kang into.
                 packnum = ctx.command.pop(1)
                 packname = (
                     f"{pack_prefix}{packnum}_{ctx.from_user.id}_by_{self.me.username}"
                 )
             if len(ctx.command) > 1:
-                # matches all valid emojis in input
                 sticker_emoji = (
                     "".join(set(EMOJI_PATTERN.findall("".join(ctx.command[1:]))))
                     or sticker_emoji
@@ -224,7 +225,6 @@ async def kang_sticker(self: Client, ctx: Message, strings):
                 ctx.reply_to_message, file_name=temp_dir + os.sep
             )
             if not filename:
-                # Failed to download
                 await prog_msg.delete()
                 return
         elif ctx.entities and len(ctx.entities) > 1:
@@ -250,7 +250,7 @@ async def kang_sticker(self: Client, ctx: Message, strings):
             except Exception as r_e:
                 return await prog_msg.edit(f"{r_e.__class__.__name__} : {r_e}")
             if len(ctx.command) > 2:
-                # m.command[1] is image_url
+                # ctx.command[1] is the image URL.
                 if ctx.command[2].isdigit() and int(ctx.command[2]) > 0:
                     packnum = ctx.command.pop(2)
                     packname = f"a{packnum}_{ctx.from_user.id}_by_{self.me.username}"
@@ -378,7 +378,6 @@ async def kang_sticker(self: Client, ctx: Message, strings):
                 strings("kang_success").format(emot=sticker_emoji),
                 reply_markup=markup,
             )
-            # Cleanup
             await self.delete_messages(
                 chat_id=MESSAGE_DUMP, message_ids=msg_.id, revoke=True
             )
@@ -658,17 +657,16 @@ async def give_st_info(c: app, m: Message):
     return
 
 
-# <=================================================== HELP ====================================================>
 __help__ = """
 ➠ *👨‍🏫 User Commands:*
 
 » /kang (/steal) < emoji >: Reply to a sticker or any supported media.
 
-» /pkang: Reply to a image type sticker to get full pack.
+» /pkang: Reply to an image type sticker to get the full pack.
 
-» /stickerinfo (/stinfo) : Reply to any sticker to get it's info.
+» /stickerinfo (/stinfo) : Reply to any sticker to get its info.
 
-» /stickerid Reply to a sticker message to get the sticker ID and emoji.
+» /stickerid: Reply to a sticker message to get the sticker ID and emoji.
 
 » /stickers < query >: Search for sticker packs based on the given query.
 
@@ -680,10 +678,10 @@ __help__ = """
 
 » /unkang: Reply to a sticker created by the bot to remove it from your pack.
 
-» /mmf < your text >: Reply to a normal sticker or a photo or video file to memify it. If you want to right text at bottom use `;right your message`
-    ■ For e.g. 
-    ○ /mmf Hello freinds : this will add text to the top
-    ○ /mmf Hello ; freinds : this will add Hello to the top and freinds at the bottom
+» /mmf < your text >: Reply to a normal sticker or a photo or video file to memify it. If you want to write text at the bottom use `;right your message`
+    ■ For example:
+    ○ /mmf Hello friends : this will add text to the top
+    ○ /mmf Hello ; friends : this will add Hello to the top and friends at the bottom
     ○ /mmf ; Hello friends : this will add text at the bottom
 
 ➠ *Note*
@@ -691,4 +689,3 @@ __help__ = """
 """
 
 __mod_name__ = "STICKERS"
-# <================================================ END =======================================================>

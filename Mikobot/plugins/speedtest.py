@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import asyncio
 
 from pyrogram import filters
@@ -15,10 +14,7 @@ from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 
-# <=======================================================================================================>
 
-
-# <================================================ FUNCTION =======================================================>
 def convert(speed):
     return round(int(speed) / 1048576, 2)
 
@@ -91,4 +87,3 @@ async def speedtestxyz_callback(client, query: CallbackQuery):
 
 __mod_name__ = "SpeedTest"
 __command_list__ = ["speedtest"]
-# <================================================ END =======================================================>

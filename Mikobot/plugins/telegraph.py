@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import asyncio
 import os
 import tempfile
@@ -22,17 +21,12 @@ from Mikobot.logger import LOGGER
 from Mikobot.state import state
 from Mikobot.utils.errors import capture_err
 
-# <=======================================================================================================>
-
 CATBOX_API = "https://catbox.moe/user/api.php"
 LITTERBOX_API = "https://litterbox.catbox.moe/resources/internals/api.php"
 
-# reqtype has to be lowercase. The form shown nearly everywhere online,
-# "fileUpload", is answered with 412 "No request type given?", confirmed with
-# a probe upload, so it is pinned by a test rather than left to a comment.
+# reqtype must be lowercase; "fileUpload" gets a 412. Pinned by a test.
 CATBOX_REQTYPE = "fileupload"
-# Anything outside this set is refused with 412 "No expire time specified.",
-# 48h included.
+# Litterbox refuses any expiry outside this set, including 48h, with a 412.
 LITTERBOX_EXPIRY = ("1h", "12h", "24h", "72h")
 LITTERBOX_HOURS = os.environ.get("LITTERBOX_HOURS", "72h")
 if LITTERBOX_HOURS not in LITTERBOX_EXPIRY:
@@ -43,8 +37,7 @@ if LITTERBOX_HOURS not in LITTERBOX_EXPIRY:
     )
     LITTERBOX_HOURS = "72h"
 
-# Catbox takes 200MB and Litterbox 1GB. 20MB is kept from the Telegraph command
-# this replaces, so neither host is ever asked for a file it may refuse.
+# 20MB, inherited from the command this replaces, stays under both hosts' limits.
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 UPLOAD_TIMEOUT = 300
 PENDING_PREFIX = "hostup_"
@@ -57,19 +50,10 @@ def _sync_webp_to_png(src: Path, dst: Path) -> None:
 
 
 async def _upload(path: Path, host: str) -> str:
-    """POST the file to Catbox or Litterbox and return the URL as plain text.
+    """POST the file to Catbox or Litterbox and return the bare URL.
 
-    Both answer with the bare URL rather than JSON, and both answer errors as
-    bare text as well, so the body is the only place the reason can come from
-    and it is read before the status is judged.
-
-    The status is not trusted on its own. Probing the live endpoints in October
-    2026 showed Catbox answering a burst of uploads with HTTP 500 and a normal
-    https://files.catbox.moe/... body, so raising on the code alone would call
-    a stored upload a failure. Whether those links are reachable could not be
-    confirmed from the test host, whose IP the file CDN refuses outright, so a
-    URL is accepted on the strength of its body and a 5xx without one is still
-    an error.
+    Both return text rather than JSON, even for errors, so the body is checked
+    before the status: a 5xx can still accompany a valid, stored URL.
     """
     data = {"reqtype": CATBOX_REQTYPE}
     url = CATBOX_API
@@ -92,18 +76,14 @@ async def _upload(path: Path, host: str) -> str:
     if body.startswith("http"):
         return body
 
-    # The status goes in the message because the body alone does not say which
-    # of a rate limit, a rejected file type or a blocked IP produced it. This
-    # is the text that reaches the log, so it is the only diagnostic a 412 ever
-    # gives: the body is where Catbox explains itself, and reading it after
-    # raise_for_status() discarded exactly that.
+    # Include the body in the error: a 412's reason is only there, and
+    # raise_for_status() would discard it before it reached the log.
     detail = body[:120] or "<empty body>"
     if response.status_code >= 400:
         raise RuntimeError(f"{host} answered HTTP {response.status_code}: {detail}")
     raise RuntimeError(f"{host} answered with no URL: {detail}")
 
 
-# <================================================ FUNCTION =======================================================>
 @app.on_message(filters.command(["tgm", "tmg", "telegraph"], prefixes="/"))
 @capture_err
 async def telegraph_upload(client: Client, message: Message):
@@ -119,11 +99,9 @@ async def telegraph_upload(client: Client, message: Message):
         )
         return
 
-    # The file is deliberately not held here. The TemporaryDirectory this used
-    # to write into is deleted as soon as the handler returns, long before a
-    # button gets pressed, so only the source message is remembered and it is
-    # re-downloaded on click. These keys live in the same chat_data as the
-    # pending admin confirmations and are pruned by the same store.
+    # Only the source message is stored: a temp file would be gone before a
+    # button is pressed, so the media is re-downloaded on click. These keys
+    # share chat_data with admin confirmations and are pruned with them.
     token = uuid4().hex[:8]
     chat_data[f"{PENDING_PREFIX}{token}"] = {
         "chat_id": message.chat.id,
@@ -155,8 +133,7 @@ async def telegraph_upload(client: Client, message: Message):
 @callbackquery(pattern=r"^hostup_(catbox|litterbox)_[0-9a-f]{8}$")
 @capture_err
 async def upload_choice(query: CallbackQuery):
-    # One argument, not (client, query): the callbackquery decorator wraps the
-    # handler so it is handed only the event.
+    # The decorator passes only the event, not (client, query).
     _prefix, host, token = query.data.split("_")
 
     key = f"{PENDING_PREFIX}{token}"
@@ -177,8 +154,7 @@ async def upload_choice(query: CallbackQuery):
     started = time.perf_counter()
 
     try:
-        # The callbackquery decorator hands over only the event, so the module
-        # level client is used rather than a private attribute off the query.
+        # Use the module-level client; the event has no client attribute.
         source = await app.get_messages(
             pending["chat_id"], message_ids=pending["message_id"]
         )
@@ -209,8 +185,7 @@ async def upload_choice(query: CallbackQuery):
             link = await _upload(upload_path, host)
         except Exception as error:
             if host == "catbox":
-                # Python unbinds the exception name when the except block
-                # ends, so the reason is kept for the note below.
+                # Save the error; Python unbinds 'error' when the block ends.
                 catbox_error = error
                 LOGGER.warning(
                     "Upload to catbox failed: %s: %s; attempting fallback to litterbox",
@@ -237,9 +212,8 @@ async def upload_choice(query: CallbackQuery):
                 LOGGER.warning(
                     "Upload to %s failed: %s: %s", host, type(error).__name__, error
                 )
-                # _upload already carries the host's own explanation in its message,
-                # so it is shown rather than the exception class alone, which said
-                # nothing about a 412 the operator could otherwise not diagnose.
+                # Show _upload's message, which carries the host's reason;
+                # the exception class alone hides a 412's cause.
                 await query.message.edit_text(
                     f"Upload to {host} failed: {error}\nNothing was saved."
                 )
@@ -259,7 +233,6 @@ async def upload_choice(query: CallbackQuery):
     await query.message.edit_text(note)
 
 
-# <=================================================== HELP ====================================================>
 __help__ = """
 ➠ *HOSTING*:
 
@@ -271,4 +244,3 @@ __help__ = """
   """
 
 __mod_name__ = "HOSTING"
-# <================================================ END =======================================================>

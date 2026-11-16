@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import asyncio
 import html
 import time
@@ -35,8 +34,6 @@ from Mikobot.plugins.helper_funcs.misc import send_to_list
 from Mikobot.utils.consts import ChatID
 from Mikobot.utils.filters import GROUPS
 from Mikobot.utils.parser import mention_html
-
-# <=======================================================================================================>
 
 GBAN_ERRORS = {
     "user is an administrator of the chat",
@@ -83,7 +80,6 @@ def _matches_gban_error(excp: Exception, error_set: set[str]) -> bool:
     return any(err in err_str for err in error_set)
 
 
-# <================================================ FUNCTION =======================================================>
 async def check_and_ban(client, message: Message, user_id, should_message=True):
     if sql.is_user_gbanned(user_id):
         await client.ban_chat_member(message.chat.id, user_id)
@@ -159,7 +155,7 @@ async def gban(client, message: Message):
 
     if not user_id:
         await message.reply_text(
-            "You don't seem to be referring to a user or the ID specified is incorrect..",
+            "You don't seem to be referring to a user or the ID specified is incorrect.",
         )
         return
 
@@ -262,7 +258,6 @@ async def gban(client, message: Message):
     for chat in chats:
         chat_id = int(chat)
 
-        # Check if this group has disabled gbans
         if not sql.does_chat_gban(chat_id):
             continue
 
@@ -339,7 +334,7 @@ async def ungban(client, message: Message):
 
     if not user_id:
         await message.reply_text(
-            "You don't seem to be referring to a user or the ID specified is incorrect..",
+            "You don't seem to be referring to a user or the ID specified is incorrect.",
         )
         return
 
@@ -391,7 +386,6 @@ async def ungban(client, message: Message):
     for chat in chats:
         chat_id = int(chat)
 
-        # Check if this group has disabled gbans
         if not sql.does_chat_gban(chat_id):
             continue
 
@@ -522,9 +516,6 @@ def __chat_settings__(chat_id, user_id):
     return f"This chat is enforcing *gbans*: `{sql.does_chat_gban(chat_id)}`."
 
 
-# <=================================================== HELP ====================================================>
-
-
 __help__ = """
 ➠ *Admins only:*
 
@@ -535,7 +526,5 @@ you and your groups by removing spam flooders as quickly as possible.
 ➠ *Note:* Users can appeal gbans or report spammers at @hydraX2support
 """
 
-# <================================================ END =======================================================>
 
 __mod_name__ = "ANTI-SPAM"
-# <================================================ END =======================================================>

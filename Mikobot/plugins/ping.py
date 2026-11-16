@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import time
 
 from pyrogram import filters
@@ -10,15 +9,12 @@ from Mikobot.events import on_message
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.utils.human_read import get_readable_time
 
-# <=======================================================================================================>
 
-
-# <================================================ FUNCTION =======================================================>
 @on_message(filters.command("ping"), chained=True)
 @check_admin(only_dev=True)
 async def ping(client, message: Message):
     start_time = time.time()
-    sent = await message.reply_text("Pining")
+    sent = await message.reply_text("Pinging")
     end_time = time.time()
     telegram_ping = str(round((end_time - start_time) * 1000, 3)) + " ms"
     uptime = get_readable_time((time.time() - StartTime))
@@ -33,4 +29,3 @@ async def ping(client, message: Message):
 
 __mod_name__ = "PING"
 __command_list__ = ["ping"]
-# <================================================ END =======================================================>

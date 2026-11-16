@@ -1,12 +1,8 @@
 """Export and import a chat's settings as a JSON file.
 
-The per-module __import_data__ hooks already existed but nothing produced the
-matching export or consumed it, so the pair was never reachable. This wires
-both ends together: __export_data__ on each module feeds /export, and /import
-hands the document back to the same hooks.
-
-Export is open to any admin, import and reset are owner-only, since both
-overwrite existing configuration.
+The __import_data__ hooks already existed but nothing produced the export or
+consumed it, so /export and /import wire both ends together. Import and reset
+are owner-only because they overwrite existing configuration.
 """
 
 import asyncio
@@ -50,10 +46,8 @@ EXPORT_MODULES = (
 )
 
 
-# __main__ collects every plugin exposing __import_data__ into DATA_IMPORT
-# while it loads them. Reading that list avoids a second registry here, and
-# because it is filled during the same loop, this is looked up at call time
-# rather than captured at import time.
+# __main__ fills DATA_IMPORT while loading plugins, so read it at call time
+# rather than capturing a second registry at import time.
 def _data_modules():
     import Mikobot.__main__ as main
 
@@ -308,7 +302,7 @@ __help__ = """
 ➡ `/export` writes the chat's settings to a JSON file you can edit first.
 `/export <modules>` limits it to the named ones.
 
-➡ `/import` replies to that file to apply it here. The group owner only.
+➡ `/import` replies to that file to apply it here. Only the group owner.
 
 ➡ `/reset` clears every exportable setting, after a confirmation.
 

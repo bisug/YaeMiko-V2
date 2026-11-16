@@ -7,7 +7,6 @@ from pyrogram.types import Message
 from Mikobot.events import on_message
 from Mikobot.state import state
 
-# <================================================ FUNCTIONS =====================================================>
 COSPLAY_API_URL = "https://sugoi-api.vercel.app/cosplay"
 REQUEST_TIMEOUT = 15
 
@@ -49,4 +48,3 @@ async def cosplay(client, message: Message):
 
 __mod_name__ = "COSPLAY"
 __command_list__ = ["cosplay"]
-# <================================================ END =======================================================>

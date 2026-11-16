@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import html
 from uuid import uuid4
 
@@ -35,10 +34,7 @@ from Mikobot.plugins.log_channel import loggable
 from Mikobot.utils.consts import ChatID
 from Mikobot.utils.parser import mention_html
 
-# <=======================================================================================================>
 
-
-# <================================================ FUNCTION =======================================================>
 @connection_status
 @loggable
 @check_admin(permission="can_promote_members", is_both=True)
@@ -290,7 +286,7 @@ async def demote(client, message: Message):
 
     if not user_id:
         await message.reply_text(
-            "You don't seem to be referring to a user or the id specified is incorrect..",
+            "You don't seem to be referring to a user, or the ID specified is incorrect.",
         )
         return
 
@@ -305,7 +301,7 @@ async def demote(client, message: Message):
 
     if user_member.status == ChatMemberStatus.OWNER:
         await message.reply_text(
-            "This person created the chat, How could i demote him?"
+            "This person created the chat. How could I demote them?"
         )
         return
 
@@ -314,7 +310,7 @@ async def demote(client, message: Message):
         return
 
     if user_id == client.me.id:
-        await message.reply_text("I can't demote myself!.")
+        await message.reply_text("I can't demote myself!")
         return
 
     try:
@@ -353,8 +349,8 @@ async def demote(client, message: Message):
         return log_message
     except RPCError:
         await message.reply_text(
-            "Could not demote. I might not be admin or the admin status was appointed by another"
-            "Its a User, So I can't act upon them!",
+            "Could not demote. I might not be an admin here, or the admin status was"
+            " granted by someone else, so I can't act on them.",
         )
         raise
 
@@ -367,7 +363,7 @@ async def refresh_admin(client, message: Message):
     except KeyError:
         pass
 
-    await message.reply_text("Admins cache refreshed!")
+    await message.reply_text("Admin cache refreshed!")
 
 
 @connection_status
@@ -406,7 +402,7 @@ async def set_title(client, message: Message):
 
     if not user_id:
         await message.reply_text(
-            "You don't seem to be referring to a user or the ID specified is incorrect..",
+            "You don't seem to be referring to a user, or the ID specified is incorrect.",
         )
         return
 
@@ -421,19 +417,19 @@ async def set_title(client, message: Message):
 
     if user_member.status == ChatMemberStatus.OWNER:
         await message.reply_text(
-            "This person CREATED the chat, how can I set custom title for him?",
+            "This person created the chat. How can I set a custom title for them?",
         )
         return
 
     if user_member.status != ChatMemberStatus.ADMINISTRATOR:
         await message.reply_text(
-            "Can't set title for non-admins!\nPromote them first to set custom title!",
+            "Can't set a title for non-admins!\nPromote them first to set a custom title!",
         )
         return
 
     if user_id == client.me.id:
         await message.reply_text(
-            "I can't set my own title myself! Get the one who made me admin to do it for me.",
+            "I can't set my own title! Get the admin who promoted me to do it.",
         )
         return
 
@@ -450,7 +446,7 @@ async def set_title(client, message: Message):
         await client.set_administrator_title(chat.id, user_id, title)
     except RPCError:
         await message.reply_text(
-            "Either they aren't promoted by me or you set a title text that is impossible to set."
+            "Either I didn't promote them, or the title text cannot be set."
         )
         raise
 
@@ -727,7 +723,7 @@ async def adminlist(client, message: Message):
         text += "\n<code> ╰─➽ </code>{}".format(each_bot)
     try:
         await msg.edit_text(text, parse_mode=ParseMode.HTML)
-    except RPCError:  # if the original message is deleted
+    except RPCError:  # the original message may have been deleted
         return
 
 
@@ -904,7 +900,7 @@ async def admin_callback(client, query: CallbackQuery):
 
         if user_member.status == ChatMemberStatus.OWNER:
             await message.edit_text(
-                "This person CREATED the chat, how would I demote them?"
+                "This person created the chat. How would I demote them?"
             )
             return
 
@@ -914,7 +910,7 @@ async def admin_callback(client, query: CallbackQuery):
 
         if user_id == client.me.id:
             await message.edit_text(
-                "I can't demote myself!, get an admin to do it for me."
+                "I can't demote myself! Get an admin to do it for me."
             )
             return
 
@@ -952,8 +948,8 @@ async def admin_callback(client, query: CallbackQuery):
             return log_message
         except RPCError:
             await message.edit_text(
-                "Could not demote. I might not be admin, or the admin status was appointed by another"
-                " user, so I can't act upon them!"
+                "Could not demote. I might not be an admin, or the admin status was"
+                " granted by another user, so I can't act on them!"
             )
             return
 
@@ -989,7 +985,7 @@ async def admin_callback(client, query: CallbackQuery):
 
         if user_member.status == ChatMemberStatus.OWNER:
             await message.edit_text(
-                "This person CREATED the chat, how can I set a custom title for him?",
+                "This person created the chat. How can I set a custom title for them?",
             )
             return
 
@@ -1001,7 +997,7 @@ async def admin_callback(client, query: CallbackQuery):
 
         if user_id == client.me.id:
             await message.edit_text(
-                "I can't set my own title myself! Get the one who made me admin to do it for me.",
+                "I can't set my own title! Get the admin who promoted me to do it.",
             )
             return
 
@@ -1018,7 +1014,7 @@ async def admin_callback(client, query: CallbackQuery):
             await client.set_administrator_title(chat.id, user_id, title)
         except RPCError:
             await message.edit_text(
-                "Either they aren't promoted by me or you set a title text that is impossible to set."
+                "Either I didn't promote them, or the title text cannot be set."
             )
             return
 
@@ -1069,7 +1065,7 @@ async def admin_callback(client, query: CallbackQuery):
                 else:
                     raise
 
-            await message.edit_text("Done Pinned.")
+            await message.edit_text("Pinned.")
             await query.answer("Done")
 
             log_message = (
@@ -1158,15 +1154,12 @@ async def admin_callback(client, query: CallbackQuery):
         return log_message
 
 
-# <=================================================== HELP ====================================================>
-
-
 __help__ = """
 » /adminlist: List of admins in the chat.
 
 ➠ *Admins only:*
 
-» /pin: Silently pins the message replied to. Add 'loud' or 'notify' to give notifications to users.
+» /pin: Silently pins the message replied to. Add 'loud' or 'notify' to notify users.
 
 » /unpin: Unpins the currently pinned message.
 
@@ -1176,16 +1169,15 @@ __help__ = """
 
 » /promote: Promotes the user replied to.
 
-» /fullpromote: FullPromotes the user replied to.
+» /fullpromote: Fully promotes the user replied to.
 
 » /demote: Demotes the user replied to.
 
 » /title <Title here>: Sets a custom title for an admin that the bot promoted.
 
-» /admincache: Force refresh the admins list.
+» /admincache: Force a refresh of the admin list.
 """
 
-# <================================================ END =======================================================>
 
 __mod_name__ = "ADMIN"
 __command_list__ = [
@@ -1199,4 +1191,3 @@ __command_list__ = [
     "setgpic",
     "delgpic",
 ]
-# <================================================ END =======================================================>

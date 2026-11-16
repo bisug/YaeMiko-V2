@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 from threading import RLock
 from time import perf_counter
 
@@ -38,9 +37,8 @@ __all__ = [
     "whitelist_plus",
 ]
 
-# <=======================================================================================================>
 
-# stores admemes in memory for 10 min.
+# Cache admins in memory for 10 minutes.
 ADMIN_CACHE = TTLCache(maxsize=10_000, ttl=60 * 10, timer=perf_counter)
 THREAD_LOCK = RLock()
 
@@ -72,7 +70,6 @@ def granted(member, permission: str) -> bool:
     return bool(getattr(privileges, permission, False))
 
 
-# <================================================ FUNCTION =======================================================>
 def check_admin(
     permission: str = None,
     is_bot: bool = False,
@@ -93,7 +90,7 @@ def check_admin(
         only_owner (bool, optional): if only owner can perform the action. Defaults to False.
         only_sudo (bool, optional): if only sudo users can perform the operation. Defaults to False.
         only_dev (bool, optional): if only dev users can perform the operation. Defaults to False.
-        no_reply (boot, optional): if should not reply. Defaults to False.
+        no_reply (bool, optional): if it should not reply. Defaults to False.
     """
     return requirement(
         kind="admin",
@@ -112,9 +109,8 @@ def _is_elevated(chat, user_id: int, member=None) -> bool:
     return user_id in DRAGONS or user_id in DEV_USERS
 
 
-# The three gate kinds below share one check and differ only in the refusal
-# GateMiddleware sends, which it owns. The names stay because gate.py
-# dispatches on the kind, not the predicate.
+# These gate kinds share one check and differ only in the refusal the gate
+# sends. The names stay because gate.py dispatches on the kind, not the predicate.
 is_whitelist_plus = is_support_plus = is_sudo_plus = _is_elevated
 
 
@@ -145,7 +141,7 @@ async def is_user_admin(chat, user_id: int, member=None) -> bool:
         or user_id in DRAGONS
         or user_id in DEV_USERS
         or user_id in [777000, 1087968824]
-    ):  # Count telegram and Group Anonymous as admin
+    ):  # Telegram and Group Anonymous count as admins
         return True
     if not member:
         with THREAD_LOCK:
@@ -181,7 +177,7 @@ async def is_user_ban_protected(chat, user_id: int, member=None) -> bool:
         or user_id in DRAGONS
         or user_id in DEV_USERS
         or user_id in [777000, 1087968824]
-    ):  # Count telegram and Group Anonymous as admin
+    ):  # Telegram and Group Anonymous count as admins
         return True
 
     if not member:
@@ -223,7 +219,3 @@ def user_not_admin(func):
 def connection_status(func):
     """Resolve the linked group; handlers read it from the injected connected_chat."""
     return requirement(kind="connection_status")(func)
-
-
-# <=======================================================================================================>
-# <===================================================== END =====================================================>

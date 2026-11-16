@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import asyncio
 import json
 import os
@@ -38,8 +37,6 @@ from Mikobot.logger import LOGGER as log
 from Mikobot.state import state
 from Mikobot.utils.cmdprefix import PREFIX_HANDLER
 from Mikobot.utils.errors import FLOOD_WAIT_ERRORS, flood_wait_seconds
-
-# <=======================================================================================================>
 
 FILLERS = TTLCache(maxsize=1000, ttl=900)
 
@@ -436,7 +433,10 @@ def control_user(func):
                     USER_WC[user] = USER_WC.get(user, 0) + 1
                     if USER_WC[user] == 3:
                         await message.reply_text(
-                            ("Stop spamming bot!!!" + "\nElse you will be blacklisted"),
+                            (
+                                "Stop spamming the bot!!!"
+                                + "\nElse you will be blacklisted"
+                            ),
                         )
                         await clog("Mikobot", f"UserID: {user}", "SPAM")
                     if USER_WC[user] == 5:
@@ -500,7 +500,10 @@ def check_user(func):
                     ot = USER_JSON[user]
                     if nt - ot < 1.4:
                         await c_q.answer(
-                            ("Stop spamming bot!!!\n" + "Else you will be blacklisted"),
+                            (
+                                "Stop spamming the bot!!!\n"
+                                + "Else you will be blacklisted"
+                            ),
                             show_alert=True,
                         )
                         await clog("Mikobot", f"UserID: {user}", "SPAM")
@@ -1309,7 +1312,6 @@ async def get_ui_text(case):
 tr = google_translator()
 ANIME_DB, MANGA_DB, CHAR_DB, STUDIO_DB, AIRING_DB = {}, {}, {}, {}, {}
 
-#### Anilist part ####
 
 ANIME_TEMPLATE = """{name}
 
@@ -2994,11 +2996,6 @@ async def check_if_adult(id_):
         return "False"
 
 
-####       END        ####
-
-#### Jikanpy part ####
-
-
 async def get_scheduled(x: int = 9):
     base_url = "https://api.jikan.moe/v4/schedules/"
     day = str(day_(x if x != 9 else datetime.now().weekday())).lower()
@@ -3014,11 +3011,6 @@ async def get_scheduled(x: int = 9):
             title = i["title"]
         out += f"• `{title}`\n"
     return out, x if x != 9 else datetime.now().weekday()
-
-
-####     END      ####
-
-#### chiaki part ####
 
 
 async def get_wols(x: str):
@@ -3050,11 +3042,6 @@ async def get_wo(x: int, page: int):
         return msg, total
     out_ = "".join(out[start : start + 50])
     return msg + out_, total
-
-
-####     END     ####
-
-##### Anime Fillers Part #####
 
 
 async def search_filler(query):
@@ -5019,9 +5006,6 @@ Selected text case in this group: {cs}"""
     )
 
 
-## For accepting commands from edited messages
-
-
 @app.on_edited_message(
     filters.command(["anime", f"anime{BOT_USERNAME}"], prefixes=PREFIX_HANDLER)
 )
@@ -5454,7 +5438,6 @@ QUOTES_IMG = [
 ]
 
 
-# <================================================= HELP ======================================================>
 __help__ = """
 ⛩ *Anime:*
 
@@ -5462,22 +5445,22 @@ __help__ = """
 
 ➠ *Commands:*
 
-» /anime: fetches info on single anime (includes buttons to look up for prequels and sequels)
+» /anime: fetches info on a single anime (includes buttons to look up prequels and sequels)
 » /character: fetches info on multiple possible characters related to query
-» /manga: fetches info on multiple possible mangas related to query
+» /manga: fetches info on multiple possible manga related to query
 » /airing: fetches info on airing data for anime
 » /studio: fetches info on multiple possible studios related to query
-» /schedule: fetches scheduled animes
-» /browse: get popular, trending or upcoming animes
+» /schedule: fetches scheduled anime
+» /browse: get popular, trending or upcoming anime
 
 ➠ /animequotes: get random anime quotes
 
 » /anisettings: to toggle NSFW lock and airing notifications and other settings in groups (anime news)
-» /top: to retrieve top animes for a genre or tag
+» /top: to retrieve top anime for a genre or tag
 » /watch: fetches watch order for anime series
 » /fillers: to get a list of anime fillers
 » /gettags: get a list of available tags
-» /getgenres - Get list of available Genres
+» /getgenres - Get a list of available genres
 """
 
 __mod_name__ = "ANIME"
@@ -5485,6 +5468,3 @@ __mod_name__ = "ANIME"
 
 def __migrate__(old_chat_id, new_chat_id):
     db.migrate_chat(old_chat_id, new_chat_id)
-
-
-# <================================================== END =====================================================>

@@ -109,7 +109,7 @@ async def add_blackliststicker(client, message: Message):
             except RPCError:
                 await send_message(
                     message,
-                    "Sticker `{}` can not be found!".format(trigger),
+                    "Sticker `{}` cannot be found!".format(trigger),
                     parse_mode=ParseMode.MARKDOWN,
                 )
 
@@ -150,7 +150,7 @@ async def add_blackliststicker(client, message: Message):
         except RPCError:
             await send_message(
                 message,
-                "Sticker `{}` can not be found!".format(trigger),
+                "Sticker `{}` cannot be found!".format(trigger),
                 parse_mode=ParseMode.MARKDOWN,
             )
 
@@ -239,7 +239,7 @@ async def unblackliststicker(client, message: Message):
         else:
             await send_message(
                 message,
-                "Sticker <code>{}</code> deleted from blacklist. {} did not exist, so it's not deleted.".format(
+                "Sticker <code>{}</code> deleted from blacklist. {} did not exist, so they were not removed.".format(
                     successful,
                     len(to_unblacklist) - successful,
                 ),
@@ -267,7 +267,7 @@ async def unblackliststicker(client, message: Message):
         else:
             await send_message(
                 message,
-                "{} not found on blacklisted stickers...!".format(trigger),
+                "{} is not on the sticker blacklist...!".format(trigger),
             )
     else:
         await send_message(
@@ -293,7 +293,7 @@ async def blacklist_mode(client, message: Message):
         if message.chat.type == ChatType.PRIVATE:
             await send_message(
                 message,
-                "You can do this command in groups, not PM",
+                "You can use this command in groups, not in PM.",
             )
             return ""
         chat = message.chat
@@ -321,27 +321,27 @@ async def blacklist_mode(client, message: Message):
             sql.set_blacklist_strength(chat_id, 5, "0")
         elif args[0].lower() == "tban":
             if len(args) == 1:
-                teks = """It looks like you are trying to set a temporary value to blacklist, but has not determined the time; use `/blstickermode tban <timevalue>`.
-                                          Examples of time values: 4m = 4 minute, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
+                teks = """It looks like you are trying to set a temporary blacklist value, but have not specified a time; use `/blstickermode tban <timevalue>`.
+                                          Examples of time values: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
                 await send_message(
                     message,
                     teks,
                     parse_mode=ParseMode.MARKDOWN,
                 )
                 return ""
-            settypeblacklist = "temporary banned for {}".format(args[1])
+            settypeblacklist = "temporarily banned for {}".format(args[1])
             sql.set_blacklist_strength(chat_id, 6, str(args[1]))
         elif args[0].lower() == "tmute":
             if len(args) == 1:
-                teks = """It looks like you are trying to set a temporary value to blacklist, but has not determined the time; use `/blstickermode tmute <timevalue>`.
-                                          Examples of time values: 4m = 4 minute, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
+                teks = """It looks like you are trying to set a temporary blacklist value, but have not specified a time; use `/blstickermode tmute <timevalue>`.
+                                          Examples of time values: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
                 await send_message(
                     message,
                     teks,
                     parse_mode=ParseMode.MARKDOWN,
                 )
                 return ""
-            settypeblacklist = "temporary muted for {}".format(args[1])
+            settypeblacklist = "temporarily muted for {}".format(args[1])
             sql.set_blacklist_strength(chat_id, 7, str(args[1]))
         else:
             await send_message(
@@ -366,7 +366,7 @@ async def blacklist_mode(client, message: Message):
         return (
             "<b>{}:</b>\n"
             "<b>Admin:</b> {}\n"
-            "Changed sticker blacklist mode. users will be {}.".format(
+            "Sticker blacklist mode changed. Users will be {}.".format(
                 html.escape(chat.title),
                 mention_html(user.id, user.first_name),
                 settypeblacklist,
@@ -434,7 +434,7 @@ async def del_blackliststicker(client, message: Message):
                     await warn(
                         user,
                         chat,
-                        "Using sticker '{}' which in blacklist stickers".format(
+                        "Using sticker '{}', which is on the sticker blacklist".format(
                             trigger,
                         ),
                         message,
@@ -450,7 +450,7 @@ async def del_blackliststicker(client, message: Message):
                     )
                     await client.send_message(
                         chat.id,
-                        "{} muted because using '{}' which in blacklist stickers".format(
+                        "{} muted for using '{}', which is on the sticker blacklist".format(
                             mention_markdown(user.id, user.first_name),
                             trigger,
                         ),
@@ -465,7 +465,7 @@ async def del_blackliststicker(client, message: Message):
                     await client.unban_chat_member(chat.id, user.id)
                     await client.send_message(
                         chat.id,
-                        "{} kicked because using '{}' which in blacklist stickers".format(
+                        "{} kicked for using '{}', which is on the sticker blacklist".format(
                             mention_markdown(user.id, user.first_name),
                             trigger,
                         ),
@@ -480,7 +480,7 @@ async def del_blackliststicker(client, message: Message):
                     await client.ban_chat_member(chat.id, user.id)
                     await client.send_message(
                         chat.id,
-                        "{} banned because using '{}' which in blacklist stickers".format(
+                        "{} banned for using '{}', which is on the sticker blacklist".format(
                             mention_markdown(user.id, user.first_name),
                             trigger,
                         ),
@@ -499,7 +499,7 @@ async def del_blackliststicker(client, message: Message):
                     await client.ban_chat_member(chat.id, user.id, until_date=ban_until)
                     await client.send_message(
                         chat.id,
-                        "{} banned for {} because using '{}' which in blacklist stickers".format(
+                        "{} banned for {} for using '{}', which is on the sticker blacklist".format(
                             mention_markdown(user.id, user.first_name),
                             value,
                             trigger,
@@ -524,7 +524,7 @@ async def del_blackliststicker(client, message: Message):
                     )
                     await client.send_message(
                         chat.id,
-                        "{} muted for {} because using '{}' which in blacklist stickers".format(
+                        "{} muted for {} for using '{}', which is on the sticker blacklist".format(
                             mention_markdown(user.id, user.first_name),
                             value,
                             trigger,
@@ -542,7 +542,6 @@ async def del_blackliststicker(client, message: Message):
 
 
 async def __import_data__(chat_id, data, message):
-    # set chat blacklist
     blacklist = data.get("sticker_blacklist", {})
     for trigger in blacklist:
         sql.add_to_stickers(chat_id, trigger)
@@ -554,7 +553,7 @@ def __migrate__(old_chat_id, new_chat_id):
 
 def __chat_settings__(chat_id, user_id):
     blacklisted = sql.num_stickers_chat_filters(chat_id)
-    return "There are `{} `blacklisted stickers.".format(blacklisted)
+    return "There are `{}` blacklisted stickers.".format(blacklisted)
 
 
 def __stats__():

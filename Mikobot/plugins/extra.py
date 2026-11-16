@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import asyncio
 from time import gmtime, strftime, time
 
@@ -17,12 +16,9 @@ from Mikobot.events import on_callback, on_message
 from Mikobot.logger import LOGGER
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 
-# <=======================================================================================================>
-
-UPTIME = time()  # Check bot uptime
+UPTIME = time()  # Baseline for the uptime readout in /pyroping
 
 
-# <================================================ FUNCTION =======================================================>
 @on_message(filters.command("id"), chained=True)
 async def _id(client, message: Message):
     chat = message.chat
@@ -74,7 +70,6 @@ async def _id(client, message: Message):
     if reply and reply.sender_chat:
         text += f"๏ ID ᴏғ ᴛʜᴇ ʀᴇᴘʟɪᴇᴅ ᴄʜᴀᴛ/ᴄʜᴀɴɴᴇʟ, ɪs `{reply.sender_chat.id}`"
 
-    # Send sticker and text as a reply
     sticker_id = (
         "CAACAgIAAx0EdppwYAABAgotZg5rBL4P05Xjmy80p7DdNdneDmUAAnccAALIWZhJPyYLf3FzPHs0BA"
     )
@@ -84,7 +79,6 @@ async def _id(client, message: Message):
     )
 
 
-# Function to handle the "logs" command
 @on_message(filters.command("logs"), chained=True)
 @check_admin(only_dev=True)
 async def logs(client, message: Message):
@@ -107,12 +101,10 @@ async def logs(client, message: Message):
             chat_id=message.from_user.id,
         )
 
-        # Store the message ID for later reference
         user_data.setdefault(message.from_user.id, {})["log_message_id"] = sent.id
         await asyncio.to_thread(store.save)
 
 
-# Asynchronous callback query handler for the "close" button
 @on_callback(filters.regex(r"^close$"), chained=True)
 @check_admin(only_dev=True)
 async def close_callback(client, query: CallbackQuery):
@@ -141,7 +133,6 @@ async def ping(client, m: Message):
     up = strftime("%Hh %Mm %Ss", gmtime(time() - UPTIME))
     image_url = "https://telegra.ph/file/e1049f371bbec3f006f3a.jpg"
 
-    # Send the image as a reply
     await replymsg.reply_photo(
         photo=image_url,
         caption=f"<b>Pyro-Pong!</b>\n{delta_ping * 1000:.3f} ms\n\nUptime: <code>{up}</code>",
@@ -149,22 +140,17 @@ async def ping(client, m: Message):
     await replymsg.delete()
 
 
-# <=======================================================================================================>
-
-
-# <================================================= HELP ======================================================>
 __help__ = """
 ➠ *Commands*:
 
-» /instadl, /insta <link>: Get instagram contents like reel video or images.
+» /instadl, /insta <link>: Get Instagram content such as reels or images.
 
-» /pyroping: see pyroping.
+» /pyroping: check the bot's ping.
 
-» /hyperlink <text> <link> : Creates a markdown hyperlink with the provided text and link.
+» /hyperlink <text> <link>: Creates a markdown hyperlink with the provided text and link.
 
-» /pickwinner <participant1> <participant2> ... : Picks a random winner from the provided list of participants.
+» /pickwinner <participant1> <participant2> ...: Picks a random winner from the provided list of participants.
 """
 
 __mod_name__ = "EXTRA"
 __command_list__ = ["id", "pyroping"]
-# <================================================ END =======================================================>

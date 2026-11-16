@@ -1,12 +1,8 @@
-# <============================================== IMPORTS =========================================================>
 from pyrogram.errors import RPCError
 
 from Mikobot.utils.gate import requirement
 
-# <=======================================================================================================>
 
-
-# <================================================ FUNCTION =======================================================>
 async def send_message(message, text, *args, **kwargs):
     """reply_text(), retried once when Telegram errors."""
     try:
@@ -33,6 +29,3 @@ def document_action(func):
 def photo_action(func):
     """Sends the upload-photo action while processing func command."""
     return requirement(chat_action="upload_photo")(func)
-
-
-# <================================================ END =======================================================>

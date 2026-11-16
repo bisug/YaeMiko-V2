@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import asyncio
 import html
 import os
@@ -66,8 +65,6 @@ from Mikobot.utils.can_restrict import can_restrict
 from Mikobot.utils.jobs import job_queue
 from Mikobot.utils.parser import escape_markdown, mention_html, mention_markdown
 
-# <=======================================================================================================>
-
 VALID_WELCOME_FORMATTERS = [
     "first",
     "last",
@@ -96,7 +93,6 @@ VERIFIED_USER_WAITLIST = TTLCache(maxsize=5000, ttl=600)
 WELCOME_MESSAGES = TTLCache(maxsize=5000, ttl=86400)
 
 
-# <================================================ TEMPLATE WELCOME FUNCTION =======================================================>
 def _sync_circle(pfp, size=(259, 259)):
     pfp = pfp.resize(size, Image.Resampling.LANCZOS).convert("RGBA")
     bigsize = (pfp.size[0] * 3, pfp.size[1] * 3)
@@ -267,9 +263,6 @@ async def toggle_dwelcome(client, message: Message):
         await message.reply_text("Usage: /dwelcome [on/off]")
 
 
-# <=======================================================================================================>
-
-
 # The service message types Telegram sends into a group, as named by the docs.
 SERVICE_TYPES = (
     "join",  # a user joined or was added
@@ -317,7 +310,6 @@ async def _should_clean(chat_id, message: Message) -> bool:
     return _service_type_of(message) in wanted
 
 
-# <================================================ NORMAL WELCOME FUNCTION =======================================================>
 async def send(source_message: Message, text: str, keyboard, backup_message):
     chat = source_message.chat
     cleanserv = await _should_clean(chat.id, source_message)
@@ -703,9 +695,8 @@ async def new_member(client, message: Message):
                             ],
                         ),
                         parse_mode=ParseMode.HTML,
-                        # No explicit reply target: msg.reply_text() already replies to
-                        # the message it was called on, and aiogram's reply()
-                        # takes neither reply_to_message_id nor reply_parameters.
+                        # No explicit reply target: msg.reply_text() already replies
+                        # to the message it was called on.
                     )
                     await client.restrict_chat_member(
                         chat.id,
@@ -1013,11 +1004,11 @@ async def goodbye(client, message: Message):
     elif len(args) >= 1:
         if args[0].lower() in ("on", "yes"):
             await asyncio.to_thread(sql.set_gdbye_preference, str(chat.id), True)
-            await message.reply_text("Okay its set to on!")
+            await message.reply_text("Okay, it's set to on!")
 
         elif args[0].lower() in ("off", "no"):
             await asyncio.to_thread(sql.set_gdbye_preference, str(chat.id), False)
-            await message.reply_text("Okay its set to no!")
+            await message.reply_text("Okay, it's set to off!")
 
         else:
             await message.reply_text(
@@ -1145,7 +1136,7 @@ async def welcomemute(client, message: Message) -> str:
         elif args[0].lower() in ["soft"]:
             await asyncio.to_thread(sql.set_welcome_mutes, chat.id, "soft")
             await msg.reply_text(
-                "I will restrict users permission to send media for 24 hours.",
+                "I will restrict users' permission to send media for 24 hours.",
             )
             return (
                 f"<b>{html.escape(chat.title)}:</b>\n"
@@ -1236,7 +1227,7 @@ async def _service_target(client, message: Message):
         chat = await client.get_chat(conn)
         return conn, chat, args
     if message.chat.type == ChatType.PRIVATE:
-        await message.reply_text("This command is meant to use in a group.")
+        await message.reply_text("This command is meant to be used in a group.")
         return None, None, args
     return message.chat.id, message.chat, args
 
@@ -1443,9 +1434,8 @@ async def user_button(client, query: CallbackQuery):
         try:
             await client.delete_messages(chat.id, message.id)
         except RPCError:
-            # Needs delete rights and a message under 48h old. Failing to
-            # remove the join notice is cosmetic, so it must not abort the
-            # greeting that follows.
+            # Deleting needs rights and a message under 48h old; failure is
+            # cosmetic, so it must not abort the greeting.
             LOGGER.debug(
                 "Could not delete the join message in %s", chat.id, exc_info=True
             )
@@ -1512,10 +1502,10 @@ async def welcome_help(client, message: Message):
         " • `{chatname}`: This represents the *current chat name*.\n"
         "\nEach variable must be surrounded by `{}` to be replaced.\n"
         "Welcome messages also support markdown, so you can make any elements bold/italic/code/links. "
-        "Buttons are also supported, so you can make your welcomes look awesome with some nice intro buttons."
+        "Buttons are also supported, so you can add intro buttons."
         "\nTo create a button linking to your rules, use this: `[rules](buttonurl://t.me/"
-        f"{BOT_USERNAME}?start=group_id)`. Simply replace `group_id` with your group's ID,"
-        " which can be obtained via /id, and you're good to go. Note that group IDs are usually preceded by a `-` sign, so please don't remove it."
+        f"{BOT_USERNAME}?start=group_id)`. Replace `group_id` with your group's ID,"
+        " which you can get from /id. Group IDs usually start with a `-`, so keep the sign."
         " You can even set images/gifs/videos/voice messages as the welcome message by replying to the desired media,"
         " and calling `/setwelcome`."
     )
@@ -1545,9 +1535,6 @@ def __chat_settings__(chat_id, user_id):
     )
 
 
-# <=================================================== HELP ====================================================>
-
-
 __help__ = """
 ➠ *Admins Only:*
 
@@ -1560,8 +1547,8 @@ __help__ = """
 » /welcome: Shows current welcome settings.
 » /welcome noformat: Shows current welcome settings, without the formatting - useful to recycle your welcome messages!
 » /goodbye: Same usage and args as /welcome
-» /setwelcome <sometext>: Set a custom welcome message. If used replying to media, uses that media.
-» /setgoodbye <sometext>: Set a custom goodbye message. If used replying to media, uses that media.
+» /setwelcome <sometext>: Set a custom welcome message. If used while replying to media, uses that media.
+» /setgoodbye <sometext>: Set a custom goodbye message. If used while replying to media, uses that media.
 » /resetwelcome: Reset to the default welcome message.
 » /resetgoodbye: Reset to the default goodbye message.
 » /cleanwelcome <on/off>: On new member, try to delete the previous welcome message to avoid spamming the chat.
@@ -1581,4 +1568,3 @@ User joined chat, user left chat.
 
 __mod_name__ = "WELCOME"
 __command_list__ = []
-# <================================================ END =======================================================>

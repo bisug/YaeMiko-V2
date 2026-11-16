@@ -1,9 +1,7 @@
-"""Forum topic management: /newtopic, /renametopic, /closetopic,
-/reopentopic, /deletetopic, and the /actiontopic setting.
+"""Forum topic management commands.
 
-Telegram requires manage_topics, so every handler here gates on it. A forum
-with topics disabled has no such permission, and the commands report that
-rather than failing silently.
+Telegram requires manage_topics, which a forum without topics lacks, so each
+handler gates on it and reports that instead of failing silently.
 """
 
 import asyncio
@@ -31,10 +29,8 @@ from Mikobot.utils.parser import mention_html
 async def _has_forum_sidebar(chat_id: int) -> bool:
     """Whether the chat shows its topics in a sidebar.
 
-    The Bot API exposes no forum layout flag, so the layout is read from
-    the MTProto chat, which carries forum_sidebar. Only consulted for a
-    chat the Bot API already reported as a non-forum, so the common path
-    costs nothing.
+    The Bot API has no layout flag, so this reads the MTProto chat. Only called
+    for chats the Bot API already reported as non-forum, so the common path is free.
     """
     try:
         mtproto_chat = await app.get_chat(chat_id)
@@ -139,8 +135,7 @@ async def close_topic(client, message: Message):
         await message.reply_text(f"I could not close that topic: {exc.message}")
         return ""
 
-    # Admins can still post in a closed topic, so say so rather than leaving
-    # someone to assume the topic is fully sealed.
+    # Admins can still post in a closed topic; mention it so users don't assume it is sealed.
     await message.reply_text(
         "Closed this topic. Admins can still post in it.",
     )
@@ -205,8 +200,7 @@ async def delete_topic(client, message: Message):
         await message.reply_text("Run this inside the topic you want to delete.")
         return ""
 
-    # Deleting removes the topic and every message in it, and Telegram cannot
-    # undo that, so it is confirmed rather than done on the first request.
+    # Deleting removes the topic and all its messages irreversibly, so it needs confirmation.
     await message.reply_text(
         "This deletes the topic <b>and every message in it</b>. It cannot be undone.",
         parse_mode=ParseMode.HTML,

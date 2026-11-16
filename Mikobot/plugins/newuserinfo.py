@@ -113,7 +113,6 @@ async def userinfopic(
             return None
 
 
-# Command handler for /userinfo
 @app.on_message(filters.command("uinfo"))
 async def userinfo_command(client, message):
     user = message.from_user
@@ -146,7 +145,6 @@ async def userinfo_command(client, message):
                 f"❐  𝗨𝘀𝗲𝗿𝗹𝗶𝗻𝗸: [link](https://t.me/{user.username})\n"
             )
 
-            # Check if the user's ID matches one of the predefined ranks
             if user.id == OWNER_ID:
                 caption += "\n\n〄 The disaster level of this user is **Owner**.\n"
             elif user.id in DEV_USERS:
@@ -160,7 +158,6 @@ async def userinfo_command(client, message):
             elif user.id in WOLVES:
                 caption += "\n\n〄 The disaster level of this user is **Wolf**.\n"
 
-            # Add the RANK line only if the user's ID matches one of the predefined ranks
             if (
                 user.id == OWNER_ID
                 or user.id in DEV_USERS

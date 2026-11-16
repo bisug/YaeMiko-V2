@@ -2,7 +2,6 @@
 # UPDATED BY https://t.me/O_okarma
 # https://t.me/ProjectCodeX
 
-# <============================================== IMPORTS =========================================================>
 import asyncio
 
 from pyrogram import filters
@@ -20,13 +19,10 @@ from Mikobot import OWNER_ID, app
 from Mikobot.utils.can_restrict import can_restrict
 from Mikobot.utils.errors import capture_err
 
-# <=======================================================================================================>
-
 karma_positive_group = 3
 karma_negative_group = 4
 
 
-# <================================================ FUNCTION =======================================================>
 @app.on_message(
     filters.text
     & filters.group
@@ -176,9 +172,6 @@ async def karma_toggle_xd(_, message):
         await message.reply_text(usage)
 
 
-# <=================================================== HELP ====================================================>
-
-
 __mod_name__ = "KARMA"
 
 
@@ -200,4 +193,3 @@ __help__ = """
 
 » /karma [OFF|ON] - `Enable or disable karma system in your chat.`
 """
-# <================================================ END =======================================================>

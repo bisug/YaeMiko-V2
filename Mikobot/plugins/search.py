@@ -142,7 +142,6 @@ async def web_search(client: Client, message: Message):
         await message.reply_text("Search failed. Please try again later.")
 
 
-# <=================================================== HELP ====================================================>
 __mod_name__ = "SEARCH"
 
 __help__ = """
@@ -156,4 +155,3 @@ __help__ = """
 
 » /bingsearch <query> or /duckduckgo <query>: Search quick answers via DuckDuckGo.
 """
-# <================================================ END =======================================================>

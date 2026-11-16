@@ -2,7 +2,6 @@
 # CREATED BY https://t.me/O_okarma
 # PROVIDED BY https://t.me/ProjectCodeX
 
-# <============================================== IMPORTS =========================================================>
 from pyrogram import filters
 from pyrogram.types import Message
 
@@ -10,15 +9,12 @@ from Mikobot.events import on_message
 from Mikobot.logger import LOGGER
 from Mikobot.state import state
 
-# <=======================================================================================================>
-
 DOWNLOADING_STICKER_ID = (
     "CAACAgIAAxkBAAEDv_xlJWmh2-fKRwvLywJaFeGy9wmBKgACVQADr8ZRGmTn_PAl6RC_MAQ"
 )
-API_URL = "https://karma-api2.vercel.app/instadl"  # Replace with your actual API URL
+API_URL = "https://karma-api2.vercel.app/instadl"
 
 
-# <================================================ FUNCTION =======================================================>
 @on_message(filters.command(["ig", "instagram", "insta", "instadl"]), chained=True)
 async def instadl_command_handler(client, message: Message):
     args = message.command[1:] if len(message.command) > 1 else []
@@ -31,18 +27,14 @@ async def instadl_command_handler(client, message: Message):
     try:
         downloading_sticker = await message.reply_sticker(DOWNLOADING_STICKER_ID)
 
-        # Make an asynchronous GET request to the API using httpx
         response = await state.get(API_URL, params={"url": link}, timeout=15)
         data = response.json()
 
-        # Check if the API request was successful
         if "content_url" in data:
             content_url = data["content_url"]
 
-            # Determine content type from the URL
             content_type = "video" if "video" in content_url else "photo"
 
-            # Reply with either photo or video
             if content_type == "photo":
                 await message.reply_photo(content_url)
             elif content_type == "video":
@@ -68,4 +60,3 @@ async def instadl_command_handler(client, message: Message):
 
 __mod_name__ = "INSTADL"
 __command_list__ = ["ig", "instagram", "insta", "instadl"]
-# <================================================ END =======================================================>

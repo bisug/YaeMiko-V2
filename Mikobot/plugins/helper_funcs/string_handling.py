@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import re
 import time
 
@@ -88,8 +87,6 @@ def caption_entities_map(message: Message, types: list[str] = None) -> dict:
     }
 
 
-# <=======================================================================================================>
-
 MATCH_MD = re.compile(
     r"\*(.*?)\*|"
     r"_(.*?)_|"
@@ -103,7 +100,6 @@ BTN_URL_REGEX = re.compile(r"(\[([^\[]+?)\]\(buttonurl:(?:/{0,2})(.+?)(:same)?\)
 _EMOJI_REGEXP = None
 
 
-# <================================================ FUNCTION =======================================================>
 def get_emoji_regexp():
     global _EMOJI_REGEXP
     if _EMOJI_REGEXP is None:
@@ -131,14 +127,10 @@ def _selective_escape(to_parse: str) -> str:
     return to_parse
 
 
-# This is a fun one.
 def _calc_emoji_offset(to_calc) -> int:
-    # Get all emoji in text.
+    # Emoji take more UTF-16 code units than characters, which shifts entity
+    # offsets; subtract one per emoji to compensate (compound emoji shift more).
     emoticons = get_emoji_regexp().finditer(to_calc)
-    # Check the utf16 length of the emoji to determine the offset it caused.
-    # Normal, 1 character emoji don't affect; hence sub 1.
-    # special, eg with two emoji characters (eg face, and skin col) will have length 2, so by subbing one we
-    # know we'll get one extra offset,
     return sum(len(e.group(0).encode("utf-16-le")) // 2 - 1 for e in emoticons)
 
 
@@ -150,7 +142,7 @@ def markdown_parser(
     """
     Parse a string, escaping all invalid markdown entities.
 
-    Escapes URL's so as to avoid URL mangling.
+    Escapes URLs so as to avoid mangling them.
     Re-adds any Telegram code entities obtained from the entities object.
 
     :param txt: text to parse
@@ -165,9 +157,7 @@ def markdown_parser(
 
     prev = 0
     res = ""
-    # Loop over all message entities, and:
-    # reinsert code
-    # escape free-standing urls
+    # Reinsert code, link and spoiler entities, escaping free-standing URLs.
     for ent, ent_text in entities.items():
         if ent.offset < -offset:
             continue
@@ -183,9 +173,9 @@ def markdown_parser(
         if ent_type.startswith("messageentitytype."):
             ent_type = ent_type.split(".", 1)[1]
 
-        # we only care about code, url, text links
+        # Only these entity types are reinserted.
         if ent_type in ("code", "url", "text_link", "spoiler"):
-            # count emoji to switch counter
+            # Emoji before the entity shift its offsets.
             count = _calc_emoji_offset(txt[:start])
             start -= count
             end -= count
@@ -197,36 +187,32 @@ def markdown_parser(
                     for match in LINK_REGEX.finditer(txt)
                 ):
                     continue
-                # else, check the escapes between the prev and last and forcefully escape the url to avoid mangling
+                # Otherwise escape the URL so Telegram does not mangle it.
                 else:
                     # TODO: investigate possible offset bug when lots of emoji are present
                     res += _selective_escape(txt[prev:start] or "") + escape_markdown(
                         ent_text, 2
                     )
 
-            # code handling
             elif ent_type == "code":
                 res += _selective_escape(txt[prev:start]) + "`" + ent_text + "`"
 
-            # handle markdown/html links
             elif ent_type == "text_link":
                 res += _selective_escape(txt[prev:start]) + "[{}]({})".format(
                     ent_text,
                     ent.url,
                 )
-            # handle spoiler
             elif ent_type == "spoiler":
                 res += _selective_escape(txt[prev:start]) + "||" + ent_text + "||"
 
             end += 1
 
-        # anything else
         else:
             continue
 
         prev = end
 
-    res += _selective_escape(txt[prev:])  # add the rest of the text
+    res += _selective_escape(txt[prev:])
     return res
 
 
@@ -240,7 +226,7 @@ def button_markdown_parser(
     note_data = ""
     buttons = []
     for match in BTN_URL_REGEX.finditer(markdown_note):
-        # Check if btnurl is escaped
+        # Count backslashes to tell whether the button URL is escaped.
         n_escapes = 0
         to_check = match.start(1) - 1
         while to_check > 0 and markdown_note[to_check] == "\\":
@@ -249,7 +235,7 @@ def button_markdown_parser(
 
         # if even, not escaped -> create button
         if n_escapes % 2 == 0:
-            # create a thruple with button label, url, and newline status
+            # Build a tuple of button label, URL, and newline status.
             buttons.append((match.group(2), match.group(3), bool(match.group(4))))
             note_data += markdown_note[prev : match.start(1)]
             prev = match.end(1)
@@ -377,7 +363,6 @@ async def extract_time(message, time_val):
         elif unit == "w":
             bantime = int(time.time() + int(time_num) * 7 * 24 * 60 * 60)
         else:
-            # how even...?
             return None
         return bantime
     else:
@@ -393,6 +378,3 @@ def markdown_to_html(text: str) -> str:
     from Mikobot.utils.parser import smart_format_to_html
 
     return smart_format_to_html(text)
-
-
-# <================================================ END =======================================================>

@@ -1,17 +1,12 @@
-# <============================================== IMPORTS =========================================================>
-
 from pyrogram.types import Message
 
 from Mikobot.plugins.helper_funcs.string_handling import entities_map
 from Mikobot.plugins.users import get_user_id
 from Mikobot.utils.consts import ChatID
 
-# <=======================================================================================================>
-
 TEXT_MENTION = "text_mention"
 
 
-# <================================================ FUNCTION =======================================================>
 async def id_from_reply(message: Message):
     prev_message = message.reply_to_message
     if not prev_message or prev_message.forum_topic_created:
@@ -50,7 +45,7 @@ async def _resolve_target(message: Message, args: list[str]) -> tuple:
     split_text = raw_text.split(None, 1)
 
     if len(split_text) < 2:
-        return await id_from_reply(message)  # only option possible
+        return await id_from_reply(message)
 
     text_to_parse = split_text[1]
     text = ""
@@ -106,7 +101,7 @@ async def extract_unt_fedban(message: Message, args: list[str]) -> tuple:
     result = await _resolve_target(message, args)
     if result == (None, None) and len(args) >= 1 and args[0][0] == "@":
         await message.reply_text(
-            "I don't have that user in my db.  "
+            "I don't have that user in my db. "
             "You'll be able to interact with them if you reply to that person's message instead, or forward one of that user's messages.",
         )
     return result
@@ -117,6 +112,3 @@ async def extract_user_fban(
     args: list[str],
 ) -> int | None:
     return (await extract_unt_fedban(message, args))[0]
-
-
-# <================================================ END =======================================================>

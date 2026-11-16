@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import asyncio
 import html
 import re
@@ -22,10 +21,7 @@ from Mikobot.plugins.log_channel import loggable
 from Mikobot.utils.filters import GROUPS
 from Mikobot.utils.parser import mention_html
 
-# <=======================================================================================================>
 
-
-# <================================================ FUNCTION =======================================================>
 @on_message(GROUPS, chained=True)
 @loggable
 async def check_flood(client, message: Message):
@@ -189,7 +185,7 @@ async def set_flood(client, message: Message):
         if message.chat.type in (ChatType.PRIVATE, "private"):
             await send_message(
                 message,
-                "This command is meant to use in a group, not in PM.",
+                "This command is meant to be used in a group, not in PM.",
             )
             return ""
         chat_id = message.chat.id
@@ -286,7 +282,7 @@ async def flood(client, message: Message):
         if message.chat.type in (ChatType.PRIVATE, "private"):
             await send_message(
                 message,
-                "This command is meant to use in a group, not in PM.",
+                "This command is meant to be used in a group, not in PM.",
             )
             return
         chat_id = message.chat.id
@@ -334,7 +330,7 @@ async def set_flood_mode(client, message: Message):
         if message.chat.type in (ChatType.PRIVATE, "private"):
             await send_message(
                 message,
-                "This command is meant to use in a group, not in PM.",
+                "This command is meant to be used in a group, not in PM.",
             )
             return ""
         chat_id = message.chat.id
@@ -352,16 +348,16 @@ async def set_flood_mode(client, message: Message):
             sql.set_flood_strength(chat_id, 3, "0")
         elif args[0].lower() == "tban":
             if len(args) == 1:
-                teks = """It looks like you tried to set time value for antiflood but you didn't specified time; Try, `/setfloodmode tban <timevalue>`.
-Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
+                teks = """It looks like you tried to set a time value for antiflood but didn't specify one. Use `/setfloodmode tban <timevalue>`.
+Examples of time values: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
                 await send_message(message, teks, parse_mode=ParseMode.MARKDOWN)
                 return ""
             settypeflood = "tban for {}".format(args[1])
             sql.set_flood_strength(chat_id, 4, str(args[1]))
         elif args[0].lower() == "tmute":
             if len(args) == 1:
-                teks = """It looks like you tried to set time value for antiflood but you didn't specified time; Try, `/setfloodmode tmute <timevalue>`.
-Examples of time value: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
+                teks = """It looks like you tried to set a time value for antiflood but didn't specify one. Use `/setfloodmode tmute <timevalue>`.
+Examples of time values: 4m = 4 minutes, 3h = 3 hours, 6d = 6 days, 5w = 5 weeks."""
                 await send_message(message, teks, parse_mode=ParseMode.MARKDOWN)
                 return ""
             settypeflood = "tmute for {}".format(args[1])
@@ -432,7 +428,7 @@ async def _flood_target(message, user):
         return conn, chat_obj.title
     if message.chat.type in (ChatType.PRIVATE, "private"):
         await send_message(
-            message, "This command is meant to use in a group, not in PM."
+            message, "This command is meant to be used in a group, not in PM."
         )
         return None, None
     return message.chat.id, message.chat.title
@@ -470,7 +466,7 @@ async def set_flood_timer(client, message: Message):
     if len(args) < 2:
         await send_message(
             msg,
-            "Use `/setfloodtimer <number> <duration>`, eg `/setfloodtimer 5 10s`.",
+            "Use `/setfloodtimer <number> <duration>`, e.g. `/setfloodtimer 5 10s`.",
         )
         return ""
 
@@ -563,9 +559,6 @@ def __chat_settings__(chat_id, user_id):
         return "Antiflood has been set to `{}`.".format(limit)
 
 
-# <=================================================== HELP ====================================================>
-
-
 __help__ = """
 ➠ *Antiflood allows you to take action on users that send more than x messages in a row. Exceeding the set flood will result in restricting that user.*
 
@@ -579,7 +572,7 @@ __help__ = """
 
 » /setfloodtimer <number> <duration>: Act on a user who sends more than `number` messages within `duration`, instead of in a row. Use `/setflood off` to go back to consecutive mode.
 
-» /clearflood on/off: On, deletes every message from the flooding burst instead of only the ones past the limit.
+» /clearflood on/off: When on, deletes every message from the flooding burst instead of only the ones past the limit.
 """
 
 __mod_name__ = "ANTI-FLOOD"

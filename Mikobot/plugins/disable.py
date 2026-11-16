@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import importlib
 import re
 
@@ -17,20 +16,16 @@ from Mikobot.plugins.helper_funcs.misc import is_module_loaded
 from Mikobot.utils.cmdprefix import CMD_STARTERS
 from Mikobot.utils.parser import escape_markdown
 
-# <=======================================================================================================>
-
 FILENAME = __name__.rsplit(".", 1)[-1]
 
 DISABLE_CMDS = []
 DISABLE_OTHER = []
 ADMIN_CMDS = []
 
-# <=======================================================================================================>
 
 if is_module_loaded(FILENAME):
     from Database.sql import disable_sql as sql
 
-    # <================================================ CLASS =======================================================>
     class NotDisabled:
         """Swallow a command the chat turned off. Admins still get through.
 
@@ -84,9 +79,6 @@ if is_module_loaded(FILENAME):
         DISABLE_OTHER.append(friendly)
         return NotDisabledFriendly(friendly)
 
-    # <=======================================================================================================>
-
-    # <================================================ FUNCTION =======================================================>
     @connection_status
     @check_admin(is_user=True)
     @on_message(*disableable("disable"))
@@ -120,7 +112,7 @@ if is_module_loaded(FILENAME):
             try:
                 module = importlib.import_module(module_path)
             except Exception:
-                await message.reply_text("Does that module even exsist?")
+                await message.reply_text("Does that module even exist?")
                 return
 
             try:
@@ -145,7 +137,7 @@ if is_module_loaded(FILENAME):
             if disabled_cmds:
                 disabled_cmds_string = ", ".join(disabled_cmds)
                 await message.reply_text(
-                    f"Disabled the use of`{disabled_cmds_string}`",
+                    f"Disabled the use of `{disabled_cmds_string}`",
                     parse_mode=ParseMode.MARKDOWN,
                 )
 
@@ -171,14 +163,14 @@ if is_module_loaded(FILENAME):
 
             if sql.enable_command(message.chat.id, enable_cmd):
                 await message.reply_text(
-                    f"Enabled the use of`{enable_cmd}`",
+                    f"Enabled the use of `{enable_cmd}`",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             else:
                 await message.reply_text("Is that even disabled?")
 
         else:
-            await message.reply_text("What sould I enable?")
+            await message.reply_text("What should I enable?")
 
     @connection_status
     @check_admin(is_user=True)
@@ -192,7 +184,7 @@ if is_module_loaded(FILENAME):
             try:
                 module = importlib.import_module(module_path)
             except Exception:
-                await message.reply_text("Does that module even exsist?")
+                await message.reply_text("Does that module even exist?")
                 return
 
             try:
@@ -216,7 +208,7 @@ if is_module_loaded(FILENAME):
             if enabled_cmds:
                 enabled_cmds_string = ", ".join(enabled_cmds)
                 await message.reply_text(
-                    f"Enabled the use of`{enabled_cmds_string}`",
+                    f"Enabled the use of `{enabled_cmds_string}`",
                     parse_mode=ParseMode.MARKDOWN,
                 )
 
@@ -228,7 +220,7 @@ if is_module_loaded(FILENAME):
                 )
 
         else:
-            await message.reply_text("What sould I enable?")
+            await message.reply_text("What should I enable?")
 
     def build_curr_disabled(chat_id: str | int) -> str:
         disabled = sql.get_all_disabled(chat_id)
@@ -274,7 +266,6 @@ if is_module_loaded(FILENAME):
     def __chat_settings__(chat_id, user_id):
         return build_curr_disabled(chat_id)
 
-    # <=================================================== HELP ====================================================>
     __help__ = """
     » /cmds: Check the current status of disabled commands
 
@@ -292,4 +283,3 @@ if is_module_loaded(FILENAME):
     """
 
     __mod_name__ = "DISABLE"
-# <================================================ END ======================================================>

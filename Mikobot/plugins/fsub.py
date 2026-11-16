@@ -77,7 +77,7 @@ async def force_subscribe(message):
             f"**Not an admin in the channel**\nI am not an admin in the [channel](https://t.me/{username}). Add me as an admin to enable force subscribe."
         )
     db.add_channel(message.chat.id, str(username))
-    await message.reply_text(f"Force subscribe is enabled to @{username}.")
+    await message.reply_text(f"Force subscribe is enabled for @{username}.")
 
 
 @on_message(filters.group & filters.incoming, chained=True)
@@ -153,7 +153,7 @@ async def unmute_force_subscribe(client, callback):
     channel = settings["channel"]
     if not await participant_check(channel, user_id):
         return await callback.answer(
-            "You have to join the channel first, to get unmuted!", show_alert=True
+            "You have to join the channel first to get unmuted!", show_alert=True
         )
     await app.restrict_chat_member(
         callback.message.chat.id, user_id, ChatPermissions(can_send_messages=True)
@@ -187,4 +187,3 @@ __help__ = r"""
 
 ➠ *If you disable fsub, you'll need to set it up again for it to take effect. Utilize /fsub channel\_username.*
 """
-# <================================================ END =======================================================>

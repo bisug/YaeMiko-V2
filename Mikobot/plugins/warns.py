@@ -36,7 +36,6 @@ from Mikobot.utils.parser import mention_html
 CURRENT_WARNING_FILTER_STRING = "<b>Current warning filters in this chat:</b>\n"
 
 
-# Not async
 async def warn(
     user: User,
     chat: Chat,
@@ -45,7 +44,7 @@ async def warn(
     warner: User = None,
 ) -> str:
     if await is_user_admin(chat, user.id):
-        await message.reply_text("Damn admins, They are too far to be Warned")
+        await message.reply_text("Admins can't be warned.")
         return
 
     if warner:
@@ -57,7 +56,7 @@ async def warn(
     num_warns, reasons = sql.warn_user(user.id, chat.id, reason)
     if num_warns >= limit:
         sql.reset_warns(user.id, chat.id)
-        if soft_warn:  # punch
+        if soft_warn:  # kick
             await client.unban_chat_member(chat.id, user.id)
             reply = (
                 f"<code>❕</code><b>Kick Event</b>\n"
@@ -123,7 +122,7 @@ async def warn(
         )
     except RPCError as excp:
         if "reply message not found" in str(excp.message or excp).lower():
-            # Do not reply
+            # Reply without quoting, since the original message is gone.
             await message.reply_text(
                 reply,
                 reply_markup=keyboard,
@@ -454,7 +453,7 @@ async def set_warn_strength(client, message: Message):
             return (
                 f"<b>{html.escape(chat.title)}:</b>\n"
                 f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
-                f"Has enabled strong warns. Users will be seriously Kicked.(banned)"
+                f"Has enabled strong warns. Users will be banned."
             )
 
         elif args[0].lower() in ("off", "no"):
@@ -531,7 +530,7 @@ be a sentence, encompass it with quotes, as such: `/addwarn "very angry" This is
 
 » /warnlimit <num>: set the warning limit
 
-» /strongwarn <on/yes/off/no>: If set to on, exceeding the warn limit will result in a ban. Else, will just kick.
+» /strongwarn <on/yes/off/no>: If set to on, exceeding the warn limit will result in a ban. Otherwise, it will just kick.
 """
 
 __mod_name__ = "WARNS"

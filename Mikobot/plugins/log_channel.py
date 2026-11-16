@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 from datetime import datetime, timezone
 from functools import wraps
 
@@ -22,8 +21,6 @@ if is_module_loaded(FILENAME):
     from Mikobot.plugins.helper_funcs.chat_status import check_admin
     from Mikobot.utils.parser import escape_markdown
 
-    # <=======================================================================================================>
-    # <================================================ FUNCTION =======================================================>
     def _event_message(args, kwargs):
         """Find the Message in a handler's arguments."""
         message = kwargs.get("message")
@@ -244,8 +241,6 @@ if is_module_loaded(FILENAME):
             return f"This group has all its logs sent to: {escape_markdown(log_channel_info.title)} (`{log_channel}`)"
         return "No log channel is set for this group!"
 
-    # <=================================================== HELP ====================================================>
-
     __help__ = """
 ➠ *Admins Only*
 
@@ -271,6 +266,3 @@ else:
 
     def gloggable(func):
         return func
-
-
-# <================================================ END =======================================================>

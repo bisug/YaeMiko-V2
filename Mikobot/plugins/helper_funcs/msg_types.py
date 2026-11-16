@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 from enum import IntEnum, unique
 
 from pyrogram.types import Message
@@ -9,10 +8,7 @@ from Mikobot.plugins.helper_funcs.string_handling import (
     entities_map,
 )
 
-# <=======================================================================================================>
 
-
-# <================================================ CLASS =======================================================>
 @unique
 class Types(IntEnum):
     TEXT = 0
@@ -25,17 +21,15 @@ class Types(IntEnum):
     VIDEO = 7
 
 
-# <================================================ FUNCTION =======================================================>
 def get_note_type(msg: Message):
     data_type = None
     content = None
     text = ""
     raw_text = msg.text or msg.caption
-    args = raw_text.split(None, 2)  # use python's maxsplit to separate cmd and args
+    args = raw_text.split(None, 2)
     note_name = args[1]
 
     buttons = []
-    # determine what the contents of the filter are - text, image, sticker, etc
     if len(args) >= 3:
         offset = len(args[2]) - len(
             raw_text,
@@ -93,7 +87,6 @@ def get_note_type(msg: Message):
     return note_name, text, data_type, content, buttons
 
 
-# note: add own args?
 def get_welcome_type(msg: Message):
     data_type = None
     content = None
@@ -109,7 +102,7 @@ def get_welcome_type(msg: Message):
             args = msg.text.split(
                 None,
                 1,
-            )  # use python's maxsplit to separate cmd and args
+            )
     except AttributeError:
         args = False
 
@@ -151,13 +144,12 @@ def get_welcome_type(msg: Message):
             data_type = Types.VIDEO_NOTE
 
     buttons = []
-    # determine what the contents of the filter are - text, image, sticker, etc
     if args:
         if msg.reply_to_message and not msg.reply_to_message.forum_topic_created:
             argumen = (
                 msg.reply_to_message.caption if msg.reply_to_message.caption else ""
             )
-            offset = 0  # offset is no need since target was in reply
+            offset = 0  # No offset needed; the target is in the reply.
             entities = entities_map(msg.reply_to_message)
         else:
             argumen = args[1]
@@ -254,6 +246,3 @@ def get_filter_type(msg: Message):
         media_spoiler = None
 
     return text, data_type, content, media_spoiler
-
-
-# <================================================ END =======================================================>

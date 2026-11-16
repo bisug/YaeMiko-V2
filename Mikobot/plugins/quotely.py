@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import asyncio
 import base64
 import io
@@ -17,8 +16,6 @@ from Mikobot.logger import LOGGER
 from Mikobot.plugins.telegraph import _upload
 from Mikobot.state import state
 
-# <=======================================================================================================>
-
 
 def get_display_name(user):
     if user is None:
@@ -29,9 +26,7 @@ def get_display_name(user):
 def _entity_type_name(entity_type) -> str:
     """The quote API's name for an entity type.
 
-    MessageEntityType is an AutoName enum whose value is the raw Telegram
-    class, not a string, so str() of it yields a class repr. The enum
-    member name is the identifier the API expects.
+    The enum value is a raw Telegram class, so use the member name.
     """
     name = getattr(entity_type, "name", None)
     if isinstance(name, str) and name:
@@ -39,7 +34,6 @@ def _entity_type_name(entity_type) -> str:
     return str(entity_type).lower()
 
 
-# <================================================ CLASS & FUNCTION =======================================================>
 def _sync_convert_quote_media(file_, png_file):
     with Image.open(file_) as image:
         converted = image.convert("RGB")
@@ -483,9 +477,6 @@ async def quott_(event):
     return message
 
 
-# <=================================================== HELP ====================================================>
-
-
 __mod_name__ = "QUOTELY"
 
 __help__ = """   
@@ -499,6 +490,5 @@ __help__ = """
 
 ➠ Example:
 
-» /q red , /q blue etc.
+» /q red, /q blue etc.
 """
-# <================================================ END =======================================================>

@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import random
 
 from pyrogram.enums import ParseMode
@@ -9,10 +8,7 @@ from Mikobot.events import on_message
 from Mikobot.plugins.disable import disableable
 from Mikobot.state import state
 
-# <=======================================================================================================>
 
-
-# <================================================ FUNCTION =======================================================>
 async def make_request(url: str) -> str:
     response = await state.get(url, timeout=10)
     response.raise_for_status()
@@ -174,9 +170,6 @@ async def webify(client, message: Message):
         await message.reply_text(string)
 
 
-# <=================================================== HELP ====================================================>
-
-
 __help__ = """
 » /decide: randomly answers yes/no/maybe.
 
@@ -203,7 +196,6 @@ __help__ = """
 
 __mod_name__ = "FUN"
 
-# <================================================ HANDLER =======================================================>
 # Eleven single-purpose commands; the loop keeps them from needing eleven
 # near-identical registration lines.
 for _name, _callback in (
@@ -220,5 +212,3 @@ for _name, _callback in (
     ("joke", joke),
 ):
     on_message(*disableable(_name), chained=True)(_callback)
-
-# <================================================ END =======================================================>

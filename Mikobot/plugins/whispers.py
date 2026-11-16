@@ -2,9 +2,8 @@
 # CREATED BY https://t.me/O_okarma
 # PROVIDED BY https://t.me/ProjectCodeX
 
-# TURN ON INLINE MODE FOR USE.
+# Inline mode must be enabled in BotFather for whispers to work.
 
-# <============================================== IMPORTS =========================================================>
 from uuid import uuid4
 
 from pyrogram import filters
@@ -23,8 +22,6 @@ from Mikobot import BOT_USERNAME
 from Mikobot.events import on_callback, on_inline_query
 
 
-# <==================================================== BOOT FUNCTION ===================================================>
-# Inline query handler
 @on_inline_query(chained=True)
 async def mainwhisper(client, query: InlineQuery):
     if not query.query:
@@ -62,7 +59,6 @@ async def mainwhisper(client, query: InlineQuery):
     }
     whisperId = uuid4().hex
 
-    # Add the whisper to the database
     add_whisper(whisperId, whisperData)
 
     answers = [
@@ -90,7 +86,6 @@ async def mainwhisper(client, query: InlineQuery):
     await query.answer(results=answers, cache_time=0)
 
 
-# Callback query handler
 @on_callback(filters.regex(r"^whisper_"), chained=True)
 async def showWhisper(client, callback_query: CallbackQuery):
     whisperId = callback_query.data.split("_")[-1]
@@ -126,7 +121,6 @@ async def showWhisper(client, callback_query: CallbackQuery):
         del_whisper(whisperId)
 
 
-# Function to parse user message
 def parse_user_message(query_text):
     text = query_text.split(" ")
     user = text[0]
@@ -146,7 +140,6 @@ def parse_user_message(query_text):
     return user, message
 
 
-# <==================================================== HELP ===================================================>
 __help__ = f"""
 ➠ *Whisper inline function for secret chats.*
 
@@ -158,4 +151,3 @@ __help__ = f"""
 
 __mod_name__ = "WHISPERS"
 __command_list__ = []
-# <================================================ END =======================================================>

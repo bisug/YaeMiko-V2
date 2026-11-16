@@ -2,7 +2,6 @@
 # CREATED BY https://t.me/O_okarma
 # PROVIDED BY https://t.me/ProjectCodeX
 
-# <============================================== IMPORTS =========================================================>
 import random
 import re
 
@@ -12,27 +11,19 @@ from pyrogram.types import LinkPreviewOptions, Message
 
 from Mikobot.events import on_message
 
-# <=======================================================================================================>
 
-
-# <================================================ FUNCTION =======================================================>
-# Define the command handler for the "/pickwinner" command
 @on_message(filters.command("pickwinner"))
 async def pick_winner(client, message: Message):
     participants = message.command[1:]
 
     if participants:
-        # Select a random winner
         winner = random.choice(participants)
 
-        # Send the winner as a reply
         await message.reply_text(f"🎉 The winner is: {winner}")
     else:
-        # If no participants are provided
         await message.reply_text("Please provide a list of participants.")
 
 
-# Define the command handler for the "/hyperlink" command
 @on_message(filters.command("hyperlink"))
 async def hyperlink_command(client, message: Message):
     args = message.command[1:]
@@ -60,6 +51,3 @@ async def hyperlink_command(client, message: Message):
             await message.reply_text(
                 "❌ Invalid format! Please use the format: /hyperlink <text> <link>."
             )
-
-
-# <================================================ END =======================================================>

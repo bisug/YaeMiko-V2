@@ -16,7 +16,6 @@ from Mikobot.utils.cmdprefix import PREFIX_HANDLER
 from Mikobot.utils.localization import use_chat_lang
 
 
-# Check user that change first_name, last_name and usernaname
 @app.on_message(
     filters.group & ~filters.bot & ~filters.via_bot,
     group=5,
@@ -74,7 +73,7 @@ async def cek_mataa(_, ctx: Message, strings):
             ctx.from_user.last_name,
         )
     if msg != "":
-        # kurigram's ctx.reply() always quotes; an empty ReplyParameters is
+        # Kurigram's ctx.reply() always quotes; an empty ReplyParameters is
         # how it is told not to.
         await app.send_message(
             chat_id=ctx.chat.id,
@@ -113,16 +112,14 @@ async def set_mataa(_, ctx: Message, strings):
         await ctx.reply(strings("wrong_param"))
 
 
-# <=================================================== HELP ====================================================>
 __help__ = """
 🙅‍♂️ **Toji Mata**.
 
-» /imposter : Detects if some one change his/her name.
+» /imposter : Detects if someone changes their name.
 
-» /imposter on : turns on toji mata.
+» /imposter on : Turns on Toji Mata.
 
-» /imposter off : turns off toji mata.
+» /imposter off : Turns off Toji Mata.
 """
 
 __mod_name__ = "IMPOSTER"
-# <================================================ END =======================================================>

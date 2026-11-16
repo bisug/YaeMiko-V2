@@ -388,7 +388,7 @@ member while it is enabled, so you can sit the raid out instead of fighting it l
 \u00bb /antiraid: Check the current state, or toggle it with the button.
 \u00bb /antiraid on: Enable AntiRaid for the duration set by `/raidtime`.
 \u00bb /antiraid off: Disable AntiRaid immediately.
-\u00bb /antiraid <time>: Enable AntiRaid for a custom duration, eg `3h`.
+\u00bb /antiraid <time>: Enable AntiRaid for a custom duration, e.g. `3h`.
 
 \u00bb /raidtime <time>: How long AntiRaid stays on when enabled. Default 6h.
 \u00bb /raidactiontime <time>: How long a raider is banned for. Default 1h.
@@ -397,5 +397,5 @@ member while it is enabled, so you can sit the raid out instead of fighting it l
 users join within a minute.
 \u00bb /autoantiraid off: Disable automatic AntiRaid.
 
-\u27a1 Durations accept `m`, `h`, `d` or `w` (eg `90m`, `12h`, `3d`, `2w`).
+\u27a1 Durations accept `m`, `h`, `d` or `w` (e.g. `90m`, `12h`, `3d`, `2w`).
 """

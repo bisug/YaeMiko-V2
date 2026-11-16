@@ -91,4 +91,4 @@ async def get_users(client, message: Message):
             os.remove(path)
 
 
-__mod_name__ = "Unbanll"
+__mod_name__ = "Unbanall"

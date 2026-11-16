@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 import asyncio
 
 from emoji import EMOJI_DATA
@@ -13,8 +12,6 @@ from Mikobot.plugins.anime import (
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.utils.filters import GROUPS
-
-# <=======================================================================================================>
 
 
 @on_message(GROUPS, *disableable("echo"), chained=True)
@@ -58,9 +55,8 @@ async def totranslate(client, message: Message):
             elif message.reply_to_message.caption:
                 text = message.reply_to_message.caption
             else:
-                # A photo or sticker reply carries neither, and text stayed
-                # unbound for every later use, so the command died on NameError
-                # instead of saying why.
+                # Photo/sticker replies carry neither, which left text unbound
+                # and raised NameError.
                 await message.reply_text(
                     "There is no text in the message you replied to."
                 )
@@ -86,10 +82,8 @@ async def totranslate(client, message: Message):
                         dest_lang = source_lang.split("-", 1)[1]
                         source_lang = source_lang.split("-", 1)[0]
         elif source_lang.count("-") == 1:
-            # dest_lang is only bound inside the loop below, so a source that
-            # carries one dash but matches no hyphenated locale left it
-            # unbound and the read below raised NameError. "de-at" is exactly
-            # that: a region subtag the language table does not carry.
+            # Without this default, a one-dash locale with no table match
+            # (e.g. "de-at") left dest_lang unbound.
             dest_lang = None
             for lang in problem_lang_code:
                 if lang in source_lang:
@@ -129,7 +123,7 @@ async def totranslate(client, message: Message):
         await message.reply_text(
             "Reply to messages or write messages from other languages ​​for translating into the intended language\n\n"
             "Example: `/tr en-ta` to translate from English to Tamil\n"
-            "Or use: `/tr ta` for automatic detection and translating it into Tamil.\n"
+            "Or use: `/tr ta` for automatic detection and translation into Tamil.\n"
             "See [List of Language Codes](https://t.me/Hydra_Updates/80) for a list of language codes.",
             parse_mode=ParseMode.MARKDOWN,
             link_preview_options=LinkPreviewOptions(is_disabled=True),
@@ -140,21 +134,17 @@ async def totranslate(client, message: Message):
         return
 
 
-# <=================================================== HELP ====================================================>
-
-
 __help__ = """
 ➠ `/tr` or `/tl` (language code) as reply to a long message
 
 ➠ *Example:*
 
-» `/tr en`*:* translates something to english
+» `/tr en`*:* translates something to English
 
-» `/tr hi-en`*:* translates hindi to english
+» `/tr hi-en`*:* translates Hindi to English
 
-» /echo < text >: echos the message.
+» /echo < text >: echoes the message.
 """
 
 __mod_name__ = "TRANSLATOR"
 __command_list__ = ["tr", "tl", "echo"]
-# <================================================ END =======================================================>
