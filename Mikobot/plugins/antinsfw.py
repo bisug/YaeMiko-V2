@@ -6,7 +6,7 @@ from pathlib import Path
 from pyrogram import filters
 
 import Database.sql.toggle_sql as sql
-from Mikobot import BOT_USERNAME, DRAGONS
+from Mikobot import BOT_USERNAME, DRAGONS, LOGGER
 from Mikobot.events import on_message
 from Mikobot.utils.can_restrict import can_restrict
 from Mikobot.utils.errors import capture_err
@@ -42,14 +42,12 @@ def get_media_from_message(message):
             return None, None
         return message.document.file_id, "image"
     if message.sticker:
-        if message.sticker.is_animated:
+        if getattr(message.sticker, "is_animated", False):
+            return None, None
+        if getattr(message.sticker, "is_video", False):
             if message.sticker.file_size and message.sticker.file_size > MAX_FILE_SIZE:
                 return None, None
-            return (
-                (message.sticker.thumbs[0].file_id, "image")
-                if message.sticker.thumbs
-                else (None, None)
-            )
+            return message.sticker.file_id, "video"
         if message.sticker.file_size and message.sticker.file_size > MAX_FILE_SIZE:
             return None, None
         return message.sticker.file_id, "image"
@@ -58,14 +56,20 @@ def get_media_from_message(message):
             return None, None
         return message.photo.file_id, "image"
     if message.animation:
+        if getattr(message.animation, "thumbs", None):
+            return message.animation.thumbs[0].file_id, "image"
         if message.animation.file_size and message.animation.file_size > MAX_FILE_SIZE:
             return None, None
         return message.animation.file_id, "video"
     if message.video:
+        if getattr(message.video, "thumbs", None):
+            return message.video.thumbs[0].file_id, "image"
         if message.video.file_size and message.video.file_size > MAX_FILE_SIZE:
             return None, None
         return message.video.file_id, "video"
     if message.video_note:
+        if getattr(message.video_note, "thumbs", None):
+            return message.video_note.thumbs[0].file_id, "image"
         if (
             message.video_note.file_size
             and message.video_note.file_size > MAX_FILE_SIZE
@@ -84,7 +88,15 @@ async def prepare_scan_file(client, message, temp_dir):
     if not downloaded:
         return None
     if media_type == "image":
-        return str(downloaded)
+        try:
+            from PIL import Image
+
+            with Image.open(downloaded) as img:
+                img.verify()
+            return str(downloaded)
+        except Exception:
+            pass
+
     output = Path(temp_dir) / "frame.png"
     process = await asyncio.create_subprocess_exec(
         "ffmpeg",
@@ -128,7 +140,7 @@ async def prepare_scan_file(client, message, temp_dir):
 async def detect_nsfw(client, message):
     if not sql.is_nsfw_on(message.chat.id):
         return
-    if not message.from_user:
+    if not message.from_user and not message.sender_chat:
         return
     if not get_media_from_message(message)[0]:
         return
@@ -139,7 +151,7 @@ async def detect_nsfw(client, message):
         try:
             result = await _scan(file)
         except Exception as error:
-            await message.reply_text(f"NSFW scan failed: {error}")
+            LOGGER.debug("NSFW scan skipped for message %s: %s", message.id, error)
             return
     if result.nsfw < NSFW_THRESHOLD:
         return
@@ -177,7 +189,7 @@ async def detect_nsfw(client, message):
 async def nsfw_scan_command(client, message):
     if not message.reply_to_message:
         await message.reply_text(
-            "Reply to an image/document/sticker/animation to scan it."
+            "Reply to an image/document/sticker/animation/video to scan it."
         )
         return
     reply = message.reply_to_message
@@ -190,12 +202,19 @@ async def nsfw_scan_command(client, message):
         and not reply.video_note
     ):
         await message.reply_text(
-            "Reply to an image/document/sticker/animation to scan it."
+            "Reply to an image/document/sticker/animation/video to scan it."
         )
         return
-    m = await message.reply_text("Scanning")
+    if getattr(reply.sticker, "is_animated", False):
+        await message.reply_text(
+            "Animated stickers (.tgs) are vector animations and cannot be scanned for NSFW content."
+        )
+        return
+    m = await message.reply_text("Scanning...")
     if not get_media_from_message(reply)[0]:
-        return await m.edit("Something wrong happened.")
+        return await m.edit(
+            "The media could not be processed for scanning (unsupported format or exceeds size limit)."
+        )
     with tempfile.TemporaryDirectory(prefix="yae-nsfw-") as temp_dir:
         file = await prepare_scan_file(client, reply, temp_dir)
         if not file:
@@ -203,6 +222,7 @@ async def nsfw_scan_command(client, message):
         try:
             result = await _scan(file)
         except Exception as error:
+            LOGGER.exception("Manual NSFW scan failed: %s", error)
             return await m.edit(f"NSFW scan failed: {error}")
     await m.edit(
         f"**➢ Safe:** `{result.sfw:.2%}`\n"
