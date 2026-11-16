@@ -29,7 +29,7 @@ from Mikobot.plugins.helper_funcs.extraction import (
 from Mikobot.plugins.helper_funcs.misc import split_message
 from Mikobot.plugins.helper_funcs.string_handling import split_quotes
 from Mikobot.plugins.log_channel import loggable
-from Mikobot.utils.consts import MessageLimit
+from Mikobot.utils.consts import ChatID, MessageLimit
 from Mikobot.utils.filters import GROUPS
 from Mikobot.utils.parser import mention_html
 
@@ -375,7 +375,7 @@ async def reply_filter(client, message: Message) -> str:
     if not user:  # Ignore channel
         return
 
-    if user.id == 777000:
+    if user.id == ChatID.SERVICE_CHAT:
         return
 
     chat_warn_filters = sql.get_chat_warn_triggers(chat.id)

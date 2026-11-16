@@ -6,6 +6,7 @@ from pyrogram.enums import ChatMembersFilter, ChatMemberStatus, ChatType
 from pyrogram.errors import RPCError
 
 from Mikobot import DEL_CMDS, DEV_USERS, DRAGONS, SUPPORT_CHAT, app
+from Mikobot.utils.consts import ChatID
 from Mikobot.utils.gate import requirement
 
 # DEV_USERS, DRAGONS, DEL_CMDS and SUPPORT_CHAT are read off this module by
@@ -140,7 +141,7 @@ async def is_user_admin(chat, user_id: int, member=None) -> bool:
         getattr(chat, "type", None) in (ChatType.PRIVATE, ChatType.BOT)
         or user_id in DRAGONS
         or user_id in DEV_USERS
-        or user_id in [777000, 1087968824]
+        or user_id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN)
     ):  # Telegram and Group Anonymous count as admins
         return True
     if not member:
@@ -176,7 +177,7 @@ async def is_user_ban_protected(chat, user_id: int, member=None) -> bool:
         getattr(chat, "type", None) in (ChatType.PRIVATE, ChatType.BOT)
         or user_id in DRAGONS
         or user_id in DEV_USERS
-        or user_id in [777000, 1087968824]
+        or user_id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN)
     ):  # Telegram and Group Anonymous count as admins
         return True
 

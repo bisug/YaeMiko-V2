@@ -15,6 +15,7 @@ from pyrogram.enums import ChatAction, ChatMemberStatus, ChatType
 from pyrogram.errors import RPCError
 
 from Mikobot.logger import LOGGER
+from Mikobot.utils.consts import ChatID
 
 # Telegram drops a chat action roughly five seconds after it is sent, so the
 # indicator is repeated on this interval while the handler runs.
@@ -383,7 +384,7 @@ async def _denial(client, event, spec, status):
             return None
         return ("Who dis non-admin telling me what to do? You want a punch?", False)
 
-    is_anon_admin = user_id in (777000, 1087968824)
+    is_anon_admin = user_id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN)
     permission = spec["permission"]
     if permission and (spec["is_user"] or spec["is_both"]):
         if not (

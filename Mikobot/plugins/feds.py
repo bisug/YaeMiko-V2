@@ -43,6 +43,7 @@ from Mikobot.plugins.helper_funcs.extraction import (
     extract_user_fban,
 )
 from Mikobot.plugins.helper_funcs.string_handling import markdown_parser
+from Mikobot.utils.consts import ChatID
 from Mikobot.utils.parser import mention_html, mention_markdown
 
 FBAN_ERRORS = {
@@ -647,7 +648,7 @@ async def fed_ban(client, message: Message):
         await message.reply_text("Dragons cannot be fed-banned.")
         return
 
-    if user_id in [777000, 1087968824]:
+    if user_id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN):
         await message.reply_text("I cannot act on that user.")
         return
 
