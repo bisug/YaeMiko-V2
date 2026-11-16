@@ -17,7 +17,7 @@ from Mikobot.events import on_message
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.alternate import send_message, typing_action
-from Mikobot.plugins.helper_funcs.chat_status import check_admin, is_user_admin, user_not_admin
+from Mikobot.plugins.helper_funcs.chat_status import check_admin, is_user_admin
 from Mikobot.plugins.helper_funcs.extraction import extract_text
 from Mikobot.plugins.helper_funcs.misc import split_message
 from Mikobot.plugins.helper_funcs.string_handling import extract_time
@@ -758,7 +758,7 @@ def findall(p, s):
 
 
 @on_message(
-    GROUPS & (filters.text | filters.command | filters.sticker | filters.photo),
+    GROUPS & (filters.text | filters.caption | filters.sticker | filters.photo),
     chained=True,
 )
 async def del_blacklist(client, message: Message):

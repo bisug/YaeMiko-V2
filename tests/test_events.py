@@ -223,3 +223,23 @@ async def test_stop_propagation_halts_all_handlers():
 
     assert calls == ["gatekeeper"]
 
+
+async def test_filter_exception_does_not_abort_registry():
+    calls = []
+
+    def broken_filter(client, message):
+        raise AttributeError("'Client' object has no attribute 'lower'")
+
+    @events.on_message(broken_filter, chained=True)
+    async def handler_with_broken_filter(client, message):
+        calls.append("broken_filter_ran")
+
+    @events.on_message(lambda client, message: True)
+    async def normal_command(client, message):
+        calls.append("normal_command")
+
+    await events.registry.run(events.registry.messages, make_client(), make_message())
+
+    assert calls == ["normal_command"]
+
+

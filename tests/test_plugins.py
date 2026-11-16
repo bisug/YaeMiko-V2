@@ -5,6 +5,8 @@ import importlib
 import re
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 PLUGINS_DIR = ROOT / "Mikobot" / "plugins"
 
@@ -342,3 +344,45 @@ def test_load_plugins_fallback_and_none_guard(monkeypatch):
     assert "dummy sample plugin" in main.HELPABLE
     assert dummy_plugin_none.__mod_name__ == "Dummy None Plugin"
     assert "dummy none plugin" in main.HELPABLE
+
+
+@pytest.mark.asyncio
+async def test_blacklist_del_blacklist_filter_on_various_messages(monkeypatch):
+    from unittest.mock import MagicMock
+
+    from pyrogram.enums import ChatType
+    from pyrogram.types import Chat, Message
+
+    import Mikobot
+    from Mikobot import events
+    from Mikobot.plugins import blacklist
+
+    monkeypatch.setattr(
+        Mikobot, "_BOT_INFO", (123456789, "YaeMikoTest", "YaeMikoTestBot")
+    )
+
+    del_bl_regs = [r for r in events.registry.messages if r.handler == blacklist.del_blacklist]
+    assert len(del_bl_regs) == 1
+    reg = del_bl_regs[0]
+
+    client = MagicMock()
+    client.me.username = "YaeMikoTestBot"
+
+    # Non-text message in supergroup (e.g. video / document / service without text)
+    msg = Message(
+        id=1,
+        chat=Chat(id=-100123456, type=ChatType.SUPERGROUP),
+    )
+    # This previously crashed with AttributeError: 'Client' object has no attribute 'lower'
+    matched = await reg.matches(client, msg)
+    assert matched is False
+
+    # Text message in supergroup
+    msg_text = Message(
+        id=2,
+        chat=Chat(id=-100123456, type=ChatType.SUPERGROUP),
+        text="hello",
+    )
+    matched_text = await reg.matches(client, msg_text)
+    assert matched_text is True
+

@@ -76,7 +76,15 @@ class Registry:
         while chained background checks continue to subsequent handlers.
         """
         for registration in list(bucket):
-            if not await registration.matches(client, update):
+            try:
+                if not await registration.matches(client, update):
+                    continue
+            except Exception:
+                LOGGER.exception(
+                    "Filter check failed for handler %s on update %s",
+                    getattr(registration.handler, "__name__", "unknown"),
+                    update,
+                )
                 continue
             is_chained = registration.chained or getattr(
                 registration.handler, "chained", False
