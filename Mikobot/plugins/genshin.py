@@ -37,7 +37,7 @@ from Mikobot.state import state
 # <=======================================================================================================>
 
 # <================================================= CONSTANTS =================================================>
-API = "https://genshin.jmp.blue"
+API = "https://genshin-api.deve.sh"
 REQUEST_TIMEOUT = 20
 LOGGER = logging.getLogger(__name__)
 
@@ -114,7 +114,7 @@ ENTITY_TYPES = {
             grouped=True,
         ),
         EntityType(
-            "materials", "Material", "gmaterial", "🪵", handler="material", grouped=True
+            "materials", "Material", "gmaterial", "🪵", handler="material"
         ),
         EntityType("enemies", "Enemy", "genemy", "👹", handler="enemy", image="icon"),
         EntityType("domains", "Domain", "gdomain", "🏛️", handler="domain"),
@@ -149,8 +149,17 @@ def _rarity_stars(value) -> str:
     try:
         count = int(value)
         return "⭐" * count if 1 <= count <= 5 else ""
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return ""
+
+
+def _format_birthday(value: str | None) -> str | None:
+    if not value:
+        return None
+    val = str(value).strip()
+    if val.startswith("0000-"):
+        return val[5:]
+    return val
 
 
 async def _fetch(path: str):
@@ -162,40 +171,60 @@ async def _fetch(path: str):
     return response.json()
 
 
-async def _fetch_flat(kind: str) -> list:
-    """Records for collections that are a plain list of objects."""
-    try:
-        data = await _fetch(f"{kind}/all")
-    except _NotFound:
-        return []
-    if not isinstance(data, list):
-        raise ValueError(f"{kind}/all did not return a list")
-    return [e for e in data if isinstance(e, dict) and e.get("id")]
+async def _fetch_roster(kind: str) -> list:
+    """Records for collections, supporting both genshin-api.deve.sh and legacy formats."""
+    if kind == "nations":
+        try:
+            data = await _fetch("characters/nations")
+            if isinstance(data, dict) and "nations" in data:
+                return [{"id": n.lower(), "key": n.lower(), "name": n} for n in data["nations"]]
+        except _NotFound:
+            pass
+    elif kind == "elements":
+        try:
+            data = await _fetch("characters/elements")
+            if isinstance(data, dict) and "elements" in data:
+                return [{"id": e.lower(), "key": e.lower(), "name": e, "key_name": e.upper()} for e in data["elements"]]
+        except _NotFound:
+            pass
 
-
-async def _fetch_grouped(kind: str) -> dict:
-    """Flatten collections that arrive as a list of categories."""
     try:
-        data = await _fetch(f"{kind}/all")
+        data = await _fetch(f"{kind}?details=true")
     except _NotFound:
-        return {}
-    if not isinstance(data, list):
-        raise ValueError(f"{kind}/all did not return a list")
-    groups = {}
-    for category in data:
-        if not isinstance(category, dict):
+        try:
+            data = await _fetch(f"{kind}/all")
+        except _NotFound:
+            return []
+
+    items = []
+    if isinstance(data, dict):
+        if kind in data and isinstance(data[kind], list):
+            items = data[kind]
+        else:
+            for cat, val in data.items():
+                if isinstance(val, dict):
+                    for item_id, item_val in val.items():
+                        if isinstance(item_val, dict):
+                            rec = dict(item_val)
+                            rec.setdefault("id", item_id)
+                            rec.setdefault("key", item_id)
+                            rec["category"] = cat
+                            items.append(rec)
+    elif isinstance(data, list):
+        items = data
+
+    normalized = []
+    for item in items:
+        if not isinstance(item, dict):
             continue
-        label = str(category.get("id", "")).casefold()
-        if not label:
+        rec = dict(item)
+        slug = rec.get("key") or rec.get("id")
+        if not slug:
             continue
-        items = {
-            key: value
-            for key, value in category.items()
-            if key != "id" and isinstance(value, dict)
-        }
-        if items:
-            groups[label] = items
-    return groups
+        rec["id"] = str(slug)
+        rec["key"] = str(slug)
+        normalized.append(rec)
+    return normalized
 
 
 async def _search(kind: str) -> list:
@@ -204,19 +233,7 @@ async def _search(kind: str) -> list:
     if cached and cached[0] > time.monotonic():
         return cached[1]
 
-    entity = ENTITY_TYPES[kind]
-    if not entity.grouped:
-        records = await _fetch_flat(kind)
-    else:
-        flat = []
-        for category, items in (await _fetch_grouped(kind)).items():
-            for item_id, record in items.items():
-                record = dict(record)
-                record.setdefault("id", item_id)
-                record["category"] = category
-                flat.append(record)
-        records = flat
-
+    records = await _fetch_roster(kind)
     _ROSTER_CACHE[kind] = (time.monotonic() + ROSTER_TTL, records)
     return records
 
@@ -225,12 +242,37 @@ _SEARCH_ALL_CACHE: tuple[float, list] | None = None
 
 
 async def _search_all(query: str) -> list:
-    """Search across all 9 collections."""
-    tasks = [_search(k) for k in ENTITY_TYPES]
+    """Search across collections."""
+    query_clean = query.casefold().strip()
+
+    if len(query_clean) >= 2:
+        try:
+            res = await _fetch(f"search?q={query_clean}")
+            if isinstance(res, dict) and "results" in res:
+                all_matches = []
+                for kind, items in res["results"].items():
+                    if not isinstance(items, list):
+                        continue
+                    for item in items:
+                        if isinstance(item, dict):
+                            rec = dict(item)
+                            slug = rec.get("key") or rec.get("id")
+                            if slug:
+                                rec["id"] = str(slug)
+                                rec["key"] = str(slug)
+                                rec["_kind"] = kind
+                                all_matches.append(rec)
+                if all_matches:
+                    return all_matches
+        except LOOKUP_ERRORS:
+            pass
+
+    search_kinds = [k for k in ENTITY_TYPES if k in ("characters", "weapons", "artifacts", "materials", "enemies")]
+    tasks = [_search(k) for k in search_kinds]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     all_matches = []
 
-    for kind, res in zip(ENTITY_TYPES.keys(), results, strict=True):
+    for kind, res in zip(search_kinds, results, strict=True):
         if isinstance(res, list):
             matched = _match(res, query)
             for m in matched:
@@ -238,18 +280,16 @@ async def _search_all(query: str) -> list:
                 item["_kind"] = kind
                 all_matches.append(item)
 
-    query_folded = query.casefold().strip()
-
     def score(item):
         name = str(item.get("name", "")).casefold()
-        ident = str(item.get("id", "")).casefold()
-        if name == query_folded or ident == query_folded:
+        ident = str(item.get("key") or item.get("id", "")).casefold()
+        if name == query_clean or ident == query_clean:
             return 0
-        if name.startswith(query_folded) or ident.startswith(query_folded):
+        if name.startswith(query_clean) or ident.startswith(query_clean):
             return 1
-        if any(word.startswith(query_folded) for word in name.split()):
+        if any(word.startswith(query_clean) for word in name.split()):
             return 2
-        if query_folded in name or query_folded in ident:
+        if query_clean in name or query_clean in ident:
             return 3
         return 4
 
@@ -264,12 +304,22 @@ async def _fetch_detail(kind: str, record_id: str) -> dict:
     if cached and cached[0] > time.monotonic():
         return cached[1]
 
-    detail = await _fetch(f"{kind}/{record_id}")
-    if isinstance(detail, dict):
+    try:
+        detail = await _fetch(f"{kind}/{record_id}")
+    except _NotFound:
+        entries = await _search(kind)
+        detail = next(
+            (e for e in entries if str(e.get("key") or e.get("id")) == record_id),
+            {},
+        )
+
+    if isinstance(detail, dict) and detail:
+        detail = dict(detail)
+        detail.setdefault("id", record_id)
+        detail.setdefault("key", record_id)
         if isinstance(detail.get("characters"), list):
             try:
                 names = await _character_names()
-                detail = dict(detail)
                 detail["characters"] = [
                     names.get(str(c), str(c)) for c in detail["characters"]
                 ]
@@ -381,9 +431,35 @@ def _list_item(label: str, blocks: list) -> InputRichBlockListItem:
     )
 
 
-def _image_url(kind: str, record_id: str, slot: str = "") -> str | None:
+def _image_url(entry: dict, kind: str, slot: str = "") -> str | None:
+    img = entry.get("img")
+    if isinstance(img, str) and img.startswith("http"):
+        return img
+    if isinstance(img, dict):
+        if kind == "characters":
+            url = img.get("portrait") or img.get("icon-big") or img.get("icon") or img.get("card")
+            if url and isinstance(url, str) and url.startswith("http"):
+                return url
+        elif kind == "weapons":
+            url = img.get("icon") or img.get("full") or img.get("wish")
+            if url and isinstance(url, str) and url.startswith("http"):
+                return url
+        for val in img.values():
+            if isinstance(val, str) and val.startswith("http"):
+                return val
+
+    if kind == "artifacts":
+        pieces = entry.get("pieces")
+        if isinstance(pieces, dict):
+            piece_data = pieces.get(slot or "flower") or (next(iter(pieces.values())) if pieces else None)
+            if isinstance(piece_data, dict):
+                p_img = piece_data.get("img")
+                if isinstance(p_img, str) and p_img.startswith("http"):
+                    return p_img
+
+    record_id = str(entry.get("key") or entry.get("id", ""))
     entity = ENTITY_TYPES.get(kind)
-    if entity is None or not entity.image:
+    if not record_id or entity is None or not entity.image:
         return None
     if entity.image == "pieces":
         piece = slot or ARTIFACT_PIECES[0][0]
@@ -424,10 +500,7 @@ def _runlist(items) -> list:
 
 
 def _photo_block(entry: dict, kind: str):
-    record_id = str(entry.get("id", "") or "")
-    if not record_id:
-        return None
-    url = _image_url(kind, record_id)
+    url = _image_url(entry, kind)
     if not url:
         return None
     return InputRichBlockPhoto(
@@ -445,7 +518,9 @@ async def _character_names() -> dict:
         return _CHARACTER_NAME_CACHE.get("data", {})
     names = {}
     for record in await _search("characters"):
-        names[record["id"]] = record.get("name") or record["id"]
+        rec_id = str(record.get("key") or record.get("id") or "")
+        if rec_id:
+            names[rec_id] = record.get("name") or rec_id
     _CHARACTER_NAME_CACHE = {"expires": time.monotonic() + ROSTER_TTL, "data": names}
     return names
 
@@ -506,8 +581,9 @@ def _card_close(kind: str) -> InlineKeyboardMarkup:
 def _render_character(
     entry: dict, tab: str = "bio"
 ) -> tuple[list, InlineKeyboardMarkup]:
-    char_id = str(entry.get("id", ""))
-    emoji = VISION_EMOJI.get(str(entry.get("vision_key", "")).upper(), "")
+    char_id = str(entry.get("key") or entry.get("id", ""))
+    vision_key = str(entry.get("vision_key") or entry.get("vision", "")).upper()
+    emoji = VISION_EMOJI.get(vision_key, "")
     name = entry.get("name", "?")
 
     blocks = []
@@ -529,7 +605,7 @@ def _render_character(
                     _field("Nation", entry.get("nation")),
                     _field("Affiliation", entry.get("affiliation")),
                     _field("Constellation", entry.get("constellation")),
-                    _field("Birthday", entry.get("birthday")),
+                    _field("Birthday", _format_birthday(entry.get("birthday"))),
                     _field("Released", entry.get("release")),
                 ]
             ),
@@ -583,15 +659,40 @@ def _render_character(
             _heading(f"{emoji} {name} · Ascension", 2),
             _divider(),
         ]
+        costs = entry.get("ascension_costs")
         materials = entry.get("ascension_materials")
         found = False
-        if isinstance(materials, dict):
-            for tier, costs in materials.items():
-                if not isinstance(costs, list):
+        if isinstance(costs, list):
+            for c in costs:
+                if not isinstance(c, dict):
+                    continue
+                mat_list = c.get("materials") or []
+                parts = [
+                    f"{m.get('name') or str(m.get('slug', '')).replace('-', ' ').title()} x{m.get('quantity', 0)}"
+                    for m in mat_list
+                    if isinstance(m, dict) and (m.get("slug") or m.get("name"))
+                ]
+                if c.get("mora"):
+                    parts.append(f"Mora x{c['mora']:,}")
+                summary = ", ".join(parts)
+                if summary:
+                    found = True
+                    phase_label = f"Phase {c.get('phase', '')} (Lv. {c.get('max_level', '')})"
+                    blocks.append(
+                        _para(
+                            [
+                                RichTextUnderline(text=f"{phase_label}: "),
+                                _t(summary),
+                            ]
+                        )
+                    )
+        elif isinstance(materials, dict):
+            for tier, tier_costs in materials.items():
+                if not isinstance(tier_costs, list):
                     continue
                 summary = ", ".join(
                     f"{c.get('name')} x{c.get('value')}"
-                    for c in costs
+                    for c in tier_costs
                     if isinstance(c, dict) and c.get("name")
                 )
                 if summary:
@@ -619,29 +720,35 @@ def _render_weapon(entry: dict) -> list:
         _field_para(
             [
                 _field("Type", entry.get("type")),
-                _field("Base ATK", entry.get("baseAttack")),
-                _field("Substat", entry.get("subStat")),
+                _field("Base ATK", entry.get("base_atk", entry.get("baseAttack"))),
+                _field("Substat", entry.get("sub_stat", entry.get("subStat"))),
                 _field("Obtained", entry.get("location")),
             ]
         )
     )
-    if entry.get("passiveName"):
-        blocks.append(_heading(f"Passive: {entry['passiveName']}", 3))
-        if entry.get("passiveDesc"):
-            blocks.append(_para(_italic(entry["passiveDesc"])))
+    passive_name = entry.get("passive_name") or entry.get("passiveName")
+    passive_desc = entry.get("passive_desc") or entry.get("passiveDesc")
+    if passive_name:
+        blocks.append(_heading(f"Passive: {passive_name}", 3))
+        if passive_desc:
+            blocks.append(_para(_italic(passive_desc)))
     return [b for b in blocks if b is not None]
 
 
 def _render_artifact(entry: dict) -> list:
     blocks = _name_blocks(entry, "💍", "artifacts")
-    items = [
-        i
-        for i in (
-            _bullet("2-piece", entry.get("2-piece_bonus")),
-            _bullet("4-piece", entry.get("4-piece_bonus")),
-        )
-        if i is not None
-    ]
+    items = []
+    bonus = entry.get("bonus")
+    if isinstance(bonus, dict):
+        for k, v in sorted(bonus.items()):
+            b_item = _bullet(k.upper(), v)
+            if b_item is not None:
+                items.append(b_item)
+    else:
+        for k in ("2-piece", "4-piece", "1-piece"):
+            b_item = _bullet(k, entry.get(f"{k}_bonus"))
+            if b_item is not None:
+                items.append(b_item)
     if items:
         blocks.append(InputRichBlockList(items=items))
     return [b for b in blocks if b is not None]
@@ -692,6 +799,8 @@ def _render_enemy(entry: dict) -> list:
         _heading(f"👹 {entry.get('name', '?')}", 2),
         _divider(),
     ]
+    elements = entry.get("elements")
+    elem_str = ", ".join(elements) if isinstance(elements, list) else (str(elements) if elements else None)
     blocks.append(
         _field_para(
             [
@@ -699,7 +808,7 @@ def _render_enemy(entry: dict) -> list:
                 _field("Family", entry.get("family")),
                 _field("Faction", entry.get("faction")),
                 _field("Region", entry.get("region")),
-                _field("Elements", ", ".join(entry.get("elements") or []) or None),
+                _field("Elements", elem_str),
                 _field("Mora", entry.get("mora-gained")),
             ]
         )
@@ -709,7 +818,9 @@ def _render_enemy(entry: dict) -> list:
         blocks.append(_quote(_italic(description)))
 
     drops = [
-        d for d in (entry.get("drops") or []) if isinstance(d, dict) and d.get("name")
+        d
+        for d in (entry.get("drops") or [])
+        if isinstance(d, dict) and (d.get("name") or d.get("slug"))
     ]
     if drops:
         blocks.append(_heading("Drops", 3))
@@ -717,7 +828,8 @@ def _render_enemy(entry: dict) -> list:
             InputRichBlockList(
                 items=[
                     _list_item(
-                        _rarity_stars(d.get("rarity")) or "", [_para(_t(d.get("name")))]
+                        _rarity_stars(d.get("rarity")) or "",
+                        [_para(_t(d.get("name") or str(d.get("slug", "")).replace("-", " ").title()))],
                     )
                     for d in drops
                 ]
@@ -831,17 +943,31 @@ def _render_domain(entry: dict) -> list:
 
 def _render_grouped(entry: dict, kind: str) -> list:
     """Consumables and materials renderer."""
-    emoji = ENTITY_TYPES[kind].emoji
-    blocks = [_heading(f"{emoji} {entry.get('name', '?')}", 2)]
+    entity = ENTITY_TYPES.get(kind, EntityType(kind, kind.title(), "", "🪵"))
+    emoji = entity.emoji
+    blocks = []
+    photo = _photo_block(entry, kind)
+    if photo:
+        blocks.append(photo)
+    blocks.append(_heading(f"{emoji} {entry.get('name', '?')}", 2))
+    rarity = _rarity_line(entry)
+    if rarity:
+        blocks.append(_para(rarity))
     category = str(entry.get("category", "")).replace("-", " ").title()
     if category:
         blocks.append(_para([RichTextItalic(text=_t(category))]))
     blocks.append(_divider())
+
+    source = entry.get("source") or entry.get("region")
+    if isinstance(source, dict):
+        source = ", ".join(f"{k.title()}: {v}" for k, v in source.items() if v)
+
     blocks.append(
         _field_para(
             [
                 _field("Type", entry.get("type")),
-                _field("Source", entry.get("source")),
+                _field("Category", category if not entry.get("type") else None),
+                _field("Source", source),
             ]
         )
     )
@@ -852,31 +978,33 @@ def _render_grouped(entry: dict, kind: str) -> list:
     if entry.get("description"):
         blocks.append(_quote(_italic(entry["description"])))
 
-    crafting = entry.get("crafting") or entry.get("recipe")
-    crafting = (
-        [c for c in crafting if isinstance(c, dict) and c.get("item")]
-        if isinstance(crafting, list)
-        else []
-    )
-    if crafting:
-        blocks.append(_heading("Crafting", 3))
-        blocks.append(
-            InputRichBlockList(
-                items=[
-                    InputRichBlockListItem(
-                        blocks=[
-                            _para([_t(f"{c['item']} "), _code(f"x{c.get('quantity')}")])
-                        ],
+    crafting = entry.get("craft") or entry.get("crafting") or entry.get("recipe")
+    if isinstance(crafting, list):
+        items = [
+            InputRichBlockListItem(
+                blocks=[
+                    _para(
+                        [
+                            _t(f"{c.get('item', c.get('name', ''))} "),
+                            _code(f"x{c.get('quantity', c.get('count', 1))}"),
+                        ]
                     )
-                    for c in crafting
                 ]
             )
-        )
+            for c in crafting
+            if isinstance(c, dict) and (c.get("item") or c.get("name"))
+        ]
+        if items:
+            blocks.append(_heading("Crafting", 3))
+            blocks.append(InputRichBlockList(items=items))
 
     users = entry.get("characters")
+    if not users and isinstance(entry.get("used_by"), dict):
+        users = entry["used_by"].get("characters")
     if isinstance(users, list) and users:
+        user_names = [str(u).replace("-", " ").title() for u in users]
         blocks.append(_heading("Used by", 3))
-        blocks.append(_para(_italic(", ".join(users))))
+        blocks.append(_para(_italic(", ".join(user_names))))
     return [b for b in blocks if b is not None]
 
 
@@ -913,12 +1041,12 @@ def _list_keyboard(
     """Item selection buttons and page controls."""
     item_buttons = []
     for item in items_on_page:
-        item_id = str(item.get("id", ""))
+        item_id = str(item.get("key") or item.get("id", ""))
         item_name = str(item.get("name", item_id))
         item_kind = item.get("_kind", kind)
 
         if item_kind == "characters":
-            vision_k = str(item.get("vision_key", "")).upper()
+            vision_k = str(item.get("vision_key") or item.get("vision") or "").upper()
             icon = VISION_EMOJI.get(vision_k, "🧝")
         else:
             icon = ENTITY_TYPES.get(item_kind, EntityType("", "", "", "•")).emoji
@@ -1083,14 +1211,13 @@ async def _universal_lookup(message: Message, query: str):
     else:
         record = matches[0]
         kind = record.get("_kind", "characters")
-        entity = ENTITY_TYPES[kind]
-        if not entity.grouped:
-            try:
-                detail = await _fetch_detail(kind, record["id"])
-                if detail:
-                    record = detail
-            except LOOKUP_ERRORS:
-                pass
+        rec_id = str(record.get("key") or record.get("id") or "")
+        try:
+            detail = await _fetch_detail(kind, rec_id)
+            if detail:
+                record = detail
+        except LOOKUP_ERRORS:
+            pass
         blocks, markup = RENDERERS[kind](record)
         sent = await _send_rich(message.chat.id, blocks, markup, thread_id)
         if sent is not None:
@@ -1156,13 +1283,13 @@ async def _lookup(message: Message, kind: str):
             pass
     else:
         record = matches[0]
-        if not entity.grouped:
-            try:
-                detail = await _fetch_detail(kind, record["id"])
-                if detail:
-                    record = detail
-            except LOOKUP_ERRORS:
-                pass
+        rec_id = str(record.get("key") or record.get("id") or "")
+        try:
+            detail = await _fetch_detail(kind, rec_id)
+            if detail:
+                record = detail
+        except LOOKUP_ERRORS:
+            pass
         blocks, markup = RENDERERS[kind](record)
         sent = await _send_rich(message.chat.id, blocks, markup, thread_id)
         if sent is not None:
@@ -1255,11 +1382,13 @@ async def genshin_view_item(client, query: CallbackQuery):
     entity = ENTITY_TYPES[kind]
 
     try:
-        if not entity.grouped:
-            record = await _fetch_detail(kind, item_id)
-        else:
+        record = await _fetch_detail(kind, item_id)
+        if not record:
             entries = await _search(kind)
-            record = next((e for e in entries if str(e.get("id")) == item_id), None)
+            record = next(
+                (e for e in entries if str(e.get("key") or e.get("id")) == item_id),
+                None,
+            )
     except LOOKUP_ERRORS as err:
         LOGGER.warning("Genshin view item failed: %s", err)
         await query.answer("Could not load item details.", show_alert=True)
