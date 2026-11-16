@@ -44,6 +44,8 @@ def can_restrict(func: Callable) -> Callable:
     async def non_admin(_, message: Message):
         sender = message.from_user
         if sender is None:
+            if message.sender_chat and message.sender_chat.id == message.chat.id:
+                return await func(_, message)
             return
 
         if sender.id in DEV_USERS:

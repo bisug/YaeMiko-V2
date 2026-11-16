@@ -147,3 +147,119 @@ async def test_nsfwscan_command_animated_sticker_friendly_message():
 
     msg.reply_text.assert_called_once()
     assert "Animated stickers (.tgs) are vector animations" in msg.reply_text.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_detect_nsfw_deletes_and_notifies_even_for_dev_user():
+    from collections import namedtuple
+    Prediction = namedtuple("Prediction", ["sfw", "nsfw"])
+
+    client = AsyncMock()
+    msg = MagicMock()
+    msg.chat.id = -10012345
+    msg.message_thread_id = None
+    msg.from_user = MagicMock()
+    msg.from_user.id = 123456  # Even if dev/owner
+    msg.from_user.mention = "@owner"
+    msg.sender_chat = None
+    msg.document = None
+    msg.photo = MagicMock()
+    msg.photo.file_size = 500
+    msg.photo.file_id = "test_photo_id"
+    msg.sticker = None
+    msg.animation = None
+    msg.video = None
+    msg.video_note = None
+
+    msg.delete = AsyncMock()
+
+    with (
+        patch("Database.sql.toggle_sql.is_nsfw_on", return_value=True),
+        patch("Mikobot.plugins.antinsfw.prepare_scan_file", return_value="/tmp/test.png"),
+        patch("Mikobot.plugins.antinsfw._scan", return_value=Prediction(sfw=0.1, nsfw=0.9)),
+    ):
+        await antinsfw.detect_nsfw(client, msg)
+
+    msg.delete.assert_called_once()
+    client.send_message.assert_called_once()
+    assert "NSFW Image Detected & Deleted Successfully" in client.send_message.call_args[1]["text"]
+
+
+@pytest.mark.asyncio
+async def test_detect_nsfw_warns_when_bot_cannot_delete():
+    from collections import namedtuple
+    Prediction = namedtuple("Prediction", ["sfw", "nsfw"])
+
+    client = AsyncMock()
+    msg = MagicMock()
+    msg.chat.id = -10012345
+    msg.message_thread_id = None
+    msg.from_user = MagicMock()
+    msg.from_user.id = 99999
+    msg.from_user.mention = "@user"
+    msg.sender_chat = None
+    msg.document = None
+    msg.photo = MagicMock()
+    msg.photo.file_size = 500
+    msg.photo.file_id = "test_photo_id"
+    msg.sticker = None
+    msg.animation = None
+    msg.video = None
+    msg.video_note = None
+
+    msg.delete = AsyncMock(side_effect=Exception("ChatAdminRequired"))
+
+    with (
+        patch("Database.sql.toggle_sql.is_nsfw_on", return_value=True),
+        patch("Mikobot.plugins.antinsfw.prepare_scan_file", return_value="/tmp/test.png"),
+        patch("Mikobot.plugins.antinsfw._scan", return_value=Prediction(sfw=0.1, nsfw=0.9)),
+    ):
+        await antinsfw.detect_nsfw(client, msg)
+
+    msg.delete.assert_called_once()
+    client.send_message.assert_called_once()
+    assert "Could not delete message" in client.send_message.call_args[1]["text"]
+
+
+@pytest.mark.asyncio
+async def test_nsfw_enable_disable_status_query():
+    client = AsyncMock()
+    msg = MagicMock()
+    msg.chat.id = -10012345
+    msg.command = ["antinsfw"]
+    msg.reply_text = AsyncMock()
+
+    with patch("Database.sql.toggle_sql.is_nsfw_on", return_value=False):
+        await antinsfw.nsfw_enable_disable.__wrapped__(client, msg)
+
+    msg.reply_text.assert_called_once()
+    assert "AntiNSFW is currently **disabled**" in msg.reply_text.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_nsfw_enable_disable_warns_when_bot_lacks_delete_rights():
+    from pyrogram.enums import ChatMemberStatus
+
+    client = AsyncMock()
+    msg = MagicMock()
+    msg.chat.id = -10012345
+    msg.command = ["antinsfw", "on"]
+    msg.text = "/antinsfw on"
+    msg.reply_text = AsyncMock()
+
+    bot_member = MagicMock()
+    bot_member.status = ChatMemberStatus.MEMBER
+    bot_member.privileges = None
+    client.get_chat_member.return_value = bot_member
+
+    with (
+        patch("Database.sql.toggle_sql.is_nsfw_on", return_value=False),
+        patch("Database.sql.toggle_sql.nsfw_on") as mock_on,
+    ):
+        await antinsfw.nsfw_enable_disable.__wrapped__(client, msg)
+
+    mock_on.assert_called_once_with(-10012345)
+    msg.reply_text.assert_called_once()
+    assert "Warning" in msg.reply_text.call_args[0][0]
+    assert "permission to delete messages" in msg.reply_text.call_args[0][0]
+

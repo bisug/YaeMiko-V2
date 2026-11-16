@@ -88,3 +88,22 @@ async def test_can_restrict_decorator_handles_owner():
     res = await decorated(None, mock_msg)
     assert res == "executed"
     mock_func.assert_called_once_with(None, mock_msg)
+
+
+@pytest.mark.asyncio
+async def test_can_restrict_supports_anonymous_group_admin():
+    from Mikobot.utils.can_restrict import can_restrict
+
+    mock_func = AsyncMock(return_value="executed_anon")
+    decorated = can_restrict(mock_func)
+
+    mock_msg = MagicMock()
+    mock_msg.chat.id = -100123456
+    mock_msg.from_user = None
+    mock_msg.sender_chat = MagicMock()
+    mock_msg.sender_chat.id = -100123456
+
+    res = await decorated(None, mock_msg)
+    assert res == "executed_anon"
+    mock_func.assert_called_once_with(None, mock_msg)
+

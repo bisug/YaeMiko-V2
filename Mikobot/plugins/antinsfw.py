@@ -4,9 +4,10 @@ import tempfile
 from pathlib import Path
 
 from pyrogram import filters
+from pyrogram.enums import ChatMemberStatus
 
 import Database.sql.toggle_sql as sql
-from Mikobot import BOT_USERNAME, DRAGONS, LOGGER
+from Mikobot import BOT_USERNAME, LOGGER
 from Mikobot.events import on_message
 from Mikobot.utils.can_restrict import can_restrict
 from Mikobot.utils.errors import capture_err
@@ -16,8 +17,8 @@ from Mikobot.utils.errors import capture_err
 
 # <================================================ FUNCTION =======================================================>
 classifier = None
-NSFW_THRESHOLD = 0.75
-MAX_FILE_SIZE = 3 * 1024 * 1024
+NSFW_THRESHOLD = 0.55
+MAX_FILE_SIZE = 10 * 1024 * 1024
 
 
 async def _scan(file_path: str):
@@ -38,9 +39,14 @@ def get_media_from_message(message):
     if message.document:
         if int(message.document.file_size or 0) > MAX_FILE_SIZE:
             return None, None
-        if not (message.document.mime_type or "").startswith("image/"):
-            return None, None
-        return message.document.file_id, "image"
+        mime = message.document.mime_type or ""
+        if mime.startswith("image/"):
+            return message.document.file_id, "image"
+        if mime.startswith("video/"):
+            if getattr(message.document, "thumbs", None):
+                return message.document.thumbs[0].file_id, "image"
+            return message.document.file_id, "video"
+        return None, None
     if message.sticker:
         if getattr(message.sticker, "is_animated", False):
             return None, None
@@ -84,7 +90,11 @@ async def prepare_scan_file(client, message, temp_dir):
     if not file_id:
         return None
     source = Path(temp_dir) / "source.media"
-    downloaded = await client.download_media(file_id, file_name=str(source))
+    try:
+        downloaded = await client.download_media(file_id, file_name=str(source))
+    except Exception as exc:
+        LOGGER.debug("Media download failed for scan: %s", exc)
+        return None
     if not downloaded:
         return None
     if media_type == "image":
@@ -100,6 +110,7 @@ async def prepare_scan_file(client, message, temp_dir):
     output = Path(temp_dir) / "frame.png"
     process = await asyncio.create_subprocess_exec(
         "ffmpeg",
+        "-y",
         "-v",
         "error",
         "-i",
@@ -155,12 +166,19 @@ async def detect_nsfw(client, message):
             return
     if result.nsfw < NSFW_THRESHOLD:
         return
-    if message.from_user and message.from_user.id in DRAGONS:
-        return
+
+    deleted = True
     try:
         await message.delete()
-    except Exception:
-        return
+    except Exception as exc:
+        deleted = False
+        LOGGER.warning(
+            "Failed to delete NSFW message %s in chat %s: %s",
+            message.id,
+            message.chat.id,
+            exc,
+        )
+
     user_info = (
         f"{message.from_user.mention} [`{message.from_user.id}`]"
         if message.from_user
@@ -170,14 +188,32 @@ async def detect_nsfw(client, message):
             else "Anonymous"
         )
     )
-    await message.reply_text(
-        f"""
+
+    thread_id = getattr(message, "message_thread_id", None)
+    if not deleted:
+        await client.send_message(
+            chat_id=message.chat.id,
+            text=(
+                f"🔞 **NSFW Content Detected!**\n\n"
+                f"**✪ User:** {user_info}\n"
+                f"**✪ Safe:** `{result.sfw:.2%}`\n"
+                f"**✪ NSFW score:** `{result.nsfw:.2%}`\n\n"
+                f"⚠️ *Could not delete message: Please grant me 'Delete Messages' admin permission!*"
+            ),
+            message_thread_id=thread_id,
+        )
+        return
+
+    await client.send_message(
+        chat_id=message.chat.id,
+        text=f"""
 **🔞 NSFW Image Detected & Deleted Successfully!**
 
 **✪ User:** {user_info}
 **✪ Safe:** `{result.sfw:.2%}`
 **✪ NSFW score:** `{result.nsfw:.2%}`
-"""
+""",
+        message_thread_id=thread_id,
     )
 
 
@@ -237,19 +273,42 @@ async def nsfw_scan_command(client, message):
 )
 @can_restrict
 async def nsfw_enable_disable(client, message):
+    chat_id = message.chat.id
     if len(message.command) != 2:
-        await message.reply_text("Usage: /antinsfw [on/off]")
+        current_status = "enabled" if sql.is_nsfw_on(chat_id) else "disabled"
+        await message.reply_text(
+            f"AntiNSFW is currently **{current_status}** in this chat.\n\n"
+            f"Usage: `/antinsfw [on/off]`"
+        )
         return
     status = message.text.split(None, 1)[1].strip().lower()
-    chat_id = message.chat.id
     if status in ("on", "yes"):
         if sql.is_nsfw_on(chat_id):
             await message.reply_text("Antinsfw is already enabled.")
             return
         sql.nsfw_on(chat_id)
-        await message.reply_text(
-            "Enabled AntiNSFW System. I will Delete Messages Containing Inappropriate Content."
-        )
+
+        can_delete = True
+        try:
+            bot_member = await client.get_chat_member(chat_id, "me")
+            privileges = getattr(bot_member, "privileges", None)
+            if privileges:
+                can_delete = bool(getattr(privileges, "can_delete_messages", False))
+            elif getattr(bot_member, "status", None) != ChatMemberStatus.ADMINISTRATOR:
+                can_delete = False
+        except Exception:
+            pass
+
+        if not can_delete:
+            await message.reply_text(
+                "Enabled AntiNSFW System.\n\n"
+                "⚠️ **Warning:** I do not have permission to delete messages! "
+                "Please promote me to admin with 'Delete Messages' permission so I can remove NSFW content."
+            )
+        else:
+            await message.reply_text(
+                "Enabled AntiNSFW System. I will Delete Messages Containing Inappropriate Content."
+            )
     elif status in ("off", "no"):
         if not sql.is_nsfw_on(chat_id):
             await message.reply_text("Antinsfw is already disabled.")
