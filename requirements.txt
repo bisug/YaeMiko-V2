@@ -35,5 +35,4 @@ pyjokes==0.8.3
 pyrate-limiter==4.5.1
 requests==2.34.2
 speedtest-cli==2.1.3
-telegraph==2.2.0
 Unidecode==1.4.0
