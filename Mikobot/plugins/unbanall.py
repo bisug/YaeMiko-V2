@@ -6,9 +6,9 @@ from pyrogram.enums import ChatMembersFilter, ChatMemberStatus, ChatType
 from pyrogram.errors import UserNotParticipant
 from pyrogram.types import ChatPermissions, Message
 
-from Mikobot import LOGGER
 from Mikobot import app as client
 from Mikobot.events import on_message
+from Mikobot.logger import LOGGER
 from Mikobot.utils.can_restrict import has_restrict_rights
 from Mikobot.utils.errors import FLOOD_WAIT_ERRORS, flood_wait_seconds
 

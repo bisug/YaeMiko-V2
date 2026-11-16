@@ -9,13 +9,12 @@ list order matches the source order.
 """
 
 import asyncio
-import logging
 from contextlib import AsyncExitStack, asynccontextmanager, suppress
 
 from pyrogram.enums import ChatAction, ChatMemberStatus, ChatType
 from pyrogram.errors import RPCError
 
-LOGGER = logging.getLogger(__name__)
+from Mikobot.logger import LOGGER
 
 # Telegram drops a chat action roughly five seconds after it is sent, so the
 # indicator is repeated on this interval while the handler runs.

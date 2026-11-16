@@ -358,12 +358,20 @@ Full reference with defaults and elevated user ranks:
 | `ALLOW_EXCL` | `False` | Accept excluded chat usage |
 | `INFOPIC` | `True` | Use the image info card instead of a text card |
 | `LOGGER` | `True` | Unused. Log files are always written; see [Logging](docs/CONFIGURATION.md#logging) |
-| `LOG_LEVEL` | `INFO` | Root log level |
+| `LOG_LEVEL` | `INFO` | Log level: `debug`, `info`, `warn`, `error` |
+| `LOG_FORMAT` | `json` | `json` for production, `text` for human-readable local development |
 | `ACTIVITY_LOG` | `False` | Log every incoming update summary |
 | `BAN_STICKER` | empty | Sticker file ID banned in all groups |
 | `TEMP_DOWNLOAD_DIRECTORY` | `./` | Scratch directory for media |
 
 Never commit a filled `.env`. The file is already listed in `.gitignore`.
+
+All application logs come from one shared logger ([`Mikobot/logger.py`](Mikobot/logger.py)).
+`LOG_LEVEL` sets the minimum level (default `info`); `LOG_FORMAT=json` emits one JSON object
+per entry with `timestamp`, `level`, `message`, `service` and `correlation_id`, while
+`LOG_FORMAT=text` renders the same fields for humans. Set `LOG_FORMAT=text` for local
+development and leave it at `json` in production. Output is queued so logging never blocks
+the bot, and bot tokens and other sensitive values are redacted.
 
 ---
 

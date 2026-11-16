@@ -21,8 +21,9 @@ from pyrogram.errors import FloodWait, RPCError
 from pyrogram.types import Message
 
 import Database.sql.users_sql as users_sql
-from Mikobot import DEV_USERS, LOGGER, OWNER_ID
+from Mikobot import DEV_USERS, OWNER_ID
 from Mikobot.events import on_message
+from Mikobot.logger import LOGGER
 
 # Flood protection: Telegram rejects bursts, and a broadcast to many chats
 # is exactly that. Sending must never outrun the account's rate limit.

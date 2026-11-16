@@ -12,8 +12,8 @@ from pyrogram.types import ChatPermissions, Message
 import Database.sql.blacklist_sql as sql
 import Database.sql.log_channel_sql as sql_log
 from Database.sql.approve_sql import is_approved
-from Mikobot import LOGGER
 from Mikobot.events import on_message
+from Mikobot.logger import LOGGER
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.alternate import send_message, typing_action

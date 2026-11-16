@@ -12,8 +12,9 @@ from pyrogram.types import (
     Message,
 )
 
-from Mikobot import LOGGER, store, user_data
+from Mikobot import store, user_data
 from Mikobot.events import on_callback, on_message
+from Mikobot.logger import LOGGER
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 
 # <=======================================================================================================>

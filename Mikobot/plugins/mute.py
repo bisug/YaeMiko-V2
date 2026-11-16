@@ -6,8 +6,8 @@ from pyrogram.enums import ChatMemberStatus, ParseMode
 from pyrogram.errors import RPCError
 from pyrogram.types import Chat, ChatPermissions, Message
 
-from Mikobot import LOGGER
 from Mikobot.events import on_message
+from Mikobot.logger import LOGGER
 from Mikobot.plugins.helper_funcs.chat_status import (
     check_admin,
     connection_status,

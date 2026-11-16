@@ -19,7 +19,7 @@ from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import DeclarativeBase, scoped_session, sessionmaker
 
 from Mikobot import DB_URI, env_bool, env_int
-from Mikobot import LOGGER as log
+from Mikobot.logger import LOGGER as log
 
 if DB_URI and DB_URI.startswith(("postgres://", "postgresql://")):
     DB_URI = DB_URI.replace("postgres://", "postgresql+psycopg://", 1).replace(
@@ -319,7 +319,7 @@ try:
     SESSION = UnitOfWorkSession(start())
     log.info("[PostgreSQL] Connection successful, session started.")
 except Exception as e:
-    log.error("[PostgreSQL] Cannot reach the database: %s", e)
+    log.error("[PostgreSQL] Cannot reach the database: %s", e, exc_info=True)
     # The engine is left behind by start() when create_all fails. Clearing it
     # keeps the schema migrations from inspecting a dead engine further down.
     ENGINE = None

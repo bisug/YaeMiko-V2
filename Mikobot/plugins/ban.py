@@ -17,12 +17,12 @@ from Mikobot import (
     BAN_STICKER,
     DEV_USERS,
     DRAGONS,
-    LOGGER,
     OWNER_ID,
     chat_data,
     store,
 )
 from Mikobot.events import on_callback, on_message
+from Mikobot.logger import LOGGER
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.chat_status import (
     can_delete,

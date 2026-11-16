@@ -29,7 +29,8 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from pyrogram.types import InlineKeyboardButton as IKB
 from pyrogram.types import InlineKeyboardMarkup as IKM
 
-from Mikobot import LOGGER, MESSAGE_DUMP, app
+from Mikobot import MESSAGE_DUMP, app
+from Mikobot.logger import LOGGER
 from Mikobot.state import state
 from Mikobot.utils.cmdprefix import PREFIX_HANDLER
 from Mikobot.utils.localization import use_chat_lang

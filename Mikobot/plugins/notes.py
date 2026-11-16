@@ -17,9 +17,10 @@ from pyrogram.types import (
 )
 
 import Database.sql.notes_sql as sql
-from Mikobot import DRAGONS, LOGGER, SUPPORT_CHAT
+from Mikobot import DRAGONS, SUPPORT_CHAT
 from Mikobot import app as client
 from Mikobot.events import on_callback, on_message
+from Mikobot.logger import LOGGER
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.chat_status import check_admin, connection_status
 from Mikobot.plugins.helper_funcs.misc import build_keyboard, revert_buttons

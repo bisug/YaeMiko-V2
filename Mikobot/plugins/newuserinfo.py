@@ -8,7 +8,8 @@ from PIL import Image, ImageChops, ImageDraw, ImageFont
 from pyrogram import filters
 from pyrogram.enums import ParseMode
 
-from Mikobot import DEMONS, DEV_USERS, DRAGONS, LOGGER, OWNER_ID, TIGERS, WOLVES, app
+from Mikobot import DEMONS, DEV_USERS, DRAGONS, OWNER_ID, TIGERS, WOLVES, app
+from Mikobot.logger import LOGGER
 
 
 def _sync_circle(pfp, size=(900, 900)):

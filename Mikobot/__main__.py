@@ -51,7 +51,6 @@ from Mikobot import (
     ACTIVITY_LOG,
     BOT_NAME,
     BOT_USERNAME,
-    LOGGER,
     OWNER_ID,
     SUPPORT_CHAT,
     StartTime,
@@ -62,6 +61,7 @@ from Mikobot import (
     send_booting_message,
 )
 from Mikobot.events import add_callback, add_message
+from Mikobot.logger import LOGGER
 from Mikobot.plugins import ALL_MODULES
 from Mikobot.plugins.helper_funcs.chat_status import is_user_admin, sudo_plus
 from Mikobot.plugins.helper_funcs.misc import paginate_modules
@@ -730,8 +730,6 @@ async def help_button(client, query: CallbackQuery):
     prev_match = re.match(r"help_prev\((.+?)\)", query.data)
     next_match = re.match(r"help_next\((.+?)\)", query.data)
     back_match = re.match(r"help_back", query.data)
-
-    LOGGER.debug("Help callback received in chat %s", query.message.chat.id)
 
     try:
         if mod_match:

@@ -30,9 +30,9 @@ import Database.sql.locks_sql as locks_sql
 import Database.sql.notes_sql as notes_sql
 import Database.sql.rules_sql as rules_sql
 import Database.sql.warns_sql as warns_sql
-from Mikobot import LOGGER
 from Mikobot import app as client
 from Mikobot.events import on_callback, on_message
+from Mikobot.logger import LOGGER
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.helper_funcs.alternate import typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin

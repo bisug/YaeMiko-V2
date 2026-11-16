@@ -4,7 +4,7 @@ from functools import wraps
 from pyrogram.errors import FloodSkipFailedWait, FloodWait
 from pyrogram.errors.exceptions.forbidden_403 import ChatWriteForbidden
 
-from Mikobot import LOGGER
+from Mikobot.logger import LOGGER
 
 # <=======================================================================================================>
 
@@ -40,13 +40,14 @@ def flood_wait_seconds(error, default: int = 5) -> int:
 
 
 def capture_err(func):
-    """Log and re-raise whatever a handler raises.
+    """Handle the expected chat-forbidden case, let everything else propagate.
 
-    Handlers reach this two ways. app.on_message calls them as
-    (client, message), while the decorators in Mikobot.events wrap them so
-    only the event is passed. The signature here accepts both, because a
-    two-argument one raised TypeError on every callback query and was never
-    used on one before.
+    Unexpected errors are logged once at the dispatch boundary in
+    ``Mikobot.events``; logging them here too and re-raising would double every
+    report. Handlers reach this two ways: app.on_message calls them as
+    (client, message), while the decorators in Mikobot.events wrap them so only
+    the event is passed. The signature accepts both because a two-argument one
+    raised TypeError on every callback query and was never used on one before.
     """
 
     @wraps(func)
@@ -58,13 +59,6 @@ def capture_err(func):
                 "Skipped handler because the bot cannot write in chat %s",
                 _event_chat_id(args),
             )
-        except Exception:
-            LOGGER.exception(
-                "Handler failed in chat %s for user %s",
-                _event_chat_id(args),
-                _event_user_id(args),
-            )
-            raise
 
     return capture
 
@@ -83,11 +77,6 @@ def _event_chat_id(args):
     if chat is None:
         chat = getattr(getattr(event, "message", None), "chat", None)
     return getattr(chat, "id", None)
-
-
-def _event_user_id(args):
-    user = getattr(_event(args), "from_user", None)
-    return getattr(user, "id", None)
 
 
 # <================================================ END =======================================================>

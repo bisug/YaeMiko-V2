@@ -7,8 +7,8 @@ from pyrogram.errors import RPCError
 from pyrogram.types import ChatPermissions, Message
 
 import Database.sql.blsticker_sql as sql
-from Mikobot import LOGGER
 from Mikobot.events import on_message
+from Mikobot.logger import LOGGER
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.alternate import send_message

@@ -27,8 +27,9 @@ from Database.sql import (
     run_migration,
     unit_of_work_guard,
 )
-from Mikobot import LOGGER, OWNER_ID
+from Mikobot import OWNER_ID
 from Mikobot import app as client
+from Mikobot.logger import LOGGER
 
 
 class Federations(BASE):

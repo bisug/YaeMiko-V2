@@ -6,8 +6,8 @@
 from pyrogram import filters
 from pyrogram.types import Message
 
-from Mikobot import LOGGER
 from Mikobot.events import on_message
+from Mikobot.logger import LOGGER
 from Mikobot.state import state
 
 # <=======================================================================================================>

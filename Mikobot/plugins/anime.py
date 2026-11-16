@@ -1,7 +1,6 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
 import json
-import logging
 import os
 import random
 import re
@@ -35,6 +34,7 @@ from pyrogram.types import (
 
 from Database.sql import anime_sql as db
 from Mikobot import BOT_USERNAME, MESSAGE_DUMP, OWNER_ID, app
+from Mikobot.logger import LOGGER as log
 from Mikobot.state import state
 from Mikobot.utils.cmdprefix import PREFIX_HANDLER
 from Mikobot.utils.errors import FLOOD_WAIT_ERRORS, flood_wait_seconds
@@ -393,9 +393,6 @@ DEFAULT_SERVICE_URLS = (
     "translate.google.vu",
     "translate.google.ws",
 )
-log = logging.getLogger(__name__)
-log.addHandler(logging.NullHandler())
-
 URLS_SUFFIX = [
     re.search("translate.google.(.*)", url.strip()).group(1)
     for url in DEFAULT_SERVICE_URLS
@@ -1247,10 +1244,6 @@ class google_translator:
                         response = list(response)
                         detect_lang = response[0][2]
                     except Exception as parse_error:
-                        log.debug(
-                            "Unexpected response shape from Google Translate: %s",
-                            parse_error,
-                        )
                         raise ValueError(
                             "unexpected response shape from Google Translate"
                         ) from parse_error
@@ -1259,11 +1252,9 @@ class google_translator:
             r.raise_for_status()
         except requests.exceptions.HTTPError as e:
             # Request successful, bad response
-            log.debug(str(e))
             raise google_new_transError(tts=self, response=r) from e
         except requests.exceptions.RequestException as e:
             # Request failed
-            log.debug(str(e))
             raise google_new_transError(tts=self) from e
 
 

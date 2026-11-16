@@ -18,9 +18,10 @@ from pyrogram.types import (
 )
 
 from Database.sql import cust_filters_sql as sql
-from Mikobot import DEV_USERS, DRAGONS, LOGGER
+from Mikobot import DEV_USERS, DRAGONS
 from Mikobot import app as client
 from Mikobot.events import on_callback, on_message
+from Mikobot.logger import LOGGER
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.alternate import send_message, typing_action

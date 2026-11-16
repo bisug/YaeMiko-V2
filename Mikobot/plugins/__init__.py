@@ -1,4 +1,5 @@
-from Mikobot import LOAD, LOGGER, NO_LOAD
+from Mikobot import LOAD, NO_LOAD
+from Mikobot.logger import LOGGER
 
 
 def __list_all_modules():

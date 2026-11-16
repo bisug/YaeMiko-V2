@@ -36,9 +36,9 @@ from pyrogram.types import (
 import Database.sql.captcha_sql as sql
 import Database.sql.rules_sql as rules_sql
 import Database.sql.welcome_sql as welcome_sql
-from Mikobot import LOGGER
 from Mikobot import app as client
 from Mikobot.events import on_callback, on_chat_join_request, on_message
+from Mikobot.logger import LOGGER
 from Mikobot.plugins.helper_funcs.alternate import typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.plugins.helper_funcs.string_handling import extract_time

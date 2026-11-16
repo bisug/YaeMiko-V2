@@ -16,8 +16,9 @@ if is_module_loaded(FILENAME):
     import html
 
     from Database.sql import log_channel_sql as sql
-    from Mikobot import EVENT_LOGS, LOGGER
+    from Mikobot import EVENT_LOGS
     from Mikobot import app as client
+    from Mikobot.logger import LOGGER
     from Mikobot.plugins.helper_funcs.chat_status import check_admin
     from Mikobot.utils.parser import escape_markdown
 

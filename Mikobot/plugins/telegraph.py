@@ -16,8 +16,9 @@ from pyrogram.types import (
     Message,
 )
 
-from Mikobot import LOGGER, app, chat_data
+from Mikobot import app, chat_data
 from Mikobot.events import callbackquery
+from Mikobot.logger import LOGGER
 from Mikobot.state import state
 from Mikobot.utils.errors import capture_err
 

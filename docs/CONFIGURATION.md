@@ -63,7 +63,8 @@ environment variables.
 | `DB_IDLE_IN_TRANSACTION_MS` | `30000` | Milliseconds an open transaction may sit idle |
 | `DB_STATEMENT_LOG_EVERY` | `500` | Statements between query mix log lines; `0` is not allowed |
 | `LOGGER` | `True` | Unused, kept so existing deployments do not break. Log files are always written |
-| `LOG_LEVEL` | `INFO` | Root log level, one of `CRITICAL ERROR WARNING INFO DEBUG NOTSET` |
+| `LOG_LEVEL` | `INFO` | Log level: `debug`, `info` (default), `warn`, `error` |
+| `LOG_FORMAT` | `json` | `json` for production, `text` for human-readable local development |
 | `ACTIVITY_LOG` | `False` | Log a summary line for every incoming update |
 | `CATBOX_USERHASH` | empty | Optional user hash for Catbox uploads to authenticate and avoid datacenter IP blocks |
 | `LITTERBOX_HOURS` | `72h` | Expiry duration for temporary Litterbox uploads (`1h`, `12h`, `24h`, `72h`) |
@@ -102,22 +103,29 @@ those two entirely.
 
 ## Logging
 
-A rotating file handler is always attached through `logging.handlers.RotatingFileHandler`,
-in addition to the stream handler. It is skipped when the working directory is not
-writable, as it often is not on a container filesystem. `LOGGER` is accepted for
-backwards compatibility but no longer read: log files are written whether it is set or
-not, so set `LOG_LEVEL=CRITICAL` if you need the volume down. `LOG_LEVEL` controls the
-root level, and the `pyrogram` and `pyrate_limiter` loggers are pinned to `ERROR`.
+All application code uses one shared logger in `Mikobot/logger.py`. `LOG_LEVEL` sets its minimum
+level (`debug`, `info`, `warn`, `error`; an unrecognised value falls back to `info`).
+`LOG_FORMAT=json` (the default, for production) writes one JSON object per entry with `timestamp`,
+`level`, `message`, `service` and `correlation_id`; `LOG_FORMAT=text` renders the same fields as a
+human-readable line. Output is queued, so a slow stream or disk never blocks the bot.
 
-`RedactingFormatter` rewrites any token shaped like `bot<digits>:<20 or more characters>` to
-`bot<redacted>`. The `httpx` and `httpcore` loggers are set to `WARNING` because their INFO output
-contains the complete Telegram API URL with the token in the path.
+A rotating file handler is attached in addition to the stream handler. It is skipped when the
+working directory is not writable, as it often is not on a container filesystem. `LOGGER` is
+accepted for backwards compatibility but no longer read: log files are written whether it is set
+or not. The `pyrogram` and `pyrate_limiter` loggers are pinned to `ERROR`, and `httpx` and
+`httpcore` to `WARNING`, because their INFO output contains the complete Telegram API URL with
+the bot token in the path.
+
+Redaction rewrites any token shaped like `bot<digits>:<20 or more characters>` and bearer tokens
+to `<redacted>`, and blankets known sensitive context fields (passwords, API hashes, credentials,
+and similar).
 
 ## Where each value is read
 
 | File | Reads |
 | --- | --- |
-| `Mikobot/__init__.py` | Everything the runtime needs, plus `LOG_LEVEL` and `ACTIVITY_LOG` |
+| `Mikobot/__init__.py` | Everything the runtime needs, plus `ACTIVITY_LOG` |
+| `Mikobot/logger.py` | `LOG_LEVEL`, `LOG_FORMAT` |
 | `variables.py` | The `ENV` disabled path, class attributes read through `Config` |
 | `Database/sql/__init__.py` | `DATABASE_URL` through `DB_URI` |
 | `app.json` | The Heroku configuration manifest shown during deploy |

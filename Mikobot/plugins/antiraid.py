@@ -14,8 +14,8 @@ from pyrogram.types import (
 
 import Database.sql.raid_sql as sql
 from Database.sql.approve_sql import is_approved
-from Mikobot import LOGGER
 from Mikobot.events import on_callback, on_message
+from Mikobot.logger import LOGGER
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.helper_funcs.alternate import typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin

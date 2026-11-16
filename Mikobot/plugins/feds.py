@@ -29,12 +29,12 @@ from Database.sql.userinfo_sql import get_user_info
 from Mikobot import (
     DRAGONS,
     EVENT_LOGS,
-    LOGGER,
     OWNER_ID,
     SUPPORT_CHAT,
     chat_data,
 )
 from Mikobot.events import on_callback, on_message
+from Mikobot.logger import LOGGER
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.alternate import send_message
 from Mikobot.plugins.helper_funcs.chat_status import is_user_admin
@@ -2292,7 +2292,6 @@ def __user_info__(user_id, chat_id):
 
 # Temporary data
 def put_chat(chat_id, value, chat_data):
-    # print(chat_data)
     if value is False:
         status = False
     else:
@@ -2301,7 +2300,6 @@ def put_chat(chat_id, value, chat_data):
 
 
 def get_chat(chat_id, chat_data):
-    # print(chat_data)
     try:
         value = chat_data[chat_id]["federation"]
         return value

@@ -18,12 +18,12 @@ from Mikobot import (
     DEV_USERS,
     DRAGONS,
     EVENT_LOGS,
-    LOGGER,
     OWNER_ID,
     STRICT_GBAN,
     SUPPORT_CHAT,
 )
 from Mikobot.events import on_message
+from Mikobot.logger import LOGGER
 from Mikobot.plugins.helper_funcs.chat_status import (
     check_admin,
     granted,

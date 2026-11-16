@@ -4,10 +4,7 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
 import json
-import logging
-import logging.handlers
 import os
-import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -158,50 +155,9 @@ executor = ThreadPoolExecutor(max_workers=WORKERS, thread_name_prefix="AsyncioWo
 loop.set_default_executor(executor)
 
 # <================================================== LOGGER =======================================================>
-LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
-if LOG_LEVEL not in {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"}:
-    LOG_LEVEL = "INFO"
-
-
-class RedactingFormatter(logging.Formatter):
-    _token_pattern = re.compile(r"\bbot\d+:[A-Za-z0-9_-]{20,}\b")
-
-    def format(self, record):
-        return self._token_pattern.sub("bot<redacted>", super().format(record))
-
-
-def _configure_logging():
-    formatter = RedactingFormatter(
-        "%(asctime)s | %(levelname)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-    root_logger = logging.getLogger()
-    if not root_logger.handlers:
-        stream_handler = logging.StreamHandler()
-        stream_handler.setFormatter(formatter)
-        root_logger.addHandler(stream_handler)
-    existing_handlers = {type(handler) for handler in root_logger.handlers}
-    if logging.handlers.RotatingFileHandler not in existing_handlers:
-        try:
-            file_handler = logging.handlers.RotatingFileHandler(
-                "Logs.txt", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
-            )
-        except OSError:
-            # Container filesystems may expose stdout but not a writable log file.
-            pass
-        else:
-            file_handler.setFormatter(formatter)
-            root_logger.addHandler(file_handler)
-    root_logger.setLevel(LOG_LEVEL)
-    for name in ("pyrogram", "pyrate_limiter"):
-        logging.getLogger(name).setLevel(logging.ERROR)
-    # HTTPX logs complete Telegram API URLs at INFO, including the bot token.
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    logging.getLogger("httpcore").setLevel(logging.WARNING)
-
-
-_configure_logging()
-LOGGER = logging.getLogger(__name__)
+# The single shared logger lives in Mikobot.logger; re-exported here so the
+# existing ``from Mikobot import LOGGER`` imports keep working.
+from Mikobot.logger import LOGGER, RedactingFormatter  # noqa: E402, F401
 
 # <================================================ ENV VARIABLES =======================================================>
 # Determine whether the bot is running in an environment with environment variables or not

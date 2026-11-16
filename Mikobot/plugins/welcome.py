@@ -48,13 +48,13 @@ from Mikobot import (
     DEV_USERS,
     DRAGONS,
     EVENT_LOGS,
-    LOGGER,
     OWNER_ID,
     SUPPORT_STAFF,
     app,
 )
 from Mikobot import app as client
 from Mikobot.events import on_callback, on_message
+from Mikobot.logger import LOGGER
 from Mikobot.plugins.connection import connected
 from Mikobot.plugins.helper_funcs.alternate import typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin, is_user_ban_protected

@@ -1,13 +1,10 @@
 # <============================================== IMPORTS =========================================================>
 import html
-import logging
 import re
 from re import sub
 
 from pyrogram import enums
 from pyrogram.parser.parser import Parser
-
-LOGGER = logging.getLogger(__name__)
 
 # <=======================================================================================================>
 

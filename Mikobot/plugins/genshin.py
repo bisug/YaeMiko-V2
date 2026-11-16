@@ -1,7 +1,6 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
 import html
-import logging
 import time
 from dataclasses import dataclass
 
@@ -19,6 +18,7 @@ from pyrogram.types import (
 
 from Mikobot import app
 from Mikobot.events import on_callback, on_message
+from Mikobot.logger import LOGGER
 from Mikobot.state import state
 
 # <=======================================================================================================>
@@ -26,7 +26,6 @@ from Mikobot.state import state
 # <================================================= CONSTANTS =================================================>
 API = "https://genshin-api.deve.sh"
 REQUEST_TIMEOUT = 15
-LOGGER = logging.getLogger(__name__)
 
 PAGE_SIZE = 6
 ROSTER_TTL = 900

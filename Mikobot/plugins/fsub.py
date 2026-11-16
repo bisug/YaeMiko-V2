@@ -7,9 +7,10 @@ from pyrogram.errors import ChatAdminRequired, UserNotParticipant
 from pyrogram.types import ChatPermissions, InlineKeyboardButton, InlineKeyboardMarkup
 
 from Database.sql import fsub_sql as db
-from Mikobot import BOT_ID, LOGGER, OWNER_ID, app
+from Mikobot import BOT_ID, OWNER_ID, app
 from Mikobot import DRAGONS as DEVS
 from Mikobot.events import on_callback, on_message, register
+from Mikobot.logger import LOGGER
 from Mikobot.utils.can_restrict import has_restrict_rights
 
 F_SUBSCRIBE_COMMAND = r"/(fsub|Fsub|forcesubscribe|Forcesub|forcesub|Forcesubscribe)"

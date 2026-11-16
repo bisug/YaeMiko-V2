@@ -11,8 +11,9 @@ import httpx
 from PIL import Image
 from pyrogram.enums import MessageEntityType
 
-from Mikobot import DEV_USERS, LOGGER, app
+from Mikobot import DEV_USERS, app
 from Mikobot.events import register
+from Mikobot.logger import LOGGER
 from Mikobot.plugins.telegraph import _upload
 from Mikobot.state import state
 

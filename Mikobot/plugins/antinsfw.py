@@ -9,8 +9,9 @@ from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus
 
 import Database.sql.toggle_sql as sql
-from Mikobot import BOT_USERNAME, LOGGER
+from Mikobot import BOT_USERNAME
 from Mikobot.events import on_message
+from Mikobot.logger import LOGGER
 from Mikobot.utils.can_restrict import can_restrict
 from Mikobot.utils.errors import capture_err
 

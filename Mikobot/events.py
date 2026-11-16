@@ -15,7 +15,6 @@ Handlers are called the kurigram way, ``handler(client, update)``.
 """
 
 import inspect
-import logging
 
 from pyrogram import StopPropagation, filters
 from pyrogram.handlers import (
@@ -27,9 +26,8 @@ from pyrogram.handlers import (
 )
 
 from Mikobot import app
+from Mikobot.logger import LOGGER, correlation_scope
 from Mikobot.utils.gate import end_unit_of_work, enforce
-
-LOGGER = logging.getLogger(__name__)
 
 # <=======================================================================================================>
 
@@ -75,43 +73,44 @@ class Registry:
         A handler that the gate refuses ends the run for unchained handlers,
         while chained background checks continue to subsequent handlers.
         """
-        for registration in list(bucket):
-            try:
-                if not await registration.matches(client, update):
-                    continue
-            except Exception:
-                LOGGER.exception(
-                    "Filter check failed for handler %s on update %s",
-                    getattr(registration.handler, "__name__", "unknown"),
-                    update,
-                )
-                continue
-            is_chained = registration.chained or getattr(
-                registration.handler, "chained", False
-            )
-            try:
-                if not await enforce(client, update, registration.handler):
-                    if is_chained:
+        with correlation_scope(f"{type(update).__name__}:{getattr(update, 'id', '')}"):
+            for registration in list(bucket):
+                try:
+                    if not await registration.matches(client, update):
                         continue
-                    return
-                await registration.handler(client, update)
-            except StopPropagation:
-                return
-            except Exception:
-                LOGGER.exception(
-                    "Handler %s failed on update %s",
-                    getattr(registration.handler, "__name__", "unknown"),
-                    update,
+                except Exception:
+                    LOGGER.exception(
+                        "Filter check failed for handler %s on update %s",
+                        getattr(registration.handler, "__name__", "unknown"),
+                        update,
+                    )
+                    continue
+                is_chained = registration.chained or getattr(
+                    registration.handler, "chained", False
                 )
+                try:
+                    if not await enforce(client, update, registration.handler):
+                        if is_chained:
+                            continue
+                        return
+                    await registration.handler(client, update)
+                except StopPropagation:
+                    return
+                except Exception:
+                    LOGGER.exception(
+                        "Handler %s failed on update %s",
+                        getattr(registration.handler, "__name__", "unknown"),
+                        update,
+                    )
+                    if not is_chained:
+                        return
+                finally:
+                    # Every handler may stage database writes and then raise. The
+                    # session is thread-local, so whatever is left would otherwise
+                    # be committed by an unrelated later call.
+                    end_unit_of_work()
                 if not is_chained:
                     return
-            finally:
-                # Every handler may stage database writes and then raise. The
-                # session is thread-local, so whatever is left would otherwise
-                # be committed by an unrelated later call.
-                end_unit_of_work()
-            if not is_chained:
-                return
 
 
 registry = Registry()
