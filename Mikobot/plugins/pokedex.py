@@ -2,9 +2,11 @@ import html
 import math
 from urllib.parse import quote
 
+from cachetools import TTLCache
 from httpx import HTTPError
 from pyrogram import filters
 from pyrogram.enums import ButtonStyle, ParseMode
+from pyrogram.errors import MessageNotModified
 from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -19,6 +21,9 @@ POKEAPI = "https://pokeapi.co/api/v2"
 MOVES_PER_PAGE = 20
 CALLBACK_PREFIX = "pk"
 
+_POKEMON_CACHE: TTLCache[str, dict] = TTLCache(maxsize=500, ttl=3600)
+_SPECIES_CACHE: TTLCache[str, tuple[dict, dict | None]] = TTLCache(maxsize=500, ttl=3600)
+
 
 async def _get_json(url: str, params: dict | None = None) -> dict:
     response = await state.get(url, params=params, timeout=10)
@@ -26,16 +31,31 @@ async def _get_json(url: str, params: dict | None = None) -> dict:
     return response.json()
 
 
-async def get_pokemon(name_or_id: str) -> dict:
+async def get_pokemon(name_or_id: str | int) -> dict:
     identifier = quote(str(name_or_id).strip().lower(), safe="")
-    return await _get_json(f"{POKEAPI}/pokemon/{identifier}")
+    if identifier in _POKEMON_CACHE:
+        return _POKEMON_CACHE[identifier]
+    data = await _get_json(f"{POKEAPI}/pokemon/{identifier}")
+    _POKEMON_CACHE[identifier] = data
+    if "id" in data:
+        _POKEMON_CACHE[str(data["id"])] = data
+    if "name" in data:
+        _POKEMON_CACHE[str(data["name"]).lower()] = data
+    return data
 
 
 async def get_pokemon_details(pokemon: dict) -> tuple[dict, dict | None]:
-    species = await _get_json(pokemon["species"]["url"])
+    species_url = pokemon.get("species", {}).get("url")
+    if not species_url:
+        return {}, None
+    if species_url in _SPECIES_CACHE:
+        return _SPECIES_CACHE[species_url]
+    species = await _get_json(species_url)
     evolution_url = species.get("evolution_chain", {}).get("url")
     evolution = await _get_json(evolution_url) if evolution_url else None
-    return species, evolution
+    result = (species, evolution)
+    _SPECIES_CACHE[species_url] = result
+    return result
 
 
 def _display_name(name: str) -> str:
@@ -61,7 +81,7 @@ def _flavor_text(species: dict) -> str:
 
 def _gender_text(species: dict) -> str:
     rate = species.get("gender_rate")
-    if rate == -1:
+    if rate is None or rate == -1:
         return "Unknown"
     female = rate * 100 / 8
     return f"{female:.1f}% female / {100 - female:.1f}% male"
@@ -69,10 +89,12 @@ def _gender_text(species: dict) -> str:
 
 def _evolution_text(chain: dict) -> str:
     def flatten(node: dict) -> list[dict]:
+        if not node or not isinstance(node, dict) or "species" not in node:
+            return []
         children = [child for child in node.get("evolves_to", []) if child]
         return [node, *(child for item in children for child in flatten(item))]
 
-    path = flatten(chain.get("chain", {}))
+    path = flatten(chain.get("chain", {}) if isinstance(chain, dict) else {})
     if not path:
         return "No evolution data available."
     return " → ".join(_escape(_display_name(item["species"]["name"])) for item in path)
@@ -95,7 +117,7 @@ def _keyboard(
         buttons.append(
             InlineKeyboardButton(
                 text=f"Page {page + 1}/{pages}",
-                callback_data=f"{prefix}:info:{page}",
+                callback_data=f"{prefix}:moves:{page}",
                 style=ButtonStyle.PRIMARY,
             )
         )
@@ -107,33 +129,31 @@ def _keyboard(
                     style=ButtonStyle.PRIMARY,
                 )
             )
-        return InlineKeyboardMarkup(inline_keyboard=[buttons])
+        return InlineKeyboardMarkup(
+            inline_keyboard=[
+                buttons,
+                [
+                    InlineKeyboardButton(
+                        text="« Back to Overview",
+                        callback_data=f"{prefix}:info:0",
+                        style=ButtonStyle.PRIMARY,
+                    )
+                ],
+            ]
+        )
+
+    def _btn(label: str, target: str) -> InlineKeyboardButton:
+        active = view == target
+        return InlineKeyboardButton(
+            text=f"• {label} •" if active else label,
+            callback_data=f"{prefix}:{target}:0",
+            style=ButtonStyle.PRIMARY,
+        )
+
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="Overview",
-                    callback_data=f"{prefix}:info:0",
-                    style=ButtonStyle.PRIMARY,
-                ),
-                InlineKeyboardButton(
-                    text="Stats",
-                    callback_data=f"{prefix}:stats:0",
-                    style=ButtonStyle.PRIMARY,
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    text="Moves",
-                    callback_data=f"{prefix}:moves:0",
-                    style=ButtonStyle.PRIMARY,
-                ),
-                InlineKeyboardButton(
-                    text="Evolution",
-                    callback_data=f"{prefix}:evolution:0",
-                    style=ButtonStyle.PRIMARY,
-                ),
-            ],
+            [_btn("Overview", "info"), _btn("Stats", "stats")],
+            [_btn("Moves", "moves"), _btn("Evolution", "evolution")],
         ]
     )
 
@@ -243,7 +263,7 @@ async def pokedex(client, message: Message) -> None:
             )
         else:
             await message.reply_text("PokéAPI is unavailable. Please try again later.")
-    except ValueError, KeyError, TypeError:
+    except (ValueError, KeyError, TypeError):
         await message.reply_text(
             "PokéAPI returned incomplete data. Please try again later."
         )
@@ -254,28 +274,41 @@ async def pokedex(client, message: Message) -> None:
     chained=True,
 )
 async def callback_query_handler(client, query: CallbackQuery) -> None:
-    if not query.data.startswith(f"{CALLBACK_PREFIX}:"):
+    if not query.data or not query.data.startswith(f"{CALLBACK_PREFIX}:"):
         return
     try:
         _, pokemon_id, view, page_text = query.data.split(":", 3)
         pokemon = await get_pokemon(int(pokemon_id))
         text, keyboard = await _render(pokemon, view, int(page_text))
-        # A photo message is edited through its caption, a text one directly.
-        if query.message.photo:
-            await query.message.edit_caption(
-                text, parse_mode=ParseMode.HTML, reply_markup=keyboard
-            )
-        else:
-            await query.message.edit_text(
-                text, parse_mode=ParseMode.HTML, reply_markup=keyboard
-            )
-        await query.answer()
+        if query.message:
+            try:
+                # A photo message is edited through its caption, a text one directly.
+                if query.message.photo:
+                    await query.message.edit_caption(
+                        caption=text, parse_mode=ParseMode.HTML, reply_markup=keyboard
+                    )
+                else:
+                    await query.message.edit_text(
+                        text=text, parse_mode=ParseMode.HTML, reply_markup=keyboard
+                    )
+            except MessageNotModified:
+                pass
+        try:
+            await query.answer()
+        except Exception:
+            pass
     except HTTPError:
-        await query.answer(
-            "PokéAPI is unavailable. Please try again later.", show_alert=True
-        )
-    except ValueError, KeyError, TypeError:
-        await query.answer("PokéAPI returned incomplete data.", show_alert=True)
+        try:
+            await query.answer(
+                "PokéAPI is unavailable. Please try again later.", show_alert=True
+            )
+        except Exception:
+            pass
+    except (ValueError, KeyError, TypeError):
+        try:
+            await query.answer("PokéAPI returned incomplete data.", show_alert=True)
+        except Exception:
+            pass
 
 
 # <================================================ HELP =======================================================>
