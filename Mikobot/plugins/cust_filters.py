@@ -27,7 +27,11 @@ from Mikobot.plugins.helper_funcs.alternate import send_message, typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.plugins.helper_funcs.extraction import extract_text
 from Mikobot.plugins.helper_funcs.misc import build_keyboard_parser
-from Mikobot.plugins.helper_funcs.msg_types import Types, get_filter_type
+from Mikobot.plugins.helper_funcs.msg_types import (
+    Types,
+    get_filter_type,
+    video_note_sender,
+)
 from Mikobot.plugins.helper_funcs.string_handling import (
     button_markdown_parser,
     entities_map,
@@ -48,6 +52,7 @@ ENUM_FUNC_MAP = {
     Types.AUDIO.value: client.send_audio,
     Types.VOICE.value: client.send_voice,
     Types.VIDEO.value: client.send_video,
+    Types.VIDEO_NOTE.value: video_note_sender(client),
 }
 
 

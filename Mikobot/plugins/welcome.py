@@ -58,7 +58,7 @@ from Mikobot.plugins.connection import connected
 from Mikobot.plugins.helper_funcs.alternate import typing_action
 from Mikobot.plugins.helper_funcs.chat_status import check_admin, is_user_ban_protected
 from Mikobot.plugins.helper_funcs.misc import build_keyboard, revert_buttons
-from Mikobot.plugins.helper_funcs.msg_types import get_welcome_type
+from Mikobot.plugins.helper_funcs.msg_types import get_welcome_type, video_note_sender
 from Mikobot.plugins.helper_funcs.string_handling import escape_invalid_curly_brackets
 from Mikobot.plugins.log_channel import loggable
 from Mikobot.utils.can_restrict import can_restrict
@@ -85,6 +85,7 @@ ENUM_FUNC_MAP = {
     sql.Types.AUDIO.value: client.send_audio,
     sql.Types.VOICE.value: client.send_voice,
     sql.Types.VIDEO.value: client.send_video,
+    sql.Types.VIDEO_NOTE.value: video_note_sender(client),
 }
 
 VERIFIED_USER_WAITLIST = TTLCache(maxsize=5000, ttl=600)

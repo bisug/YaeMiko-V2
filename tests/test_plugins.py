@@ -419,3 +419,21 @@ def test_process_memory_readout():
     rss, peak = main._process_memory()
     assert rss > 0
     assert peak is None or peak >= rss
+
+
+def test_video_note_type_and_sender():
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock
+
+    from Mikobot.plugins.helper_funcs.msg_types import Types, video_note_sender
+
+    assert Types.VIDEO_NOTE.value == 8
+
+    client = MagicMock()
+    client.send_video_note = AsyncMock()
+    asyncio.run(
+        video_note_sender(client)(
+            -100, "file-id", caption="ignored", parse_mode="HTML", reply_markup="kb"
+        )
+    )
+    client.send_video_note.assert_awaited_once_with(-100, "file-id", reply_markup="kb")

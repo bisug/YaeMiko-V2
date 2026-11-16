@@ -19,6 +19,18 @@ class Types(IntEnum):
     AUDIO = 5
     VOICE = 6
     VIDEO = 7
+    VIDEO_NOTE = 8
+
+
+def video_note_sender(client):
+    """Build a sender for video notes, which reject captions and previews."""
+
+    async def send(chat_id, video_note, **kwargs):
+        for key in ("caption", "parse_mode", "link_preview_options", "has_spoiler"):
+            kwargs.pop(key, None)
+        return await client.send_video_note(chat_id, video_note, **kwargs)
+
+    return send
 
 
 def get_note_type(msg: Message):

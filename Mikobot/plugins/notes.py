@@ -23,7 +23,7 @@ from Mikobot.logger import LOGGER
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.chat_status import check_admin, connection_status
 from Mikobot.plugins.helper_funcs.misc import build_keyboard, revert_buttons
-from Mikobot.plugins.helper_funcs.msg_types import get_note_type
+from Mikobot.plugins.helper_funcs.msg_types import get_note_type, video_note_sender
 from Mikobot.plugins.helper_funcs.string_handling import (
     escape_invalid_curly_brackets,
     markdown_to_html,
@@ -569,6 +569,7 @@ ENUM_FUNC_MAP = {
     sql.Types.AUDIO.value: client.send_audio,
     sql.Types.VOICE.value: client.send_voice,
     sql.Types.VIDEO.value: client.send_video,
+    sql.Types.VIDEO_NOTE.value: video_note_sender(client),
 }
 
 
