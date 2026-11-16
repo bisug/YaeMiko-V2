@@ -209,6 +209,38 @@ def test_restrict_rights_helper_is_used_by_the_privilege_checks():
         assert "has_restrict_rights" in source, f"{name} does not use the shared helper"
 
 
+async def test_math_captcha_answer_targets_the_named_chat(monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+
+    from pyrogram.enums import ChatType
+
+    import Mikobot.plugins.captcha as captcha
+
+    calls = []
+
+    async def fake_pass(chat_id, user_id, approve=False):
+        calls.append(("pass", chat_id, user_id))
+
+    async def fake_fail(chat_id, user_id, message=None):
+        calls.append(("fail", chat_id, user_id))
+
+    monkeypatch.setattr(captcha, "_pass", fake_pass)
+    monkeypatch.setattr(captcha, "_fail", fake_fail)
+    captcha.CHALLENGES.clear()
+    captcha._store_challenge(-100111, 42, "7", captcha.sql.MODE_MATH)
+    captcha._store_challenge(-100222, 42, "9", captcha.sql.MODE_MATH)
+
+    message = MagicMock()
+    message.chat.type = ChatType.PRIVATE
+    message.text = "-100222 9"
+    message.from_user.id = 42
+    message.reply_text = AsyncMock()
+
+    await captcha.math_answer(None, message)
+    assert calls == [("pass", -100222, 42)]
+    assert (-100111, 42) in captcha.CHALLENGES, "other group must stay pending"
+
+
 def test_admin_cache_is_dropped_on_every_rights_change():
     source = (PLUGINS_DIR / "admin.py").read_text(encoding="utf-8")
     tree = ast.parse(source)

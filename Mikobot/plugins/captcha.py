@@ -373,7 +373,12 @@ async def _send_private_challenge(user, chat_id, settings) -> bool:
     options = ()
     if mode == sql.MODE_MATH:
         question, answer = gen_math()
-        body = f"<b>What is {question}?</b>\n\nReply with just the number."
+        # A private message carries no group id. Ask for it so the answer
+        # cannot be matched to a challenge in another group.
+        body = (
+            f"<b>What is {question}?</b>\n\n"
+            f"Reply with <code>{chat_id} &lt;number&gt;</code>."
+        )
     elif mode == sql.MODE_TEXT2:
         answer, options = gen_text2()
         body = "<b>Which of these is a real word?</b>\n<i>Case matters.</i>"
@@ -591,32 +596,20 @@ async def math_answer(client, message: Message) -> str:
     """
     if message.chat.type != ChatType.PRIVATE:
         return ""
-    text = (message.text or "").strip()
-
-    # The pending entries are scanned rather than indexed by chat, because a
-    # private message carries no chat id of the group it belongs to.
-    now = time.time()
-    match = None
-    for (chat_id, user_id), entry in list(CHALLENGES.items()):
-        if user_id != message.from_user.id or entry["kind"] != sql.MODE_MATH:
-            continue
-        if entry["expires"] < now:
-            CHALLENGES.pop((chat_id, user_id), None)
-            continue
-        match = (chat_id, user_id)
-        break
-    if match is None:
+    parts = (message.text or "").split()
+    if len(parts) != 2 or not parts[0].lstrip("-").isdigit():
         return ""
 
-    entry = _take_challenge(*match)
-    if entry is None:
+    chat_id, user_id = int(parts[0]), message.from_user.id
+    entry = _take_challenge(chat_id, user_id)
+    if entry is None or entry["kind"] != sql.MODE_MATH or not entry["answer"]:
         return ""
 
-    if text == entry["answer"]:
-        await _pass(*match, approve=True)
+    if parts[1] == entry["answer"]:
+        await _pass(chat_id, user_id, approve=True)
         await message.reply_text("Correct. You are verified.")
     else:
-        await _fail(*match, message)
+        await _fail(chat_id, user_id, message)
     return ""
 
 
