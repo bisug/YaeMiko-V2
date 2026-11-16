@@ -91,6 +91,9 @@ def create_pending_indexes() -> None:
 STATEMENT_COUNTS: dict[str, int] = {}
 STATEMENT_TOTAL = 0
 STATEMENT_LOG_EVERY = max(1, env_int("DB_STATEMENT_LOG_EVERY", 500))
+# A new query shape now and then is fine; an unbounded stream of them is not.
+# Keep counting shapes already seen and ignore new ones past the cap.
+STATEMENT_SHAPE_LIMIT = 256
 
 
 def _count_statement(conn, cursor, statement, parameters, context, executemany):
@@ -101,7 +104,10 @@ def _count_statement(conn, cursor, statement, parameters, context, executemany):
     """
     global STATEMENT_TOTAL
     head = " ".join(statement.split()[:4])
-    STATEMENT_COUNTS[head] = STATEMENT_COUNTS.get(head, 0) + 1
+    if head in STATEMENT_COUNTS:
+        STATEMENT_COUNTS[head] += 1
+    elif len(STATEMENT_COUNTS) < STATEMENT_SHAPE_LIMIT:
+        STATEMENT_COUNTS[head] = 1
     STATEMENT_TOTAL += 1
     if STATEMENT_TOTAL % STATEMENT_LOG_EVERY == 0:
         log.info(

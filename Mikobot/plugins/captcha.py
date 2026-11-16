@@ -20,6 +20,7 @@ import string
 import time
 from datetime import datetime, timezone
 
+from cachetools import TTLCache
 from pyrogram import filters
 from pyrogram.enums import ChatType, ParseMode
 from pyrogram.errors import RPCError
@@ -88,7 +89,9 @@ FAIL_BAN_SECONDS = 60
 CHALLENGE_TTL = 15 * 60
 
 # (chat_id, user_id) -> {"answer": str, "kind": str, "expires": float}
-CHALLENGES: dict = {}
+# Both a size and a time cap: a join burst must not grow this without bound, and
+# an abandoned challenge is dead once its TTL passes.
+CHALLENGES: TTLCache = TTLCache(maxsize=10_000, ttl=CHALLENGE_TTL)
 
 
 def _full_permissions() -> ChatPermissions:
@@ -186,10 +189,6 @@ def gen_text2():
 
 def _store_challenge(chat_id, user_id, answer: str, kind: str, options=None) -> None:
     now = time.time()
-    if len(CHALLENGES) > 5000:
-        expired = [k for k, v in CHALLENGES.items() if v.get("expires", 0) < now]
-        for k in expired:
-            CHALLENGES.pop(k, None)
     # The options are kept alongside the answer: a callback carries only an
     # index, so regenerating the list later would not match what was shown.
     CHALLENGES[(chat_id, user_id)] = {

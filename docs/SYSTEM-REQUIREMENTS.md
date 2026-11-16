@@ -53,7 +53,7 @@ Being precise about this, because the numbers below drive real hosting choices.
 | opennsfw-onnx 0.1.0 wheel, 22.0 MB | same, the wheel ships the model |
 | Pillow 13.0.0 wheel, 7.0 MB | same |
 | Kurigram 2.2.27 wheel, 6.0 MB | same |
-| `concurrent_updates(64)` | `Mikobot/__init__.py:296` |
+| `WORKERS` (default `min(8, cpu*2)`) | `Mikobot/__init__.py:157`, set through the environment |
 | 20 second HTTP timeout | `Mikobot/state.py` |
 | Disk figures | Wheel sizes plus the source tree, with room for logs, temp media and the pickle file |
 | **RAM figures** | **Estimates.** Not measured on a live bot, see below |
@@ -80,8 +80,8 @@ What you give up:
   this is the largest single allocation in the process.
 - ffmpeg frame extraction for video and animated stickers is CPU bound, and one shared vCPU means
   commands queue behind it.
-- `concurrent_updates(64)` allows many updates in flight. Under load on one core, the event loop
-  spends its time context switching rather than replying.
+- `WORKERS` (default `min(8, cpu*2)`) sets both the client worker count and the thread pool size.
+  On one core, a high value means more context switching than replying; set `WORKERS=2` to cut it.
 
 ## Recommended
 
@@ -200,7 +200,9 @@ Three things are lazy on purpose, so you are not paying for them at startup:
 
 ## How to measure your own usage
 
-Do not trust the table above for your own instance. Measure it.
+Do not trust the table above for your own instance. Measure it. The bot's own `insider_` stats
+callback (sudo only) reports `BOT RSS` and, on Linux, `BOT PEAK` alongside the system CPU/RAM/disk
+figures. Sample it after a normal day of use, not at boot.
 
 ```bash
 # Resident memory of the running bot, sampled once
@@ -233,8 +235,8 @@ If you are over budget, in order of impact:
    `imagegen` (image generation, currently flagged off in the module display name) and `reverse`
    (reverse image search). See [PLUGINS.md](PLUGINS.md) for what each one pulls in.
 2. Set `LOGGER=False` and `LOG_LEVEL=WARNING`. The rotating file handler stops writing.
-3. Lower `concurrent_updates` in `Mikobot/__init__.py` from 64 to 16. Fewer updates in flight means a
-   smaller working set under burst.
+3. Set `WORKERS=2` (default is `min(8, cpu*2)` in `Mikobot/__init__.py`). This sizes both the client
+   worker pool and the thread executor; fewer threads means a smaller working set under burst.
 4. Move PostgreSQL to a managed instance. The local server process and its page cache are otherwise
    counted against the same vCPU and RAM as the bot.
 

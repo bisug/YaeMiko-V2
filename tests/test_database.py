@@ -363,6 +363,7 @@ def test_cachetools_ttl_cache_compatibility():
 
 def test_bounded_sql_caches():
     from cachetools import TTLCache
+
     from Database.sql.captcha_sql import _cache as captcha_cache
     from Database.sql.locale_sql import LOCALE_CACHE
     from Database.sql.toggle_sql import TOGGLE_CACHE
@@ -376,3 +377,21 @@ def test_bounded_sql_caches():
     assert LOCALE_CACHE.maxsize <= 10_000
     assert TOGGLE_CACHE.maxsize <= 20_000
     assert ACTION_TOPICS_CACHE.maxsize <= 10_000
+
+
+def test_statement_shapes_are_bounded():
+    from Database.sql import STATEMENT_COUNTS, STATEMENT_SHAPE_LIMIT, _count_statement
+
+    saved = dict(STATEMENT_COUNTS)
+    try:
+        STATEMENT_COUNTS.clear()
+        for index in range(STATEMENT_SHAPE_LIMIT + 50):
+            _count_statement(None, None, f"SELECT {index} FROM t", None, None, False)
+        assert len(STATEMENT_COUNTS) == STATEMENT_SHAPE_LIMIT
+        assert STATEMENT_COUNTS["SELECT 0 FROM t"] == 1
+        # A shape already in the table keeps counting after the cap is reached.
+        _count_statement(None, None, "SELECT 0 FROM t", None, None, False)
+        assert STATEMENT_COUNTS["SELECT 0 FROM t"] == 2
+    finally:
+        STATEMENT_COUNTS.clear()
+        STATEMENT_COUNTS.update(saved)

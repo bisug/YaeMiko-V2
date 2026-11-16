@@ -75,6 +75,21 @@ PYTHON_VERSION = python_version()
 KURIGRAM_VERSION = pyrogram.__version__
 
 
+def _process_memory() -> tuple[float, float | None]:
+    """Current and peak resident memory of this process, in MiB."""
+    rss = psutil.Process().memory_info().rss / (1024 * 1024)
+    peak = None
+    try:
+        with open("/proc/self/status", encoding="utf-8") as handle:
+            for line in handle:
+                if line.startswith("VmHWM:"):
+                    peak = int(line.split()[1]) / 1024
+                    break
+    except (OSError, ValueError, IndexError):
+        pass
+    return rss, peak
+
+
 def _activity_summary(event) -> str:
     user = getattr(event, "from_user", None)
     chat = getattr(event, "chat", None)
@@ -786,12 +801,15 @@ async def stats_back(client, query: CallbackQuery):
         cpu = await asyncio.to_thread(psutil.cpu_percent, 0.5)
         mem = psutil.virtual_memory().percent
         disk = psutil.disk_usage("/").percent
+        rss, peak = await asyncio.to_thread(_process_memory)
+        peak_line = f"\nBOT PEAK ➼ {peak:.1f} MB" if peak is not None else ""
         text = f"""
 𝙎𝙮𝙨𝙩𝙴𝙢 𝙨𝙩𝙖𝙩𝙨@𝙔𝙖𝙈𝙞𝙠𝙤_𝙍𝙤𝙭𝙗𝙤𝙩
 ➖➖➖➖➖➖
 UPTIME ➼ {uptime}
 CPU ➼ {cpu}%
 RAM ➼ {mem}%
+BOT RSS ➼ {rss:.1f} MB{peak_line}
 DISK ➼ {disk}%
 
 PYTHON ➼ {PYTHON_VERSION}

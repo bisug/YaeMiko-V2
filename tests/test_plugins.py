@@ -389,6 +389,7 @@ async def test_blacklist_del_blacklist_filter_on_various_messages(monkeypatch):
 
 def test_plugin_caches_bounded():
     from cachetools import TTLCache
+
     from Mikobot.plugins import bot2bot, genshin, users
 
     assert isinstance(users.USER_DB_CACHE, TTLCache)
@@ -403,4 +404,22 @@ def test_plugin_caches_bounded():
     assert 99999 in bot2bot.APPROVED_ONCE
     bot2bot.APPROVED_ONCE.discard(99999)
     assert 99999 not in bot2bot.APPROVED_ONCE
+
+
+def test_captcha_challenges_bounded():
+    from cachetools import TTLCache
+
+    from Mikobot.plugins.captcha import CHALLENGES
+
+    assert isinstance(CHALLENGES, TTLCache)
+    assert CHALLENGES.maxsize <= 10_000
+    assert CHALLENGES.ttl > 0
+
+
+def test_process_memory_readout():
+    import Mikobot.__main__ as main
+
+    rss, peak = main._process_memory()
+    assert rss > 0
+    assert peak is None or peak >= rss
 
