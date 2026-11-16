@@ -2258,21 +2258,6 @@ def is_user_fed_owner(fed_id, user_id):
 # There's no handler for this yet, but updating for v12 in case it's used
 
 
-async def welcome_fed(client, message: Message):
-    chat = message.chat
-    user = message.from_user
-    fed_id = sql.get_fed_id(chat.id)
-    fban, fbanreason, fbantime = sql.get_fban_user(fed_id, user.id)
-    if fban:
-        await message.reply_text(
-            "That user is banned in this federation. Removing the ban.",
-        )
-        await client.ban_chat_member(chat.id, user.id)
-        return True
-    else:
-        return False
-
-
 def __stats__():
     all_fbanned = sql.get_all_fban_users_global()
     all_feds = sql.get_all_feds_users_global()

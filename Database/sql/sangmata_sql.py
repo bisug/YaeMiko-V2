@@ -38,14 +38,6 @@ INSERTION_LOCK = threading.RLock()
 
 
 @unit_of_work_guard
-def cek_userdata(user_id) -> bool:
-    try:
-        return SESSION.get(SangmataUser, user_id) is not None
-    finally:
-        SESSION.close()
-
-
-@unit_of_work_guard
 def get_userdata(user_id):
     """Return the (username, first_name, last_name) triple the plugin unpacks."""
     try:

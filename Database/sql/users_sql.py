@@ -251,19 +251,6 @@ def migrate_chat(old_chat_id, new_chat_id):
 
 
 @unit_of_work_guard
-def del_user(user_id):
-    with INSERTION_LOCK:
-        curr = SESSION.get(Users, user_id)
-        if curr:
-            SESSION.delete(curr)
-            SESSION.commit()
-            return True
-
-        SESSION.close()
-    return False
-
-
-@unit_of_work_guard
 def rem_chat(chat_id):
     with INSERTION_LOCK:
         chat = SESSION.get(Chats, str(chat_id))

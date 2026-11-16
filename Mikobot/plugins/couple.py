@@ -14,13 +14,6 @@ ADDITIONAL_IMAGES = [
 ]
 
 
-def dt():
-    now = datetime.now()
-    dt_string = now.strftime("%d/%m/%Y %H:%M")
-    dt_list = dt_string.split(" ")
-    return dt_list
-
-
 def dt_tom():
     return (datetime.now() + timedelta(days=1)).strftime("%d/%m/%Y %H:%M").split(" ")[0]
 

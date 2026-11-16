@@ -72,20 +72,6 @@ def rm_afk(user_id):
         return False
 
 
-@unit_of_work_guard
-def toggle_afk(user_id, reason=""):
-    with INSERTION_LOCK:
-        curr = SESSION.get(AFK, user_id)
-        if not curr:
-            curr = AFK(user_id, reason, True)
-        elif curr.is_afk:
-            curr.is_afk = False
-        elif not curr.is_afk:
-            curr.is_afk = True
-        SESSION.add(curr)
-        SESSION.commit()
-
-
 def __load_afk_users():
     global AFK_USERS
     if SESSION is None:

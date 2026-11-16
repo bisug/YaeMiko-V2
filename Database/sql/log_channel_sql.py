@@ -129,27 +129,6 @@ CHANNELS = {}
 
 
 @unit_of_work_guard
-def get_chat_setting(chat_id: int) -> LogChannelSettings | None:
-    with LOG_SETTING_LOCK:
-        return SESSION.get(LogChannelSettings, str(chat_id))
-
-
-@unit_of_work_guard
-def set_chat_setting(setting: LogChannelSettings):
-    with LOGS_INSERTION_LOCK:
-        res: LogChannelSettings = SESSION.get(LogChannelSettings, setting.chat_id)
-        if res:
-            res.log_warn = setting.log_warn
-            res.log_action = setting.log_action
-            res.log_report = setting.log_report
-            res.log_joins = setting.log_joins
-            res.log_leave = setting.log_leave
-        else:
-            SESSION.add(setting)
-    SESSION.commit()
-
-
-@unit_of_work_guard
 def set_chat_log_channel(chat_id, log_channel):
     with LOGS_INSERTION_LOCK:
         res = SESSION.get(GroupLogs, str(chat_id))

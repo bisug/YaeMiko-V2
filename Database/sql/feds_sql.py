@@ -327,14 +327,6 @@ def get_fed_id(chat_id):
         return get["fid"]
 
 
-def get_fed_name(chat_id):
-    get = FEDERATION_CHATS.get(str(chat_id))
-    if get is None:
-        return False
-    else:
-        return get["chat_name"]
-
-
 @unit_of_work_guard
 def get_user_fban(fed_id, user_id):
     fed_id = str(fed_id)
@@ -361,53 +353,6 @@ def get_user_fban(fed_id, user_id):
     }
     FEDERATION_BANNED_FULL.setdefault(fed_id, {})[str(uid)] = user_info
     return user_info["first_name"], user_info["reason"], user_info["time"]
-
-
-def get_user_admin_fed_name(user_id):
-    user_feds = []
-    try:
-        uid = int(user_id)
-    except ValueError, TypeError:
-        return user_feds
-    for f in FEDERATION_BYFEDID:
-        fed = FEDERATION_BYFEDID[f]
-        members = fed.get("members_set")
-        if members is None:
-            members = set(_fed_members(fed.get("fusers")))
-            fed["members_set"] = members
-        if uid in members:
-            user_feds.append(fed["fname"])
-    return user_feds
-
-
-def get_user_owner_fed_name(user_id):
-    user_feds = []
-    try:
-        uid = int(user_id)
-    except ValueError, TypeError:
-        return user_feds
-    for f in FEDERATION_BYFEDID:
-        owner = _fed_owner(FEDERATION_BYFEDID[f].get("fusers"))
-        if owner is not None and uid == int(owner):
-            user_feds.append(FEDERATION_BYFEDID[f]["fname"])
-    return user_feds
-
-
-def get_user_admin_fed_full(user_id):
-    user_feds = []
-    try:
-        uid = int(user_id)
-    except ValueError, TypeError:
-        return user_feds
-    for f in FEDERATION_BYFEDID:
-        fed = FEDERATION_BYFEDID[f]
-        members = fed.get("members_set")
-        if members is None:
-            members = set(_fed_members(fed.get("fusers")))
-            fed["members_set"] = members
-        if uid in members:
-            user_feds.append({"fed_id": f, "fed": fed})
-    return user_feds
 
 
 def get_user_owner_fed_full(user_id):
@@ -597,13 +542,6 @@ def migrate_chat(old_chat_id, new_chat_id):
             for chats in FEDERATION_CHATS_BYID.values():
                 if str(old_chat_id) in chats:
                     chats[chats.index(str(old_chat_id))] = str(new_chat_id)
-
-
-def search_fed_by_name(fed_name):
-    allfed = FEDERATION_BYNAME.get(fed_name)
-    if allfed is None:
-        return False
-    return allfed
 
 
 def search_user_in_fed(fed_id, user_id):

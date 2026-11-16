@@ -10,7 +10,6 @@ from pyrogram.types import ChatPermissions, Message
 
 import Database.sql.locks_sql as sql
 from Database.sql.approve_sql import is_approved
-from Mikobot import DRAGONS
 from Mikobot import app as client
 from Mikobot.events import on_message
 from Mikobot.logger import LOGGER
@@ -285,72 +284,6 @@ UNLOCK_CHAT_RESTRICTION = {
 
 PERM_GROUP = 1
 REST_GROUP = 2
-
-
-async def restr_members(
-    client,
-    chat_id,
-    members,
-    messages=False,
-    media=False,
-    other=False,
-    previews=False,
-):
-    for mem in members:
-        if (
-            mem.user in DRAGONS
-            or mem.user == ChatID.SERVICE_CHAT
-            or mem.user == ChatID.ANONYMOUS_ADMIN
-        ):
-            continue
-        try:
-            await client.restrict_chat_member(
-                chat_id,
-                mem.user,
-                permissions=ChatPermissions(
-                    can_send_messages=messages,
-                    can_send_audios=media,
-                    can_send_documents=media,
-                    can_send_photos=media,
-                    can_send_videos=media,
-                    can_send_video_notes=media,
-                    can_send_voice_notes=media,
-                    can_send_other_messages=other,
-                    can_add_web_page_previews=previews,
-                ),
-            )
-        except RPCError:
-            pass
-
-
-async def unrestr_members(
-    client,
-    chat_id,
-    members,
-    messages=True,
-    media=True,
-    other=True,
-    previews=True,
-):
-    for mem in members:
-        try:
-            await client.restrict_chat_member(
-                chat_id,
-                mem.user,
-                permissions=ChatPermissions(
-                    can_send_messages=messages,
-                    can_send_audios=media,
-                    can_send_documents=media,
-                    can_send_photos=media,
-                    can_send_videos=media,
-                    can_send_video_notes=media,
-                    can_send_voice_notes=media,
-                    can_send_other_messages=other,
-                    can_add_web_page_previews=previews,
-                ),
-            )
-        except RPCError:
-            pass
 
 
 @on_message(*disableable("locktypes"), chained=True)

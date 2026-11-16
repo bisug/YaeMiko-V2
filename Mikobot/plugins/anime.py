@@ -572,52 +572,6 @@ def check_user(func):
     return wrapper
 
 
-async def media_to_image(client: app, message: Message, x: Message, replied: Message):
-    if not (replied.photo or replied.sticker or replied.animation or replied.video):
-        await x.edit_text("Invalid media type.")
-        delete_later(x, 5)
-        return
-    media = replied.photo or replied.sticker or replied.animation or replied.video
-    if not os.path.isdir(DOWN_PATH):
-        os.makedirs(DOWN_PATH)
-    dls = await client.download_media(
-        media,
-        file_name=DOWN_PATH + rand_key(),
-    )
-    dls_loc = os.path.join(DOWN_PATH, os.path.basename(dls))
-    if replied.sticker and replied.sticker.file_name.endswith(".tgs"):
-        png_file = os.path.join(DOWN_PATH, f"{rand_key()}.png")
-        cmd = (
-            "lottie_convert.py --frame 0 -if lottie " + f"-of png {dls_loc} {png_file}"
-        )
-        stdout, stderr = (await runcmd(cmd))[:2]
-        os.remove(dls_loc)
-        if not os.path.lexists(png_file):
-            await x.edit_text("Could not process this sticker.")
-            delete_later(x, 5)
-            raise Exception(stdout + stderr)
-        dls_loc = png_file
-    elif replied.sticker and replied.sticker.file_name.endswith(".webp"):
-        stkr_file = os.path.join(DOWN_PATH, f"{rand_key()}.png")
-        os.rename(dls_loc, stkr_file)
-        if not os.path.lexists(stkr_file):
-            await x.edit_text("Sticker not found.")
-            delete_later(x, 5)
-            return
-        dls_loc = stkr_file
-    elif replied.animation or replied.video:
-        await x.edit_text("Converting media to an image...")
-        jpg_file = os.path.join(DOWN_PATH, f"{rand_key()}.jpg")
-        await take_screen_shot(dls_loc, 0, jpg_file)
-        os.remove(dls_loc)
-        if not os.path.lexists(jpg_file):
-            await x.edit_text("Could not process this GIF.")
-            delete_later(x, 5)
-            return
-        dls_loc = jpg_file
-    return dls_loc
-
-
 async def runcmd(cmd: str) -> tuple[str, str, int, int]:
     """run command in terminal"""
     args = shlex.split(cmd)
@@ -2215,26 +2169,6 @@ async def get_user_activity(id_, user, duser=None):
     ]
 
 
-async def get_recommendations(id_):
-    vars_ = {"id": int(id_)}
-    result = await return_json_senpai(RECOMMENDTIONS_QUERY, vars_)
-    data = result["data"]["Media"]["recommendations"]["edges"]
-    rc_ls = []
-    for i in data:
-        ii = i["node"]["mediaRecommendation"]
-        rc_ls.append([ii["title"]["romaji"], ii["id"], ii["siteUrl"]])
-    if rc_ls == []:
-        return "No recommendations are available for that anime."
-    outstr = "Recommended animes:\n\n"
-    for i in rc_ls:
-        outstr += (
-            f"**{i[0]}**\n[Synopsis]"
-            + f"(https://t.me/{BOT_USERNAME}?astart=anime_{i[1]})"
-            + f"\n[Official Site]({i[2]})\n\n"
-        )
-    return outstr
-
-
 async def get_top_animes(gnr: str, page, user):
     vars_ = {"gnr": gnr.lower(), "page": int(page)}
     query = TOP_QUERY
@@ -2985,15 +2919,6 @@ async def update_anilist(id_, req, user, eid: int = None, status: str = None):
         return "ok"
     except KeyError:
         return "failed"
-
-
-async def check_if_adult(id_):
-    vars_ = {"id": int(id_)}
-    k = await return_json_senpai(query=ISADULT, vars_=vars_, auth=False)
-    if str(k["data"]["Media"]["isAdult"]) == "True":
-        return "True"
-    else:
-        return "False"
 
 
 async def get_scheduled(x: int = 9):

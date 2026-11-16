@@ -125,23 +125,6 @@ def _chat_id(event):
     return chat.id if chat is not None else None
 
 
-def _thread_id(event):
-    """The forum topic to show the action in, when the chat has topics.
-
-    Telegram drops a chat action sent without a topic in a forum chat, so the
-    indicator would otherwise land in General instead of the topic the command
-    was issued in. The event carries chat and topic itself; a CallbackQuery
-    carries the message that does.
-    """
-    chat = getattr(event, "chat", None)
-    if chat is None:
-        chat = getattr(getattr(event, "message", None), "chat", None)
-        event = getattr(event, "message", None)
-    if getattr(chat, "is_forum", False):
-        return getattr(event, "message_thread_id", None)
-    return None
-
-
 def _is_private(event):
     chat = getattr(event, "chat", None) or getattr(
         getattr(event, "message", None), "chat", None

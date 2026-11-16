@@ -6,9 +6,8 @@ from time import monotonic
 from cachetools import TTLCache
 from pyrogram import Client
 from pyrogram import filters as fil
-from pyrogram.enums import ParseMode
 from pyrogram.errors import RPCError
-from pyrogram.types import LinkPreviewOptions, Message
+from pyrogram.types import Message
 
 import Database.sql.locale_sql as locale_sql
 import Database.sql.users_sql as sql
@@ -145,51 +144,6 @@ async def get_user_id(username: str) -> int | None:
                 return user_obj.user_id
 
     return None
-
-
-async def broadcast(client: Client, message: Message):
-    to_send = (message.text or "").split(None, 1)
-
-    if len(to_send) >= 2:
-        to_group = False
-        to_user = False
-        if to_send[0] == "/broadcastgroups":
-            to_group = True
-        if to_send[0] == "/broadcastusers":
-            to_user = True
-        else:
-            to_group = to_user = True
-        chats = await asyncio.to_thread(sql.get_all_chats) or []
-        users = await asyncio.to_thread(get_all_users)
-        failed = 0
-        failed_user = 0
-        if to_group:
-            for chat in chats:
-                try:
-                    await client.send_message(
-                        int(chat.chat_id),
-                        to_send[1],
-                        parse_mode=ParseMode.DEFAULT,
-                        link_preview_options=LinkPreviewOptions(is_disabled=True),
-                    )
-                    await asyncio.sleep(1)
-                except RPCError:
-                    failed += 1
-        if to_user:
-            for user in users:
-                try:
-                    await client.send_message(
-                        int(user.user_id),
-                        to_send[1],
-                        parse_mode=ParseMode.DEFAULT,
-                        link_preview_options=LinkPreviewOptions(is_disabled=True),
-                    )
-                    await asyncio.sleep(1)
-                except RPCError:
-                    failed_user += 1
-        await message.reply_text(
-            f"Broadcast complete.\nGroups failed: {failed}.\nUsers failed: {failed_user}.",
-        )
 
 
 USER_DB_CACHE = TTLCache(maxsize=10_000, ttl=300, timer=monotonic)

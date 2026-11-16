@@ -280,37 +280,6 @@ def update_restriction(chat_id, restr_type, locked):
 
 
 @unit_of_work_guard
-def is_locked(chat_id, lock_type):
-    curr_perm = get_locks(chat_id)
-    if not curr_perm:
-        return False
-    return bool(getattr(curr_perm, lock_type, False))
-
-
-@unit_of_work_guard
-def is_restr_locked(chat_id, lock_type):
-    curr_restr = SESSION.get(Restrictions, str(chat_id))
-    if not curr_restr:
-        return False
-
-    if lock_type == "messages":
-        return curr_restr.messages
-    if lock_type == "media":
-        return curr_restr.media
-    if lock_type == "other":
-        return curr_restr.other
-    if lock_type == "previews":
-        return curr_restr.preview
-    if lock_type == "all":
-        return (
-            curr_restr.messages
-            and curr_restr.media
-            and curr_restr.other
-            and curr_restr.preview
-        )
-
-
-@unit_of_work_guard
 def get_locks(chat_id):
     """The chat's lock state, from memory, or None when it has none."""
     key = str(chat_id)

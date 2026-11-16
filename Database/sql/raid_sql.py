@@ -26,7 +26,7 @@ import threading
 import time
 from collections import deque
 
-from sqlalchemy import BigInteger, Column, String, inspect, select, text
+from sqlalchemy import BigInteger, Column, String, inspect, text
 
 from Database.sql import BASE, ENGINE, SESSION, run_migration, unit_of_work_guard
 
@@ -118,20 +118,6 @@ def _settings(chat_id):
 
 
 @unit_of_work_guard
-def is_raid(chat_id) -> bool:
-    """True only while the raid window is still open.
-
-    The expiry is checked here rather than by a background task, so a raid ends
-    even if the process restarted after it was set.
-    """
-    try:
-        raid_until, *_ = _settings(chat_id)
-        return raid_until > int(time.time())
-    finally:
-        SESSION.close()
-
-
-@unit_of_work_guard
 def set_raid(chat_id, duration: int = None) -> None:
     """Enable the raid for `duration` seconds, or the chat's configured window."""
     with INSERTION_LOCK:
@@ -200,14 +186,6 @@ def get_raid_setting(chat_id):
             action_time,
             auto_antiraid,
         )
-    finally:
-        SESSION.close()
-
-
-@unit_of_work_guard
-def get_all_raid_chats():
-    try:
-        return [row.chat_id for row in SESSION.scalars(select(RaidChats)).all()]
     finally:
         SESSION.close()
 

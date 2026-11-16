@@ -491,17 +491,6 @@ def set_custom_welcome(
 
 
 @unit_of_work_guard
-def get_custom_welcome(chat_id):
-    welcome_settings = SESSION.get(Welcome, str(chat_id))
-    ret = DEFAULT_WELCOME
-    if welcome_settings and welcome_settings.custom_welcome:
-        ret = welcome_settings.custom_welcome
-
-    SESSION.close()
-    return ret
-
-
-@unit_of_work_guard
 def set_custom_gdbye(chat_id, custom_goodbye, goodbye_type, buttons=None):
     if buttons is None:
         buttons = []
@@ -535,17 +524,6 @@ def set_custom_gdbye(chat_id, custom_goodbye, goodbye_type, buttons=None):
                 SESSION.add(button)
 
         SESSION.commit()
-
-
-@unit_of_work_guard
-def get_custom_gdbye(chat_id):
-    welcome_settings = SESSION.get(Welcome, str(chat_id))
-    ret = DEFAULT_GOODBYE
-    if welcome_settings and welcome_settings.custom_leave:
-        ret = welcome_settings.custom_leave
-
-    SESSION.close()
-    return ret
 
 
 @unit_of_work_guard
@@ -639,45 +617,6 @@ def migrate_chat(old_chat_id, new_chat_id):
                 btn.chat_id = str(new_chat_id)
 
         SESSION.commit()
-
-
-@unit_of_work_guard
-def getRaidStatus(chat_id):
-    try:
-        if stat := SESSION.get(RaidMode, str(chat_id)):
-            return stat.status, stat.time, stat.acttime
-        return False, 21600, 3600  # default
-    finally:
-        SESSION.close()
-
-
-@unit_of_work_guard
-def setRaidStatus(chat_id, status, time=21600, acttime=3600):
-    with RAID_LOCK:
-        raid = SESSION.get(RaidMode, str(chat_id))
-        if raid is None:
-            raid = RaidMode(str(chat_id), status, time, acttime)
-            SESSION.add(raid)
-        else:
-            raid.status = status
-            raid.time = time
-            raid.acttime = acttime
-        SESSION.commit()
-
-
-@unit_of_work_guard
-def toggleRaidStatus(chat_id):
-    with RAID_LOCK:
-        prevObj = SESSION.get(RaidMode, str(chat_id))
-        if prevObj:
-            prevObj.status = not prevObj.status
-            new_status = prevObj.status
-        else:
-            prevObj = RaidMode(str(chat_id), True, 21600, 3600)
-            SESSION.add(prevObj)
-            new_status = True
-        SESSION.commit()
-        return new_status
 
 
 @unit_of_work_guard

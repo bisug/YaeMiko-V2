@@ -259,18 +259,6 @@ def set_skip_review(chat_id, enabled: bool) -> None:
     _mutate(chat_id, skip_review=bool(enabled))
 
 
-def allow_bot(chat_id, user_id) -> None:
-    _mode, _skip, allowed = get_setting(chat_id)
-    allowed.add(str(user_id))
-    _mutate(chat_id, allowed=",".join(sorted(allowed)))
-
-
-def disallow_bot(chat_id, user_id) -> None:
-    _mode, _skip, allowed = get_setting(chat_id)
-    allowed.discard(str(user_id))
-    _mutate(chat_id, allowed=",".join(sorted(allowed)))
-
-
 @unit_of_work_guard
 def migrate_chat(old_chat_id, new_chat_id) -> None:
     with INSERTION_LOCK:

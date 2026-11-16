@@ -4,7 +4,6 @@ import os
 import random
 import re
 import tempfile
-import textwrap
 import time
 from contextlib import suppress
 from datetime import datetime
@@ -104,24 +103,6 @@ def _sync_circle(pfp, size=(259, 259)):
     mask = ImageChops.darker(mask, pfp.split()[-1])
     pfp.putalpha(mask)
     return pfp
-
-
-async def circle(pfp, size=(259, 259)):
-    return await asyncio.to_thread(_sync_circle, pfp, size)
-
-
-async def draw_multiple_line_text(image, text, font, text_start_height):
-    draw = ImageDraw.Draw(image)
-    image_width, image_height = image.size
-    y_text = text_start_height
-    lines = textwrap.wrap(text, width=50)
-    for line in lines:
-        bbox = font.getbbox(line)
-        line_width, line_height = bbox[2] - bbox[0], bbox[3] - bbox[1]
-        draw.text(
-            ((image_width - line_width) // 2, y_text), line, font=font, fill="black"
-        )
-        y_text += line_height
 
 
 def _sync_welcomepic(pic, user, chat, user_id, output_path=None):

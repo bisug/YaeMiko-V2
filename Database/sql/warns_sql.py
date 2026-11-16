@@ -208,16 +208,6 @@ def get_chat_warn_triggers(chat_id):
 
 
 @unit_of_work_guard
-def get_chat_warn_filters(chat_id):
-    try:
-        return SESSION.scalars(
-            select(WarnFilters).where(WarnFilters.chat_id == str(chat_id))
-        ).all()
-    finally:
-        SESSION.close()
-
-
-@unit_of_work_guard
 def get_warn_filter(chat_id, keyword):
     try:
         return SESSION.get(WarnFilters, (str(chat_id), keyword))
