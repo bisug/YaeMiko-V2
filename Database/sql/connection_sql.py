@@ -25,7 +25,7 @@ SOFTWARE.
 import threading
 import time
 
-from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, select
+from sqlalchemy import BigInteger, Boolean, Column, String, UnicodeText, delete, select
 
 from Database.sql import BASE, SESSION, ensure_index, unit_of_work_guard
 
@@ -195,9 +195,9 @@ def clear_history_conn(user_id):
     global HISTORY_CONNECT
     user_id = int(user_id)
     with CONNECTION_HISTORY_LOCK:
-        SESSION.scalars(
-            select(ConnectionHistory).where(ConnectionHistory.user_id == user_id)
-        ).delete(synchronize_session=False)
+        SESSION.execute(
+            delete(ConnectionHistory).where(ConnectionHistory.user_id == user_id)
+        )
         SESSION.commit()
         HISTORY_CONNECT[user_id] = {}
     return True

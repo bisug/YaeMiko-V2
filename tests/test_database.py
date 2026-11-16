@@ -279,6 +279,27 @@ def test_connection_settings_boolean():
     assert setting.allow_connect_to_chat is False
 
 
+def test_clear_history_conn_uses_delete_statement():
+    from unittest.mock import MagicMock, patch
+
+    from sqlalchemy.sql import Delete
+
+    from Database.sql import connection_sql
+
+    session = MagicMock()
+    session._depth.value = 0
+    with (
+        patch("Database.sql.SESSION", session),
+        patch.object(connection_sql, "SESSION", session),
+        patch.dict(connection_sql.HISTORY_CONNECT, {42: {"-100": 7}}),
+    ):
+        assert connection_sql.clear_history_conn(42) is True
+        statement = session.execute.call_args.args[0]
+        assert isinstance(statement, Delete)
+        assert connection_sql.HISTORY_CONNECT[42] == {}
+        session.commit.assert_called_once_with()
+
+
 def test_action_topic_cache():
     from Database.sql.topics_sql import ACTION_TOPICS_CACHE, get_action_topic
 
