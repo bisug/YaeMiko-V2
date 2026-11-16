@@ -1,16 +1,9 @@
 from html import escape
 from math import ceil
-from uuid import uuid4
 
 from pyrogram.enums import ButtonStyle, ParseMode
 from pyrogram.errors import RPCError
-from pyrogram.types import (
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    InlineQueryResultArticle,
-    InputTextMessageContent,
-    LinkPreviewOptions,
-)
+from pyrogram.types import InlineKeyboardButton
 
 from Mikobot import BOT_USERNAME, NO_LOAD
 from Mikobot.utils.consts import MessageLimit
@@ -121,27 +114,6 @@ def paginate_modules(page_n: int, module_dict: dict, prefix, chat=None) -> list:
         ]
 
     return pairs
-
-
-def article(
-    title: str = "",
-    description: str = "",
-    message_text: str = "",
-    thumb_url: str = None,
-    reply_markup: InlineKeyboardMarkup = None,
-    link_preview_options: LinkPreviewOptions = None,
-) -> InlineQueryResultArticle:
-    return InlineQueryResultArticle(
-        id=str(uuid4()),
-        title=title,
-        description=description,
-        thumb_url=thumb_url,
-        input_message_content=InputTextMessageContent(
-            message_text=message_text,
-            link_preview_options=link_preview_options,
-        ),
-        reply_markup=reply_markup,
-    )
 
 
 async def send_to_list(

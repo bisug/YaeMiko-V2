@@ -30,11 +30,6 @@ def escape_markdown(text: str, version: int = 1, entity_type: str = None) -> str
     return re.sub(r"([\\_*\[\]()~`>#+\-=|{}.!])", r"\\\1", text)
 
 
-def escape_markdown_v2(text: str, entity_type: str = None) -> str:
-    """Escape Telegram MarkdownV2 text while preserving supported entities."""
-    return escape_markdown(text, version=2, entity_type=entity_type)
-
-
 def _matches_entity_type(entity_type, types: list[str] = None) -> bool:
     if types is None:
         return True

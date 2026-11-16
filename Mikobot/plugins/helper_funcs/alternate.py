@@ -14,18 +14,3 @@ async def send_message(message, text, *args, **kwargs):
 def typing_action(func):
     """Sends typing action while processing func command."""
     return requirement(chat_action="typing")(func)
-
-
-def sticker_action(func):
-    """Sends the choose-sticker action while processing func command."""
-    return requirement(chat_action="choose_sticker")(func)
-
-
-def document_action(func):
-    """Sends the upload-document action while processing func command."""
-    return requirement(chat_action="upload_document")(func)
-
-
-def photo_action(func):
-    """Sends the upload-photo action while processing func command."""
-    return requirement(chat_action="upload_photo")(func)

@@ -1084,10 +1084,6 @@ def unsubs_fed(fed_id, my_fed):
         return True
 
 
-def get_all_subs(fed_id):
-    return set(FEDS_SUBSCRIBER.get(str(fed_id), set()))
-
-
 def get_spec_subs(fed_id, fed_target):
     return str(fed_target) in FEDS_SUBSCRIBER.get(str(fed_id), set())
 

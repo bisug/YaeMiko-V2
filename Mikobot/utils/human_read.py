@@ -1,19 +1,3 @@
-SIZE_UNITS = ["B", "KB", "MB", "GB", "TB", "PB"]
-
-
-def get_readable_file_size(size_in_bytes) -> str:
-    if size_in_bytes is None:
-        return "0B"
-    index = 0
-    while size_in_bytes >= 1024:
-        size_in_bytes /= 1024
-        index += 1
-    try:
-        return f"{round(size_in_bytes, 2)}{SIZE_UNITS[index]}"
-    except IndexError:
-        return "File too large"
-
-
 def get_readable_time(seconds: int) -> str:
     result = ""
     (days, remainder) = divmod(seconds, 86400)
@@ -31,11 +15,3 @@ def get_readable_time(seconds: int) -> str:
     seconds = int(seconds)
     result += f"{seconds}s "
     return result
-
-
-def get_readable_bitrate(bitrate_kbps):
-    return (
-        f"{str(round(bitrate_kbps / 1000, 2))} Mb/s"
-        if bitrate_kbps > 10000
-        else f"{str(round(bitrate_kbps, 2))} kb/s"
-    )

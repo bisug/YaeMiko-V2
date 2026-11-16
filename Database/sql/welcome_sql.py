@@ -347,17 +347,6 @@ def clean_human_checks(chat_id):
 
 
 @unit_of_work_guard
-def get_welc_mutes_pref(chat_id):
-    welcomemutes = SESSION.get(WelcomeMute, str(chat_id))
-    SESSION.close()
-
-    if welcomemutes:
-        return welcomemutes.welcomemutes
-
-    return "off"
-
-
-@unit_of_work_guard
 def get_welc_pref(chat_id):
     welc = SESSION.get(Welcome, str(chat_id))
     SESSION.close()
