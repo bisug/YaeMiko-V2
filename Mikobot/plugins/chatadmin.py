@@ -304,9 +304,7 @@ async def clear_reactions(client, message: Message) -> None:
         for reaction in participants:
             # resolve_peer takes an id or a username, not the raw peer the
             # reaction carries.
-            participant = await client.resolve_peer(
-                utils.get_peer_id(reaction.peer_id)
-            )
+            participant = await client.resolve_peer(utils.get_peer_id(reaction.peer_id))
             await client.invoke(
                 raw.functions.messages.DeleteParticipantReaction(
                     peer=peer,

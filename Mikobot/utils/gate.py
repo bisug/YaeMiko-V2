@@ -279,7 +279,7 @@ async def _bot_sender_allowed(client, event) -> bool:
         return False
     try:
         member = await client.get_chat_member(chat.id, user.id)
-    except (RPCError, ValueError):
+    except RPCError, ValueError:
         return False
     return member.status in (
         ChatMemberStatus.OWNER,
@@ -464,7 +464,7 @@ async def _member(client, chat, user_id):
                     else:
                         ADMIN_CACHE[chat.id] = {user_id: member}
         return member
-    except (RPCError, ValueError):
+    except RPCError, ValueError:
         return None
 
 

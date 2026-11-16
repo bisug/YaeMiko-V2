@@ -85,7 +85,7 @@ def _process_memory() -> tuple[float, float | None]:
                 if line.startswith("VmHWM:"):
                     peak = int(line.split()[1]) / 1024
                     break
-    except (OSError, ValueError, IndexError):
+    except OSError, ValueError, IndexError:
         pass
     return rss, peak
 

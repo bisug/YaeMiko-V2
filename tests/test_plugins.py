@@ -361,7 +361,9 @@ async def test_blacklist_del_blacklist_filter_on_various_messages(monkeypatch):
         Mikobot, "_BOT_INFO", (123456789, "YaeMikoTest", "YaeMikoTestBot")
     )
 
-    del_bl_regs = [r for r in events.registry.messages if r.handler == blacklist.del_blacklist]
+    del_bl_regs = [
+        r for r in events.registry.messages if r.handler == blacklist.del_blacklist
+    ]
     assert len(del_bl_regs) == 1
     reg = del_bl_regs[0]
 
@@ -422,4 +424,3 @@ def test_process_memory_readout():
     rss, peak = main._process_memory()
     assert rss > 0
     assert peak is None or peak >= rss
-

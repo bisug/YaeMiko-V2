@@ -146,12 +146,16 @@ async def test_nsfwscan_command_animated_sticker_friendly_message():
     await antinsfw.nsfw_scan_command(client, msg)
 
     msg.reply_text.assert_called_once()
-    assert "Animated stickers (.tgs) are vector animations" in msg.reply_text.call_args[0][0]
+    assert (
+        "Animated stickers (.tgs) are vector animations"
+        in msg.reply_text.call_args[0][0]
+    )
 
 
 @pytest.mark.asyncio
 async def test_detect_nsfw_deletes_and_notifies_even_for_dev_user():
     from collections import namedtuple
+
     Prediction = namedtuple("Prediction", ["sfw", "nsfw"])
 
     client = AsyncMock()
@@ -175,19 +179,27 @@ async def test_detect_nsfw_deletes_and_notifies_even_for_dev_user():
 
     with (
         patch("Database.sql.toggle_sql.is_nsfw_on", return_value=True),
-        patch("Mikobot.plugins.antinsfw.prepare_scan_file", return_value="/tmp/test.png"),
-        patch("Mikobot.plugins.antinsfw._scan", return_value=Prediction(sfw=0.1, nsfw=0.9)),
+        patch(
+            "Mikobot.plugins.antinsfw.prepare_scan_file", return_value="/tmp/test.png"
+        ),
+        patch(
+            "Mikobot.plugins.antinsfw._scan", return_value=Prediction(sfw=0.1, nsfw=0.9)
+        ),
     ):
         await antinsfw.detect_nsfw(client, msg)
 
     msg.delete.assert_called_once()
     client.send_message.assert_called_once()
-    assert "NSFW Image Detected & Deleted Successfully" in client.send_message.call_args[1]["text"]
+    assert (
+        "NSFW Image Detected & Deleted Successfully"
+        in client.send_message.call_args[1]["text"]
+    )
 
 
 @pytest.mark.asyncio
 async def test_detect_nsfw_warns_when_bot_cannot_delete():
     from collections import namedtuple
+
     Prediction = namedtuple("Prediction", ["sfw", "nsfw"])
 
     client = AsyncMock()
@@ -211,8 +223,12 @@ async def test_detect_nsfw_warns_when_bot_cannot_delete():
 
     with (
         patch("Database.sql.toggle_sql.is_nsfw_on", return_value=True),
-        patch("Mikobot.plugins.antinsfw.prepare_scan_file", return_value="/tmp/test.png"),
-        patch("Mikobot.plugins.antinsfw._scan", return_value=Prediction(sfw=0.1, nsfw=0.9)),
+        patch(
+            "Mikobot.plugins.antinsfw.prepare_scan_file", return_value="/tmp/test.png"
+        ),
+        patch(
+            "Mikobot.plugins.antinsfw._scan", return_value=Prediction(sfw=0.1, nsfw=0.9)
+        ),
     ):
         await antinsfw.detect_nsfw(client, msg)
 
@@ -292,6 +308,7 @@ async def test_prepare_scan_file_in_memory_fast_path():
 @pytest.mark.asyncio
 async def test_lru_cache_deduplicates_media_scans():
     from collections import namedtuple
+
     Prediction = namedtuple("Prediction", ["sfw", "nsfw"])
 
     client = AsyncMock()
@@ -345,5 +362,3 @@ def test_select_best_thumb_logic():
     # Should select optimal (closest to 224 without being too small or huge)
     best = antinsfw.select_best_thumb([t1, t2, t3])
     assert best == "optimal"
-
-

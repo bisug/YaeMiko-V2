@@ -11,6 +11,7 @@ turns this off for anyone who trusts their bot with that reach.
 
 import html
 
+from cachetools import TTLCache
 from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus, ParseMode
 from pyrogram.errors import RPCError
@@ -20,8 +21,6 @@ from pyrogram.types import (
     InlineKeyboardMarkup,
     Message,
 )
-
-from cachetools import TTLCache
 
 import Database.sql.bot2bot_sql as sql
 from Mikobot.events import on_callback, on_message

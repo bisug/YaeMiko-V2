@@ -1,10 +1,9 @@
 # <============================================== IMPORTS =========================================================>
 import asyncio
-from collections import OrderedDict
-import io
-from pathlib import Path
 import tempfile
 import threading
+from collections import OrderedDict
+from pathlib import Path
 
 from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus
@@ -143,7 +142,11 @@ def get_media_from_message(message):
     if message.photo:
         thumb_id = select_best_thumb(getattr(message.photo, "thumbs", None))
         file_id = thumb_id or message.photo.file_id
-        if not thumb_id and message.photo.file_size and message.photo.file_size > MAX_FILE_SIZE:
+        if (
+            not thumb_id
+            and message.photo.file_size
+            and message.photo.file_size > MAX_FILE_SIZE
+        ):
             return None, None
         return file_id, "image"
 

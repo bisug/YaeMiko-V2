@@ -120,7 +120,9 @@ async def test_the_gate_refuses_the_handler_and_stops_the_registry(monkeypatch):
     assert calls == []
 
 
-async def test_chained_handler_gate_refusal_continues_to_subsequent_handlers(monkeypatch):
+async def test_chained_handler_gate_refusal_continues_to_subsequent_handlers(
+    monkeypatch,
+):
     calls = []
 
     @events.on_message(lambda client, message: True, chained=True)
@@ -241,5 +243,3 @@ async def test_filter_exception_does_not_abort_registry():
     await events.registry.run(events.registry.messages, make_client(), make_message())
 
     assert calls == ["normal_command"]
-
-

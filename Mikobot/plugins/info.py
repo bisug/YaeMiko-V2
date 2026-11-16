@@ -93,7 +93,7 @@ async def info(client, message: Message):
 
     try:
         chat_obj = await client.get_chat(userid)
-    except (RPCError, Exception):
+    except RPCError, Exception:
         await reply_with_text("I can't get information about this user/channel/group.")
         return
 
@@ -126,7 +126,7 @@ async def info(client, message: Message):
                         head += f"\n➲ <b>Admin Title:</b> {chat_member.custom_title}"
                 else:
                     head += f"\n➲ <b>Presence:</b> {chat_member.status}"
-            except (RPCError, ValueError):
+            except RPCError, ValueError:
                 pass
 
             if is_approved(chat.id, chat_obj.id):
@@ -202,7 +202,7 @@ async def info(client, message: Message):
                     await reply.delete()
             else:
                 await reply_with_text(head)
-        except (RPCError, OSError, Exception):
+        except RPCError, OSError, Exception:
             # The photo path can fail on download, on the caption's HTML, or on
             # the temp file. Falling back to the text form still answers.
             try:

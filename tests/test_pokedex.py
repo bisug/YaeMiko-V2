@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from pyrogram.errors import MessageNotModified
 
@@ -25,9 +26,7 @@ def test_evolution_text():
             "evolves_to": [
                 {
                     "species": {"name": "pikachu"},
-                    "evolves_to": [
-                        {"species": {"name": "raichu"}, "evolves_to": []}
-                    ],
+                    "evolves_to": [{"species": {"name": "raichu"}, "evolves_to": []}],
                 }
             ],
         }
@@ -108,7 +107,9 @@ async def test_pokemon_caching():
     pokedex._POKEMON_CACHE.clear()
     mock_data = {"id": 25, "name": "pikachu"}
 
-    with patch.object(pokedex, "_get_json", new=AsyncMock(return_value=mock_data)) as mock_get:
+    with patch.object(
+        pokedex, "_get_json", new=AsyncMock(return_value=mock_data)
+    ) as mock_get:
         p1 = await pokedex.get_pokemon("pikachu")
         assert p1["id"] == 25
         assert mock_get.call_count == 1
@@ -142,8 +143,16 @@ async def test_callback_handles_message_not_modified():
         ],
     }
 
-    with patch.object(pokedex, "get_pokemon", new=AsyncMock(return_value=sample_pokemon)), \
-         patch.object(pokedex, "get_pokemon_details", new=AsyncMock(return_value=(sample_species, None))):
+    with (
+        patch.object(
+            pokedex, "get_pokemon", new=AsyncMock(return_value=sample_pokemon)
+        ),
+        patch.object(
+            pokedex,
+            "get_pokemon_details",
+            new=AsyncMock(return_value=(sample_species, None)),
+        ),
+    ):
         # Should not raise MessageNotModified
         await pokedex.callback_query_handler(MagicMock(), query)
         query.message.edit_caption.assert_awaited_once()

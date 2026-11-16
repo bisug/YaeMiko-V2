@@ -7,7 +7,7 @@ from time import monotonic
 from cachetools import TTLCache
 from pyrogram import Client
 from pyrogram import filters as fil
-from pyrogram.enums import ChatMemberStatus, ParseMode
+from pyrogram.enums import ParseMode
 from pyrogram.errors import RPCError
 from pyrogram.types import LinkPreviewOptions, Message
 
@@ -16,7 +16,7 @@ import Database.sql.users_sql as sql
 from Database.sql.users_sql import get_all_users
 from Mikobot import BOT_ID, DEV_USERS, LOGGER, OWNER_ID
 from Mikobot.events import on_message
-from Mikobot.plugins.helper_funcs.chat_status import check_admin, granted
+from Mikobot.plugins.helper_funcs.chat_status import check_admin
 from Mikobot.utils.consts import ChatID
 from Mikobot.utils.errors import FLOOD_WAIT_ERRORS, flood_wait_seconds
 from Mikobot.utils.filters import GROUPS

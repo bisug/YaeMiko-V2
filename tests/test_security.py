@@ -106,4 +106,3 @@ async def test_can_restrict_supports_anonymous_group_admin():
     res = await decorated(None, mock_msg)
     assert res == "executed_anon"
     mock_func.assert_called_once_with(None, mock_msg)
-

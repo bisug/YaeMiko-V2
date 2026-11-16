@@ -24,12 +24,16 @@ async def test_info_in_private_chat_does_not_call_get_chat_member():
     client.get_chat.return_value = user_chat_obj
 
     # In private chat, get_chat_member would raise ValueError if called
-    client.get_chat_member.side_effect = ValueError('The chat_id "7804972365" belongs to a user')
+    client.get_chat_member.side_effect = ValueError(
+        'The chat_id "7804972365" belongs to a user'
+    )
 
     message = MagicMock(spec=Message)
     message.chat = Chat(id=7804972365, type=ChatType.PRIVATE)
     message.command = ["info"]
-    message.from_user = User(id=7804972365, is_bot=False, first_name="TestUser", username="testuser")
+    message.from_user = User(
+        id=7804972365, is_bot=False, first_name="TestUser", username="testuser"
+    )
     message.reply_to_message = None
 
     reply_mock = AsyncMock()

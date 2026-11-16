@@ -22,7 +22,9 @@ MOVES_PER_PAGE = 20
 CALLBACK_PREFIX = "pk"
 
 _POKEMON_CACHE: TTLCache[str, dict] = TTLCache(maxsize=500, ttl=3600)
-_SPECIES_CACHE: TTLCache[str, tuple[dict, dict | None]] = TTLCache(maxsize=500, ttl=3600)
+_SPECIES_CACHE: TTLCache[str, tuple[dict, dict | None]] = TTLCache(
+    maxsize=500, ttl=3600
+)
 
 
 async def _get_json(url: str, params: dict | None = None) -> dict:
@@ -263,7 +265,7 @@ async def pokedex(client, message: Message) -> None:
             )
         else:
             await message.reply_text("PokéAPI is unavailable. Please try again later.")
-    except (ValueError, KeyError, TypeError):
+    except ValueError, KeyError, TypeError:
         await message.reply_text(
             "PokéAPI returned incomplete data. Please try again later."
         )
@@ -304,7 +306,7 @@ async def callback_query_handler(client, query: CallbackQuery) -> None:
             )
         except Exception:
             pass
-    except (ValueError, KeyError, TypeError):
+    except ValueError, KeyError, TypeError:
         try:
             await query.answer("PokéAPI returned incomplete data.", show_alert=True)
         except Exception:

@@ -43,7 +43,9 @@ async def test_fsub_unsubscribed_user_is_muted_and_stops_propagation():
     client.get_chat_member.side_effect = [sender_member, bot_member]
 
     with (
-        patch("Database.sql.fsub_sql.fs_settings", return_value={"channel": "TestChannel"}),
+        patch(
+            "Database.sql.fsub_sql.fs_settings", return_value={"channel": "TestChannel"}
+        ),
         patch("Mikobot.plugins.fsub.participant_check", return_value=False),
         patch("Mikobot.plugins.fsub.has_restrict_rights", return_value=True),
         pytest.raises(StopPropagation),

@@ -5,8 +5,8 @@ import logging
 import time
 from dataclasses import dataclass
 
-from cachetools import TTLCache
 import httpx
+from cachetools import TTLCache
 from pyrogram import filters
 from pyrogram.enums import ParseMode
 from pyrogram.errors import RPCError
@@ -102,9 +102,7 @@ ENTITY_TYPES = {
             handler="consumable",
             grouped=True,
         ),
-        EntityType(
-            "materials", "Material", "gmaterial", "🪵", handler="material"
-        ),
+        EntityType("materials", "Material", "gmaterial", "🪵", handler="material"),
         EntityType("enemies", "Enemy", "genemy", "👹", handler="enemy", image="icon"),
         EntityType("domains", "Domain", "gdomain", "🏛️", handler="domain"),
         EntityType("nations", "Nation", "gnation", "🗺️", handler="nation", image="icon"),
@@ -138,7 +136,7 @@ def _rarity_stars(value) -> str:
     try:
         count = int(value)
         return "⭐" * count if 1 <= count <= 5 else ""
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return ""
 
 
@@ -166,14 +164,25 @@ async def _fetch_roster(kind: str) -> list:
         try:
             data = await _fetch("characters/nations")
             if isinstance(data, dict) and "nations" in data:
-                return [{"id": n.lower(), "key": n.lower(), "name": n} for n in data["nations"]]
+                return [
+                    {"id": n.lower(), "key": n.lower(), "name": n}
+                    for n in data["nations"]
+                ]
         except _NotFound:
             pass
     elif kind == "elements":
         try:
             data = await _fetch("characters/elements")
             if isinstance(data, dict) and "elements" in data:
-                return [{"id": e.lower(), "key": e.lower(), "name": e, "key_name": e.upper()} for e in data["elements"]]
+                return [
+                    {
+                        "id": e.lower(),
+                        "key": e.lower(),
+                        "name": e,
+                        "key_name": e.upper(),
+                    }
+                    for e in data["elements"]
+                ]
         except _NotFound:
             pass
 
@@ -253,7 +262,11 @@ async def _search_all(query: str) -> list:
         except LOOKUP_ERRORS:
             pass
 
-    search_kinds = [k for k in ENTITY_TYPES if k in ("characters", "weapons", "artifacts", "materials", "enemies")]
+    search_kinds = [
+        k
+        for k in ENTITY_TYPES
+        if k in ("characters", "weapons", "artifacts", "materials", "enemies")
+    ]
     tasks = [_search(k) for k in search_kinds]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     all_matches = []
@@ -369,7 +382,12 @@ def _image_url(entry: dict, kind: str, slot: str = "") -> str | None:
         return img
     if isinstance(img, dict):
         if kind == "characters":
-            url = img.get("portrait") or img.get("icon-big") or img.get("icon") or img.get("card")
+            url = (
+                img.get("portrait")
+                or img.get("icon-big")
+                or img.get("icon")
+                or img.get("card")
+            )
             if url and isinstance(url, str) and url.startswith("http"):
                 return url
         elif kind == "weapons":
@@ -383,7 +401,9 @@ def _image_url(entry: dict, kind: str, slot: str = "") -> str | None:
     if kind == "artifacts":
         pieces = entry.get("pieces")
         if isinstance(pieces, dict):
-            piece_data = pieces.get(slot or "flower") or (next(iter(pieces.values())) if pieces else None)
+            piece_data = pieces.get(slot or "flower") or (
+                next(iter(pieces.values())) if pieces else None
+            )
             if isinstance(piece_data, dict):
                 p_img = piece_data.get("img")
                 if isinstance(p_img, str) and p_img.startswith("http"):
@@ -413,6 +433,7 @@ async def _character_names() -> dict:
             names[rec_id] = record.get("name") or rec_id
     _CHARACTER_NAME_CACHE = {"expires": time.monotonic() + ROSTER_TTL, "data": names}
     return names
+
 
 # <=======================================================================================================>
 
@@ -802,7 +823,7 @@ def _format_list_text(
 ) -> str:
     """HTML message for search lists so edits happen in-place without flicker."""
     return (
-        f"<b>{title}</b> · <i>{total_count} match(es) for \"{html_escape(query)}\"</i>\n"
+        f'<b>{title}</b> · <i>{total_count} match(es) for "{html_escape(query)}"</i>\n'
         f"Page {page} of {total_pages}\n\n"
         f"<i>Tap an item to view details:</i>"
     )
@@ -861,6 +882,7 @@ def _list_keyboard(
     keyboard.append(close_btn)
     return InlineKeyboardMarkup(keyboard)
 
+
 # <=======================================================================================================>
 
 
@@ -908,6 +930,7 @@ async def _replace(status: Message, text: str):
             await status.reply_text(text, parse_mode=ParseMode.HTML)
         except RPCError:
             LOGGER.debug("Could not deliver a genshin notice", exc_info=True)
+
 
 # <=======================================================================================================>
 
@@ -1241,9 +1264,14 @@ async def genshin_close(client, query: CallbackQuery):
     await query.answer()
 
 
-@on_callback(filters.regex(r"^(?:gview|gchar_tab|gpage|gnop|gclose|genshin)(?:\||:)"), chained=True)
+@on_callback(
+    filters.regex(r"^(?:gview|gchar_tab|gpage|gnop|gclose|genshin)(?:\||:)"),
+    chained=True,
+)
 async def genshin_legacy_cb(client, query: CallbackQuery):
-    await query.answer("This button is out of date. Please search again.", show_alert=True)
+    await query.answer(
+        "This button is out of date. Please search again.", show_alert=True
+    )
 
 
 # <================================================= HELP ====================================================
