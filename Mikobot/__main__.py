@@ -684,7 +684,6 @@ async def settings_button(client, query: CallbackQuery):
         if mod_match:
             chat_id = mod_match.group(1)
             module = mod_match.group(2)
-            chat = await client.get_chat(chat_id)
             text = "*{}* settings for the *{}* module:\n\n".format(
                 escape_markdown(chat.title), CHAT_SETTINGS[module].__mod_name__
             ) + CHAT_SETTINGS[module].__chat_settings__(chat_id, user.id)
@@ -707,7 +706,6 @@ async def settings_button(client, query: CallbackQuery):
         elif prev_match:
             chat_id = prev_match.group(1)
             curr_page = int(prev_match.group(2))
-            chat = await client.get_chat(chat_id)
             await query.message.reply_text(
                 "Choose a settings category for {}:".format(chat.title),
                 reply_markup=InlineKeyboardMarkup(
@@ -720,7 +718,6 @@ async def settings_button(client, query: CallbackQuery):
         elif next_match:
             chat_id = next_match.group(1)
             next_page = int(next_match.group(2))
-            chat = await client.get_chat(chat_id)
             await query.message.reply_text(
                 "Choose a settings category for {}:".format(chat.title),
                 reply_markup=InlineKeyboardMarkup(
@@ -732,7 +729,6 @@ async def settings_button(client, query: CallbackQuery):
 
         elif back_match:
             chat_id = back_match.group(1)
-            chat = await client.get_chat(chat_id)
             await query.message.reply_text(
                 text="Choose a settings category for {}:".format(
                     escape_markdown(chat.title)
