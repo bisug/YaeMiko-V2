@@ -2,14 +2,12 @@
 # https://github.com/Team-ProjectCodeX
 # https://t.me/O_okarma
 
-# <============================================== IMPORTS =========================================================>
 from pyrogram.enums import ButtonStyle
 from pyrogram.types import InlineKeyboardButton
 
 from Mikobot import BOT_NAME, BOT_USERNAME, OWNER_ID, SUPPORT_CHAT
 from Mikobot.utils.parser import escape_markdown
 
-# <============================================== CONSTANTS =========================================================>
 START_IMG = [
     "https://telegra.ph/file/40b93b46642124605e678.jpg",
     "https://telegra.ph/file/01a2e0cd1b9d03808c546.jpg",

@@ -1,7 +1,6 @@
 # https://github.com/bisug/YaeMiko-V2
 # https://github.com/Team-ProjectCodeX
 
-# <============================================== IMPORTS =========================================================>
 import asyncio
 import json
 import os
@@ -11,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from html import escape
 from random import choice
 
-# Configure Python 3.15+ lazy imports for fast boot times and reduced memory usage
+# Enable lazy imports on Python 3.15+ for faster startup and lower memory use.
 if hasattr(sys, "set_lazy_imports"):
 
     def _lazy_imports_filter(importing_mod, imported_mod, fromlist=None):
@@ -58,8 +57,6 @@ async def _safe_resolve_peer(self, peer_id):
 
 
 Client.resolve_peer = _safe_resolve_peer
-
-# <=======================================================================================================>
 
 
 def _load_local_env():
@@ -124,7 +121,6 @@ def _load_elevated_users():
         return {}
 
 
-# <================================================= NECESSARY ======================================================>
 StartTime = time.time()
 
 
@@ -154,17 +150,13 @@ WORKERS = env_int("WORKERS", min(8, (os.cpu_count() or 4) * 2))
 executor = ThreadPoolExecutor(max_workers=WORKERS, thread_name_prefix="AsyncioWorker")
 loop.set_default_executor(executor)
 
-# <================================================== LOGGER =======================================================>
 # The single shared logger lives in Mikobot.logger; re-exported here so the
 # existing ``from Mikobot import LOGGER`` imports keep working.
 from Mikobot.logger import LOGGER, RedactingFormatter  # noqa: E402, F401
 
-# <================================================ ENV VARIABLES =======================================================>
-# Determine whether the bot is running in an environment with environment variables or not
 ENV = env_bool("ENV")
 
 if ENV:
-    # Read configuration from environment variables
     API_ID = env_int(
         "API_ID", message="Your API_ID env variable is not a valid integer."
     )
@@ -196,7 +188,6 @@ if ENV:
     TEMP_DOWNLOAD_DIRECTORY = os.environ.get("TEMP_DOWNLOAD_DIRECTORY", "./")
     TOKEN = os.environ.get("TOKEN", None)
 
-    # Read and validate integer variables
     OWNER_ID = env_int(
         "OWNER_ID", message="Your OWNER_ID env variable is not a valid integer."
     )
@@ -237,7 +228,6 @@ if ENV:
             "Your whitelisted users list does not contain valid integers."
         ) from None
 else:
-    # Use configuration from a separate file (e.g., variables.py)
     from variables import Development as Config
 
     API_ID = Config.API_ID
@@ -259,7 +249,6 @@ else:
     TEMP_DOWNLOAD_DIRECTORY = Config.TEMP_DOWNLOAD_DIRECTORY
     TOKEN = Config.TOKEN
 
-    # Read and validate integer variables
     try:
         OWNER_ID = int(Config.OWNER_ID)
     except ValueError:
@@ -301,15 +290,11 @@ else:
             "Your whitelisted users list does not contain valid integers."
         ) from None
 
-# <======================================================================================================>
-
-# <================================================= SETS =====================================================>
 ELEVATED_USERS = _load_elevated_users()
 DRAGONS.update(int(user_id) for user_id in ELEVATED_USERS.get("sudos", []))
 DEMONS.update(int(user_id) for user_id in ELEVATED_USERS.get("supports", []))
 WOLVES.update(int(user_id) for user_id in ELEVATED_USERS.get("whitelists", []))
 TIGERS.update(int(user_id) for user_id in ELEVATED_USERS.get("tigers", []))
-# Add OWNER_ID to the DRAGONS and DEV_USERS sets
 DRAGONS.add(OWNER_ID)
 DEV_USERS.add(OWNER_ID)
 
@@ -321,9 +306,7 @@ CONFIG_SUDOS = set(DRAGONS)
 CONFIG_DEMONS = set(DEMONS)
 CONFIG_WOLVES = set(WOLVES)
 CONFIG_TIGERS = set(TIGERS)
-# <=======================================================================================================>
 
-# <============================================== INITIALIZE APPLICATION =========================================================>
 # The kurigram client is the only Telegram client: it speaks MTProto, so the
 # bot has no Bot API dependency. Outbound HTTP uses the shared client in
 # Mikobot.state; handlers are registered through Mikobot.events.
@@ -339,9 +322,7 @@ store = open_store(
 )
 chat_data = store.chat_data
 user_data = store.user_data
-# <=======================================================================================================>
 
-# <================================================ BOOT MESSAGE=======================================================>
 ALIVE_IMG = [
     "https://telegra.ph/file/40b93b46642124605e678.jpg",
     "https://telegra.ph/file/01a2e0cd1b9d03808c546.jpg",
@@ -351,10 +332,8 @@ ALIVE_IMG = [
     "https://telegra.ph/file/262c86393730a609cdade.jpg",
     "https://telegra.ph/file/33a8d97739a2a4f81ddde.jpg",
 ]
-# <=======================================================================================================>
 
 
-# <==================================================== BOOT FUNCTION ===================================================>
 async def send_booting_message():
     try:
         await app.send_photo(
@@ -370,11 +349,6 @@ async def send_booting_message():
         )
 
 
-# <=======================================================================================================>
-
-
-# <================================================= EXTBOT ======================================================>
-# <=============================================== GETTING BOT INFO ========================================================>
 # The identity is resolved on first use rather than at import. Importing Mikobot
 # must not need the network: a dropped connection to api.telegram.org used to
 # take the whole test suite down. Plugins read BOT_ID/BOT_NAME/BOT_USERNAME as
@@ -425,10 +399,6 @@ def alive_msg() -> str:
 """
 
 
-# <=======================================================================================================>
-
-# <=============================================== CLIENT SETUP ========================================================>
-# Create the Kurigram client instance
 app = Client(
     "bot",
     api_id=API_ID,
@@ -437,10 +407,7 @@ app = Client(
     workers=WORKERS,
 )
 install_smart_parser(app)
-# <=======================================================================================================>
 
-# <================================================== CONVERT LISTS =====================================================>
-# Convert sets to lists for further use
 SUPPORT_STAFF = (
     [int(OWNER_ID)] + list(DRAGONS) + list(WOLVES) + list(DEMONS) + list(DEV_USERS)
 )
@@ -449,4 +416,3 @@ DEV_USERS = list(DEV_USERS)
 WOLVES = list(WOLVES)
 DEMONS = list(DEMONS)
 TIGERS = list(TIGERS)
-# <==================================================== END ===================================================>

@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 from functools import wraps
 
 from pyrogram.errors import FloodSkipFailedWait, FloodWait
@@ -6,21 +5,14 @@ from pyrogram.errors.exceptions.forbidden_403 import ChatWriteForbidden
 
 from Mikobot.logger import LOGGER
 
-# <=======================================================================================================>
-
-
-# <================================================ CONSTANTS =====================================================>
-# Every 420 Telegram raises is a Flood, but not every Flood names a wait:
+# Telegram's 420 errors are all floods, but not every flood names a wait:
 # FloodWait and FloodPremiumWait carry the seconds, while
 # FloodSkipFailedWait (new in kurigram 2.2.27) says only that a short wait is
 # required. Callers that sleep on the error therefore need one place that
 # knows which of the two shapes arrived.
 FLOOD_WAIT_ERRORS = (FloodWait, FloodSkipFailedWait)
 
-# <=======================================================================================================>
 
-
-# <================================================ FUNCTION =======================================================>
 def flood_wait_seconds(error, default: int = 5) -> int:
     """How long to sleep for a 420 error, in seconds.
 
@@ -77,6 +69,3 @@ def _event_chat_id(args):
     if chat is None:
         chat = getattr(getattr(event, "message", None), "chat", None)
     return getattr(chat, "id", None)
-
-
-# <================================================ END =======================================================>

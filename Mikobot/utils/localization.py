@@ -33,7 +33,7 @@ enabled_locales: list[str] = [
     # "ru-RU",  # Russian
     # "sv-SE",  # Swedish
     # "tr-TR",  # Turkish
-    # "uk-UA",  # Ukranian
+    # "uk-UA",  # Ukrainian
     # "zh-CN",  # Chinese (Simplified)
     # "zh-TW",  # Chinese (Traditional)
 ]
@@ -89,9 +89,9 @@ async def get_lang(message) -> str:
         lang = lang or message.from_user.language_code or default_language
     else:
         lang = lang or default_language
-    # User has a language_code without hyphen
+    # Some language codes have no hyphen.
     if len(lang.split("-")) == 1:
-        # Try to find a language that starts with the provided language_code
+        # Match a locale that starts with the provided code.
         for locale_ in enabled_locales:
             if locale_.startswith(lang):
                 lang = locale_

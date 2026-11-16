@@ -1,12 +1,9 @@
-# <============================================== IMPORTS =========================================================>
 import html
 import re
 from re import sub
 
 from pyrogram import enums
 from pyrogram.parser.parser import Parser
-
-# <=======================================================================================================>
 
 VALID_HTML_TAGS = re.compile(
     r"</?(?:b|strong|i|em|u|ins|s|del|strike|blockquote|code|pre|spoiler|tg-spoiler)(?:\s+[^>]*?)?>|"
@@ -20,20 +17,19 @@ VALID_HTML_TAGS = re.compile(
 V2_ESCAPED_CHARS = re.compile(r"\\([^a-zA-Z0-9\s])")
 
 
-# <================================================ FUNCTIONS =======================================================>
 def escape_markdown(text: str) -> str:
-    """Escape markdown data."""
+    """Escape Markdown special characters in text."""
     escape_chars = r"\*_`\["
     return sub(r"([%s])" % escape_chars, r"\\\1", text)
 
 
 def mention_html(user_id: int, name: str) -> str:
-    """Mention user in html format. The name is escaped; callers pass it raw."""
+    """Mention a user as an HTML link. The name is escaped; callers pass it raw."""
     return f'<a href="tg://user?id={user_id}">{html.escape(name)}</a>'
 
 
 def mention_markdown(user_id: int, name: str) -> str:
-    """Mention user in markdown format. Escapes the name; callers pass it raw."""
+    """Mention a user as a Markdown link. Escapes the name; callers pass it raw."""
     return f"[{escape_markdown(name)}](tg://user?id={user_id})"
 
 
@@ -49,7 +45,7 @@ def smart_format_to_html(text: str) -> str:
         tokens[key] = val
         return key
 
-    # 1. Protect code blocks (```lang\ncode```) and inline code (`code`)
+    # Protect code and inline-code spans before escaping.
     def protect_pre(m: re.Match) -> str:
         lang = m.group(1) or ""
         code = m.group(2)
@@ -66,13 +62,13 @@ def smart_format_to_html(text: str) -> str:
         text,
     )
 
-    # 2. Protect existing valid HTML tags
+    # Protect valid HTML tags from being escaped.
     text = VALID_HTML_TAGS.sub(lambda m: protect(m.group(0)), text)
 
-    # 3. Protect backslash-escaped characters (V2 escapable chars)
+    # Protect V2 backslash escapes.
     text = V2_ESCAPED_CHARS.sub(lambda m: protect(html.escape(m.group(1))), text)
 
-    # 4. Handle Expandable Blockquotes (**> ... ||) and regular blockquotes (> ...)
+    # Convert expandable (**> ... ||) and plain (>) blockquotes.
     def parse_blockquotes(txt: str) -> str:
         lines = txt.split("\n")
         res_lines = []
@@ -101,10 +97,10 @@ def smart_format_to_html(text: str) -> str:
 
     text = parse_blockquotes(text)
 
-    # 5. Escape raw HTML chars (&, <, >) outside protected tokens
+    # Escape raw HTML outside the protected tokens.
     text = html.escape(text)
 
-    # 6. Custom Emoji: ![👍](tg://emoji?id=123)
+    # Custom emoji: ![alt](tg://emoji?id=...).
     def parse_custom_emoji(m: re.Match) -> str:
         alt = m.group(1)
         emoji_id = m.group(2)
@@ -112,7 +108,7 @@ def smart_format_to_html(text: str) -> str:
 
     text = re.sub(r"!\[(.*?)\]\(tg://emoji\?id=(\d+)\)", parse_custom_emoji, text)
 
-    # 7. Markdown links: [text](url)
+    # Markdown links: [text](url).
     def parse_md_link(m: re.Match) -> str:
         link_text = m.group(1)
         url = m.group(2)
@@ -124,31 +120,31 @@ def smart_format_to_html(text: str) -> str:
         text,
     )
 
-    # 8. Spoilers: ||spoiler|| (Markdown V2 & Kurigram)
+    # Spoilers: ||text||.
     text = re.sub(
         r"\|\|(?=\S)(.+?)(?<=\S)\|\|", r"<tg-spoiler>\1</tg-spoiler>", text, flags=re.S
     )
 
-    # 9. Underline: __underline__ (Markdown V2) and --underline-- (Kurigram)
+    # Underline: __text__ (V2) and --text-- (Kurigram).
     text = re.sub(r"__(?=\S)(.+?)(?<=\S)__", r"<u>\1</u>", text)
     text = re.sub(r"--(?=\S)(.+?)(?<=\S)--", r"<u>\1</u>", text)
 
-    # 10. Bold: **bold** (Kurigram) and *bold* (Markdown V1/V2)
+    # Bold: **text** and *text*.
     text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
     text = re.sub(r"(?<!\*)\*([^*\n\s][^*\n]*?[^*\n\s]|\S)\*(?!\*)", r"<b>\1</b>", text)
 
-    # 11. Italic: _italic_ (Markdown V1/V2)
+    # Italic: _text_.
     text = re.sub(
         r"(?<![a-zA-Z0-9_])_([^_\n\s][^_\n]*?[^_\n\s]|\S)_(?![a-zA-Z0-9_])",
         r"<i>\1</i>",
         text,
     )
 
-    # 12. Strikethrough: ~~strike~~ (Kurigram/Markdown V2) and ~strike~ (Markdown V2)
+    # Strikethrough: ~~text~~ and ~text~.
     text = re.sub(r"~~(?=\S)(.+?)(?<=\S)~~", r"<s>\1</s>", text)
     text = re.sub(r"(?<!~)~([^~\n\s][^~\n]*?[^~\n\s]|\S)~(?!~)", r"<s>\1</s>", text)
 
-    # 13. Restore tokens
+    # Restore the protected spans.
     for key, val in tokens.items():
         text = text.replace(key, val)
 
@@ -202,6 +198,3 @@ def install_smart_parser(client=None) -> None:
 
     if client is not None:
         client.parser = SmartParser(client)
-
-
-# <================================================ END =======================================================>

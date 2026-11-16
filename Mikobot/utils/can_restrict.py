@@ -1,4 +1,3 @@
-# <============================================== IMPORTS =========================================================>
 from collections.abc import Callable
 from functools import wraps
 
@@ -8,10 +7,7 @@ from pyrogram.types import Message
 
 from Mikobot import DEV_USERS, app
 
-# <=======================================================================================================>
 
-
-# <================================================ FUNCTION =======================================================>
 def has_restrict_rights(member) -> bool:
     """Whether a chat member may restrict other members.
 
@@ -62,7 +58,7 @@ def can_restrict(func: Callable) -> Callable:
 
         if check.status not in [ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR]:
             return await message.reply(
-                "» You're not an admin, Please stay in your limits."
+                "» You're not an admin. Please stay in your limits."
             )
 
         if has_restrict_rights(check):
@@ -73,6 +69,3 @@ def can_restrict(func: Callable) -> Callable:
         )
 
     return non_admin
-
-
-# <================================================ END =======================================================>

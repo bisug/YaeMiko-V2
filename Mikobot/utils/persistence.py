@@ -59,7 +59,7 @@ class TokenDict(dict):
         return super().pop(key, *args)
 
     def prune(self, ttl: float) -> int:
-        """Drop keys whose last write is older than ttl. Returns how many went."""
+        """Drop keys whose last write is older than ttl. Returns the count dropped."""
         now = time.monotonic()
         stamps = self._table()
         stale = [

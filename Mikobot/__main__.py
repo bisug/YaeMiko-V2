@@ -1,7 +1,6 @@
 # https://github.com/bisug/YaeMiko-V2
 # https://github.com/Team-ProjectCodeX
 
-# <============================================== IMPORTS =========================================================>
 import asyncio
 import contextlib
 import importlib
@@ -11,7 +10,7 @@ import time
 from platform import python_version
 from random import choice
 
-# Configure Python 3.15+ lazy imports
+# Enable lazy imports on Python 3.15+ for faster startup and lower memory use.
 if hasattr(sys, "set_lazy_imports"):
 
     def _lazy_imports_filter(importing_mod, imported_mod, fromlist=None):
@@ -68,8 +67,6 @@ from Mikobot.plugins.helper_funcs.misc import paginate_modules
 from Mikobot.utils.gate import chain
 from Mikobot.utils.human_read import get_readable_time
 from Mikobot.utils.parser import escape_markdown
-
-# <=======================================================================================================>
 
 PYTHON_VERSION = python_version()
 KURIGRAM_VERSION = pyrogram.__version__
@@ -130,9 +127,7 @@ def load_plugins():
         if imported_module.__mod_name__.lower() not in IMPORTED:
             IMPORTED[imported_module.__mod_name__.lower()] = imported_module
         else:
-            raise Exception(
-                "Can't have two modules with the same name! Please change one"
-            )
+            raise Exception("Cannot have two modules with the same name. Rename one.")
 
         if hasattr(imported_module, "__help__") and imported_module.__help__:
             HELPABLE[imported_module.__mod_name__.lower()] = imported_module
@@ -226,7 +221,7 @@ async def start(client, message: Message):
             await asyncio.sleep(0.2)
             guu = await message.reply_text("🐾")
             await asyncio.sleep(1.8)
-            await guu.delete()  # Await this line
+            await guu.delete()
             await message.reply_text(
                 PM_START_TEXT,
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=START_BTN),
@@ -246,7 +241,7 @@ async def start(client, message: Message):
 
 async def extra_command_callback(client, query: CallbackQuery):
     if query.data == "extra_command_handler":
-        await query.answer()  # Use 'await' for asynchronous calls
+        await query.answer()
         await query.message.edit_text(
             "𝙎𝙡𝙲𝙤𝙩 𝙝𝙚 [𝙨𝙡𝙤𝙤𝙥𝙞𝙤𝙣](https://telegra.ph/file/8c092f4e9d303f9497c83.jpg) 𝙝𝙚 𝙘𝙥𝙣𝙚 𝙤𝙥𝙣𝙚",
             reply_markup=InlineKeyboardMarkup(
@@ -279,7 +274,7 @@ async def extra_command_callback(client, query: CallbackQuery):
                     ],
                 ]
             ),
-            parse_mode=ParseMode.MARKDOWN,  # Added this line to explicitly specify Markdown parsing
+            parse_mode=ParseMode.MARKDOWN,
         )
 
 
@@ -288,22 +283,22 @@ async def anime_command_callback(client, query: CallbackQuery):
         await query.answer()
         await query.message.edit_text(
             "⛩[𝗔𝗻𝗶𝗺𝗲 𝗨𝗽𝗱𝗮𝘽𝗲](https://telegra.ph//file/59d93fede8bf12fec1a51.jpg) :\n\n"
-            "**╔ /anime: **fetches info on single anime (includes buttons to look up for prequels and sequels)\n"
-            "**╠ /character: **fetches info on multiple possible characters related to query\n"
-            "**╠ /manga: **fetches info on multiple possible mangas related to query\n"
+            "**╔ /anime: **fetches info on a single anime (includes buttons to look up prequels and sequels)\n"
+            "**╠ /character: **fetches info on multiple possible characters related to the query\n"
+            "**╠ /manga: **fetches info on multiple possible manga related to the query\n"
             "**╠ /airing: **fetches info on airing data for anime\n"
             "**╠ /studio: **fetches info on studios\n"
-            "**╠ /schedule: **fetches scheduled animes\n"
-            "**╠ /browse: **get popular, trending or upcoming animes\n"
-            "**╠ /top: **to retrieve top animes for a genre or tag\n"
+            "**╠ /schedule: **fetches scheduled anime\n"
+            "**╠ /browse: **gets popular, trending or upcoming anime\n"
+            "**╠ /top: **retrieves top anime for a genre or tag\n"
             "**╠ /watch: **fetches watch order for anime series\n"
-            "**╠ /fillers: **to get a list of anime fillers\n"
-            "**╠ /gettags: **get a list of available tags\n"
-            "**╠ /animequotes: **get random anime quotes\n"
-            "**╚ /getgenres: **Get list of available Genres\n\n"
+            "**╠ /fillers: **gets a list of anime fillers\n"
+            "**╠ /gettags: **gets a list of available tags\n"
+            "**╠ /animequotes: **gets random anime quotes\n"
+            "**╚ /getgenres: **gets a list of available genres\n\n"
             "**⚙️ Group Settings:**\n"
             "**╔**\n"
-            "**╠ /anisettings: **to toggle NSFW lock and airing notifications and other settings in groups (anime news)\n"
+            "**╠ /anisettings: **toggles NSFW lock, airing notifications and other group settings (anime news)\n"
             "**╚**",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
@@ -328,7 +323,7 @@ async def anime_command_callback(client, query: CallbackQuery):
                     ],
                 ]
             ),
-            parse_mode=ParseMode.MARKDOWN,  # Added this line to explicitly specify Markdown parsing
+            parse_mode=ParseMode.MARKDOWN,
         )
 
 
@@ -367,7 +362,7 @@ async def genshin_command_callback(client, query: CallbackQuery):
                     ],
                 ]
             ),
-            parse_mode=ParseMode.MARKDOWN,  # Added this line to explicitly specify Markdown parsing
+            parse_mode=ParseMode.MARKDOWN,
         )
 
 
@@ -375,10 +370,10 @@ async def Miko_about_callback(client, query: CallbackQuery):
     await query.answer()
     if query.data == "Miko_":
         message_text = (
-            f"➲ <b>Ai integration.</b>"
-            f"\n➲ <b>Advance management capability.</b>"
-            f"➲ <b>Anime bot functionality.</b>"
-            f"\n\n<b>Click on the buttons below for getting help and info about</b> {BOT_NAME}."
+            f"➲ <b>AI integration.</b>"
+            f"\n➲ <b>Advanced management capability.</b>"
+            f"\n➲ <b>Anime bot functionality.</b>"
+            f"\n\n<b>Click the buttons below for help and info about</b> {BOT_NAME}."
         )
         await query.message.edit_text(
             text=message_text,
@@ -417,8 +412,8 @@ async def Miko_about_callback(client, query: CallbackQuery):
         )
     elif query.data == "Miko_support":
         message_text = (
-            "*Our bot leverages SQL, Telegram, MTProto for secure and efficient operations. It resides on a high-speed server, integrates numerous APIs, ensuring quick and versatile responses to user queries.*"
-            f"\n\n*If you find any bug in {BOT_NAME} Please report it at the support chat.*"
+            "*Our bot uses SQL, Telegram and MTProto. It runs on a high-speed server and integrates many APIs for quick, versatile answers to user queries.*"
+            f"\n\n*If you find a bug in {BOT_NAME}, report it in the support chat.*"
         )
         await query.message.edit_text(
             text=message_text,
@@ -459,12 +454,11 @@ async def get_help(client, message: Message):
     chat = message.chat
     args = (message.text or "").split(None, 1)
 
-    # ONLY send help in PM
     if chat.type != ChatType.PRIVATE:
         if len(args) >= 2 and any(args[1].lower() == x for x in HELPABLE):
             module = args[1].lower()
             await message.reply_text(
-                f"Contact me in PM to get help of {module.capitalize()}",
+                f"Contact me in PM to get help for {module.capitalize()}",
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
                         [
@@ -481,7 +475,7 @@ async def get_help(client, message: Message):
             )
             return
         await message.reply_text(
-            "» *Choose an option for getting* [𝗵𝗲𝗹𝗽](https://telegra.ph/file/cce9038f6a9b88eb409b5.jpg)",
+            "» *Choose an option to get* [𝗵𝗲𝗹𝗽](https://telegra.ph/file/cce9038f6a9b88eb409b5.jpg)",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
@@ -500,7 +494,7 @@ async def get_help(client, message: Message):
                     ],
                 ]
             ),
-            parse_mode=ParseMode.MARKDOWN,  # Added this line to explicitly specify Markdown parsing
+            parse_mode=ParseMode.MARKDOWN,
         )
         return
 
@@ -548,7 +542,7 @@ async def send_settings(chat_id, user_id, user=False):
         else:
             await app.send_message(
                 user_id,
-                "Seems like there aren't any user specific settings available :'(",
+                "Seems like there aren't any user-specific settings available :'(",
                 parse_mode=ParseMode.MARKDOWN,
             )
     else:
@@ -557,7 +551,7 @@ async def send_settings(chat_id, user_id, user=False):
             chat_name = chat.title
             await app.send_message(
                 user_id,
-                text="Which module would you like to check {}'s settings for?".format(
+                text="Which module's settings would you like to check for {}?".format(
                     chat_name
                 ),
                 reply_markup=InlineKeyboardMarkup(
@@ -570,7 +564,7 @@ async def send_settings(chat_id, user_id, user=False):
             await app.send_message(
                 user_id,
                 "Seems like there aren't any chat settings available :'(\nSend this "
-                "in a group chat you're admin in to find its current settings!",
+                "in a group chat you're an admin in to find its current settings!",
                 parse_mode=ParseMode.MARKDOWN,
             )
 
@@ -662,7 +656,7 @@ async def settings_button(client, query: CallbackQuery):
                 ),
             )
 
-        # ensure no spinny white circle
+        # Answer the callback to clear the loading spinner.
         await query.answer()
         await query.message.delete()
     except RPCError as excp:
@@ -679,7 +673,6 @@ async def get_settings(client, message: Message):
     user = message.from_user
     msg = message
 
-    # ONLY send settings in PM
     if chat.type != ChatType.PRIVATE:
         if await is_user_admin(chat, user.id):
             text = "Click here to get this chat's settings, as well as yours."
@@ -717,7 +710,7 @@ async def migrate_chats(client, message: Message):
     else:
         return
 
-    LOGGER.info("Migrating from %s, ᴛᴏ %s", str(old_chat), str(new_chat))
+    LOGGER.info("Migrating from %s to %s", str(old_chat), str(new_chat))
     for mod in MIGRATEABLE:
         with contextlib.suppress(KeyError, AttributeError):
             mod.__migrate__(old_chat, new_chat)
@@ -794,8 +787,7 @@ async def help_button(client, query: CallbackQuery):
 async def stats_back(client, query: CallbackQuery):
     if query.data == "insider_":
         uptime = get_readable_time((time.time() - StartTime))
-        # interval is a blocking sample; the loop must not stall every other
-        # chat while it waits.
+        # cpu_percent with an interval blocks, so sample it off the loop.
         cpu = await asyncio.to_thread(psutil.cpu_percent, 0.5)
         mem = psutil.virtual_memory().percent
         disk = psutil.disk_usage("/").percent
@@ -822,9 +814,7 @@ async def gitsource_callback(client, query: CallbackQuery):
 
     if query.data == "git_source":
         source_link = "https://github.com/bisug/YaeMiko-V2"
-        message_text = (
-            f"*Here is the link for the public source repo*:\n\n{source_link}"
-        )
+        message_text = f"*Here is the link to the public source repo*:\n\n{source_link}"
 
         keyboard = [
             [
@@ -845,7 +835,7 @@ async def gitsource_callback(client, query: CallbackQuery):
 
 async def repo(client, message: Message):
     source_link = "https://github.com/bisug/YaeMiko-V2"
-    message_text = f"*Here is the link for the public source repo*:\n\n{source_link}"
+    message_text = f"*Here is the link to the public source repo*:\n\n{source_link}"
 
     await client.send_message(
         chat_id=message.chat.id,
@@ -855,10 +845,6 @@ async def repo(client, message: Message):
     )
 
 
-# <=======================================================================================================>
-
-
-# <=================================================== MAIN ====================================================>
 async def error_callback(client, exception, handler, update, users, chats):
     """kurigram hands the error handler the exception and what it came from."""
     summary = _activity_summary(update)
@@ -985,4 +971,3 @@ if __name__ == "__main__":
         LOGGER.info(
             "------------------------ Stopped Services ------------------------"
         )
-# <==================================================== END ===================================================>

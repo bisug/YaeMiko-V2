@@ -29,10 +29,7 @@ from Mikobot import app
 from Mikobot.logger import LOGGER, correlation_scope
 from Mikobot.utils.gate import end_unit_of_work, enforce
 
-# <=======================================================================================================>
 
-
-# <================================================ REGISTRY =====================================================>
 class Registration:
     """One handler, the filters that select it, and whether it chains."""
 
@@ -114,10 +111,8 @@ class Registry:
 
 
 registry = Registry()
-# <=======================================================================================================>
 
 
-# <=============================================== REGISTRATION ================================================>
 def on_message(*filters, chained: bool = False):
     """Register a message handler.
 
@@ -222,10 +217,6 @@ def callbackquery(**args):
     return decorator
 
 
-# <=======================================================================================================>
-
-
-# <================================================= DISPATCH ==================================================>
 async def _dispatch_messages(client, message):
     await registry.run(registry.messages, client, message)
 
@@ -257,9 +248,3 @@ def install() -> None:
     app.add_handler(InlineQueryHandler(_dispatch_inline_queries))
     app.add_handler(ChatJoinRequestHandler(_dispatch_join_requests))
     app.add_handler(ChatMemberUpdatedHandler(_dispatch_chat_member_updates))
-
-
-# <=======================================================================================================>
-
-
-# <==================================================== END ===================================================>

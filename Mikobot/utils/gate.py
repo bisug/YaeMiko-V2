@@ -29,10 +29,6 @@ CHAT_ACTIONS = {
 }
 
 
-# <=======================================================================================================>
-
-
-# <================================================ FUNCTION =====================================================>
 def requirement(**spec):
     """Attach a gate to a handler. Runs outermost-first, like the old wrappers."""
 
@@ -53,10 +49,6 @@ def chain(func):
     return func
 
 
-# <=======================================================================================================>
-
-
-# <================================================== HELPERS ===================================================>
 async def _action_reply(event, text):
     """Reply through whatever event we were handed, matching the old behaviour."""
     # A message replies with text, a callback query answers.
@@ -73,7 +65,7 @@ async def _action_reply(event, text):
 
 
 async def _silently_drop(event):
-    """DEL_CMDS: remove a bare command from a non-privileged user instead."""
+    """When DEL_CMDS is set, delete a bare command from an unauthorized user."""
     message = getattr(event, "message", None) or event
     text = getattr(message, "text", None)
     if text and " " not in text:
@@ -164,10 +156,6 @@ def _event_parts(event):
     return chat, user
 
 
-# <=======================================================================================================>
-
-
-# <=================================================== GATE =====================================================>
 async def enforce(client, event, handler) -> bool:
     """Run the gate. False means the handler must not run.
 
@@ -237,10 +225,6 @@ async def enforce(client, event, handler) -> bool:
     return True
 
 
-# <=======================================================================================================>
-
-
-# <=============================================== BOT SENDERS ================================================>
 async def _bot_sender_allowed(client, event) -> bool:
     """Whether a bot sender may run commands in this chat.
 
@@ -252,7 +236,7 @@ async def _bot_sender_allowed(client, event) -> bool:
     chat, user = _event_parts(event)
     if user is None or not getattr(user, "is_bot", False):
         return True
-    # Our own messages come back through nothing, but be explicit.
+    # The bot's own messages need no gate, but be explicit.
     if chat is not None and user.id == client.me.id:
         return True
 
@@ -313,10 +297,6 @@ async def _bot_command_reviewed(client, event) -> bool:
     return await bot2bot.request_review(user, _event_parts(event)[0], event)
 
 
-# <=======================================================================================================>
-
-
-# <================================================== PERMISSIONS ================================================>
 async def _sender_is_not_admin(event) -> bool:
     """True if sender is not an administrator."""
     from Mikobot.plugins.helper_funcs import chat_status
@@ -353,8 +333,8 @@ async def _denial(client, event, spec, status):
         if user_id in status.DEV_USERS:
             return None
         return (
-            "This is a developer restricted command. "
-            "You do not have permissions to run this.",
+            "This is a developer-restricted command. "
+            "You do not have permission to run this.",
             status.DEL_CMDS,
         )
     if kind == "sudo_plus":
@@ -372,7 +352,7 @@ async def _denial(client, event, spec, status):
         if status.is_whitelist_plus(chat, user_id):
             return None
         return (
-            f"You don't have access to use this.\nVisit @{status.SUPPORT_CHAT}",
+            f"You don't have access to this.\nVisit @{status.SUPPORT_CHAT}",
             False,
         )
 
@@ -390,12 +370,12 @@ async def _denial(client, event, spec, status):
     if spec["only_owner"]:
         if status.is_owner(user_member) or user_id in status.DEV_USERS:
             return None
-        return ("Only chat owner can perform this action.", False)
+        return ("Only the chat owner can perform this action.", False)
     if spec["only_dev"]:
         if user_id in status.DEV_USERS:
             return None
         return (
-            "Hey little kid\nWho the hell are you to say me what to execute on my server?",
+            "Hey little kid\nWho the hell are you to tell me what to execute on my server?",
             False,
         )
     if spec["only_sudo"]:
@@ -421,11 +401,11 @@ async def _denial(client, event, spec, status):
             return (f"I don't have permission to {permission}.", False)
 
     if spec["is_bot"] and not status.is_admin(bot_member):
-        return ("I'm not admin here.", False)
+        return ("I'm not an admin here.", False)
     if spec["is_user"] and not (
         is_anon_admin or status.is_admin(user_member) or user_id in status.DRAGONS
     ):
-        return ("You are not admin here.", False)
+        return ("You are not an admin here.", False)
     return None
 
 
@@ -465,6 +445,3 @@ async def _member(client, chat, user_id):
         return member
     except RPCError, ValueError:
         return None
-
-
-# <=======================================================================================================>
