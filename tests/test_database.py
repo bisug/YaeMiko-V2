@@ -16,6 +16,41 @@ def test_base_models_defined():
     assert hasattr(BASE, "metadata")
 
 
+def test_sql_modules_survive_their_first_import():
+    """A module that fails mid-import is dropped but leaves its tables behind.
+
+    The raid reset queried raid_mode during import, before create_all() had
+    made the table on a fresh PostgreSQL. Python then removed welcome_sql from
+    sys.modules while its Welcome table stayed on the shared metadata, so the
+    next import raised "Table 'welcome_pref' is already defined" and the rest
+    of the schema was never created.
+    """
+    import sys
+
+    import Database.sql  # noqa: F401
+
+    for name in ("welcome_sql", "captcha_sql", "sangmata_sql"):
+        assert f"Database.sql.{name}" in sys.modules, (
+            f"Database.sql.{name} was dropped during import"
+        )
+
+
+def test_raid_reset_runs_after_table_creation():
+    """The reset needs raid_mode to exist, so it cannot run at import time."""
+    welcome_tree = ast.parse(
+        (ROOT / "Database/sql/welcome_sql.py").read_text(encoding="utf-8")
+    )
+    at_import = [
+        node
+        for node in welcome_tree.body
+        if isinstance(node, ast.Expr)
+        and isinstance(node.value, ast.Call)
+        and getattr(node.value.func, "id", "") == "_ResetRaidOnRestart"
+    ]
+    assert not at_import, "raid reset must not be called at module import"
+    assert "welcome_sql._ResetRaidOnRestart()" in SQL_INIT.read_text(encoding="utf-8")
+
+
 def test_guard_structure_and_discards():
     source = SQL_INIT.read_text(encoding="utf-8")
     assert "def unit_of_work_guard" in source
