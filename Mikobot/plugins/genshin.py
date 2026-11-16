@@ -13,21 +13,7 @@ from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    InputMediaPhoto,
-    InputRichBlockDivider,
-    InputRichBlockList,
-    InputRichBlockListItem,
-    InputRichBlockParagraph,
-    InputRichBlockPhoto,
-    InputRichBlockPullQuotation,
-    InputRichBlockSectionHeading,
-    InputRichMessage,
     Message,
-    RichBlockCaption,
-    RichTextBold,
-    RichTextCode,
-    RichTextItalic,
-    RichTextUnderline,
 )
 
 from Mikobot import app
@@ -38,7 +24,7 @@ from Mikobot.state import state
 
 # <================================================= CONSTANTS =================================================>
 API = "https://genshin-api.deve.sh"
-REQUEST_TIMEOUT = 20
+REQUEST_TIMEOUT = 15
 LOGGER = logging.getLogger(__name__)
 
 PAGE_SIZE = 6
@@ -66,11 +52,11 @@ VISION_EMOJI = {
 }
 
 ARTIFACT_PIECES = (
-    ("flower-of-life", "Flower"),
-    ("plume-of-death", "Plume"),
-    ("sands-of-eon", "Sands"),
-    ("goblet-of-eonothem", "Goblet"),
-    ("circlet-of-logos", "Circlet"),
+    ("flower", "Flower", "🌸"),
+    ("plume", "Plume", "🪶"),
+    ("sands", "Sands", "⏳"),
+    ("goblet", "Goblet", "🍷"),
+    ("circlet", "Circlet", "👑"),
 )
 
 
@@ -135,14 +121,14 @@ def _cut(text, limit: int) -> str:
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
 
-def _lines(text, limit: int = 220) -> str:
+def _lines(text, limit: int = 260) -> str:
     """Flatten a multi-line description into one readable block."""
     return _cut(" ".join(str(text or "").split()), limit)
 
 
-def html_escape(text: str) -> str:
+def html_escape(text: object) -> str:
     """Escapes for plain-HTML notices."""
-    return html.escape(str(text))
+    return html.escape(str(text or ""))
 
 
 def _rarity_stars(value) -> str:
@@ -238,11 +224,8 @@ async def _search(kind: str) -> list:
     return records
 
 
-_SEARCH_ALL_CACHE: tuple[float, list] | None = None
-
-
 async def _search_all(query: str) -> list:
-    """Search across collections."""
+    """Search across all supported collections."""
     query_clean = query.casefold().strip()
 
     if len(query_clean) >= 2:
@@ -343,7 +326,7 @@ def _match(entries: list, query: str) -> list:
 
     def rank(entry) -> int:
         name = str(entry.get("name", "")).casefold()
-        ident = str(entry.get("id", "")).casefold()
+        ident = str(entry.get("key") or entry.get("id", "")).casefold()
         if name == query or ident == query:
             return 0
         if name.startswith(query) or ident.startswith(query):
@@ -375,60 +358,6 @@ def _paginate(items: list, page: int):
     page = min(max(1, page), total)
     start = (page - 1) * PAGE_SIZE
     return items[start : start + PAGE_SIZE], page, total
-
-
-# Rich text formatting helpers
-def _t(value) -> str:
-    return _lines(value, 900)
-
-
-def _bold(value) -> list:
-    return [RichTextBold(text=_t(value))]
-
-
-def _italic(value) -> list:
-    return [RichTextItalic(text=_t(value))]
-
-
-def _code(value) -> list:
-    return [RichTextCode(text=_t(value))]
-
-
-def _field(label: str, value) -> list | None:
-    if value in (None, "", [], {}):
-        return None
-    return [
-        RichTextUnderline(text=f"{label}: "),
-        _t(value),
-        "  ",
-    ]
-
-
-def _bullet(label: str, value) -> InputRichBlockListItem | None:
-    if value in (None, "", [], {}):
-        return None
-    return InputRichBlockListItem(
-        blocks=[
-            InputRichBlockParagraph(
-                text=[RichTextUnderline(text=f"{label} — "), _t(value)]
-            )
-        ],
-    )
-
-
-def _list_item(label: str, blocks: list) -> InputRichBlockListItem:
-    if not label or not blocks:
-        return InputRichBlockListItem(blocks=blocks)
-    first, *rest = blocks
-    runs = getattr(first, "text", None)
-    if not isinstance(runs, list):
-        return InputRichBlockListItem(blocks=blocks)
-    return InputRichBlockListItem(
-        blocks=[
-            InputRichBlockParagraph(text=[RichTextUnderline(text=f"{label} "), *runs]),
-            *rest,
-        ]
-    )
 
 
 def _image_url(entry: dict, kind: str, slot: str = "") -> str | None:
@@ -467,48 +396,6 @@ def _image_url(entry: dict, kind: str, slot: str = "") -> str | None:
     return f"{API}/{kind}/{record_id}/{entity.image}"
 
 
-# <=======================================================================================================>
-
-
-# <=============================================== RENDERING ===============================================>
-def _heading(text: str, size: int = 2):
-    return InputRichBlockSectionHeading(text=text, size=size)
-
-
-def _para(runs):
-    return InputRichBlockParagraph(text=runs)
-
-
-def _divider():
-    return InputRichBlockDivider()
-
-
-def _quote(runs):
-    return InputRichBlockPullQuotation(text=runs)
-
-
-def _rarity_line(record: dict) -> list | None:
-    value = record.get("rarity", record.get("max_rarity"))
-    stars = _rarity_stars(value)
-    if not stars:
-        return None
-    return [RichTextBold(text=stars)]
-
-
-def _runlist(items) -> list:
-    return [run for group in items if group for run in group]
-
-
-def _photo_block(entry: dict, kind: str):
-    url = _image_url(entry, kind)
-    if not url:
-        return None
-    return InputRichBlockPhoto(
-        photo=InputMediaPhoto(media=url),
-        caption=RichBlockCaption(text=str(entry.get("name", ""))),
-    )
-
-
 async def _character_names() -> dict:
     global _CHARACTER_NAME_CACHE
     if (
@@ -524,141 +411,127 @@ async def _character_names() -> dict:
     _CHARACTER_NAME_CACHE = {"expires": time.monotonic() + ROSTER_TTL, "data": names}
     return names
 
-
-def _name_blocks(entry: dict, emoji: str, kind: str = "") -> list:
-    photo = _photo_block(entry, kind) if kind else None
-    return [
-        photo,
-        _heading(f"{emoji} {entry.get('name', '?')}", 2),
-        _para(_rarity_line(entry) or _t(entry.get("name"))),
-        _divider(),
-    ]
+# <=======================================================================================================>
 
 
-def _field_para(fields) -> object | None:
-    runs = _runlist(fields)
-    return _para(runs) if runs else None
-
-
-def _talent_list(records: list, heading: str) -> list:
-    kept = [r for r in records if isinstance(r, dict) and r.get("name")]
-    if not kept:
-        return []
-    items = [
-        _list_item(
-            str(r.get("unlock") or r.get("level") or ""),
-            [_para(_bold(r.get("name"))), _para(_italic(r.get("description")))],
-        )
-        for r in kept
-    ]
-    return [_heading(heading, 3), InputRichBlockList(items=items)]
-
-
+# <=============================================== RENDERING ===============================================>
 def _character_keyboard(char_id: str, active_tab: str) -> InlineKeyboardMarkup:
     """Tab buttons for character cards."""
 
     def tab_btn(tab_key: str, label: str):
         display = f"• {label} •" if tab_key == active_tab else label
         return InlineKeyboardButton(
-            text=display, callback_data=f"gchar_tab|{char_id}|{tab_key}"[:64]
+            text=display, callback_data=f"gi:tab:{char_id}:{tab_key}"[:64]
         )
 
     return InlineKeyboardMarkup(
         [
             [tab_btn("bio", "📜 Profile"), tab_btn("talents", "⚔️ Talents")],
             [tab_btn("consts", "⭐ Consts"), tab_btn("ascend", "💎 Ascend")],
-            [InlineKeyboardButton(text="✕ Close", callback_data="gclose|characters")],
+            [InlineKeyboardButton(text="✕ Close", callback_data="gi:close:characters")],
         ]
     )
 
 
 def _card_close(kind: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
-        [[InlineKeyboardButton(text="✕ Close", callback_data=f"gclose|{kind}")]]
+        [[InlineKeyboardButton(text="✕ Close", callback_data=f"gi:close:{kind}")]]
     )
 
 
 def _render_character(
     entry: dict, tab: str = "bio"
-) -> tuple[list, InlineKeyboardMarkup]:
+) -> tuple[str, InlineKeyboardMarkup, str | None]:
     char_id = str(entry.get("key") or entry.get("id", ""))
     vision_key = str(entry.get("vision_key") or entry.get("vision", "")).upper()
-    emoji = VISION_EMOJI.get(vision_key, "")
-    name = entry.get("name", "?")
+    emoji = VISION_EMOJI.get(vision_key, "🧝")
+    name = html_escape(entry.get("name", "Unknown"))
+    stars = _rarity_stars(entry.get("rarity", 5))
+    star_str = f" {stars}" if stars else ""
+    title = html_escape(entry.get("title", ""))
+    img_url = _image_url(entry, "characters")
 
-    blocks = []
-    photo = _photo_block(entry, "characters")
-    if photo:
-        blocks.append(photo)
+    lines = [f"{emoji} <b>{name}</b>{star_str}"]
+    if title:
+        lines.append(f"<i>{title}</i>")
+    lines.append("")
 
     if tab == "bio":
-        blocks += [
-            _heading(f"{emoji} {name}", 2),
-            _para(_rarity_line(entry) or _t(name)),
-            _divider(),
-            _field_para(
-                [
-                    _field("Title", entry.get("title")),
-                    _field("Vision", entry.get("vision")),
-                    _field("Weapon", entry.get("weapon")),
-                    _field("Gender", entry.get("gender")),
-                    _field("Nation", entry.get("nation")),
-                    _field("Affiliation", entry.get("affiliation")),
-                    _field("Constellation", entry.get("constellation")),
-                    _field("Birthday", _format_birthday(entry.get("birthday"))),
-                    _field("Released", entry.get("release")),
-                ]
-            ),
+        lines.append("<b>Profile</b>")
+        fields = [
+            ("Vision", f"{html_escape(entry.get('vision', ''))} {emoji}".strip()),
+            ("Weapon", html_escape(entry.get("weapon", ""))),
+            ("Nation", html_escape(entry.get("nation", ""))),
+            ("Affiliation", html_escape(entry.get("affiliation", ""))),
+            ("Constellation", html_escape(entry.get("constellation", ""))),
+            ("Birthday", _format_birthday(entry.get("birthday"))),
+            ("Gender", html_escape(entry.get("gender", ""))),
         ]
-        if entry.get("description"):
-            blocks.append(_quote(_italic(entry["description"])))
+        for label, val in fields:
+            if val:
+                lines.append(f"• <b>{label}:</b> {val}")
+
+        desc = entry.get("description")
+        if desc:
+            lines.append("")
+            lines.append("<b>Description</b>")
+            lines.append(f"<blockquote>{html_escape(_cut(desc, 600))}</blockquote>")
 
     elif tab == "talents":
-        blocks += [
-            _heading(f"{emoji} {name} · Talents", 2),
-            _divider(),
+        lines.append("⚔️ <b>Combat Talents</b>")
+        skills = [
+            s
+            for s in (entry.get("skillTalents") or [])
+            if isinstance(s, dict) and s.get("name")
         ]
-        talents = _talent_list(entry.get("skillTalents") or [], "Combat Talents")
-        passives = _talent_list(entry.get("passiveTalents") or [], "Passive Talents")
-        if talents:
-            blocks += talents
+        if skills:
+            for s in skills:
+                s_name = html_escape(s.get("name", ""))
+                s_unlock = html_escape(s.get("unlock", ""))
+                s_desc = html_escape(_lines(s.get("description", ""), 300))
+                tag = f" <code>[{s_unlock}]</code>" if s_unlock else ""
+                lines.append(f"\n🔹 <b>{s_name}</b>{tag}")
+                if s_desc:
+                    lines.append(f"<blockquote>{s_desc}</blockquote>")
+        else:
+            lines.append("<i>No combat talents available.</i>")
+
+        passives = [
+            p
+            for p in (entry.get("passiveTalents") or [])
+            if isinstance(p, dict) and p.get("name")
+        ]
         if passives:
-            blocks += passives
-        if not talents and not passives:
-            blocks.append(_para([RichTextItalic(text="No talent data available.")]))
+            lines.append("\n✨ <b>Passive Talents</b>")
+            for p in passives:
+                p_name = html_escape(p.get("name", ""))
+                p_unlock = html_escape(p.get("unlock", ""))
+                p_desc = html_escape(_lines(p.get("description", ""), 250))
+                tag = f" <code>[{p_unlock}]</code>" if p_unlock else ""
+                lines.append(f"\n🔸 <b>{p_name}</b>{tag}")
+                if p_desc:
+                    lines.append(f"<blockquote>{p_desc}</blockquote>")
 
     elif tab == "consts":
-        blocks += [
-            _heading(f"{emoji} {name} · Constellations", 2),
-            _divider(),
+        lines.append("⭐ <b>Constellations</b>\n")
+        consts = [
+            c
+            for c in (entry.get("constellations") or [])
+            if isinstance(c, dict) and c.get("name")
         ]
-        consts = [c for c in (entry.get("constellations") or []) if isinstance(c, dict)]
         if consts:
-            blocks.append(
-                InputRichBlockList(
-                    items=[
-                        _list_item(
-                            f"C{c.get('level', '')}",
-                            [
-                                _para(_bold(c.get("name"))),
-                                _para(_italic(c.get("description"))),
-                            ],
-                        )
-                        for c in consts
-                        if c.get("name")
-                    ]
-                )
-            )
+            for c in consts:
+                c_name = html_escape(c.get("name", ""))
+                c_lvl = c.get("level", "")
+                c_desc = html_escape(_lines(c.get("description", ""), 280))
+                lines.append(f"<b>C{c_lvl}: {c_name}</b>")
+                if c_desc:
+                    lines.append(f"<blockquote>{c_desc}</blockquote>")
         else:
-            blocks.append(
-                _para([RichTextItalic(text="No constellation data available.")])
-            )
+            lines.append("<i>No constellation data available.</i>")
 
     elif tab == "ascend":
-        blocks += [
-            _heading(f"{emoji} {name} · Ascension", 2),
-            _divider(),
-        ]
+        lines.append("💎 <b>Ascension Costs</b>\n")
         costs = entry.get("ascension_costs")
         materials = entry.get("ascension_materials")
         found = False
@@ -667,155 +540,174 @@ def _render_character(
                 if not isinstance(c, dict):
                     continue
                 mat_list = c.get("materials") or []
-                parts = [
-                    f"{m.get('name') or str(m.get('slug', '')).replace('-', ' ').title()} x{m.get('quantity', 0)}"
+                mat_parts = [
+                    f"• {html_escape(m.get('name') or str(m.get('slug', '')).replace('-', ' ').title())} x{m.get('quantity', 0)}"
                     for m in mat_list
                     if isinstance(m, dict) and (m.get("slug") or m.get("name"))
                 ]
                 if c.get("mora"):
-                    parts.append(f"Mora x{c['mora']:,}")
-                summary = ", ".join(parts)
-                if summary:
+                    mat_parts.append(f"• 💰 Mora: {c['mora']:,}")
+                if mat_parts:
                     found = True
-                    phase_label = f"Phase {c.get('phase', '')} (Lv. {c.get('max_level', '')})"
-                    blocks.append(
-                        _para(
-                            [
-                                RichTextUnderline(text=f"{phase_label}: "),
-                                _t(summary),
-                            ]
-                        )
-                    )
+                    phase_label = f"<b>Phase {c.get('phase', '')}</b> (Max Lv. {c.get('max_level', '')})"
+                    lines.append(phase_label)
+                    lines.extend(mat_parts)
+                    lines.append("")
         elif isinstance(materials, dict):
             for tier, tier_costs in materials.items():
                 if not isinstance(tier_costs, list):
                     continue
-                summary = ", ".join(
-                    f"{c.get('name')} x{c.get('value')}"
+                items_str = ", ".join(
+                    f"{html_escape(c.get('name'))} x{c.get('value')}"
                     for c in tier_costs
                     if isinstance(c, dict) and c.get("name")
                 )
-                if summary:
+                if items_str:
                     found = True
-                    blocks.append(
-                        _para(
-                            [
-                                RichTextUnderline(text=f"{tier.title()}: "),
-                                _t(summary),
-                            ]
-                        )
-                    )
+                    lines.append(f"• <b>{html_escape(tier.title())}:</b> {items_str}")
         if not found:
-            blocks.append(
-                _para([RichTextItalic(text="No ascension material data available.")])
-            )
+            lines.append("<i>No ascension material data available.</i>")
 
     markup = _character_keyboard(char_id, tab)
-    return [b for b in blocks if b is not None], markup
+    return "\n".join(lines).strip(), markup, img_url
 
 
-def _render_weapon(entry: dict) -> list:
-    blocks = _name_blocks(entry, "⚔️", "weapons")
-    blocks.append(
-        _field_para(
-            [
-                _field("Type", entry.get("type")),
-                _field("Base ATK", entry.get("base_atk", entry.get("baseAttack"))),
-                _field("Substat", entry.get("sub_stat", entry.get("subStat"))),
-                _field("Obtained", entry.get("location")),
-            ]
-        )
-    )
-    passive_name = entry.get("passive_name") or entry.get("passiveName")
-    passive_desc = entry.get("passive_desc") or entry.get("passiveDesc")
-    if passive_name:
-        blocks.append(_heading(f"Passive: {passive_name}", 3))
-        if passive_desc:
-            blocks.append(_para(_italic(passive_desc)))
-    return [b for b in blocks if b is not None]
+def _render_weapon(entry: dict) -> tuple[str, InlineKeyboardMarkup, str | None]:
+    name = html_escape(entry.get("name", "Unknown"))
+    stars = _rarity_stars(entry.get("rarity", 5))
+    star_str = f" {stars}" if stars else ""
+    img_url = _image_url(entry, "weapons")
+
+    lines = [f"⚔️ <b>{name}</b>{star_str}\n"]
+
+    w_type = entry.get("type")
+    base_atk = entry.get("base_atk", entry.get("baseAttack"))
+    sub_stat = entry.get("sub_stat", entry.get("subStat"))
+    loc = entry.get("location")
+
+    lines.append("<b>Details</b>")
+    if w_type:
+        lines.append(f"• <b>Type:</b> {html_escape(w_type)}")
+    if base_atk:
+        lines.append(f"• <b>Base ATK:</b> {html_escape(base_atk)}")
+    if sub_stat:
+        lines.append(f"• <b>Substat:</b> {html_escape(sub_stat)}")
+    if loc:
+        lines.append(f"• <b>Source:</b> {html_escape(loc)}")
+
+    p_name = entry.get("passive_name") or entry.get("passiveName")
+    p_desc = entry.get("passive_desc") or entry.get("passiveDesc")
+    if p_name:
+        lines.append(f"\n<b>Passive: {html_escape(p_name)}</b>")
+        if p_desc:
+            lines.append(f"<blockquote>{html_escape(_cut(p_desc, 500))}</blockquote>")
+
+    desc = entry.get("description")
+    if desc:
+        lines.append(f"\n<i>{html_escape(_lines(desc, 300))}</i>")
+
+    return "\n".join(lines).strip(), _card_close("weapons"), img_url
 
 
-def _render_artifact(entry: dict) -> list:
-    blocks = _name_blocks(entry, "💍", "artifacts")
-    items = []
+def _render_artifact(entry: dict) -> tuple[str, InlineKeyboardMarkup, str | None]:
+    name = html_escape(entry.get("name", "Unknown"))
+    stars = _rarity_stars(entry.get("rarity", 5))
+    star_str = f" {stars}" if stars else ""
+    img_url = _image_url(entry, "artifacts")
+
+    lines = [f"💍 <b>{name}</b>{star_str}\n"]
+
     bonus = entry.get("bonus")
-    if isinstance(bonus, dict):
+    lines.append("<b>Set Bonuses</b>")
+    if isinstance(bonus, dict) and bonus:
         for k, v in sorted(bonus.items()):
-            b_item = _bullet(k.upper(), v)
-            if b_item is not None:
-                items.append(b_item)
+            label = k.upper().replace("PC", "-Piece")
+            lines.append(f"• <b>{label}:</b> {html_escape(v)}")
     else:
         for k in ("2-piece", "4-piece", "1-piece"):
-            b_item = _bullet(k, entry.get(f"{k}_bonus"))
-            if b_item is not None:
-                items.append(b_item)
-    if items:
-        blocks.append(InputRichBlockList(items=items))
-    return [b for b in blocks if b is not None]
+            val = entry.get(f"{k}_bonus")
+            if val:
+                lines.append(f"• <b>{k.title()}:</b> {html_escape(val)}")
+
+    pieces = entry.get("pieces")
+    if isinstance(pieces, dict) and pieces:
+        lines.append("\n<b>Artifact Pieces</b>")
+        piece_icons = {
+            "flower": "🌸",
+            "plume": "🪶",
+            "sands": "⏳",
+            "goblet": "🍷",
+            "circlet": "👑",
+        }
+        for k, p_data in pieces.items():
+            if isinstance(p_data, dict) and p_data.get("name"):
+                icon = piece_icons.get(k, "•")
+                p_label = k.title()
+                p_name = html_escape(p_data["name"])
+                lines.append(f"{icon} <b>{p_label}:</b> {p_name}")
+
+    return "\n".join(lines).strip(), _card_close("artifacts"), img_url
 
 
-def _render_nation(entry: dict) -> list:
-    blocks = _name_blocks(entry, "🗺️", "nations")
-    blocks.append(
-        _field_para(
-            [
-                _field("Element", entry.get("element")),
-                _field("Archon", entry.get("archon")),
-                _field("Ruling Body", entry.get("controllingEntity")),
-            ]
-        )
-    )
-    return [b for b in blocks if b is not None]
+def _render_material(entry: dict) -> tuple[str, InlineKeyboardMarkup, str | None]:
+    name = html_escape(entry.get("name", "Unknown"))
+    stars = _rarity_stars(entry.get("rarity"))
+    star_str = f" {stars}" if stars else ""
+    img_url = _image_url(entry, "materials")
+
+    lines = [f"🪵 <b>{name}</b>{star_str}\n"]
+
+    category = str(entry.get("category", "")).replace("-", " ").title()
+    source = entry.get("source") or entry.get("region")
+    if isinstance(source, dict):
+        source = ", ".join(f"{k.title()}: {v}" for k, v in source.items() if v)
+
+    lines.append("<b>Details</b>")
+    if category:
+        lines.append(f"• <b>Category:</b> {html_escape(category)}")
+    if entry.get("type"):
+        lines.append(f"• <b>Type:</b> {html_escape(entry['type'])}")
+    if source:
+        lines.append(f"• <b>Source:</b> {html_escape(str(source))}")
+
+    users = entry.get("characters")
+    if not users and isinstance(entry.get("used_by"), dict):
+        users = entry["used_by"].get("characters")
+    if isinstance(users, list) and users:
+        user_names = [str(u).replace("-", " ").title() for u in users]
+        lines.append(f"• <b>Used By:</b> {html_escape(', '.join(user_names))}")
+
+    if entry.get("effect"):
+        lines.append(f"\n<b>Effect:</b> {html_escape(entry['effect'])}")
+
+    desc = entry.get("description")
+    if desc:
+        lines.append(f"\n<blockquote>{html_escape(_cut(desc, 500))}</blockquote>")
+
+    return "\n".join(lines).strip(), _card_close("materials"), img_url
 
 
-def _render_element(entry: dict) -> list:
-    emoji = VISION_EMOJI.get(str(entry.get("key", "")).upper(), "⚗️")
-    blocks = [
-        _photo_block(entry, "elements"),
-        _heading(f"{emoji} {entry.get('name', '?')}", 2),
-        _para(_code(entry.get("key", ""))),
-        _divider(),
-    ]
-    reactions = [r for r in (entry.get("reactions") or []) if isinstance(r, dict)]
-    items = []
-    for reaction in reactions:
-        name = str(reaction.get("name", "?"))
-        against = ", ".join(reaction.get("elements") or [])
-        runs = _bold(name)
-        if against:
-            runs.append(_t(f" — against {against}"))
-        if reaction.get("description"):
-            runs.append(". ")
-            runs.append(_italic(reaction["description"]))
-        items.append(InputRichBlockListItem(blocks=[_para(runs)]))
-    if items:
-        blocks.append(InputRichBlockList(items=items))
-    return [b for b in blocks if b is not None]
+def _render_enemy(entry: dict) -> tuple[str, InlineKeyboardMarkup, str | None]:
+    name = html_escape(entry.get("name", "Unknown"))
+    img_url = _image_url(entry, "enemies")
 
+    lines = [f"👹 <b>{name}</b>\n"]
+    lines.append("<b>Details</b>")
+    if entry.get("type"):
+        lines.append(f"• <b>Type:</b> {html_escape(entry['type'])}")
+    if entry.get("family"):
+        lines.append(f"• <b>Family:</b> {html_escape(entry['family'])}")
+    if entry.get("faction"):
+        lines.append(f"• <b>Faction:</b> {html_escape(entry['faction'])}")
+    if entry.get("region"):
+        lines.append(f"• <b>Region:</b> {html_escape(entry['region'])}")
 
-def _render_enemy(entry: dict) -> list:
-    blocks = [
-        _photo_block(entry, "enemies"),
-        _heading(f"👹 {entry.get('name', '?')}", 2),
-        _divider(),
-    ]
     elements = entry.get("elements")
-    elem_str = ", ".join(elements) if isinstance(elements, list) else (str(elements) if elements else None)
-    blocks.append(
-        _field_para(
-            [
-                _field("Type", entry.get("type")),
-                _field("Family", entry.get("family")),
-                _field("Faction", entry.get("faction")),
-                _field("Region", entry.get("region")),
-                _field("Elements", elem_str),
-                _field("Mora", entry.get("mora-gained")),
-            ]
-        )
-    )
-    description = entry.get("description")
-    if description and description != "N/A":
-        blocks.append(_quote(_italic(description)))
+    if isinstance(elements, list) and elements:
+        elem_parts = [
+            f"{e} {VISION_EMOJI.get(e.upper(), '')}".strip() for e in elements
+        ]
+        lines.append(f"• <b>Elements:</b> {html_escape(', '.join(elem_parts))}")
 
     drops = [
         d
@@ -823,204 +715,82 @@ def _render_enemy(entry: dict) -> list:
         if isinstance(d, dict) and (d.get("name") or d.get("slug"))
     ]
     if drops:
-        blocks.append(_heading("Drops", 3))
-        blocks.append(
-            InputRichBlockList(
-                items=[
-                    _list_item(
-                        _rarity_stars(d.get("rarity")) or "",
-                        [_para(_t(d.get("name") or str(d.get("slug", "")).replace("-", " ").title()))],
-                    )
-                    for d in drops
-                ]
+        lines.append("\n<b>Drops</b>")
+        for d in drops:
+            d_name = html_escape(
+                d.get("name") or str(d.get("slug", "")).replace("-", " ").title()
             )
-        )
+            d_stars = _rarity_stars(d.get("rarity"))
+            d_star_str = f" ({d_stars})" if d_stars else ""
+            lines.append(f"• {d_name}{d_star_str}")
 
-    artifacts = [
-        a
-        for a in (entry.get("artifacts") or [])
-        if isinstance(a, dict) and a.get("name")
-    ]
-    if artifacts:
-        blocks.append(_heading("Artifact sets", 3))
-        blocks.append(
-            InputRichBlockList(
-                items=[
-                    _list_item(
-                        str(a.get("rarity") or ""),
-                        [
-                            _para(_bold(a.get("name"))),
-                            _para(_italic(str(a.get("set", "")).strip() or "—")),
-                        ],
-                    )
-                    for a in artifacts
-                ]
-            )
-        )
+    desc = entry.get("description")
+    if desc and desc != "N/A":
+        lines.append(f"\n<blockquote>{html_escape(_cut(desc, 500))}</blockquote>")
 
-    elemental = [
-        e
-        for e in (entry.get("elemental-description") or [])
-        if isinstance(e, dict) and e.get("description")
-    ]
-    if elemental:
-        blocks.append(_heading("Elemental lore", 3))
-        blocks.append(
-            InputRichBlockList(
-                items=[
-                    _list_item(
-                        VISION_EMOJI.get(str(e.get("element", "")).upper(), ""),
-                        [_para(_italic(e["description"]))],
-                    )
-                    for e in elemental
-                ]
-            )
-        )
-    return [b for b in blocks if b is not None]
+    return "\n".join(lines).strip(), _card_close("enemies"), img_url
 
 
-def _render_domain(entry: dict) -> list:
-    blocks = [_heading(f"🏛️ {entry.get('name', '?')}", 2), _divider()]
-    blocks.append(
-        _field_para(
-            [
-                _field("Type", entry.get("type")),
-                _field("Nation", entry.get("nation")),
-                _field("Location", entry.get("location")),
-                _field(
-                    "Recommended",
-                    ", ".join(entry.get("recommendedElements") or []) or None,
-                ),
-            ]
-        )
-    )
-    if entry.get("description"):
-        blocks.append(_quote(_italic(entry["description"])))
-
-    rewards = [
-        r for r in (entry.get("rewards") or []) if isinstance(r, dict) and r.get("name")
-    ]
-    if rewards:
-        blocks.append(_heading("Rewards", 3))
-        blocks.append(
-            InputRichBlockList(
-                items=[
-                    _list_item(str(r.get("level") or ""), [_para(_t(r.get("name")))])
-                    for r in rewards
-                ]
-            )
-        )
-
-    tiers = [r for r in (entry.get("requirements") or []) if isinstance(r, dict)]
-    if tiers:
-        blocks.append(_heading("Unlock tiers", 3))
-        blocks.append(
-            InputRichBlockList(
-                items=[
-                    _list_item(
-                        f"AR {r.get('adventureRank', '—')}",
-                        [
-                            _para(
-                                [
-                                    _bold("Level "),
-                                    _t(str(r.get("recommendedLevel", "—"))),
-                                ]
-                            ),
-                            *[
-                                _para(_italic(str(disorder)))
-                                for disorder in r.get("leyLineDisorder") or []
-                                if str(disorder).strip()
-                                and str(disorder).strip() != "None"
-                            ],
-                        ],
-                    )
-                    for r in tiers
-                ]
-            )
-        )
-    return [b for b in blocks if b is not None]
+def _render_nation(entry: dict) -> tuple[str, InlineKeyboardMarkup, str | None]:
+    name = html_escape(entry.get("name", "Unknown"))
+    img_url = _image_url(entry, "nations")
+    lines = [f"🗺️ <b>{name}</b>\n"]
+    lines.append("<b>Details</b>")
+    if entry.get("element"):
+        lines.append(f"• <b>Element:</b> {html_escape(entry['element'])}")
+    if entry.get("archon"):
+        lines.append(f"• <b>Archon:</b> {html_escape(entry['archon'])}")
+    if entry.get("controllingEntity"):
+        lines.append(f"• <b>Ruling Body:</b> {html_escape(entry['controllingEntity'])}")
+    return "\n".join(lines).strip(), _card_close("nations"), img_url
 
 
-def _render_grouped(entry: dict, kind: str) -> list:
-    """Consumables and materials renderer."""
-    entity = ENTITY_TYPES.get(kind, EntityType(kind, kind.title(), "", "🪵"))
-    emoji = entity.emoji
-    blocks = []
-    photo = _photo_block(entry, kind)
-    if photo:
-        blocks.append(photo)
-    blocks.append(_heading(f"{emoji} {entry.get('name', '?')}", 2))
-    rarity = _rarity_line(entry)
-    if rarity:
-        blocks.append(_para(rarity))
-    category = str(entry.get("category", "")).replace("-", " ").title()
-    if category:
-        blocks.append(_para([RichTextItalic(text=_t(category))]))
-    blocks.append(_divider())
+def _render_element(entry: dict) -> tuple[str, InlineKeyboardMarkup, str | None]:
+    key = str(entry.get("key") or entry.get("id") or "").upper()
+    emoji = VISION_EMOJI.get(key, "⚗️")
+    name = html_escape(entry.get("name", "Unknown"))
+    img_url = _image_url(entry, "elements")
+    lines = [f"{emoji} <b>{name}</b>\n"]
+    reactions = [r for r in (entry.get("reactions") or []) if isinstance(r, dict)]
+    if reactions:
+        lines.append("<b>Reactions</b>")
+        for r in reactions:
+            r_name = html_escape(r.get("name", "?"))
+            against = ", ".join(r.get("elements") or [])
+            r_desc = html_escape(r.get("description", ""))
+            against_str = f" <i>(with {against})</i>" if against else ""
+            lines.append(f"• <b>{r_name}</b>{against_str}")
+            if r_desc:
+                lines.append(f"  <blockquote>{r_desc}</blockquote>")
+    return "\n".join(lines).strip(), _card_close("elements"), img_url
 
-    source = entry.get("source") or entry.get("region")
-    if isinstance(source, dict):
-        source = ", ".join(f"{k.title()}: {v}" for k, v in source.items() if v)
 
-    blocks.append(
-        _field_para(
-            [
-                _field("Type", entry.get("type")),
-                _field("Category", category if not entry.get("type") else None),
-                _field("Source", source),
-            ]
-        )
-    )
-
-    if entry.get("effect"):
-        blocks.append(_para(_bold("Effect")))
-        blocks.append(_para(_italic(entry["effect"])))
-    if entry.get("description"):
-        blocks.append(_quote(_italic(entry["description"])))
-
-    crafting = entry.get("craft") or entry.get("crafting") or entry.get("recipe")
-    if isinstance(crafting, list):
-        items = [
-            InputRichBlockListItem(
-                blocks=[
-                    _para(
-                        [
-                            _t(f"{c.get('item', c.get('name', ''))} "),
-                            _code(f"x{c.get('quantity', c.get('count', 1))}"),
-                        ]
-                    )
-                ]
-            )
-            for c in crafting
-            if isinstance(c, dict) and (c.get("item") or c.get("name"))
-        ]
-        if items:
-            blocks.append(_heading("Crafting", 3))
-            blocks.append(InputRichBlockList(items=items))
-
-    users = entry.get("characters")
-    if not users and isinstance(entry.get("used_by"), dict):
-        users = entry["used_by"].get("characters")
-    if isinstance(users, list) and users:
-        user_names = [str(u).replace("-", " ").title() for u in users]
-        blocks.append(_heading("Used by", 3))
-        blocks.append(_para(_italic(", ".join(user_names))))
-    return [b for b in blocks if b is not None]
+def _render_domain(entry: dict) -> tuple[str, InlineKeyboardMarkup, str | None]:
+    name = html_escape(entry.get("name", "Unknown"))
+    lines = [f"🏛️ <b>{name}</b>\n"]
+    lines.append("<b>Details</b>")
+    if entry.get("type"):
+        lines.append(f"• <b>Type:</b> {html_escape(entry['type'])}")
+    if entry.get("nation"):
+        lines.append(f"• <b>Nation:</b> {html_escape(entry['nation'])}")
+    if entry.get("location"):
+        lines.append(f"• <b>Location:</b> {html_escape(entry['location'])}")
+    desc = entry.get("description")
+    if desc:
+        lines.append(f"\n<blockquote>{html_escape(_cut(desc, 500))}</blockquote>")
+    return "\n".join(lines).strip(), _card_close("domains"), None
 
 
 RENDERERS = {
     "characters": lambda e: _render_character(e, "bio"),
-    "weapons": lambda e: (_render_weapon(e), _card_close("weapons")),
-    "artifacts": lambda e: (_render_artifact(e), _card_close("artifacts")),
-    "nations": lambda e: (_render_nation(e), _card_close("nations")),
-    "elements": lambda e: (_render_element(e), _card_close("elements")),
-    "enemies": lambda e: (_render_enemy(e), _card_close("enemies")),
-    "domains": lambda e: (_render_domain(e), _card_close("domains")),
-    "consumables": lambda e: (
-        _render_grouped(e, "consumables"),
-        _card_close("consumables"),
-    ),
-    "materials": lambda e: (_render_grouped(e, "materials"), _card_close("materials")),
+    "weapons": _render_weapon,
+    "artifacts": _render_artifact,
+    "materials": _render_material,
+    "enemies": _render_enemy,
+    "nations": _render_nation,
+    "elements": _render_element,
+    "domains": _render_domain,
+    "consumables": _render_material,
 }
 
 
@@ -1029,7 +799,7 @@ def _format_list_text(
 ) -> str:
     """HTML message for search lists so edits happen in-place without flicker."""
     return (
-        f'<b>{title}</b> · <i>{total_count} match(es) for "{html_escape(query)}"</i>\n'
+        f"<b>{title}</b> · <i>{total_count} match(es) for \"{html_escape(query)}\"</i>\n"
         f"Page {page} of {total_pages}\n\n"
         f"<i>Tap an item to view details:</i>"
     )
@@ -1057,7 +827,7 @@ def _list_keyboard(
         item_buttons.append(
             [
                 InlineKeyboardButton(
-                    text=label, callback_data=f"gview|{item_kind}|{item_id}"[:64]
+                    text=label, callback_data=f"gi:view:{item_kind}:{item_id}"[:64]
                 )
             ]
         )
@@ -1068,19 +838,19 @@ def _list_keyboard(
         next_page = page + 1 if page < total_pages else 1
 
         def pg_cb(target_pg: int) -> str:
-            head = f"gpage|{kind}|{target_pg}|"
+            head = f"gi:page:{kind}:{target_pg}:"
             room = max(0, 64 - len(head.encode()))
             return head + query.encode()[:room].decode(errors="ignore")
 
         nav_row.append(InlineKeyboardButton(text="◁", callback_data=pg_cb(prev_page)))
         nav_row.append(
             InlineKeyboardButton(
-                text=f"{page}/{total_pages}", callback_data=f"gnop|{kind}"
+                text=f"{page}/{total_pages}", callback_data=f"gi:nop:{kind}"
             )
         )
         nav_row.append(InlineKeyboardButton(text="▷", callback_data=pg_cb(next_page)))
 
-    close_btn = [InlineKeyboardButton(text="✕ Close", callback_data=f"gclose|{kind}")]
+    close_btn = [InlineKeyboardButton(text="✕ Close", callback_data=f"gi:close:{kind}")]
 
     keyboard = item_buttons
     if nav_row:
@@ -1088,79 +858,43 @@ def _list_keyboard(
     keyboard.append(close_btn)
     return InlineKeyboardMarkup(keyboard)
 
-
 # <=======================================================================================================>
 
 
 # <================================================== SENDING ================================================>
-async def _send_rich(
-    chat_id: int, blocks: list, reply_markup=None, thread_id: int = None
+async def _send_card(
+    chat_id: int,
+    text: str,
+    image_url: str | None = None,
+    reply_markup: InlineKeyboardMarkup | None = None,
+    thread_id: int | None = None,
 ):
-    """Send a rich message, falling back to plain text if unsupported."""
-    rich = InputRichMessage(blocks=blocks)
-    try:
-        return await app.send_rich_message(
-            chat_id,
-            rich,
-            reply_markup=reply_markup,
-            message_thread_id=thread_id,
-        )
-    except RPCError as err:
-        LOGGER.debug("Rich message unavailable (%s), falling back to text", err)
+    """Deliver a card: as a photo with caption if an image URL exists, else HTML text."""
+    if image_url:
         try:
-            return await app.send_message(
-                chat_id,
-                _blocks_to_text(blocks),
+            return await app.send_photo(
+                chat_id=chat_id,
+                photo=image_url,
+                caption=text,
                 reply_markup=reply_markup,
                 message_thread_id=thread_id,
+                parse_mode=ParseMode.HTML,
             )
-        except RPCError:
-            LOGGER.debug("Could not deliver a genshin result", exc_info=True)
-            return None
+        except RPCError as err:
+            LOGGER.debug("Photo send failed (%s), falling back to text", err)
 
-
-def _blocks_to_text(blocks: list) -> str:
-    lines = []
-    for block in blocks:
-        if isinstance(block, InputRichBlockDivider):
-            lines.append("———")
-            continue
-        photo = getattr(block, "photo", None)
-        if photo is not None:
-            media = getattr(photo, "media", None)
-            if isinstance(media, str):
-                lines.append(media)
-            continue
-        text = getattr(block, "text", None)
-        if text is not None:
-            lines.append(_flatten(text))
-            continue
-        items = getattr(block, "items", None)
-        if items is not None:
-            for item in items:
-                inner = " ".join(
-                    part
-                    for part in (
-                        _flatten(getattr(b, "text", ""))
-                        for b in getattr(item, "blocks", [])
-                    )
-                    if part
-                )
-                if inner:
-                    lines.append(inner)
-            continue
-    return "\n".join(x for x in lines if x)
-
-
-def _flatten(node) -> str:
-    if node is None:
-        return ""
-    if isinstance(node, str):
-        return node
-    if isinstance(node, (list, tuple)):
-        return "".join(_flatten(part) for part in node)
-    inner = getattr(node, "text", None)
-    return _flatten(inner) if inner is not None else ""
+    try:
+        return await app.send_message(
+            chat_id=chat_id,
+            text=text,
+            reply_markup=reply_markup,
+            message_thread_id=thread_id,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+        )
+    except RPCError:
+        LOGGER.debug("Could not deliver genshin message", exc_info=True)
+        return None
 
 
 async def _replace(status: Message, text: str):
@@ -1171,6 +905,8 @@ async def _replace(status: Message, text: str):
             await status.reply_text(text, parse_mode=ParseMode.HTML)
         except RPCError:
             LOGGER.debug("Could not deliver a genshin notice", exc_info=True)
+
+# <=======================================================================================================>
 
 
 # <================================================= COMMANDS ================================================>
@@ -1203,6 +939,7 @@ async def _universal_lookup(message: Message, query: str):
             reply_markup=markup,
             parse_mode=ParseMode.HTML,
             message_thread_id=thread_id,
+            disable_web_page_preview=True,
         )
         try:
             await status.delete()
@@ -1218,8 +955,8 @@ async def _universal_lookup(message: Message, query: str):
                 record = detail
         except LOOKUP_ERRORS:
             pass
-        blocks, markup = RENDERERS[kind](record)
-        sent = await _send_rich(message.chat.id, blocks, markup, thread_id)
+        text, markup, img_url = RENDERERS[kind](record)
+        sent = await _send_card(message.chat.id, text, img_url, markup, thread_id)
         if sent is not None:
             try:
                 await status.delete()
@@ -1276,6 +1013,7 @@ async def _lookup(message: Message, kind: str):
             reply_markup=markup,
             parse_mode=ParseMode.HTML,
             message_thread_id=thread_id,
+            disable_web_page_preview=True,
         )
         try:
             await status.delete()
@@ -1290,8 +1028,8 @@ async def _lookup(message: Message, kind: str):
                 record = detail
         except LOOKUP_ERRORS:
             pass
-        blocks, markup = RENDERERS[kind](record)
-        sent = await _send_rich(message.chat.id, blocks, markup, thread_id)
+        text, markup, img_url = RENDERERS[kind](record)
+        sent = await _send_card(message.chat.id, text, img_url, markup, thread_id)
         if sent is not None:
             try:
                 await status.delete()
@@ -1370,35 +1108,30 @@ async def genshin_element(client, message: Message):
 
 
 # <================================================= CALLBACKS ================================================>
-@on_callback(filters.regex(r"^gview\|"), chained=True)
+@on_callback(filters.regex(r"^gi:view:"), chained=True)
 async def genshin_view_item(client, query: CallbackQuery):
     """Open item details card directly when tapped from list."""
-    parts = (query.data or "").split("|", 2)
-    if len(parts) != 3 or parts[1] not in ENTITY_TYPES:
+    parts = (query.data or "").split(":", 3)
+    if len(parts) != 4 or parts[2] not in ENTITY_TYPES:
         await query.answer("This button is out of date.", show_alert=True)
         return
 
-    _, kind, item_id = parts
-    entity = ENTITY_TYPES[kind]
+    _, _, kind, item_id = parts
+    await query.answer()
 
-    try:
-        record = await _fetch_detail(kind, item_id)
-        if not record:
-            entries = await _search(kind)
-            record = next(
-                (e for e in entries if str(e.get("key") or e.get("id")) == item_id),
-                None,
-            )
-    except LOOKUP_ERRORS as err:
-        LOGGER.warning("Genshin view item failed: %s", err)
-        await query.answer("Could not load item details.", show_alert=True)
-        return
+    record = await _fetch_detail(kind, item_id)
+    if not record:
+        entries = await _search(kind)
+        record = next(
+            (e for e in entries if str(e.get("key") or e.get("id")) == item_id),
+            None,
+        )
 
     if not record:
         await query.answer("Item details not found.", show_alert=True)
         return
 
-    blocks, markup = RENDERERS[kind](record)
+    text, markup, img_url = RENDERERS[kind](record)
     thread_id = query.message.message_thread_id if query.message.chat.is_forum else None
 
     try:
@@ -1406,71 +1139,71 @@ async def genshin_view_item(client, query: CallbackQuery):
     except RPCError:
         pass
 
-    await _send_rich(query.message.chat.id, blocks, markup, thread_id)
-    await query.answer()
+    await _send_card(query.message.chat.id, text, img_url, markup, thread_id)
 
 
-@on_callback(filters.regex(r"^gchar_tab\|"), chained=True)
+@on_callback(filters.regex(r"^gi:tab:"), chained=True)
 async def genshin_character_tab(client, query: CallbackQuery):
-    """Switch character card tab (Profile, Talents, Constellations, Ascension)."""
-    parts = (query.data or "").split("|", 2)
-    if len(parts) != 3:
+    """Switch character card tab in-place instantly."""
+    parts = (query.data or "").split(":", 3)
+    if len(parts) != 4:
         await query.answer("This button is out of date.", show_alert=True)
         return
 
-    _, char_id, tab = parts
-    try:
-        record = await _fetch_detail("characters", char_id)
-    except LOOKUP_ERRORS as err:
-        LOGGER.warning("Genshin character tab fetch failed: %s", err)
-        await query.answer("Could not load character details.", show_alert=True)
-        return
+    _, _, char_id, tab = parts
+    # Acknowledge immediately to dismiss any loading spinner
+    await query.answer()
 
+    record = await _fetch_detail("characters", char_id)
     if not record:
         await query.answer("Character details not found.", show_alert=True)
         return
 
-    blocks, markup = _render_character(record, tab)
-    thread_id = query.message.message_thread_id if query.message.chat.is_forum else None
-
+    text, markup, _ = _render_character(record, tab)
+    msg = query.message
     try:
-        await query.message.delete()
-    except RPCError:
-        pass
+        if msg.photo:
+            await msg.edit_caption(
+                caption=text,
+                reply_markup=markup,
+                parse_mode=ParseMode.HTML,
+            )
+        else:
+            await msg.edit_text(
+                text=text,
+                reply_markup=markup,
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True,
+            )
+    except RPCError as err:
+        LOGGER.debug("Character tab in-place edit failed: %s", err)
 
-    await _send_rich(query.message.chat.id, blocks, markup, thread_id)
-    await query.answer()
 
-
-@on_callback(filters.regex(r"^gpage\|"), chained=True)
+@on_callback(filters.regex(r"^gi:page:"), chained=True)
 async def genshin_page(client, query: CallbackQuery):
     """Advance search list in-place without deleting message."""
-    parts = (query.data or "").split("|", 3)
-    if len(parts) != 4 or (parts[1] not in ENTITY_TYPES and parts[1] != "all"):
+    parts = (query.data or "").split(":", 4)
+    if len(parts) != 5 or (parts[2] not in ENTITY_TYPES and parts[2] != "all"):
         await query.answer("This button is out of date.", show_alert=True)
         return
 
-    _, kind, raw_page, term = parts
+    _, _, kind, raw_page, term = parts
     try:
         page = int(raw_page)
     except ValueError:
         await query.answer("This button is out of date.", show_alert=True)
         return
 
-    try:
-        if kind == "all":
-            matches = await _search_all(term)
-            title = "⛩ Genshin Search"
-        else:
-            matches = _match(await _search(kind), term)
-            title = f"{ENTITY_TYPES[kind].emoji} {ENTITY_TYPES[kind].label}s"
-    except LOOKUP_ERRORS as err:
-        LOGGER.warning("Genshin page turn failed: %s", err)
-        await query.answer("The lookup service is not responding.", show_alert=True)
-        return
+    await query.answer()
+
+    if kind == "all":
+        matches = await _search_all(term)
+        title = "⛩ Genshin Search"
+    else:
+        matches = _match(await _search(kind), term)
+        title = f"{ENTITY_TYPES[kind].emoji} {ENTITY_TYPES[kind].label}s"
 
     if not matches:
-        await query.answer("Nothing left to show.", show_alert=True)
         return
 
     shown, page, total = _paginate(matches, page)
@@ -1482,18 +1215,18 @@ async def genshin_page(client, query: CallbackQuery):
             text=text,
             reply_markup=markup,
             parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
         )
     except RPCError:
-        LOGGER.debug("Could not edit genshin page in place", exc_info=True)
-    await query.answer()
+        pass
 
 
-@on_callback(filters.regex(r"^gnop\|"), chained=True)
+@on_callback(filters.regex(r"^gi:nop:"), chained=True)
 async def genshin_noop(client, query: CallbackQuery):
     await query.answer()
 
 
-@on_callback(filters.regex(r"^(?:gclose|genshin_close)\|"), chained=True)
+@on_callback(filters.regex(r"^gi:close:"), chained=True)
 async def genshin_close(client, query: CallbackQuery):
     try:
         await query.message.delete()
@@ -1505,11 +1238,9 @@ async def genshin_close(client, query: CallbackQuery):
     await query.answer()
 
 
-@on_callback(filters.regex(r"^genshin\|"), chained=True)
-async def genshin_legacy_page(client, query: CallbackQuery):
-    await query.answer(
-        "This button is out of date. Please search again.", show_alert=True
-    )
+@on_callback(filters.regex(r"^(?:gview|gchar_tab|gpage|gnop|gclose|genshin)(?:\||:)"), chained=True)
+async def genshin_legacy_cb(client, query: CallbackQuery):
+    await query.answer("This button is out of date. Please search again.", show_alert=True)
 
 
 # <================================================= HELP ====================================================

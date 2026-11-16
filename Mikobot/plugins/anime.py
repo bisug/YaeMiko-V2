@@ -4231,7 +4231,7 @@ async def toggle_favourites_btn(client: Client, cq: CallbackQuery, cdata: dict):
         )
 
 
-@app.on_callback_query(filters.regex(pattern=r"(lsadd|lsupdt)_(.*)"))
+@app.on_callback_query(filters.regex(pattern=r"^(lsadd|lsupdt)_(.*)"))
 @check_user
 async def list_update_anilist_btn(client: Client, cq: CallbackQuery, cdata: dict):
     stts_ls = ["COMPLETED", "CURRENT", "PLANNING", "DROPPED", "PAUSED", "REPEATING"]
@@ -4306,7 +4306,7 @@ async def browse_btn(client: Client, cq: CallbackQuery, cdata: dict):
     await cq.answer()
 
 
-@app.on_callback_query(filters.regex(pattern=r"(lsas|lsus|dlt)_(.*)"))
+@app.on_callback_query(filters.regex(pattern=r"^(lsas|lsus|dlt)_(.*)"))
 @check_user
 async def update_anilist_btn(client: Client, cq: CallbackQuery, cdata: dict):
     query = cdata["data"].split("_")
@@ -4457,7 +4457,7 @@ async def update_anilist_btn(client: Client, cq: CallbackQuery, cdata: dict):
         )
 
 
-@app.on_callback_query(filters.regex(pattern=r"(desc|ls|char)_(.*)"))
+@app.on_callback_query(filters.regex(pattern=r"^(desc|ls|char)_(.*)"))
 @check_user
 async def additional_info_btn(client: Client, cq: CallbackQuery, cdata: dict):
     q = cdata["data"].split("_")

@@ -109,17 +109,22 @@ def test_render_character():
     }
 
     # Bio tab
-    blocks, markup = genshin._render_character(payload, "bio")
-    assert blocks
+    text, markup, img_url = genshin._render_character(payload, "bio")
+    assert "Albedo" in text
+    assert "Kreideprinz" in text
+    assert "Geo" in text
     assert markup
+    assert img_url == "https://pub-1ad.r2.dev/albedo/portrait.png"
 
     # Talents tab
-    blocks, _ = genshin._render_character(payload, "talents")
-    assert any("Solar Isotoma" in str(getattr(b, "text", "")) or "Combat Talents" in str(getattr(b, "text", "")) for b in blocks)
+    text, _, _ = genshin._render_character(payload, "talents")
+    assert "Solar Isotoma" in text
+    assert "Combat Talents" in text
 
     # Ascend tab
-    blocks, _ = genshin._render_character(payload, "ascend")
-    assert any("Cecilia x3" in str(getattr(b, "text", "")) or "Mora x20,000" in str(getattr(b, "text", "")) for b in blocks)
+    text, _, _ = genshin._render_character(payload, "ascend")
+    assert "Cecilia x3" in text
+    assert "20,000" in text
 
 
 def test_render_weapon():
@@ -133,8 +138,11 @@ def test_render_weapon():
         "passive_desc": "HP increased by 20%.",
         "img": {"icon": "https://pub-1ad.r2.dev/weapons/staff-of-homa/icon.png"},
     }
-    blocks = genshin._render_weapon(payload)
-    assert blocks
+    text, markup, img_url = genshin._render_weapon(payload)
+    assert "Staff of Homa" in text
+    assert "Reckless Cinnabar" in text
+    assert markup
+    assert img_url
 
 
 def test_render_artifact():
@@ -144,11 +152,14 @@ def test_render_artifact():
         "bonus": {"2pc": "Energy Recharge +20%", "4pc": "Burst DMG up"},
         "pieces": {"flower": {"img": "https://pub-1ad.r2.dev/flower.png"}},
     }
-    blocks = genshin._render_artifact(payload)
-    assert blocks
+    text, markup, img_url = genshin._render_artifact(payload)
+    assert "Emblem of Severed Fate" in text
+    assert "Energy Recharge +20%" in text
+    assert markup
+    assert img_url
 
 
-def test_render_grouped_material():
+def test_render_material():
     payload = {
         "name": "Cecilia",
         "rarity": 1,
@@ -158,8 +169,24 @@ def test_render_grouped_material():
         "used_by": {"characters": ["albedo", "venti"]},
         "img": "https://pub-1ad.r2.dev/cecilia.png",
     }
-    blocks = genshin._render_grouped(payload, "materials")
-    assert blocks
+    text, markup, img_url = genshin._render_material(payload)
+    assert "Cecilia" in text
+    assert "Albedo" in text
+    assert markup
+    assert img_url
+
+
+def test_render_enemy():
+    payload = {
+        "name": "Hilichurl",
+        "type": "Common Monsters",
+        "drops": [{"name": "Damaged Mask", "rarity": 1}],
+        "img": "https://pub-1ad.r2.dev/hilichurl.png",
+    }
+    text, markup, img_url = genshin._render_enemy(payload)
+    assert "Hilichurl" in text
+    assert "Damaged Mask" in text
+    assert markup
 
 
 @pytest.mark.asyncio
