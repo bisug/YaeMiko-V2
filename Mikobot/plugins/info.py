@@ -93,7 +93,7 @@ async def info(client, message: Message):
 
     try:
         chat_obj = await client.get_chat(userid)
-    except RPCError, Exception:
+    except (RPCError, Exception):
         await reply_with_text("I can't get information about this user/channel/group.")
         return
 
@@ -117,16 +117,20 @@ async def info(client, message: Message):
         if chat_obj.bio:
             head += f"\n\n<b>➲ Bio:</b> {chat_obj.bio}"
 
-        chat_member = await client.get_chat_member(chat.id, chat_obj.id)
-        if chat_member.status == ChatMemberStatus.ADMINISTRATOR:
-            head += f"\n➲ <b>Presence:</b> {chat_member.status}"
-            if chat_member.custom_title:
-                head += f"\n➲ <b>Admin Title:</b> {chat_member.custom_title}"
-        else:
-            head += f"\n➲ <b>Presence:</b> {chat_member.status}"
+        if chat.type in (ChatType.GROUP, ChatType.SUPERGROUP):
+            try:
+                chat_member = await client.get_chat_member(chat.id, chat_obj.id)
+                if chat_member.status == ChatMemberStatus.ADMINISTRATOR:
+                    head += f"\n➲ <b>Presence:</b> {chat_member.status}"
+                    if chat_member.custom_title:
+                        head += f"\n➲ <b>Admin Title:</b> {chat_member.custom_title}"
+                else:
+                    head += f"\n➲ <b>Presence:</b> {chat_member.status}"
+            except (RPCError, ValueError):
+                pass
 
-        if is_approved(chat.id, chat_obj.id):
-            head += "\n➲ <b>Approved:</b> This user is approved in this chat."
+            if is_approved(chat.id, chat_obj.id):
+                head += "\n➲ <b>Approved:</b> This user is approved in this chat."
 
         from Mikobot.__main__ import USER_INFO
 
@@ -151,18 +155,6 @@ async def info(client, message: Message):
                 mod_info = mod.__user_info__(chat_obj.id, chat.id).strip()
 
             head += "\n\n" + mod_info if mod_info else ""
-
-    if chat_obj.type == ChatType.SENDER:
-        head = "📨 Sender Chat Information:\n"
-        await reply_with_text("Found sender chat, getting information...")
-        head += f"<b>ID:</b> <code>{chat_obj.id}</code>"
-        if chat_obj.title:
-            head += f"\n🏷️ <b>Title:</b> {chat_obj.title}"
-        if chat_obj.username:
-            head += f"\n📧 <b>Username:</b> @{chat_obj.username}"
-        head += f"\n🔗 Permalink: {mention_html(chat_obj.id, 'link')}"
-        if chat_obj.description:
-            head += f"\n📝 <b>Description:</b> {chat_obj.description}"
 
     elif chat_obj.type == ChatType.CHANNEL:
         head = "Channel Information:\n"
@@ -210,7 +202,7 @@ async def info(client, message: Message):
                     await reply.delete()
             else:
                 await reply_with_text(head)
-        except RPCError, OSError, Exception:
+        except (RPCError, OSError, Exception):
             # The photo path can fail on download, on the caption's HTML, or on
             # the temp file. Falling back to the text form still answers.
             try:

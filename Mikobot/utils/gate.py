@@ -275,11 +275,11 @@ async def _bot_sender_allowed(client, event) -> bool:
         return False
     if mode == bot2bot_sql.MODE_ALL:
         return True
-    if chat is None:
+    if chat is None or getattr(chat, "type", None) == ChatType.PRIVATE:
         return False
     try:
         member = await client.get_chat_member(chat.id, user.id)
-    except RPCError:
+    except (RPCError, ValueError):
         return False
     return member.status in (
         ChatMemberStatus.OWNER,
@@ -433,6 +433,8 @@ async def _denial(client, event, spec, status):
 async def _member(client, chat, user_id):
     if chat is None or user_id is None:
         return None
+    if getattr(chat, "type", None) == ChatType.PRIVATE:
+        return None
     from Mikobot.plugins.helper_funcs.chat_status import ADMIN_CACHE, THREAD_LOCK
 
     with THREAD_LOCK:
@@ -462,7 +464,7 @@ async def _member(client, chat, user_id):
                     else:
                         ADMIN_CACHE[chat.id] = {user_id: member}
         return member
-    except RPCError:
+    except (RPCError, ValueError):
         return None
 
 

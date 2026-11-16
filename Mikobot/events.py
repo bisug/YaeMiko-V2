@@ -17,7 +17,7 @@ Handlers are called the kurigram way, ``handler(client, update)``.
 import inspect
 import logging
 
-from pyrogram import filters
+from pyrogram import StopPropagation, filters
 from pyrogram.handlers import (
     CallbackQueryHandler,
     ChatJoinRequestHandler,
@@ -87,6 +87,16 @@ class Registry:
                         continue
                     return
                 await registration.handler(client, update)
+            except StopPropagation:
+                return
+            except Exception:
+                LOGGER.exception(
+                    "Handler %s failed on update %s",
+                    getattr(registration.handler, "__name__", "unknown"),
+                    update,
+                )
+                if not is_chained:
+                    return
             finally:
                 # Every handler may stage database writes and then raise. The
                 # session is thread-local, so whatever is left would otherwise

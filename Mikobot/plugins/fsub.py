@@ -1,7 +1,7 @@
 from time import perf_counter
 
 from cachetools import TTLCache
-from pyrogram import filters
+from pyrogram import StopPropagation, filters
 from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType
 from pyrogram.errors import ChatAdminRequired, UserNotParticipant
 from pyrogram.types import ChatPermissions, InlineKeyboardButton, InlineKeyboardMarkup
@@ -9,7 +9,7 @@ from pyrogram.types import ChatPermissions, InlineKeyboardButton, InlineKeyboard
 from Database.sql import fsub_sql as db
 from Mikobot import BOT_ID, LOGGER, OWNER_ID, app
 from Mikobot import DRAGONS as DEVS
-from Mikobot.events import register
+from Mikobot.events import on_callback, on_message, register
 from Mikobot.utils.can_restrict import has_restrict_rights
 
 F_SUBSCRIBE_COMMAND = r"/(fsub|Fsub|forcesubscribe|Forcesub|forcesub|Forcesubscribe)"
@@ -22,7 +22,7 @@ async def participant_check(channel, user_id):
     try:
         await app.get_chat_member(channel, int(user_id))
         return True
-    except UserNotParticipant, ChatAdminRequired:
+    except (UserNotParticipant, ChatAdminRequired):
         return False
     except Exception:
         LOGGER.exception(
@@ -79,8 +79,8 @@ async def force_subscribe(message):
     await message.reply_text(f"Force subscribe is enabled to @{username}.")
 
 
-@app.on_message(filters.group & filters.incoming)
-async def force_subscribe_new_message(_, message):
+@on_message(filters.group & filters.incoming, chained=True)
+async def force_subscribe_new_message(client, message):
     settings = db.fs_settings(message.chat.id)
     if not settings:
         return
@@ -91,7 +91,7 @@ async def force_subscribe_new_message(_, message):
     ):
         return
     try:
-        sender = await app.get_chat_member(message.chat.id, message.from_user.id)
+        sender = await client.get_chat_member(message.chat.id, message.from_user.id)
         if sender.status in {ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR}:
             return
     except UserNotParticipant:
@@ -101,7 +101,7 @@ async def force_subscribe_new_message(_, message):
         return
     try:
         if message.chat.id not in BOT_PRIVILEGE_CACHE:
-            bot = await app.get_chat_member(message.chat.id, BOT_ID)
+            bot = await client.get_chat_member(message.chat.id, BOT_ID)
             BOT_PRIVILEGE_CACHE[message.chat.id] = has_restrict_rights(bot)
         if not BOT_PRIVILEGE_CACHE[message.chat.id]:
             return
@@ -135,12 +135,13 @@ async def force_subscribe_new_message(_, message):
         f'<b><a href="tg://user?id={message.from_user.id}">{name}</a></b>, you have <b>not subscribed</b> to our <b><a href="https://t.me/{channel}">channel</a></b> yet. Please join and press the button below to unmute yourself.',
         reply_markup=markup,
     )
-    await app.restrict_chat_member(
+    await client.restrict_chat_member(
         message.chat.id, message.from_user.id, ChatPermissions(can_send_messages=False)
     )
+    raise StopPropagation
 
 
-@app.on_callback_query(filters.regex(r"^fs_(\d+)$"))
+@on_callback(filters.regex(r"^fs_(\d+)$"))
 async def unmute_force_subscribe(client, callback):
     user_id = int(callback.matches[0].group(1))
     if callback.from_user.id != user_id:

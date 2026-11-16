@@ -169,3 +169,57 @@ async def test_gate_chat_action_runs_and_cancels():
     assert await gate.enforce(client, message, handler) is True
     assert len(sent_actions) >= 1
     assert sent_actions[0][0] == message.chat.id
+
+
+async def test_chained_handler_exception_does_not_abort_subsequent_handlers():
+    calls = []
+
+    @events.on_message(lambda client, message: True, chained=True)
+    async def bad_chained_handler(client, message):
+        calls.append("bad_chained")
+        raise RuntimeError("Something failed in background check")
+
+    @events.on_message(lambda client, message: True)
+    async def target_command_handler(client, message):
+        calls.append("command")
+
+    await events.registry.run(events.registry.messages, make_client(), make_message())
+
+    assert calls == ["bad_chained", "command"]
+
+
+async def test_unchained_handler_exception_stops_registry():
+    calls = []
+
+    @events.on_message(lambda client, message: True, chained=False)
+    async def failing_command(client, message):
+        calls.append("failing")
+        raise RuntimeError("Command failed")
+
+    @events.on_message(lambda client, message: True)
+    async def next_command(client, message):
+        calls.append("next")
+
+    await events.registry.run(events.registry.messages, make_client(), make_message())
+
+    assert calls == ["failing"]
+
+
+async def test_stop_propagation_halts_all_handlers():
+    from pyrogram import StopPropagation
+
+    calls = []
+
+    @events.on_message(lambda client, message: True, chained=True)
+    async def gatekeeper(client, message):
+        calls.append("gatekeeper")
+        raise StopPropagation
+
+    @events.on_message(lambda client, message: True)
+    async def command(client, message):
+        calls.append("command")
+
+    await events.registry.run(events.registry.messages, make_client(), make_message())
+
+    assert calls == ["gatekeeper"]
+
