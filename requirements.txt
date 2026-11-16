@@ -13,7 +13,7 @@ SQLAlchemy==2.1.8
 
 APScheduler==3.11.3
 kurigram==2.2.27
-kuricrypt==0.1.1
+kuricrypt==0.1.2
 
 # Web and processing
 emoji==2.16.0
