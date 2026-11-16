@@ -889,9 +889,7 @@ async def fed_ban(client, message: Message):
                 ),
                 parse_mode="HTML",
             )
-    chats_in_fed = 0
     for fedschat in fed_chats:
-        chats_in_fed += 1
         try:
             # Do not spam all fed chats
             """
@@ -925,37 +923,37 @@ async def fed_ban(client, message: Message):
 							html=True)
 		"""
 
-        # Fban for fed subscriber
-        subscriber = list(sql.get_subscriber(fed_id))
-        if len(subscriber) != 0:
-            for fedsid in subscriber:
-                all_fedschat = sql.all_fed_chats(fedsid)
-                for fedschat in all_fedschat:
-                    try:
-                        await client.ban_chat_member(fedschat, fban_user_id)
-                    except RPCError as excp:
-                        if _matches_fed_error(excp, FBAN_ERRORS):
-                            try:
-                                await client.get_chat(fedschat)
-                            except RPCError:
-                                targetfed_id = sql.get_fed_id(fedschat)
-                                sql.unsubs_fed(fed_id, targetfed_id)
-                                LOGGER.info(
-                                    "Chat {} has unsub fed {} because I was kicked".format(
-                                        fedschat,
-                                        info["fname"],
-                                    ),
-                                )
-                                continue
-                        elif _is_user_id_invalid(excp):
-                            break
-                        else:
-                            LOGGER.warning(
-                                "Unable to fban on {} because: {}".format(
+    # Fban for fed subscriber
+    subscriber = list(sql.get_subscriber(fed_id))
+    if len(subscriber) != 0:
+        for fedsid in subscriber:
+            all_fedschat = sql.all_fed_chats(fedsid)
+            for fedschat in all_fedschat:
+                try:
+                    await client.ban_chat_member(fedschat, fban_user_id)
+                except RPCError as excp:
+                    if _matches_fed_error(excp, FBAN_ERRORS):
+                        try:
+                            await client.get_chat(fedschat)
+                        except RPCError:
+                            targetfed_id = sql.get_fed_id(fedschat)
+                            sql.unsubs_fed(fed_id, targetfed_id)
+                            LOGGER.info(
+                                "Chat {} has unsub fed {} because I was kicked".format(
                                     fedschat,
-                                    excp,
+                                    info["fname"],
                                 ),
                             )
+                            continue
+                    elif _is_user_id_invalid(excp):
+                        break
+                    else:
+                        LOGGER.warning(
+                            "Unable to fban on {} because: {}".format(
+                                fedschat,
+                                excp,
+                            ),
+                        )
 
 
 @on_message(filters.command("unfban"), chained=True)
