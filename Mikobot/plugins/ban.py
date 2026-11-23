@@ -666,10 +666,7 @@ async def bans_callback(client, query: CallbackQuery):
             log += "\n<b>Reason:</b> {}".format(reason)
 
         try:
-            if CHAT_SENDER:
-                await client.ban_chat_member(chat.id, user_id)
-            else:
-                await client.ban_chat_member(chat.id, user_id)
+            await client.ban_chat_member(chat.id, user_id)
 
             await client.send_sticker(
                 chat.id,

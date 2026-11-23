@@ -43,6 +43,16 @@ from Mikobot.utils.consts import ChatID
 from Mikobot.utils.filters import GROUPS
 from Mikobot.utils.parser import escape_markdown, mention_html
 
+VALID_WELCOME_FORMATTERS = (
+    "first",
+    "last",
+    "fullname",
+    "username",
+    "id",
+    "chatname",
+    "mention",
+)
+
 ENUM_FUNC_MAP = {
     Types.TEXT.value: client.send_message,
     Types.BUTTON_TEXT.value: client.send_message,
@@ -339,15 +349,6 @@ async def reply_filter(client, message: Message):
                 keyb = build_keyboard_parser(chat.id, buttons)
                 keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
 
-                VALID_WELCOME_FORMATTERS = [
-                    "first",
-                    "last",
-                    "fullname",
-                    "username",
-                    "id",
-                    "chatname",
-                    "mention",
-                ]
                 if filt.reply_text:
                     if "%%%" in filt.reply_text:
                         split = filt.reply_text.split("%%%")
@@ -611,16 +612,12 @@ async def rmall_callback(client, query: CallbackQuery):
                 await query.answer("There are no filters to remove.")
                 return
 
-            count = 0
-            filterlist = []
-            for x in allfilters:
-                count += 1
-                filterlist.append(x)
-
-            for i in filterlist:
+            for i in allfilters:
                 sql.remove_filter(chat.id, i)
 
-            await msg.edit_text(f"Removed {count} filters in {escape(chat.title)}")
+            await msg.edit_text(
+                f"Removed {len(allfilters)} filters in {escape(chat.title)}"
+            )
             await query.answer("All filters removed.")
 
         if member.status == ChatMemberStatus.ADMINISTRATOR:

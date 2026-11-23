@@ -290,7 +290,6 @@ async def on_join(client, message: Message) -> str:
     for member in members:
         if member.is_bot:
             continue
-        settings = await asyncio.to_thread(sql.get_settings, chat.id)
         if not _should_challenge(chat.id, member.id, settings):
             continue
         try:
@@ -719,11 +718,8 @@ async def captcha_mode(client, message: Message):
 @check_admin(permission="can_restrict_members", is_both=True)
 @typing_action
 async def captcha_buttons(client, message: Message):
-    text = (
-        message.text.split(None, 1)[1].strip()
-        if len(message.text.split(None, 1)) > 1
-        else ""
-    )
+    parts = message.text.split(None, 1)
+    text = parts[1].strip() if len(parts) > 1 else ""
     if not text:
         settings = await asyncio.to_thread(sql.get_settings, message.chat.id)
         await message.reply_text(

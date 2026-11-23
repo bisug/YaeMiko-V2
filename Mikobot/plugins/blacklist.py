@@ -422,8 +422,7 @@ async def blacklist_mode(client, message: Message):
     if conn:
         chat = await client.get_chat(conn)
         chat_id = conn
-        chat_obj = await client.get_chat(conn)
-        chat_name = chat_obj.title
+        chat_name = chat.title
     else:
         if message.chat.type == ChatType.PRIVATE:
             await send_message(
@@ -744,13 +743,6 @@ async def _silent_action(client, chat, user, getmode, value, trigger) -> None:
             )
     except RPCError:
         LOGGER.exception("Silent blacklist action failed in %s", chat.id)
-
-
-def findall(p, s):
-    i = s.find(p)
-    while i != -1:
-        yield i
-        i = s.find(p, i + 1)
 
 
 @on_message(

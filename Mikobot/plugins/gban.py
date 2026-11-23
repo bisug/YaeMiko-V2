@@ -213,7 +213,6 @@ async def gban(client, message: Message):
 
     await message.reply_text("Banning the user.")
 
-    start_time = time.time()
     datetime_fmt = "%Y-%m-%dT%H:%M"
     current_time = datetime.now(timezone.utc).strftime(datetime_fmt)
 
@@ -300,14 +299,7 @@ async def gban(client, message: Message):
             html=True,
         )
 
-    end_time = time.time()
-    gban_time = round((end_time - start_time), 2)
-
-    if gban_time > 60:
-        gban_time = round((gban_time / 60), 2)
-        await message.reply_text("Global ban complete.", parse_mode=ParseMode.HTML)
-    else:
-        await message.reply_text("Global ban complete.", parse_mode=ParseMode.HTML)
+    await message.reply_text("Global ban complete.", parse_mode=ParseMode.HTML)
 
     try:
         await client.send_message(

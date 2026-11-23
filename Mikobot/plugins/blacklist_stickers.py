@@ -287,8 +287,7 @@ async def blacklist_mode(client, message: Message):
     if conn:
         chat = await client.get_chat(conn)
         chat_id = conn
-        chat_obj = await client.get_chat(conn)
-        chat_name = chat_obj.title
+        chat_name = chat.title
     else:
         if message.chat.type == ChatType.PRIVATE:
             await send_message(

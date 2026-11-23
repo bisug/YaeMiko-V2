@@ -33,6 +33,16 @@ from Mikobot.utils.parser import escape_markdown, mention_markdown
 
 from .cust_filters import MessageHandlerChecker
 
+VALID_NOTE_FORMATTERS = (
+    "first",
+    "last",
+    "fullname",
+    "username",
+    "id",
+    "chatname",
+    "mention",
+)
+
 FILE_MATCHER = re.compile(r"^###file_id(!photo)?###:(.*?)(?:\s|$)")
 STICKER_MATCHER = re.compile(r"^###sticker(!photo)?###:")
 BUTTON_MATCHER = re.compile(r"^###button(!photo)?###:(.*?)(?:\s|$)")
@@ -68,15 +78,6 @@ async def get(
             reply_id = message.reply_to_message.id
         else:
             reply_id = message.id
-        VALID_NOTE_FORMATTERS = [
-            "first",
-            "last",
-            "fullname",
-            "username",
-            "id",
-            "chatname",
-            "mention",
-        ]
         valid_format = escape_invalid_curly_brackets(
             note.value,
             VALID_NOTE_FORMATTERS,
