@@ -42,7 +42,7 @@ class Approvals(BASE):
         self.user_id = user_id
 
     def __repr__(self):
-        return "<ᴀᴘᴘʀᴏᴠᴇ %s>" % self.user_id
+        return f"<ᴀᴘᴘʀᴏᴠᴇ {self.user_id}>"
 
 
 APPROVE_INSERTION_LOCK = threading.RLock()

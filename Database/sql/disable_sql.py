@@ -39,7 +39,7 @@ class Disable(BASE):
         self.command = command
 
     def __repr__(self):
-        return "ᴅɪsᴀʙʟᴇᴅ ᴄᴍᴅ {} in {}".format(self.command, self.chat_id)
+        return f"ᴅɪsᴀʙʟᴇᴅ ᴄᴍᴅ {self.command} in {self.chat_id}"
 
 
 DISABLE_INSERTION_LOCK = threading.RLock()

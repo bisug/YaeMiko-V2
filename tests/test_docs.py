@@ -110,7 +110,8 @@ def test_no_dead_assets():
 
 def test_no_duplicate_helper_modules():
     database_sql = {
-        p.stem.replace("_sql", "") for p in (ROOT / "Database" / "sql").glob("*_sql.py")
+        p.stem.removesuffix("_sql")
+        for p in (ROOT / "Database" / "sql").glob("*_sql.py")
     }
     assert "users" in database_sql
     assert "feds" in database_sql

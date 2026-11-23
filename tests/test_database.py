@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+from collections import Counter
 from pathlib import Path
 
 from sqlalchemy.orm import DeclarativeBase
@@ -246,7 +247,8 @@ def test_index_names_are_unique():
                 and isinstance(node.args[0], ast.Constant)
             ):
                 names.append(node.args[0].value)
-    duplicates = {name for name in names if names.count(name) > 1}
+    counts = Counter(names)
+    duplicates = {name for name, count in counts.items() if count > 1}
     assert not duplicates, f"index names used twice: {sorted(duplicates)}"
 
 

@@ -21,7 +21,7 @@ class AFK(BASE):
         self.time = datetime.now()
 
     def __repr__(self):
-        return "afk_status for {}".format(self.user_id)
+        return f"afk_status for {self.user_id}"
 
 
 INSERTION_LOCK = threading.RLock()

@@ -59,7 +59,7 @@ class Notes(BASE):
         self.file = file
 
     def __repr__(self):
-        return "<ɴᴏᴛᴇ %s>" % self.name
+        return f"<ɴᴏᴛᴇ {self.name}>"
 
 
 class Buttons(BASE):

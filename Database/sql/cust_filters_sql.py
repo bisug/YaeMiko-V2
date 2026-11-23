@@ -81,7 +81,7 @@ class CustomFilters(BASE):
         self.has_media_spoiler = has_media_spoiler
 
     def __repr__(self):
-        return "<Permissions for %s>" % self.chat_id
+        return f"<Permissions for {self.chat_id}>"
 
     def __eq__(self, other):
         return bool(

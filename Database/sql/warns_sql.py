@@ -54,12 +54,7 @@ class Warns(BASE):
         self.reasons = []
 
     def __repr__(self):
-        return "<{} ᴡᴀʀɴs ғᴏʀ {} ɪɴ {} ғᴏʀ ʀᴇᴀsᴏɴs {}>".format(
-            self.num_warns,
-            self.user_id,
-            self.chat_id,
-            self.reasons,
-        )
+        return f"<{self.num_warns} ᴡᴀʀɴs ғᴏʀ {self.user_id} ɪɴ {self.chat_id} ғᴏʀ ʀᴇᴀsᴏɴs {self.reasons}>"
 
 
 class WarnFilters(BASE):
@@ -74,7 +69,7 @@ class WarnFilters(BASE):
         self.reply = reply
 
     def __repr__(self):
-        return "<ᴘᴇʀᴍɪssɪᴏɴs ғᴏʀ %s>" % self.chat_id
+        return f"<ᴘᴇʀᴍɪssɪᴏɴs ғᴏʀ {self.chat_id}>"
 
     def __eq__(self, other):
         return bool(
@@ -96,7 +91,7 @@ class WarnSettings(BASE):
         self.soft_warn = soft_warn
 
     def __repr__(self):
-        return "<{} ʜᴀs {} ᴘᴏssɪʙʟᴇ ᴡᴀʀɴs.>".format(self.chat_id, self.warn_limit)
+        return f"<{self.chat_id} ʜᴀs {self.warn_limit} ᴘᴏssɪʙʟᴇ ᴡᴀʀɴs.>"
 
 
 WARN_INSERTION_LOCK = threading.RLock()

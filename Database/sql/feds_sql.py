@@ -2,6 +2,7 @@ import ast
 import asyncio
 import json
 import threading
+from itertools import chain
 
 from pyrogram.errors import RPCError
 from sqlalchemy import (
@@ -93,7 +94,7 @@ class FedsUserSettings(BASE):
         self.user_id = user_id
 
     def __repr__(self):
-        return "<Feds report settings ({})>".format(self.user_id)
+        return f"<Feds report settings ({self.user_id})>"
 
 
 class FedSubs(BASE):
@@ -106,7 +107,7 @@ class FedSubs(BASE):
         self.fed_subs = fed_subs
 
     def __repr__(self):
-        return "<Fed {} subscribes for {}>".format(self.fed_id, self.fed_subs)
+        return f"<Fed {self.fed_id} subscribes for {self.fed_subs}>"
 
 
 # Dropping db
@@ -275,7 +276,7 @@ def _fed_owner(raw, default=None):
     if not isinstance(data, dict):
         return default
     owner = data.get("owner", default)
-    if isinstance(owner, str) and (owner.startswith("{") or owner.startswith("[")):
+    if isinstance(owner, str) and owner.startswith(("{", "[")):
         try:
             owner = ast.literal_eval(owner)
         except Exception:
@@ -781,40 +782,52 @@ def multi_fban_user(
     with FEDS_LOCK:
         try:
             counter = 0
-            for index in range(len(multi_fed_id)):
-                fed_id = multi_fed_id[index]
-                user_id = multi_user_id[index]
+            for fed_id, user_id, first_name, last_name, user_name, reason in zip(
+                multi_fed_id,
+                multi_user_id,
+                multi_first_name,
+                multi_last_name,
+                multi_user_name,
+                multi_reason,
+                strict=True,
+            ):
                 ban = SESSION.get(BansF, (str(fed_id), int(user_id)))
                 if ban is None:
                     ban = BansF(
                         str(fed_id),
                         int(user_id),
-                        multi_first_name[index],
-                        multi_last_name[index],
-                        multi_user_name[index],
-                        multi_reason[index],
+                        first_name,
+                        last_name,
+                        user_name,
+                        reason,
                         0,
                     )
                     SESSION.add(ban)
                 else:
-                    ban.first_name = multi_first_name[index]
-                    ban.last_name = multi_last_name[index]
-                    ban.user_name = multi_user_name[index]
-                    ban.reason = multi_reason[index]
+                    ban.first_name = first_name
+                    ban.last_name = last_name
+                    ban.user_name = user_name
+                    ban.reason = reason
                     ban.time = 0
                 counter += 1
             SESSION.commit()
-            for index in range(len(multi_fed_id)):
-                fed_id = str(multi_fed_id[index])
-                user_id = str(multi_user_id[index])
+            for fed_id, user_id, first_name, reason in zip(
+                multi_fed_id,
+                multi_user_id,
+                multi_first_name,
+                multi_reason,
+                strict=True,
+            ):
+                fed_id = str(fed_id)
+                user_id = str(user_id)
                 user_ids = FEDERATION_BANNED_USERID.setdefault(fed_id, set())
                 if isinstance(user_ids, set):
                     user_ids.add(int(user_id))
                 elif int(user_id) not in user_ids:
                     user_ids.append(int(user_id))
                 FEDERATION_BANNED_FULL.setdefault(fed_id, {})[user_id] = {
-                    "first_name": multi_first_name[index],
-                    "reason": multi_reason[index],
+                    "first_name": first_name,
+                    "reason": reason,
                     "time": 0,
                 }
         except SQLAlchemyError:
@@ -902,18 +915,11 @@ def get_all_fban_users_target(fed_id, user_id):
 
 
 def get_all_fban_users_global():
-    total = []
-    for x in list(FEDERATION_BANNED_USERID):
-        for y in FEDERATION_BANNED_USERID[x]:
-            total.append(y)
-    return total
+    return list(chain.from_iterable(FEDERATION_BANNED_USERID.values()))
 
 
 def get_all_feds_users_global():
-    total = []
-    for x in list(FEDERATION_BYFEDID):
-        total.append(FEDERATION_BYFEDID[x])
-    return total
+    return list(FEDERATION_BYFEDID.values())
 
 
 def search_fed_by_id(fed_id):
@@ -942,8 +948,7 @@ def set_feds_setting(user_id: int, setting: bool):
 
 
 async def get_fed_log(fed_id):
-    fed_setting = FEDERATION_BYFEDID.get(str(fed_id))
-    if fed_setting is None:
+    if (fed_setting := FEDERATION_BYFEDID.get(str(fed_id))) is None:
         fed_setting = False
         return fed_setting
     if fed_setting.get("flog") is None:
@@ -1083,14 +1088,8 @@ def __load_all_feds_chats():
         FEDERATION_CHATS = {}
         FEDERATION_CHATS_BYID = {}
         for x in qall:
-            check = FEDERATION_CHATS.get(x.chat_id)
-            if check is None:
-                FEDERATION_CHATS[x.chat_id] = {}
             FEDERATION_CHATS[x.chat_id] = {"chat_name": x.chat_name, "fid": x.fed_id}
-            check = FEDERATION_CHATS_BYID.get(x.fed_id)
-            if check is None:
-                FEDERATION_CHATS_BYID[x.fed_id] = []
-            FEDERATION_CHATS_BYID[x.fed_id].append(x.chat_id)
+            FEDERATION_CHATS_BYID.setdefault(x.fed_id, []).append(x.chat_id)
     except Exception:
         pass
     finally:

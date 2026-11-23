@@ -49,7 +49,7 @@ class Users(BASE):
         self.username = username
 
     def __repr__(self):
-        return "<ᴜsᴇʀ {} ({})>".format(self.username, self.user_id)
+        return f"<ᴜsᴇʀ {self.username} ({self.user_id})>"
 
 
 class Chats(BASE):
@@ -62,7 +62,7 @@ class Chats(BASE):
         self.chat_name = chat_name
 
     def __repr__(self):
-        return "<ᴄʜᴀᴛ {} ({})>".format(self.chat_name, self.chat_id)
+        return f"<ᴄʜᴀᴛ {self.chat_name} ({self.chat_id})>"
 
 
 class ChatMembers(BASE):
@@ -85,12 +85,7 @@ class ChatMembers(BASE):
         self.user = user
 
     def __repr__(self):
-        return "<ᴄʜᴀᴛ ᴜsᴇʀ {} ({}) ɪɴ ᴄʜᴀᴛ {} ({})>".format(
-            self.user.username,
-            self.user.user_id,
-            self.chat.chat_name,
-            self.chat.chat_id,
-        )
+        return f"<ᴄʜᴀᴛ ᴜsᴇʀ {self.user.username} ({self.user.user_id}) ɪɴ ᴄʜᴀᴛ {self.chat.chat_name} ({self.chat.chat_id})>"
 
 
 # get_user_com_chats and get_user_num_chats filter on the user column, which the

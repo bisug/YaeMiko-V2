@@ -93,9 +93,7 @@ class Welcome(BASE):
         self.should_goodbye = should_goodbye
 
     def __repr__(self):
-        return "<ᴄʜᴀᴛ {} sʜᴏᴜʟᴅ sʜᴏᴜʟᴅ ɴᴇᴡ ᴜsᴇʀs: {}>".format(
-            self.chat_id, self.should_welcome
-        )
+        return f"<ᴄʜᴀᴛ {self.chat_id} sʜᴏᴜʟᴅ sʜᴏᴜʟᴅ ɴᴇᴡ ᴜsᴇʀs: {self.should_welcome}>"
 
 
 class WelcomeButtons(BASE):
@@ -174,7 +172,7 @@ class CleanServiceSetting(BASE):
         self.service_types = ""
 
     def __repr__(self):
-        return "<ᴄʜᴀᴛ ᴜsᴇᴅ ᴄʟᴇᴀɴ sᴇʀᴠɪᴄᴇ ({})>".format(self.chat_id)
+        return f"<ᴄʜᴀᴛ ᴜsᴇᴅ ᴄʟᴇᴀɴ sᴇʀᴠɪᴄᴇ ({self.chat_id})>"
 
 
 class RaidMode(BASE):

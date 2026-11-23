@@ -19,7 +19,7 @@ class GloballyBannedUsers(BASE):
         self.reason = reason
 
     def __repr__(self):
-        return "<GBanned User {} ({})>".format(self.name, self.user_id)
+        return f"<GBanned User {self.name} ({self.user_id})>"
 
     def to_dict(self):
         return {"user_id": self.user_id, "name": self.name, "reason": self.reason}
@@ -35,7 +35,7 @@ class GbanSettings(BASE):
         self.setting = enabled
 
     def __repr__(self):
-        return "<Gban setting {} ({})>".format(self.chat_id, self.setting)
+        return f"<Gban setting {self.chat_id} ({self.setting})>"
 
 
 GBANNED_USERS_LOCK = threading.RLock()

@@ -73,7 +73,7 @@ class Permissions(BASE):
         self.inline = False
 
     def __repr__(self):
-        return "<ᴘᴇʀᴍɪssɪᴏɴs ғᴏʀ %s>" % self.chat_id
+        return f"<ᴘᴇʀᴍɪssɪᴏɴs ғᴏʀ {self.chat_id}>"
 
 
 class AllowedItem(BASE):
@@ -91,7 +91,7 @@ class AllowedItem(BASE):
         self.item = str(item).lower()
 
     def __repr__(self):
-        return "<ᴀʟʟᴏᴡᴇᴅ %s %s ғᴏʀ %s>" % (self.lockable, self.item, self.chat_id)
+        return f"<ᴀʟʟᴏᴡᴇᴅ {self.lockable} {self.item} ғᴏʀ {self.chat_id}>"
 
 
 class Restrictions(BASE):
@@ -111,7 +111,7 @@ class Restrictions(BASE):
         self.preview = False
 
     def __repr__(self):
-        return "<ʀᴇsᴛʀɪᴄᴛɪᴏɴs ғᴏʀ %s>" % self.chat_id
+        return f"<ʀᴇsᴛʀɪᴄᴛɪᴏɴs ғᴏʀ {self.chat_id}>"
 
 
 # Corrupt schema: uncomment the drop below, run the bot once, then re-comment it.

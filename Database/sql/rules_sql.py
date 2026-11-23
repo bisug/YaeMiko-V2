@@ -14,7 +14,7 @@ class Rules(BASE):
         self.chat_id = chat_id
 
     def __repr__(self):
-        return "<Chat {} rules: {}>".format(self.chat_id, self.rules)
+        return f"<Chat {self.chat_id} rules: {self.rules}>"
 
 
 INSERTION_LOCK = threading.RLock()

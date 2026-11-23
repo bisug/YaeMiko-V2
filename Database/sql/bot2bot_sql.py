@@ -196,7 +196,7 @@ class BotToBot(BASE):
         self.allowed = ""
 
     def __repr__(self):
-        return "<ʙᴏᴛ ᴛᴏ ʙᴏᴛ %s for %s>" % (self.mode, self.chat_id)
+        return f"<ʙᴏᴛ ᴛᴏ ʙᴏᴛ {self.mode} for {self.chat_id}>"
 
 
 INSERTION_LOCK = threading.RLock()

@@ -28,7 +28,7 @@ class ActionTopic(BASE):
         self.message_thread_id = message_thread_id
 
     def __repr__(self):
-        return "<ᴀᴄᴛɪᴏɴ ᴛᴏᴘɪᴄ %s for %s>" % (self.message_thread_id, self.chat_id)
+        return f"<ᴀᴄᴛɪᴏɴ ᴛᴏᴘɪᴄ {self.message_thread_id} for {self.chat_id}>"
 
 
 INSERTION_LOCK = threading.RLock()

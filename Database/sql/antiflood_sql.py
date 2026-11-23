@@ -25,6 +25,7 @@ SOFTWARE.
 import threading
 import time
 from collections import deque
+from typing import NamedTuple
 
 from sqlalchemy import (
     BigInteger,
@@ -50,6 +51,14 @@ DEF_CLEARFLOOD = False
 DEF_OBJ = (None, DEF_COUNT, DEF_LIMIT, DEF_TIMER, DEF_CLEARFLOOD)
 
 
+class FloodCache(NamedTuple):
+    curr_user_id: object
+    count: int
+    limit: int
+    timer: int
+    clearflood: bool
+
+
 class FloodControl(BASE):
     __tablename__ = "antiflood"
     chat_id = Column(String, primary_key=True)
@@ -69,7 +78,7 @@ class FloodControl(BASE):
         self.clearflood = False
 
     def __repr__(self):
-        return "<ғʟᴏᴏᴅ ᴄᴏɴᴛʀᴏʟ ғᴏʀ %s>" % self.chat_id
+        return f"<ғʟᴏᴏᴅ ᴄᴏɴᴛʀᴏʟ ғᴏʀ {self.chat_id}>"
 
 
 class FloodSettings(BASE):
@@ -84,7 +93,7 @@ class FloodSettings(BASE):
         self.value = value
 
     def __repr__(self):
-        return "<{} ᴡɪʟʟ ᴇxᴇᴄᴜᴛɪɴɢ {} ғᴏʀ ғʟᴏᴏᴅ.>".format(self.chat_id, self.flood_type)
+        return f"<{self.chat_id} ᴡɪʟʟ ᴇxᴇᴄᴜᴛɪɴɢ {self.flood_type} ғᴏʀ ғʟᴏᴏᴅ.>"
 
 
 def _ensure_columns() -> None:
@@ -143,7 +152,7 @@ def set_flood(chat_id, amount):
 
         flood.limit = amount
 
-        CHAT_FLOOD[str(chat_id)] = (
+        CHAT_FLOOD[str(chat_id)] = FloodCache(
             None,
             DEF_COUNT,
             int(flood.limit),

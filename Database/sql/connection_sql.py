@@ -40,9 +40,8 @@ class ChatAccessConnectionSettings(BASE):
         self.allow_connect_to_chat = bool(allow_connect_to_chat)
 
     def __repr__(self):
-        return "<ᴄʜᴀᴛ ᴀᴄᴄᴇss sᴇᴛᴛɪɴɢs ({}) is {}>".format(
-            self.chat_id,
-            self.allow_connect_to_chat,
+        return (
+            f"<ᴄʜᴀᴛ ᴀᴄᴄᴇss sᴇᴛᴛɪɴɢs ({self.chat_id}) is {self.allow_connect_to_chat}>"
         )
 
 
@@ -70,7 +69,7 @@ class ConnectionHistory(BASE):
         self.conn_time = int(conn_time)
 
     def __repr__(self):
-        return "<ᴄᴏɴɴᴇᴄᴛɪᴏɴ ᴜsᴇʀ {} ʜɪsᴛᴏʀʏ {}>".format(self.user_id, self.chat_id)
+        return f"<ᴄᴏɴɴᴇᴄᴛɪᴏɴ ᴜsᴇʀ {self.user_id} ʜɪsᴛᴏʀʏ {self.chat_id}>"
 
 
 # curr_connection filters on chat_id, and the primary key is the user, so the

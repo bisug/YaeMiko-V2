@@ -50,7 +50,7 @@ class BlackListFilters(BASE):
         self.trigger = trigger
 
     def __repr__(self):
-        return "<ʙʟᴀᴄᴋʟɪsᴛ ғɪʟᴛᴇʀ '%s' ғᴏʀ %s>" % (self.trigger, self.chat_id)
+        return f"<ʙʟᴀᴄᴋʟɪsᴛ ғɪʟᴛᴇʀ '{self.trigger}' ғᴏʀ {self.chat_id}>"
 
     def __eq__(self, other):
         return bool(
@@ -82,10 +82,7 @@ class BlacklistSettings(BASE):
         self.silent_types = ""
 
     def __repr__(self):
-        return "<{} ᴡɪʟʟ ᴇxᴇᴄᴜᴛɪɴɢ {} ғᴏʀ ʙʟᴀᴄᴋʟɪsᴛ ᴛʀɪɢɢᴇʀ.>".format(
-            self.chat_id,
-            self.blacklist_type,
-        )
+        return f"<{self.chat_id} ᴡɪʟʟ ᴇxᴇᴄᴜᴛɪɴɢ {self.blacklist_type} ғᴏʀ ʙʟᴀᴄᴋʟɪsᴛ ᴛʀɪɢɢᴇʀ.>"
 
 
 def _ensure_columns() -> None:

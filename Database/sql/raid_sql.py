@@ -53,7 +53,7 @@ class RaidChats(BASE):
         self.auto_antiraid = DEF_AUTO_ANTIRAID
 
     def __repr__(self):
-        return "<ʀᴀɪᴅ sᴇᴛᴛɪɴɢs ғᴏʀ %s>" % self.chat_id
+        return f"<ʀᴀɪᴅ sᴇᴛᴛɪɴɢs ғᴏʀ {self.chat_id}>"
 
 
 def _ensure_columns() -> None:

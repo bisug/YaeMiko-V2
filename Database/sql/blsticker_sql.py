@@ -39,7 +39,7 @@ class StickersFilters(BASE):
         self.trigger = trigger
 
     def __repr__(self):
-        return "<sᴛɪᴄᴋᴇʀs ғɪʟᴛᴇʀ '%s' ғᴏʀ %s>" % (self.trigger, self.chat_id)
+        return f"<sᴛɪᴄᴋᴇʀs ғɪʟᴛᴇʀ '{self.trigger}' ғᴏʀ {self.chat_id}>"
 
     def __eq__(self, other):
         return bool(
@@ -61,10 +61,7 @@ class StickerSettings(BASE):
         self.value = value
 
     def __repr__(self):
-        return "<{} ᴡɪʟʟ ᴇxᴇᴄᴜᴛɪɴɢ {} ғᴏʀ ʙʟᴀᴄᴋʟɪsᴛ ᴛʀɪɢɢᴇʀ.>".format(
-            self.chat_id,
-            self.blacklist_type,
-        )
+        return f"<{self.chat_id} ᴡɪʟʟ ᴇxᴇᴄᴜᴛɪɴɢ {self.blacklist_type} ғᴏʀ ʙʟᴀᴄᴋʟɪsᴛ ᴛʀɪɢɢᴇʀ.>"
 
 
 STICKERS_FILTER_INSERTION_LOCK = threading.RLock()

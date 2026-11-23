@@ -54,7 +54,7 @@ class CaptchaSettings(BASE):
         self.show_rules = False
 
     def __repr__(self):
-        return "<ᴄᴀᴘᴛᴄʜᴀ %s for %s>" % (self.mode, self.chat_id)
+        return f"<ᴄᴀᴘᴛᴄʜᴀ {self.mode} for {self.chat_id}>"
 
 
 class CaptchaSolved(BASE):
@@ -67,7 +67,7 @@ class CaptchaSolved(BASE):
         self.user_id = user_id
 
     def __repr__(self):
-        return "<ᴄᴀᴘᴛᴄʜᴀ ѕᴏʟᴠᴇᴅ %s in %s>" % (self.user_id, self.chat_id)
+        return f"<ᴄᴀᴘᴛᴄʜᴀ ѕᴏʟᴠᴇᴅ {self.user_id} in {self.chat_id}>"
 
 
 SETTINGS_LOCK = threading.RLock()
