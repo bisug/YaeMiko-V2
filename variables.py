@@ -6,7 +6,7 @@ import os
 
 
 def env_ids(name):
-    return [int(value) for value in os.environ.get(name, "").split() if value]
+    return [int(value) for value in os.environ.get(name, "").split()]
 
 
 class Config:

@@ -30,25 +30,20 @@ def escape_markdown(text: str, version: int = 1, entity_type: str = None) -> str
     return re.sub(r"([\\_*\[\]()~`>#+\-=|{}.!])", r"\\\1", text)
 
 
-def _matches_entity_type(entity_type, types: list[str] = None) -> bool:
-    if types is None:
-        return True
+def _entity_type_name(entity_type) -> str:
     name = (
         entity_type.name.lower()
         if hasattr(entity_type, "name")
         else str(entity_type).lower()
     )
-    if name.startswith("messageentitytype."):
-        name = name.split(".", 1)[1]
-    for t in types:
-        if entity_type == t:
-            return True
-        t_name = t.name.lower() if hasattr(t, "name") else str(t).lower()
-        if t_name.startswith("messageentitytype."):
-            t_name = t_name.split(".", 1)[1]
-        if name == t_name:
-            return True
-    return False
+    return name.split(".", 1)[1] if name.startswith("messageentitytype.") else name
+
+
+def _matches_entity_type(entity_type, types: list[str] = None) -> bool:
+    if types is None:
+        return True
+    name = _entity_type_name(entity_type)
+    return any(entity_type == t or name == _entity_type_name(t) for t in types)
 
 
 def _extract_entity_text(text: str, entity: MessageEntity) -> str:
@@ -160,13 +155,7 @@ def markdown_parser(
         start = ent.offset + offset  # start of entity
         end = ent.offset + offset + ent.length - 1  # end of entity
 
-        ent_type = (
-            ent.type.name.lower()
-            if hasattr(ent.type, "name")
-            else str(ent.type).lower()
-        )
-        if ent_type.startswith("messageentitytype."):
-            ent_type = ent_type.split(".", 1)[1]
+        ent_type = _entity_type_name(ent.type)
 
         # Only these entity types are reinserted.
         if ent_type in ("code", "url", "text_link", "spoiler"):
@@ -322,16 +311,6 @@ def remove_escapes(text: str) -> str:
         else:
             res += text[counter]
     return res
-
-
-def escape_chars(text: str, to_escape: list[str]) -> str:
-    to_escape.append("\\")
-    new_text = ""
-    for x in text:
-        if x in to_escape:
-            new_text += "\\"
-        new_text += x
-    return new_text
 
 
 async def extract_time(message, time_val):
