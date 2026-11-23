@@ -916,30 +916,53 @@ async def _replace(status: Message, text: str):
             LOGGER.debug("Could not deliver a genshin notice", exc_info=True)
 
 
-async def _universal_lookup(message: Message, query: str):
+async def _run_lookup(message: Message, query: str, kind: str | None):
+    """Shared lookup flow; kind=None runs universal cross-category search."""
     status = await message.reply_text(
         f"Looking up <b>{html_escape(query)}</b>…", parse_mode=ParseMode.HTML
     )
-    try:
-        matches = await _search_all(query)
-    except LOOKUP_ERRORS as err:
-        LOGGER.warning("Genshin universal search failed: %s", err)
-        await _replace(status, "The lookup service is not responding right now.")
-        return
 
-    if not matches:
-        await _replace(
-            status,
-            f"No Genshin data found for <b>{html_escape(query)}</b>.\n"
-            "Check the spelling, or try part of the name.",
-        )
-        return
+    if kind is None:
+        try:
+            matches = await _search_all(query)
+        except LOOKUP_ERRORS as err:
+            LOGGER.warning("Genshin universal search failed: %s", err)
+            await _replace(status, "The lookup service is not responding right now.")
+            return
+        if not matches:
+            await _replace(
+                status,
+                f"No Genshin data found for <b>{html_escape(query)}</b>.\n"
+                "Check the spelling, or try part of the name.",
+            )
+            return
+        title, list_kind = "Genshin Search", "all"
+    else:
+        entity = ENTITY_TYPES[kind]
+        try:
+            entries = await _search(kind)
+        except LOOKUP_ERRORS as err:
+            LOGGER.warning("Genshin %s lookup failed: %s", kind, err)
+            await _replace(status, "The lookup service is not responding right now.")
+            return
+        if not entries:
+            await _replace(status, f"No {entity.label.lower()} data available.")
+            return
+        matches = _match(entries, query)
+        if not matches:
+            await _replace(
+                status,
+                f"No {entity.label.lower()} called <b>{html_escape(query)}</b>.\n"
+                "Check the spelling, or try part of the name.",
+            )
+            return
+        title, list_kind = f"{entity.emoji} {entity.label}s", kind
 
     thread_id = message.message_thread_id if message.chat.is_forum else None
     if len(matches) > 1:
         shown, page, total = _paginate(matches, 1)
-        text = _format_list_text("Genshin Search", query, len(matches), page, total)
-        markup = _list_keyboard("all", query, 1, total, shown)
+        text = _format_list_text(title, query, len(matches), page, total)
+        markup = _list_keyboard(list_kind, query, 1, total, shown)
         await message.reply_text(
             text=text,
             reply_markup=markup,
@@ -953,21 +976,25 @@ async def _universal_lookup(message: Message, query: str):
             pass
     else:
         record = matches[0]
-        kind = record.get("_kind", "characters")
+        detail_kind = record.get("_kind", "characters") if kind is None else kind
         rec_id = str(record.get("key") or record.get("id") or "")
         try:
-            detail = await _fetch_detail(kind, rec_id)
+            detail = await _fetch_detail(detail_kind, rec_id)
             if detail:
                 record = detail
         except LOOKUP_ERRORS:
             pass
-        text, markup, img_url = RENDERERS[kind](record)
+        text, markup, img_url = RENDERERS[detail_kind](record)
         sent = await _send_card(message.chat.id, text, img_url, markup, thread_id)
         if sent is not None:
             try:
                 await status.delete()
             except RPCError:
                 pass
+
+
+async def _universal_lookup(message: Message, query: str):
+    await _run_lookup(message, query, None)
 
 
 async def _lookup(message: Message, kind: str):
@@ -984,63 +1011,7 @@ async def _lookup(message: Message, kind: str):
         )
         return
 
-    status = await message.reply_text(
-        f"Looking up <b>{html_escape(query)}</b>…", parse_mode=ParseMode.HTML
-    )
-    try:
-        entries = await _search(kind)
-    except LOOKUP_ERRORS as err:
-        LOGGER.warning("Genshin %s lookup failed: %s", kind, err)
-        await _replace(status, "The lookup service is not responding right now.")
-        return
-
-    if not entries:
-        await _replace(status, f"No {entity.label.lower()} data available.")
-        return
-
-    matches = _match(entries, query)
-    if not matches:
-        await _replace(
-            status,
-            f"No {entity.label.lower()} called <b>{html_escape(query)}</b>.\n"
-            "Check the spelling, or try part of the name.",
-        )
-        return
-
-    thread_id = message.message_thread_id if message.chat.is_forum else None
-    if len(matches) > 1:
-        shown, page, total = _paginate(matches, 1)
-        text = _format_list_text(
-            f"{entity.emoji} {entity.label}s", query, len(matches), page, total
-        )
-        markup = _list_keyboard(kind, query, 1, total, shown)
-        await message.reply_text(
-            text=text,
-            reply_markup=markup,
-            parse_mode=ParseMode.HTML,
-            message_thread_id=thread_id,
-            disable_web_page_preview=True,
-        )
-        try:
-            await status.delete()
-        except RPCError:
-            pass
-    else:
-        record = matches[0]
-        rec_id = str(record.get("key") or record.get("id") or "")
-        try:
-            detail = await _fetch_detail(kind, rec_id)
-            if detail:
-                record = detail
-        except LOOKUP_ERRORS:
-            pass
-        text, markup, img_url = RENDERERS[kind](record)
-        sent = await _send_card(message.chat.id, text, img_url, markup, thread_id)
-        if sent is not None:
-            try:
-                await status.delete()
-            except RPCError:
-                pass
+    await _run_lookup(message, query, kind)
 
 
 @on_message(filters.command(["genshin", "gi"]), chained=True)
