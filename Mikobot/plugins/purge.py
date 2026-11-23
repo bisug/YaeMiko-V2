@@ -1,4 +1,5 @@
 from asyncio import sleep
+from itertools import batched
 
 from pyrogram import filters
 from pyrogram.enums import ChatType
@@ -19,11 +20,7 @@ async def purge(c: app, m: Message):
     if m.reply_to_message:
         message_ids = list(range(m.reply_to_message.id, m.id))
 
-        def divide_chunks(items: list, n: int = 100):
-            for i in range(0, len(items), n):
-                yield items[i : i + n]
-
-        m_list = list(divide_chunks(message_ids))
+        m_list = list(map(list, batched(message_ids, 100, strict=False)))
 
         try:
             for plist in m_list:
@@ -65,11 +62,7 @@ async def spurge(c: app, m: Message):
     if m.reply_to_message:
         message_ids = list(range(m.reply_to_message.id, m.id))
 
-        def divide_chunks(items: list, n: int = 100):
-            for i in range(0, len(items), n):
-                yield items[i : i + n]
-
-        m_list = list(divide_chunks(message_ids))
+        m_list = list(map(list, batched(message_ids, 100, strict=False)))
 
         try:
             for plist in m_list:

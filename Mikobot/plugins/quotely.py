@@ -100,16 +100,8 @@ class Quotly:
                     )
                     return await _upload(Path(png_file), "litterbox")
             finally:
-                if os.path.exists(png_file):
-                    try:
-                        os.remove(png_file)
-                    except OSError:
-                        pass
-                if os.path.exists(file_):
-                    try:
-                        os.remove(file_)
-                    except OSError:
-                        pass
+                Path(png_file).unlink(missing_ok=True)
+                Path(file_).unlink(missing_ok=True)
 
         reply_dict = {}
         if reply:
@@ -465,11 +457,8 @@ async def quott_(event):
         return
     finally:
         for f_path in (file, f"{file}.webp" if file else None):
-            if f_path and os.path.exists(f_path):
-                try:
-                    os.remove(f_path)
-                except OSError:
-                    pass
+            if f_path:
+                Path(f_path).unlink(missing_ok=True)
     try:
         await msg.delete()
     except Exception:

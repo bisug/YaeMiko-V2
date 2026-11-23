@@ -1,5 +1,5 @@
-import os
 from asyncio import sleep
+from pathlib import Path
 
 from pyrogram import filters
 from pyrogram.enums import ChatMembersFilter, ChatMemberStatus, ChatType
@@ -81,14 +81,12 @@ async def get_users(client, message: Message):
             lines.append(f"[{name}](tg://user?id={user.id}) {user.id}")
     path = f"userslist_{message.chat.id}.txt"
     try:
-        with open(path, "w", encoding="utf-8") as file:
-            file.write("\n".join(lines))
+        Path(path).write_text("\n".join(lines), encoding="utf-8")
         await message.reply_document(
             path, caption=f"Users in {chat.title or 'this chat'}"
         )
     finally:
-        if os.path.exists(path):
-            os.remove(path)
+        Path(path).unlink(missing_ok=True)
 
 
 __mod_name__ = "Unbanall"

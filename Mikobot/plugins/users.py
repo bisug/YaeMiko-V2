@@ -127,8 +127,7 @@ async def get_user_id(username: str) -> int | None:
     if len(username) <= 5:
         return None
 
-    if username.startswith("@"):
-        username = username[1:]
+    username = username.removeprefix("@")
 
     users = await asyncio.to_thread(sql.get_userid_by_name, username)
 

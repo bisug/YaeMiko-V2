@@ -400,9 +400,8 @@ async def clearall_btn(client, query: CallbackQuery):
 async def list_notes(client, message: Message):
     chat_id = message.chat.id
     note_list = sql.get_all_chat_notes(chat_id)
-    notes = len(note_list) + 1
     msg = "Get a note with /notenumber or #notename.\n\nID    Note\n"
-    for note_id, note in zip(range(1, notes), note_list, strict=False):
+    for note_id, note in enumerate(note_list, 1):
         if note_id < 10:
             note_name = f"`{note_id:2}.`  `#{(note.name.lower())}`\n"
         else:
@@ -452,8 +451,7 @@ async def __import_data__(chat_id, data, message: Message):
                 )
         elif matchbtn:
             parse = notedata[matchbtn.end() :].strip()
-            notedata = parse.split("<###button###>")[0]
-            buttons = parse.split("<###button###>")[1]
+            notedata, _, buttons = parse.partition("<###button###>")
             buttons = ast.literal_eval(buttons)
             if buttons:
                 sql.add_note_to_db(
@@ -465,9 +463,7 @@ async def __import_data__(chat_id, data, message: Message):
                 )
         elif matchfile:
             file = notedata[matchfile.end() :].strip()
-            file = file.split("<###TYPESPLIT###>")
-            notedata = file[1]
-            content = file[0]
+            content, _, notedata = file.partition("<###TYPESPLIT###>")
             if content:
                 sql.add_note_to_db(
                     chat_id,
@@ -478,9 +474,7 @@ async def __import_data__(chat_id, data, message: Message):
                 )
         elif matchphoto:
             photo = notedata[matchphoto.end() :].strip()
-            photo = photo.split("<###TYPESPLIT###>")
-            notedata = photo[1]
-            content = photo[0]
+            content, _, notedata = photo.partition("<###TYPESPLIT###>")
             if content:
                 sql.add_note_to_db(
                     chat_id,
@@ -491,9 +485,7 @@ async def __import_data__(chat_id, data, message: Message):
                 )
         elif matchaudio:
             audio = notedata[matchaudio.end() :].strip()
-            audio = audio.split("<###TYPESPLIT###>")
-            notedata = audio[1]
-            content = audio[0]
+            content, _, notedata = audio.partition("<###TYPESPLIT###>")
             if content:
                 sql.add_note_to_db(
                     chat_id,
@@ -504,9 +496,7 @@ async def __import_data__(chat_id, data, message: Message):
                 )
         elif matchvoice:
             voice = notedata[matchvoice.end() :].strip()
-            voice = voice.split("<###TYPESPLIT###>")
-            notedata = voice[1]
-            content = voice[0]
+            content, _, notedata = voice.partition("<###TYPESPLIT###>")
             if content:
                 sql.add_note_to_db(
                     chat_id,
@@ -517,9 +507,7 @@ async def __import_data__(chat_id, data, message: Message):
                 )
         elif matchvideo:
             video = notedata[matchvideo.end() :].strip()
-            video = video.split("<###TYPESPLIT###>")
-            notedata = video[1]
-            content = video[0]
+            content, _, notedata = video.partition("<###TYPESPLIT###>")
             if content:
                 sql.add_note_to_db(
                     chat_id,
@@ -530,9 +518,7 @@ async def __import_data__(chat_id, data, message: Message):
                 )
         elif matchvn:
             video_note = notedata[matchvn.end() :].strip()
-            video_note = video_note.split("<###TYPESPLIT###>")
-            notedata = video_note[1]
-            content = video_note[0]
+            content, _, notedata = video_note.partition("<###TYPESPLIT###>")
             if content:
                 sql.add_note_to_db(
                     chat_id,

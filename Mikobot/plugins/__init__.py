@@ -3,16 +3,15 @@ from Mikobot.logger import LOGGER
 
 
 def __list_all_modules():
-    import glob
     import sys
-    from os.path import basename, dirname, isfile
+    from pathlib import Path
 
     # This generates a list of modules in this folder for the * in __main__ to work.
-    mod_paths = glob.glob(dirname(__file__) + "/*.py")
+    mod_paths = Path(__file__).parent.glob("*.py")
     all_modules = [
-        basename(f)[:-3]
+        f.stem
         for f in mod_paths
-        if isfile(f) and f.endswith(".py") and not f.endswith("__init__.py")
+        if f.is_file() and f.suffix == ".py" and not f.name.endswith("__init__.py")
     ]
 
     if LOAD or NO_LOAD:

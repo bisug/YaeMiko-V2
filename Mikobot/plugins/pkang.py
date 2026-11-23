@@ -66,7 +66,7 @@ async def _packkang(app, message):
         sticks.append(pyrogram.raw.types.InputStickerSetItem(document=sex, emoji=emoji))
 
     try:
-        short_name = f"stikcer_pack_{str(uuid4()).replace('-', '')}_by_{bot_username}"
+        short_name = f"stikcer_pack_{uuid4().hex}_by_{bot_username}"
         user_id = await app.resolve_peer(message.from_user.id)
         await app.invoke(
             pyrogram.raw.functions.stickers.CreateStickerSet(

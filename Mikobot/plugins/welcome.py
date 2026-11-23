@@ -173,7 +173,7 @@ async def member_has_joined(client, member: ChatMemberUpdated):
                     "Could not delete the previous welcome message in %s", chat_id
                 )
         mention = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
-        joined_date = datetime.fromtimestamp(time.time()).strftime("%Y.%m. %d %H:%M:%S")
+        joined_date = datetime.now().strftime("%Y.%m. %d %H:%M:%S")
         user_id = user.id
         with tempfile.TemporaryDirectory(prefix="yae-welcome-") as temp_dir:
             try:

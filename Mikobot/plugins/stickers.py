@@ -55,11 +55,6 @@ SUPPORTED_TYPES = ["jpeg", "png", "webp"]
 MAX_MEDIA_SIZE = 20 * 1024 * 1024
 
 
-def _write_bytes(path: str, data: bytes) -> None:
-    with open(path, mode="wb") as f:
-        f.write(data)
-
-
 @app.on_message(filters.command(["getsticker"], PREFIX_HANDLER), group=111)
 @use_chat_lang()
 async def getsticker_(self: Client, ctx: Message, strings):
@@ -248,7 +243,7 @@ async def kang_sticker(self: Client, ctx: Message, strings):
             try:
                 r = await state.get(img_url, timeout=15)
                 if r.status_code == 200:
-                    await asyncio.to_thread(_write_bytes, filename, r.read())
+                    await asyncio.to_thread(Path(filename).write_bytes, r.read())
             except Exception as r_e:
                 return await prog_msg.edit(f"{r_e.__class__.__name__} : {r_e}")
             if len(ctx.command) > 2:
@@ -391,11 +386,7 @@ def resize_image(filename: str) -> str:
         scale = min(1, maxsize / max(source.size))
         size = tuple(max(1, round(value * scale)) for value in source.size)
         image = source.convert("RGBA").resize(size, Image.Resampling.LANCZOS)
-        downpath, _ = os.path.split(filename)
-        png_image = os.path.join(
-            downpath,
-            f"{os.path.splitext(os.path.basename(filename))[0]}.png",
-        )
+        png_image = str(Path(filename).with_suffix(".png"))
         image.save(png_image, "PNG")
     if png_image != filename:
         os.remove(filename)
@@ -403,10 +394,7 @@ def resize_image(filename: str) -> str:
 
 
 async def convert_video(filename: str) -> str:
-    downpath, _ = os.path.split(filename)
-    webm_video = os.path.join(
-        downpath, f"{os.path.splitext(os.path.basename(filename))[0]}.webm"
-    )
+    webm_video = str(Path(filename).with_suffix(".webm"))
     cmd = [
         "ffmpeg",
         "-loglevel",

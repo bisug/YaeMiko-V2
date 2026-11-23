@@ -39,10 +39,7 @@ async def echo(client, message: Message):
 
 @on_message(*disableable(["tr", "tl"]), chained=True)
 async def totranslate(client, message: Message):
-    problem_lang_code = []
-    for key in LANGUAGES:
-        if "-" in key:
-            problem_lang_code.append(key)
+    problem_lang_code = [key for key in LANGUAGES if "-" in key]
 
     try:
         if (

@@ -21,8 +21,8 @@ async def ping(client, message: Message):
 
     await sent.edit_text(
         "<b>Pong</b>\n\n"
-        "<b>Time taken:</b> <code>{}</code>\n"
-        "<b>Uptime:</b> <code>{}</code>".format(telegram_ping, uptime),
+        f"<b>Time taken:</b> <code>{telegram_ping}</code>\n"
+        f"<b>Uptime:</b> <code>{uptime}</code>",
         parse_mode=ParseMode.HTML,
     )
 
