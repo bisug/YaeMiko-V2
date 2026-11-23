@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import os
-import sys
 
 import pytest
 
@@ -193,13 +192,6 @@ def test_persistence_store(tmp_path):
 
     reopened = open_store(str(store_file))
     assert reopened.chat_data[123] == {"setting": "enabled"}
-
-
-def test_lazy_imports_configuration():
-    if hasattr(sys, "set_lazy_imports"):
-        import Mikobot  # noqa: F401
-
-        assert sys.get_lazy_imports() in ("all", True)
 
 
 async def test_safe_resolve_peer_converts_numeric_strings(monkeypatch):

@@ -159,11 +159,8 @@ idle connections.
 The heavy dependencies are the ONNX Runtime native engine and the `opennsfw-onnx` wheel, which ships
 the classifier model, plus Pillow's image codecs. Both ONNX packages are excluded on Python 3.15+.
 
-Three things are lazy on purpose, so you are not paying for them at startup:
+Two things are lazy on purpose, so you are not paying for them at startup:
 
-- **Python 3.15+ native lazy imports** (`sys.set_lazy_imports('all')`) defer all third-party modules
-  until their first use. SQLAlchemy and `Database.sql.*` are excluded from this to keep ORM
-  class-body execution correct. On Python 3.14 the call is skipped; the interpreter has no such API.
 - The ONNX classifier is imported inside the function that needs it, not at module import, so the
   20.9 MB model is only loaded when an anti-NSFW check actually runs.
 - The Kurigram MTProto client is created at import without connecting to Telegram, and no other

@@ -5,23 +5,9 @@ import asyncio
 import contextlib
 import importlib
 import re
-import sys
 import time
 from platform import python_version
 from random import choice
-
-# Enable lazy imports on Python 3.15+ for faster startup and lower memory use.
-if hasattr(sys, "set_lazy_imports"):
-
-    def _lazy_imports_filter(importing_mod, imported_mod, fromlist=None):
-        for mod in (importing_mod, imported_mod):
-            if mod and mod.startswith(("sqlalchemy", "Database.sql")):
-                return False
-        return True
-
-    sys.set_lazy_imports("all")
-    if hasattr(sys, "set_lazy_imports_filter"):
-        sys.set_lazy_imports_filter(_lazy_imports_filter)
 
 import psutil
 import pyrogram

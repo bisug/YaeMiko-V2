@@ -12,10 +12,6 @@ All notable changes to YaeMiko are recorded here. The format follows
   `kuricrypt==0.1.1` (Rust/PyO3) and updated Kurigram to `2.2.27`.
 - **Python 3.14.10 pin**: `.python-version`, `pyproject.toml` (`requires-python = ">=3.14"`),
   `Dockerfile` (`python:3.14.10-slim`), and CI workflow (`python-version: "3.14.10"`).
-- **Native lazy imports** (`sys.set_lazy_imports('all')`) enabled in `Mikobot/__init__.py` and
-  `Mikobot/__main__.py`, with a filter that excludes `sqlalchemy.*` and `Database.sql.*` to keep
-  SQLAlchemy ORM class-body execution correct. Reduces cold-start import time to near zero for all
-  third-party modules.
 - `SESSION = None` guard in `Database/sql/__init__.py` when `unittest` is in `sys.modules`, plus
   early-return guards in all `__load_*` and `_ensure_*` functions across every SQL module so the
   test suite runs without a real database connection.
