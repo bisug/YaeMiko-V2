@@ -71,7 +71,7 @@ class Registry:
         while chained background checks continue to subsequent handlers.
         """
         with correlation_scope(f"{type(update).__name__}:{getattr(update, 'id', '')}"):
-            for registration in list(bucket):
+            for registration in bucket:
                 try:
                     if not await registration.matches(client, update):
                         continue
@@ -113,58 +113,45 @@ class Registry:
 registry = Registry()
 
 
-def on_message(*filters, chained: bool = False):
+def _event_decorator(name: str, bucket: str, doc: str):
+    """Build one of the public ``on_*`` decorator factories."""
+
+    def factory(*filters, chained: bool = False):
+        def decorator(func):
+            registry.add(getattr(registry, bucket), filters, func, chained)
+            return func
+
+        return decorator
+
+    factory.__name__ = name
+    factory.__qualname__ = name
+    factory.__doc__ = doc
+    return factory
+
+
+on_message = _event_decorator(
+    "on_message",
+    "messages",
     """Register a message handler.
 
     ``chained=True`` lets the next matching handler run as well, which is what
     the lock, flood and plugin handlers need.
-    """
-
-    def decorator(func):
-        registry.add(registry.messages, filters, func, chained)
-        return func
-
-    return decorator
-
-
-def on_callback(*filters, chained: bool = False):
-    """Register a callback query handler."""
-
-    def decorator(func):
-        registry.add(registry.callbacks, filters, func, chained)
-        return func
-
-    return decorator
-
-
-def on_inline_query(*filters, chained: bool = False):
-    """Register an inline query handler."""
-
-    def decorator(func):
-        registry.add(registry.inline_queries, filters, func, chained)
-        return func
-
-    return decorator
-
-
-def on_chat_join_request(*filters, chained: bool = False):
-    """Register a chat join request handler."""
-
-    def decorator(func):
-        registry.add(registry.join_requests, filters, func, chained)
-        return func
-
-    return decorator
-
-
-def on_chat_member_updated(*filters, chained: bool = False):
-    """Register a chat member update handler."""
-
-    def decorator(func):
-        registry.add(registry.chat_member_updates, filters, func, chained)
-        return func
-
-    return decorator
+    """,
+)
+on_callback = _event_decorator(
+    "on_callback", "callbacks", "Register a callback query handler."
+)
+on_inline_query = _event_decorator(
+    "on_inline_query", "inline_queries", "Register an inline query handler."
+)
+on_chat_join_request = _event_decorator(
+    "on_chat_join_request", "join_requests", "Register a chat join request handler."
+)
+on_chat_member_updated = _event_decorator(
+    "on_chat_member_updated",
+    "chat_member_updates",
+    "Register a chat member update handler.",
+)
 
 
 def add_message(handler, *filters, chained: bool = False) -> None:
