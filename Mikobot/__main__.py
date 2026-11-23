@@ -56,6 +56,7 @@ from Mikobot.utils.parser import escape_markdown
 
 PYTHON_VERSION = python_version()
 KURIGRAM_VERSION = pyrogram.__version__
+SOURCE_LINK = "https://github.com/bisug/YaeMiko-V2"
 
 
 def _process_memory() -> tuple[float, float | None]:
@@ -632,7 +633,6 @@ async def settings_button(client, query: CallbackQuery):
             )
             return
         if mod_match:
-            chat_id = mod_match.group(1)
             module = mod_match.group(2)
             text = (
                 f"*{escape_markdown(chat.title)}* settings for the *{CHAT_SETTINGS[module].__mod_name__}* module:\n\n"
@@ -647,7 +647,6 @@ async def settings_button(client, query: CallbackQuery):
             )
 
         elif prev_match:
-            chat_id = prev_match.group(1)
             curr_page = int(prev_match.group(2))
             await query.message.reply_text(
                 f"Choose a settings category for {chat.title}:",
@@ -659,7 +658,6 @@ async def settings_button(client, query: CallbackQuery):
             )
 
         elif next_match:
-            chat_id = next_match.group(1)
             next_page = int(next_match.group(2))
             await query.message.reply_text(
                 f"Choose a settings category for {chat.title}:",
@@ -671,7 +669,6 @@ async def settings_button(client, query: CallbackQuery):
             )
 
         elif back_match:
-            chat_id = back_match.group(1)
             await query.message.reply_text(
                 text=f"Choose a settings category for {escape_markdown(chat.title)}:",
                 reply_markup=InlineKeyboardMarkup(
@@ -828,8 +825,7 @@ async def gitsource_callback(client, query: CallbackQuery):
     await query.answer()
 
     if query.data == "git_source":
-        source_link = "https://github.com/bisug/YaeMiko-V2"
-        message_text = f"*Source code*:\n\n{source_link}"
+        message_text = f"*Source code*:\n\n{SOURCE_LINK}"
 
         keyboard = [[_back_button("Miko_back")]]
         reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
@@ -843,8 +839,7 @@ async def gitsource_callback(client, query: CallbackQuery):
 
 
 async def repo(client, message: Message):
-    source_link = "https://github.com/bisug/YaeMiko-V2"
-    message_text = f"*Source code*:\n\n{source_link}"
+    message_text = f"*Source code*:\n\n{SOURCE_LINK}"
 
     await client.send_message(
         chat_id=message.chat.id,

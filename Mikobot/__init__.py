@@ -101,6 +101,13 @@ def _env_int_or_raw(name):
     return raw
 
 
+def _int_set(values, message):
+    try:
+        return {int(x) for x in values}
+    except ValueError:
+        raise Exception(message) from None
+
+
 _load_local_env()
 
 
@@ -174,41 +181,30 @@ if ENV:
         "OWNER_ID", message="Your OWNER_ID env variable is not a valid integer."
     )
 
-    try:
-        BL_CHATS = {int(x) for x in os.environ.get("BL_CHATS", "").split()}
-    except ValueError:
-        raise Exception(
-            "Your blacklisted chats list does not contain valid integers."
-        ) from None
-
-    try:
-        DRAGONS = {int(x) for x in os.environ.get("DRAGONS", "").split()}
-        DEV_USERS = {int(x) for x in os.environ.get("DEV_USERS", "").split()}
-    except ValueError:
-        raise Exception(
-            "Your sudo or dev users list does not contain valid integers."
-        ) from None
-
-    try:
-        DEMONS = {int(x) for x in os.environ.get("DEMONS", "").split()}
-    except ValueError:
-        raise Exception(
-            "Your support users list does not contain valid integers."
-        ) from None
-
-    try:
-        TIGERS = {int(x) for x in os.environ.get("TIGERS", "").split()}
-    except ValueError:
-        raise Exception(
-            "Your tiger users list does not contain valid integers."
-        ) from None
-
-    try:
-        WOLVES = {int(x) for x in os.environ.get("WOLVES", "").split()}
-    except ValueError:
-        raise Exception(
-            "Your whitelisted users list does not contain valid integers."
-        ) from None
+    BL_CHATS = _int_set(
+        os.environ.get("BL_CHATS", "").split(),
+        "Your blacklisted chats list does not contain valid integers.",
+    )
+    DRAGONS = _int_set(
+        os.environ.get("DRAGONS", "").split(),
+        "Your sudo or dev users list does not contain valid integers.",
+    )
+    DEV_USERS = _int_set(
+        os.environ.get("DEV_USERS", "").split(),
+        "Your sudo or dev users list does not contain valid integers.",
+    )
+    DEMONS = _int_set(
+        os.environ.get("DEMONS", "").split(),
+        "Your support users list does not contain valid integers.",
+    )
+    TIGERS = _int_set(
+        os.environ.get("TIGERS", "").split(),
+        "Your tiger users list does not contain valid integers.",
+    )
+    WOLVES = _int_set(
+        os.environ.get("WOLVES", "").split(),
+        "Your whitelisted users list does not contain valid integers.",
+    )
 else:
     from variables import Development as Config
 
@@ -236,41 +232,30 @@ else:
     except ValueError:
         raise Exception("Your OWNER_ID variable is not a valid integer.") from None
 
-    try:
-        BL_CHATS = {int(x) for x in Config.BL_CHATS or []}
-    except ValueError:
-        raise Exception(
-            "Your blacklisted chats list does not contain valid integers."
-        ) from None
-
-    try:
-        DRAGONS = {int(x) for x in Config.DRAGONS or []}
-        DEV_USERS = {int(x) for x in Config.DEV_USERS or []}
-    except ValueError:
-        raise Exception(
-            "Your sudo or dev users list does not contain valid integers."
-        ) from None
-
-    try:
-        DEMONS = {int(x) for x in Config.DEMONS or []}
-    except ValueError:
-        raise Exception(
-            "Your support users list does not contain valid integers."
-        ) from None
-
-    try:
-        TIGERS = {int(x) for x in Config.TIGERS or []}
-    except ValueError:
-        raise Exception(
-            "Your tiger users list does not contain valid integers."
-        ) from None
-
-    try:
-        WOLVES = {int(x) for x in Config.WOLVES or []}
-    except ValueError:
-        raise Exception(
-            "Your whitelisted users list does not contain valid integers."
-        ) from None
+    BL_CHATS = _int_set(
+        Config.BL_CHATS or [],
+        "Your blacklisted chats list does not contain valid integers.",
+    )
+    DRAGONS = _int_set(
+        Config.DRAGONS or [],
+        "Your sudo or dev users list does not contain valid integers.",
+    )
+    DEV_USERS = _int_set(
+        Config.DEV_USERS or [],
+        "Your sudo or dev users list does not contain valid integers.",
+    )
+    DEMONS = _int_set(
+        Config.DEMONS or [],
+        "Your support users list does not contain valid integers.",
+    )
+    TIGERS = _int_set(
+        Config.TIGERS or [],
+        "Your tiger users list does not contain valid integers.",
+    )
+    WOLVES = _int_set(
+        Config.WOLVES or [],
+        "Your whitelisted users list does not contain valid integers.",
+    )
 
 ELEVATED_USERS = _load_elevated_users()
 DRAGONS.update(int(user_id) for user_id in ELEVATED_USERS.get("sudos", []))

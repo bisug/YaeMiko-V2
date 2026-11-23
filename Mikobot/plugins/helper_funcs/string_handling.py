@@ -1,5 +1,6 @@
 import re
 import time
+from functools import lru_cache
 
 from emoji import unicode_codes
 from pyrogram.parser.utils import add_surrogates, remove_surrogates
@@ -117,6 +118,7 @@ def _selective_escape(to_parse: str) -> str:
     return to_parse
 
 
+@lru_cache(maxsize=256)
 def _calc_emoji_offset(to_calc) -> int:
     # Emoji take more UTF-16 code units than characters, which shifts entity
     # offsets; subtract one per emoji to compensate (compound emoji shift more).
@@ -300,17 +302,7 @@ def split_quotes(text: str) -> list:
 
 
 def remove_escapes(text: str) -> str:
-    res = ""
-    is_escaped = False
-    for counter in range(len(text)):
-        if is_escaped:
-            res += text[counter]
-            is_escaped = False
-        elif text[counter] == "\\":
-            is_escaped = True
-        else:
-            res += text[counter]
-    return res
+    return re.sub(r"\\(.)|\\$", r"\1", text, flags=re.DOTALL)
 
 
 async def extract_time(message, time_val):

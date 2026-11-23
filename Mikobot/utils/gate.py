@@ -161,19 +161,18 @@ async def enforce(client, event, handler) -> bool:
         for spec in getattr(handler, "requirements", ()):
             action = spec.get("chat_action")
             if action:
+                chat_action = CHAT_ACTIONS.get(action, ChatAction.TYPING)
                 chat_id = _chat_id(event)
                 if chat_id is not None:
                     # The first send is awaited here rather than left to the
                     # repeat: a handler that finishes before the loop ever runs
                     # the repeat would show no indicator at all.
-                    await client.send_chat_action(
-                        chat_id, CHAT_ACTIONS.get(action, ChatAction.TYPING)
-                    )
+                    await client.send_chat_action(chat_id, chat_action)
                     await stack.enter_async_context(
                         _repeat_action(
                             client,
                             chat_id,
-                            CHAT_ACTIONS.get(action, ChatAction.TYPING),
+                            chat_action,
                         )
                     )
                 continue
@@ -189,13 +188,6 @@ async def enforce(client, event, handler) -> bool:
                         event,
                         "Send /connect in a group that you and I have in common first.",
                     )
-                    return False
-                continue
-
-            # Skips quietly when the sender is an admin;
-            # no reply and no command deletion.
-            if spec["kind"] == "user_not_admin":
-                if not await _sender_is_not_admin(event):
                     return False
                 continue
 
@@ -282,16 +274,6 @@ async def _bot_command_reviewed(client, event) -> bool:
             return True
 
     return await bot2bot.request_review(user, _event_parts(event)[0], event)
-
-
-async def _sender_is_not_admin(event) -> bool:
-    """True if sender is not an administrator."""
-    from Mikobot.plugins.helper_funcs import chat_status
-
-    chat, user = _event_parts(event)
-    if chat is None or user is None:
-        return False
-    return not await chat_status.is_user_admin(chat, user.id)
 
 
 async def _connected_chat(client, event):

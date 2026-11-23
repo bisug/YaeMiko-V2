@@ -46,7 +46,7 @@ from Mikobot.plugins.helper_funcs.string_handling import markdown_parser
 from Mikobot.utils.consts import ChatID
 from Mikobot.utils.parser import mention_html, mention_markdown
 
-FBAN_ERRORS = {
+_FED_ERRORS = {
     "user is an administrator of the chat",
     "user_admin_invalid",
     "chat not found",
@@ -55,32 +55,23 @@ FBAN_ERRORS = {
     "chat_admin_required",
     "right_forbidden",
     "user_not_participant",
-    "peer_id_invalid",
-    "group chat was deactivated",
-    "group_deactivated",
-    "need to be inviter of a user to kick it from a basic group",
-    "only the creator of a basic group can kick group administrators",
     "channel_private",
     "not in the chat",
     "have no rights to send a message",
     "chat_write_forbidden",
 }
 
-UNFBAN_ERRORS = {
-    "user is an administrator of the chat",
-    "user_admin_invalid",
-    "chat not found",
-    "chat_not_found",
-    "not enough rights to restrict/unrestrict chat member",
-    "chat_admin_required",
-    "right_forbidden",
-    "user_not_participant",
+FBAN_ERRORS = _FED_ERRORS | {
+    "peer_id_invalid",
+    "group chat was deactivated",
+    "group_deactivated",
+    "need to be inviter of a user to kick it from a basic group",
+    "only the creator of a basic group can kick group administrators",
+}
+
+UNFBAN_ERRORS = _FED_ERRORS | {
     "method is available for supergroup and channel chats only",
     "channel_invalid",
-    "not in the chat",
-    "channel_private",
-    "have no rights to send a message",
-    "chat_write_forbidden",
 }
 
 
@@ -1960,11 +1951,10 @@ async def subs_feds(client, message: Message):
         return
 
     fed_id = sql.get_fed_id(chat.id)
-    fedinfo = sql.get_fed_info(fed_id)
-
     if not fed_id:
         await send_message(message, "This group is not in any federation!")
         return
+    fedinfo = sql.get_fed_info(fed_id)
 
     if is_user_fed_owner(fed_id, user.id) is False:
         await send_message(message, "Only fed owner can do this!")
@@ -2033,11 +2023,10 @@ async def unsubs_feds(client, message: Message):
         return
 
     fed_id = sql.get_fed_id(chat.id)
-    fedinfo = sql.get_fed_info(fed_id)
-
     if not fed_id:
         await send_message(message, "This group is not in any federation!")
         return
+    fedinfo = sql.get_fed_info(fed_id)
 
     if is_user_fed_owner(fed_id, user.id) is False:
         await send_message(message, "Only fed owner can do this!")
@@ -2105,11 +2094,10 @@ async def get_myfedsubs(client, message: Message):
         return
 
     fed_id = sql.get_fed_id(chat.id)
-    fedinfo = sql.get_fed_info(fed_id)
-
     if not fed_id:
         await send_message(message, "This group is not in any federation!")
         return
+    fedinfo = sql.get_fed_info(fed_id)
 
     if is_user_fed_owner(fed_id, user.id) is False:
         await send_message(message, "Only fed owner can do this!")

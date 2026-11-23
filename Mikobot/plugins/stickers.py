@@ -43,7 +43,7 @@ def get_emoji_regex():
         if value and not value.startswith("*")
     ]
     # Exclude entries starting with '*' to avoid re.error.
-    e_sort = sorted([x for x in e_list if not x.startswith("*")], reverse=True)
+    e_sort = sorted(e_list, reverse=True)
     # Sort emojis by length to make sure multi-character emojis are
     # matched first
     pattern_ = f"({'|'.join(e_sort)})"

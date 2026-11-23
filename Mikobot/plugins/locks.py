@@ -793,38 +793,37 @@ async def build_lock_message(chat_id):
     permslist = []
     if locks:
         res += "*" + "Current locks in this chat:" + "*"
-        if locks:
-            locklist = [
-                f"{key} = `{getattr(locks, key)}`"
-                for key in (
-                    "sticker",
-                    "audio",
-                    "voice",
-                    "document",
-                    "video",
-                    "contact",
-                    "photo",
-                    "gif",
-                    "url",
-                    "bots",
-                    "forward",
-                    "game",
-                    "location",
-                    "rtl",
-                    "button",
-                    "egame",
-                    "phone",
-                    "command",
-                    "email",
-                    "anonchannel",
-                    "forwardchannel",
-                    "forwardbot",
-                    "videonote",
-                    "emojicustom",
-                    "stickerpremium",
-                    "stickeranimated",
-                )
-            ]
+        locklist = [
+            f"{key} = `{getattr(locks, key)}`"
+            for key in (
+                "sticker",
+                "audio",
+                "voice",
+                "document",
+                "video",
+                "contact",
+                "photo",
+                "gif",
+                "url",
+                "bots",
+                "forward",
+                "game",
+                "location",
+                "rtl",
+                "button",
+                "egame",
+                "phone",
+                "command",
+                "email",
+                "anonchannel",
+                "forwardchannel",
+                "forwardbot",
+                "videonote",
+                "emojicustom",
+                "stickerpremium",
+                "stickeranimated",
+            )
+        ]
 
     permissions = await client.get_chat(chat_id)
     permissions = getattr(permissions, "permissions", None)

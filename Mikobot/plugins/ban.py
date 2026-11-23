@@ -127,6 +127,7 @@ async def ban(client, message: Message) -> str:
                 raise
             elif "invalid user_id" in str(excp.message or excp).lower():
                 await message.reply_text("That is not a user.")
+                return log_message
             await message.reply_text("I cannot find that user here.")
             return log_message
 

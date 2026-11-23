@@ -34,8 +34,6 @@ __all__ = [
     "is_whitelist_plus",
     "sudo_plus",
     "support_plus",
-    "user_not_admin",
-    "whitelist_plus",
 ]
 
 
@@ -157,7 +155,7 @@ async def is_user_admin(chat, user_id: int, member=None) -> bool:
 
 
 async def is_bot_admin(chat, bot_id: int, bot_member=None) -> bool:
-    if getattr(chat, "type", None) in (ChatType.PRIVATE, "private"):
+    if getattr(chat, "type", None) == ChatType.PRIVATE:
         return True
 
     if not bot_member:
@@ -207,14 +205,6 @@ def sudo_plus(func):
 
 def support_plus(func):
     return requirement(kind="support_plus")(func)
-
-
-def whitelist_plus(func):
-    return requirement(kind="whitelist_plus")(func)
-
-
-def user_not_admin(func):
-    return requirement(kind="user_not_admin")(func)
 
 
 def connection_status(func):
