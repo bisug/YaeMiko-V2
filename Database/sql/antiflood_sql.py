@@ -33,12 +33,16 @@ from sqlalchemy import (
     Column,
     String,
     UnicodeText,
-    inspect,
     select,
-    text,
 )
 
-from Database.sql import BASE, ENGINE, SESSION, run_migration, unit_of_work_guard
+from Database.sql import (
+    BASE,
+    SESSION,
+    ensure_columns,
+    run_migration,
+    unit_of_work_guard,
+)
 
 DEF_COUNT = 1
 DEF_LIMIT = 0
@@ -102,30 +106,7 @@ def _ensure_columns() -> None:
     create(checkfirst=True) leaves an existing table untouched, so without this
     the timer and clearflood columns are missing and every read of them fails.
     """
-    if ENGINE is None:
-        return
-    inspector = inspect(ENGINE)
-    if "antiflood" not in inspector.get_table_names():
-        return
-    present = {column["name"] for column in inspector.get_columns("antiflood")}
-    with ENGINE.begin() as connection:
-        for column in FloodControl.__table__.columns:
-            if column.name in present:
-                continue
-            ddl = (
-                f'ALTER TABLE antiflood ADD COLUMN "{column.name}" '
-                f"{column.type.compile(dialect=ENGINE.dialect)}"
-            )
-            connection.execute(text(ddl))
-            default = getattr(column.default, "arg", None)
-            if default is not None:
-                connection.execute(
-                    text(
-                        f'UPDATE antiflood SET "{column.name}" = :value'
-                        f' WHERE "{column.name}" IS NULL'
-                    ),
-                    {"value": default},
-                )
+    ensure_columns("antiflood", FloodControl)
 
 
 run_migration(_ensure_columns)

@@ -213,26 +213,38 @@ FEDS_SUBSCRIBER = {}
 MYFEDS_SUBSCRIBER = {}
 
 
+def _parse_fusers_blob(raw, warning=None):
+    """Parse a stored fusers blob into a dict, or None when unusable.
+
+    A parse failure logs and returns None. A value that is simply not a dict
+    returns None silently. Each caller keeps its own fallback value.
+    """
+    if not raw:
+        return None
+    if isinstance(raw, dict):
+        return raw
+    try:
+        data = json.loads(raw) if raw.startswith("{") else ast.literal_eval(raw)
+    except Exception:
+        try:
+            data = ast.literal_eval(raw)
+        except ValueError, SyntaxError, KeyError, TypeError:
+            if warning:
+                LOGGER.warning(warning)
+            return None
+    if not isinstance(data, dict):
+        return None
+    return data
+
+
 def _fed_members(raw):
     """The member list from a federation's stored fusers blob, or []."""
-    if not raw:
+    data = _parse_fusers_blob(
+        raw, "Unreadable federation member list, treating it as empty"
+    )
+    if data is None:
         return []
-    if isinstance(raw, dict):
-        members = raw.get("members", [])
-    else:
-        try:
-            data = json.loads(raw) if raw.startswith("{") else ast.literal_eval(raw)
-        except Exception:
-            try:
-                data = ast.literal_eval(raw)
-            except ValueError, SyntaxError, KeyError, TypeError:
-                LOGGER.warning(
-                    "Unreadable federation member list, treating it as empty"
-                )
-                return []
-        if not isinstance(data, dict):
-            return []
-        members = data.get("members", [])
+    members = data.get("members", [])
 
     if isinstance(members, str):
         try:
@@ -261,19 +273,8 @@ def _fed_members(raw):
 
 def _fed_owner(raw, default=None):
     """The owner id from a federation's stored fusers blob, or default."""
-    if not raw:
-        return default
-    if isinstance(raw, dict):
-        return raw.get("owner", default)
-    try:
-        data = json.loads(raw) if raw.startswith("{") else ast.literal_eval(raw)
-    except Exception:
-        try:
-            data = ast.literal_eval(raw)
-        except ValueError, SyntaxError, KeyError, TypeError:
-            LOGGER.warning("Unreadable federation owner field")
-            return default
-    if not isinstance(data, dict):
+    data = _parse_fusers_blob(raw, "Unreadable federation owner field")
+    if data is None:
         return default
     owner = data.get("owner", default)
     if isinstance(owner, str) and owner.startswith(("{", "[")):

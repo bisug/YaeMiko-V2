@@ -15,7 +15,7 @@ import sys
 import threading
 from functools import wraps
 
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import DeclarativeBase, scoped_session, sessionmaker
 
 from Mikobot import DB_URI, env_bool, env_int
@@ -385,6 +385,44 @@ def run_migration(migration) -> None:
             "[PostgreSQL] Schema migration %s skipped: the database is unreachable",
             getattr(migration, "__name__", migration),
         )
+
+
+def ensure_columns(table: str, model, *, drop_columns: tuple[str, ...] = ()) -> None:
+    """Add model columns missing from an older table, backfilling defaults.
+
+    create(checkfirst=True) leaves an existing table untouched, so columns
+    added to a model later are absent on an older deployment and every read
+    of them fails. Names here are literals from this package, never input.
+    """
+    if ENGINE is None:
+        return
+    inspector = inspect(ENGINE)
+    if table not in inspector.get_table_names():
+        return
+    present = {column["name"] for column in inspector.get_columns(table)}
+    with ENGINE.begin() as connection:
+        for name in drop_columns:
+            if name in present:
+                connection.execute(
+                    text(f"ALTER TABLE {table} DROP COLUMN IF EXISTS {name}")
+                )
+        for column in model.__table__.columns:
+            if column.name in present:
+                continue
+            ddl = (
+                f'ALTER TABLE {table} ADD COLUMN "{column.name}" '
+                f"{column.type.compile(dialect=ENGINE.dialect)}"
+            )
+            connection.execute(text(ddl))
+            default = getattr(column.default, "arg", None)
+            if default is not None:
+                connection.execute(
+                    text(
+                        f'UPDATE {table} SET "{column.name}" = :value'
+                        f' WHERE "{column.name}" IS NULL'
+                    ),
+                    {"value": default},
+                )
 
 
 def _widen_chat_id_columns() -> None:

@@ -9,15 +9,13 @@ from sqlalchemy import (
     UnicodeText,
     distinct,
     func,
-    inspect,
     select,
-    text,
 )
 
 from Database.sql import (
     BASE,
-    ENGINE,
     SESSION,
+    ensure_columns,
     ensure_index,
     run_migration,
     unit_of_work_guard,
@@ -132,34 +130,7 @@ def _ensure_columns() -> None:
     model no longer declares it, so an insert that leaves it out is refused by
     the server.
     """
-    if ENGINE is None:
-        return
-    inspector = inspect(ENGINE)
-    if "cust_filters" not in inspector.get_table_names():
-        return
-    present = {column["name"] for column in inspector.get_columns("cust_filters")}
-    with ENGINE.begin() as connection:
-        if "has_markdown" in present:
-            connection.execute(
-                text("ALTER TABLE cust_filters DROP COLUMN IF EXISTS has_markdown")
-            )
-        for column in CustomFilters.__table__.columns:
-            if column.name in present:
-                continue
-            ddl = (
-                f'ALTER TABLE cust_filters ADD COLUMN "{column.name}" '
-                f"{column.type.compile(dialect=ENGINE.dialect)}"
-            )
-            connection.execute(text(ddl))
-            default = getattr(column.default, "arg", None)
-            if default is not None:
-                connection.execute(
-                    text(
-                        f'UPDATE cust_filters SET "{column.name}" = :value'
-                        f' WHERE "{column.name}" IS NULL'
-                    ),
-                    {"value": default},
-                )
+    ensure_columns("cust_filters", CustomFilters, drop_columns=("has_markdown",))
 
 
 run_migration(_ensure_columns)

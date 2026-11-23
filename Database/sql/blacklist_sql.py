@@ -32,12 +32,16 @@ from sqlalchemy import (
     UnicodeText,
     distinct,
     func,
-    inspect,
     select,
-    text,
 )
 
-from Database.sql import BASE, ENGINE, SESSION, run_migration, unit_of_work_guard
+from Database.sql import (
+    BASE,
+    SESSION,
+    ensure_columns,
+    run_migration,
+    unit_of_work_guard,
+)
 
 
 class BlackListFilters(BASE):
@@ -87,31 +91,7 @@ class BlacklistSettings(BASE):
 
 def _ensure_columns() -> None:
     """Add the delete/silent columns to a table made by an older build."""
-    if ENGINE is None:
-        return
-    inspector = inspect(ENGINE)
-    if "blacklist_settings" not in inspector.get_table_names():
-        return
-    present = {c["name"] for c in inspector.get_columns("blacklist_settings")}
-    with ENGINE.begin() as connection:
-        for column in BlacklistSettings.__table__.columns:
-            if column.name in present:
-                continue
-            connection.execute(
-                text(
-                    f'ALTER TABLE blacklist_settings ADD COLUMN "{column.name}" '
-                    f"{column.type.compile(dialect=ENGINE.dialect)}"
-                )
-            )
-            default = getattr(column.default, "arg", None)
-            if default is not None:
-                connection.execute(
-                    text(
-                        f'UPDATE blacklist_settings SET "{column.name}" = :value'
-                        f' WHERE "{column.name}" IS NULL'
-                    ),
-                    {"value": default},
-                )
+    ensure_columns("blacklist_settings", BlacklistSettings)
 
 
 run_migration(_ensure_columns)

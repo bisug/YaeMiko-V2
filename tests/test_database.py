@@ -356,6 +356,92 @@ def test_search_user_in_fed_cached():
     assert search_user_in_fed("test_fed", 999) is False
     assert search_user_in_fed("non_existent", 200) is False
 
+    FEDERATION_BYFEDID["test_fed"].pop("members_set")
+    assert search_user_in_fed("test_fed", 300) is True
+
+
+def test_ensure_columns_adds_columns_and_backfills_defaults(monkeypatch):
+    from sqlalchemy import create_engine, text
+
+    import Database.sql as db
+    from Database.sql.antiflood_sql import FloodControl
+
+    engine = create_engine("sqlite:///:memory:")
+    with engine.begin() as connection:
+        connection.execute(text("CREATE TABLE antiflood (chat_id VARCHAR PRIMARY KEY)"))
+        connection.execute(text("INSERT INTO antiflood (chat_id) VALUES ('1')"))
+    monkeypatch.setattr(db, "ENGINE", engine)
+
+    db.ensure_columns("antiflood", FloodControl)
+
+    with engine.connect() as connection:
+        columns = {
+            row[1] for row in connection.execute(text("PRAGMA table_info(antiflood)"))
+        }
+        row = connection.execute(
+            text('SELECT "limit", timer, clearflood FROM antiflood')
+        ).one()
+    assert {"chat_id", "limit", "timer", "clearflood"} <= columns
+    assert tuple(row) == (0, 0, 0)
+
+
+def test_ensure_columns_drops_legacy_column_first(monkeypatch):
+    from contextlib import contextmanager
+    from unittest.mock import MagicMock
+
+    from sqlalchemy import create_engine, text
+
+    import Database.sql as db
+    from Database.sql.cust_filters_sql import CustomFilters
+
+    engine = create_engine("sqlite:///:memory:")
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "CREATE TABLE cust_filters "
+                "(chat_id VARCHAR PRIMARY KEY, has_markdown BOOLEAN)"
+            )
+        )
+    statements = []
+    recorder = MagicMock()
+    recorder.execute.side_effect = lambda statement, *args, **kwargs: statements.append(
+        str(statement)
+    )
+
+    @contextmanager
+    def record_only():
+        yield recorder
+
+    monkeypatch.setattr(engine, "begin", record_only)
+    monkeypatch.setattr(db, "ENGINE", engine)
+
+    db.ensure_columns("cust_filters", CustomFilters, drop_columns=("has_markdown",))
+
+    assert statements[0] == (
+        "ALTER TABLE cust_filters DROP COLUMN IF EXISTS has_markdown"
+    )
+
+
+def test_fusers_parse_warning_distinction(monkeypatch):
+    import Database.sql.feds_sql as sql
+
+    warnings = []
+    monkeypatch.setattr(
+        sql.LOGGER, "warning", lambda message, *args, **kwargs: warnings.append(message)
+    )
+
+    assert sql._fed_members("{invalid}") == []
+    assert sql._fed_owner("{invalid}", default="x") == "x"
+    assert warnings == [
+        "Unreadable federation member list, treating it as empty",
+        "Unreadable federation owner field",
+    ]
+
+    warnings.clear()
+    assert sql._fed_members("123") == []
+    assert sql._fed_owner("123", default="x") == "x"
+    assert warnings == []
+
 
 def test_button_models_foreign_keys_declared():
     from Database.sql.cust_filters_sql import Buttons as FilterButtons

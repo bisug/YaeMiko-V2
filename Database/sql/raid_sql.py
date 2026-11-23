@@ -26,9 +26,15 @@ import threading
 import time
 from collections import deque
 
-from sqlalchemy import BigInteger, Column, String, inspect, text
+from sqlalchemy import BigInteger, Column, String
 
-from Database.sql import BASE, ENGINE, SESSION, run_migration, unit_of_work_guard
+from Database.sql import (
+    BASE,
+    SESSION,
+    ensure_columns,
+    run_migration,
+    unit_of_work_guard,
+)
 
 DEF_RAID_TIME = 60 * 60 * 6  # 6 hours, per the documented default
 DEF_ACTION_TIME = 60 * 60  # 1 hour
@@ -64,28 +70,7 @@ def _ensure_columns() -> None:
     SELECT of raid_until fails at runtime. Startup is the only place the
     difference is cheap to absorb.
     """
-    if ENGINE is None:
-        return
-    inspector = inspect(ENGINE)
-    if "raid_chats" not in inspector.get_table_names():
-        return
-    present = {column["name"] for column in inspector.get_columns("raid_chats")}
-    with ENGINE.begin() as connection:
-        for column in RaidChats.__table__.columns:
-            if column.name in present:
-                continue
-            ddl = f'ALTER TABLE raid_chats ADD COLUMN "{column.name}" {column.type.compile(dialect=ENGINE.dialect)}'
-            connection.execute(text(ddl))
-            if (
-                column.default is not None
-                and getattr(column.default, "arg", None) is not None
-            ):
-                connection.execute(
-                    text(
-                        f'UPDATE raid_chats SET "{column.name}" = :value WHERE "{column.name}" IS NULL'
-                    ),
-                    {"value": column.default.arg},
-                )
+    ensure_columns("raid_chats", RaidChats)
 
 
 run_migration(_ensure_columns)
