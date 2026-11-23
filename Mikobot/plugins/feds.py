@@ -84,22 +84,41 @@ UNFBAN_ERRORS = {
 }
 
 
-def _matches_fed_error(excp: Exception, error_set: set[str]) -> bool:
-    err_str = str(
+def _fed_error_text(excp: Exception) -> str:
+    return str(
         getattr(excp, "message", None) or getattr(excp, "value", None) or excp
     ).lower()
+
+
+def _matches_fed_error(excp: Exception, error_set: set[str]) -> bool:
+    err_str = _fed_error_text(excp)
     return any(err in err_str for err in error_set)
 
 
 def _is_user_id_invalid(excp: Exception) -> bool:
-    err_str = str(
-        getattr(excp, "message", None) or getattr(excp, "value", None) or excp
-    ).lower()
+    err_str = _fed_error_text(excp)
     return (
         "user_id_invalid" in err_str
         or "invalid user_id" in err_str
         or "user not found" in err_str
     )
+
+
+def _fed_notice(
+    header, fed_name, admin_mention, user_target, user_id, reason=None
+) -> str:
+    text = (
+        f"<b>{header}</b>"
+        "\n<b>Federation:</b> {}"
+        "\n<b>Federation Admin:</b> {}"
+        "\n<b>User:</b> {}"
+        "\n<b>User ID:</b> <code>{}</code>"
+    )
+    args = [fed_name, admin_mention, user_target, user_id]
+    if reason is not None:
+        text += "\n<b>Reason:</b> {}"
+        args.append(reason)
+    return text.format(*args)
 
 
 async def _notify(client, chat_id, text: str, **kwargs) -> None:
@@ -695,12 +714,8 @@ async def fed_ban(client, message: Message):
         await _notify(
             client,
             chat.id,
-            "<b>FedBan reason updated</b>"
-            "\n<b>Federation:</b> {}"
-            "\n<b>Federation Admin:</b> {}"
-            "\n<b>User:</b> {}"
-            "\n<b>User ID:</b> <code>{}</code>"
-            "\n<b>Reason:</b> {}".format(
+            _fed_notice(
+                "FedBan reason updated",
                 fed_name,
                 mention_html(user.id, user.first_name),
                 user_target,
@@ -713,12 +728,8 @@ async def fed_ban(client, message: Message):
             await _notify(
                 client,
                 info["owner"],
-                "<b>FedBan reason updated</b>"
-                "\n<b>Federation:</b> {}"
-                "\n<b>Federation Admin:</b> {}"
-                "\n<b>User:</b> {}"
-                "\n<b>User ID:</b> <code>{}</code>"
-                "\n<b>Reason:</b> {}".format(
+                _fed_notice(
+                    "FedBan reason updated",
                     fed_name,
                     mention_html(user.id, user.first_name),
                     user_target,
@@ -734,12 +745,8 @@ async def fed_ban(client, message: Message):
                 await _notify(
                     client,
                     get_fedlog,
-                    "<b>FedBan reason updated</b>"
-                    "\n<b>Federation:</b> {}"
-                    "\n<b>Federation Admin:</b> {}"
-                    "\n<b>User:</b> {}"
-                    "\n<b>User ID:</b> <code>{}</code>"
-                    "\n<b>Reason:</b> {}".format(
+                    _fed_notice(
+                        "FedBan reason updated",
                         fed_name,
                         mention_html(user.id, user.first_name),
                         user_target,
@@ -827,12 +834,8 @@ async def fed_ban(client, message: Message):
     await _notify(
         client,
         chat.id,
-        "<b>New FedBan</b>"
-        "\n<b>Federation:</b> {}"
-        "\n<b>Federation Admin:</b> {}"
-        "\n<b>User:</b> {}"
-        "\n<b>User ID:</b> <code>{}</code>"
-        "\n<b>Reason:</b> {}".format(
+        _fed_notice(
+            "New FedBan",
             fed_name,
             mention_html(user.id, user.first_name),
             user_target,
@@ -845,12 +848,8 @@ async def fed_ban(client, message: Message):
         await _notify(
             client,
             info["owner"],
-            "<b>New FedBan</b>"
-            "\n<b>Federation:</b> {}"
-            "\n<b>Federation Admin:</b> {}"
-            "\n<b>User:</b> {}"
-            "\n<b>User ID:</b> <code>{}</code>"
-            "\n<b>Reason:</b> {}".format(
+            _fed_notice(
+                "New FedBan",
                 fed_name,
                 mention_html(user.id, user.first_name),
                 user_target,
@@ -866,12 +865,8 @@ async def fed_ban(client, message: Message):
             await _notify(
                 client,
                 get_fedlog,
-                "<b>New FedBan</b>"
-                "\n<b>Federation:</b> {}"
-                "\n<b>Federation Admin:</b> {}"
-                "\n<b>User:</b> {}"
-                "\n<b>User ID:</b> <code>{}</code>"
-                "\n<b>Reason:</b> {}".format(
+                _fed_notice(
+                    "New FedBan",
                     fed_name,
                     mention_html(user.id, user.first_name),
                     user_target,
@@ -976,11 +971,8 @@ async def unfban(client, message: Message):
     await _notify(
         client,
         chat.id,
-        "<b>Un-FedBan</b>"
-        "\n<b>Federation:</b> {}"
-        "\n<b>Federation Admin:</b> {}"
-        "\n<b>User:</b> {}"
-        "\n<b>User ID:</b> <code>{}</code>".format(
+        _fed_notice(
+            "Un-FedBan",
             info["fname"],
             mention_html(user.id, user.first_name),
             user_target,
@@ -992,11 +984,8 @@ async def unfban(client, message: Message):
         await _notify(
             client,
             info["owner"],
-            "<b>Un-FedBan</b>"
-            "\n<b>Federation:</b> {}"
-            "\n<b>Federation Admin:</b> {}"
-            "\n<b>User:</b> {}"
-            "\n<b>User ID:</b> <code>{}</code>".format(
+            _fed_notice(
+                "Un-FedBan",
                 info["fname"],
                 mention_html(user.id, user.first_name),
                 user_target,
@@ -1011,11 +1000,8 @@ async def unfban(client, message: Message):
             await _notify(
                 client,
                 get_fedlog,
-                "<b>Un-FedBan</b>"
-                "\n<b>Federation:</b> {}"
-                "\n<b>Federation Admin:</b> {}"
-                "\n<b>User:</b> {}"
-                "\n<b>User ID:</b> <code>{}</code>".format(
+                _fed_notice(
+                    "Un-FedBan",
                     info["fname"],
                     mention_html(user.id, user.first_name),
                     user_target,

@@ -482,6 +482,30 @@ def control_user(func):
     return wrapper
 
 
+async def _run_callback(func, client, c_q, cq, tag):
+    try:
+        await func(client, c_q, cq)
+    except FLOOD_WAIT_ERRORS as e:
+        await asyncio.sleep(flood_wait_seconds(e) + 5)
+    except MessageNotModified:
+        pass
+    except Exception:
+        e = err()
+        reply_msg = None
+        if func.__name__ == "tracemoe_btn":
+            reply_msg = c_q.message.reply_to_message
+        try:
+            await clog(
+                "Mikobot",
+                "Callback:\n" + cq["data"] + "\n\n" + "```" + e + "```",
+                tag,
+                cq=c_q,
+                replied=reply_msg,
+            )
+        except Exception:
+            await clog("Mikobot", e, "FAILURE", cq=c_q)
+
+
 def check_user(func):
     async def wrapper(_, c_q: CallbackQuery):
         cq = json.loads(str(c_q))
@@ -510,51 +534,11 @@ def check_user(func):
                 except KeyError:
                     pass
                 USER_JSON[user] = nt
-            try:
-                await func(_, c_q, cq)
-            except FLOOD_WAIT_ERRORS as e:
-                await asyncio.sleep(flood_wait_seconds(e) + 5)
-            except MessageNotModified:
-                pass
-            except Exception:
-                e = err()
-                reply_msg = None
-                if func.__name__ == "tracemoe_btn":
-                    reply_msg = c_q.message.reply_to_message
-                try:
-                    await clog(
-                        "Mikobot",
-                        "Callback:\n" + cq["data"] + "\n\n" + "```" + e + "```",
-                        "CALLBACK",
-                        cq=c_q,
-                        replied=reply_msg,
-                    )
-                except Exception:
-                    await clog("Mikobot", e, "FAILURE", cq=c_q)
+            await _run_callback(func, _, c_q, cq, "CALLBACK")
         else:
             if cqowner_is_ch:
                 if user_valid:
-                    try:
-                        await func(_, c_q, cq)
-                    except FLOOD_WAIT_ERRORS as e:
-                        await asyncio.sleep(flood_wait_seconds(e) + 5)
-                    except MessageNotModified:
-                        pass
-                    except Exception:
-                        e = err()
-                        reply_msg = None
-                        if func.__name__ == "tracemoe_btn":
-                            reply_msg = c_q.message.reply_to_message
-                        try:
-                            await clog(
-                                "Mikobot",
-                                "Callback:\n" + cq["data"] + "\n\n" + "```" + e + "```",
-                                "CALLBACK_ANON",
-                                cq=c_q,
-                                replied=reply_msg,
-                            )
-                        except Exception:
-                            await clog("Mikobot", e, "FAILURE", cq=c_q)
+                    await _run_callback(func, _, c_q, cq, "CALLBACK_ANON")
                 else:
                     await c_q.answer(
                         (
@@ -959,21 +943,19 @@ def get_auth_btns(media, user, data, lsqry: str = None, lspage: int = None):
     return btn
 
 
+DAY_NAMES = (
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+)
+
+
 def day_(x: int):
-    if x == 0:
-        return "Monday"
-    if x == 1:
-        return "Tuesday"
-    if x == 2:
-        return "Wednesday"
-    if x == 3:
-        return "Thursday"
-    if x == 4:
-        return "Friday"
-    if x == 5:
-        return "Saturday"
-    if x == 6:
-        return "Sunday"
+    return DAY_NAMES[x] if 0 <= x < 7 else None
 
 
 def season_(future: bool = False):
@@ -1067,6 +1049,15 @@ class google_translator:
         self.url = url_base + "/_/TranslateWebserverUi/data/batchexecute"
         self.timeout = timeout
 
+    def _headers(self):
+        return {
+            "Referer": "http://translate.google.{}/".format(self.url_suffix),
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/47.0.2526.106 Safari/537.36",
+            "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+        }
+
     def _package_rpc(self, text, lang_src="auto", lang_tgt="auto"):
         GOOGLE_TTS_RPC = ["MkEWBc"]
         parameter = [[text.strip(), lang_src, lang_tgt, True], [1]]
@@ -1088,13 +1079,7 @@ class google_translator:
             return "Warning: Can only detect less than 5000 characters"
         if len(text) == 0:
             return ""
-        headers = {
-            "Referer": "http://translate.google.{}/".format(self.url_suffix),
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/47.0.2526.106 Safari/537.36",
-            "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
-        }
+        headers = self._headers()
         freq = self._package_rpc(text, lang_src, lang_tgt)
         response = requests.Request(
             method="POST",
@@ -1168,13 +1153,7 @@ class google_translator:
             return log.debug("Warning: Can only detect less than 5000 characters")
         if len(text) == 0:
             return ""
-        headers = {
-            "Referer": "http://translate.google.{}/".format(self.url_suffix),
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/47.0.2526.106 Safari/537.36",
-            "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
-        }
+        headers = self._headers()
         freq = self._package_rpc(text)
         response = requests.Request(
             method="POST", url=self.url, data=freq, headers=headers
@@ -1224,43 +1203,29 @@ async def uidata(id_):
     return ["➤ ", "UPPER"]
 
 
+UI_LABELS = (
+    "Source",
+    "Type",
+    "Score",
+    "Duration",
+    "User Data",
+    "Adult Rated",
+    "Status",
+    "Genres",
+    "Tags",
+    "Sequel",
+    "Prequel",
+    "Next Airing",
+    "Description",
+    "Volumes",
+    "Chapters",
+)
+
+
 async def get_ui_text(case):
     if case == "UPPER":
-        return [
-            "SOURCE",
-            "TYPE",
-            "SCORE",
-            "DURATION",
-            "USER DATA",
-            "ADULT RATED",
-            "STATUS",
-            "GENRES",
-            "TAGS",
-            "SEQUEL",
-            "PREQUEL",
-            "NEXT AIRING",
-            "DESCRIPTION",
-            "VOLUMES",
-            "CHAPTERS",
-        ]
-    else:
-        return [
-            "Source",
-            "Type",
-            "Score",
-            "Duration",
-            "User Data",
-            "Adult Rated",
-            "Status",
-            "Genres",
-            "Tags",
-            "Sequel",
-            "Prequel",
-            "Next Airing",
-            "Description",
-            "Volumes",
-            "Chapters",
-        ]
+        return [label.upper() for label in UI_LABELS]
+    return list(UI_LABELS)
 
 
 tr = google_translator()

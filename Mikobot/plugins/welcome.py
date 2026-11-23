@@ -75,6 +75,26 @@ VALID_WELCOME_FORMATTERS = [
     "mention",
 ]
 
+
+def _mute_permissions(*, can_send_messages: bool = False) -> ChatPermissions:
+    return ChatPermissions(
+        can_send_messages=can_send_messages,
+        can_send_audios=False,
+        can_send_documents=False,
+        can_send_photos=False,
+        can_send_videos=False,
+        can_send_video_notes=False,
+        can_send_voice_notes=False,
+        can_send_other_messages=False,
+        can_invite_users=False,
+        can_pin_messages=False,
+        can_send_polls=False,
+        can_change_info=False,
+        can_add_web_page_previews=False,
+        can_manage_topics=False,
+    )
+
+
 ENUM_FUNC_MAP = {
     sql.Types.TEXT.value: client.send_message,
     sql.Types.BUTTON_TEXT.value: client.send_message,
@@ -294,6 +314,15 @@ async def _should_clean(chat_id, message: Message) -> bool:
 
 async def send(source_message: Message, text: str, keyboard, backup_message):
     chat = source_message.chat
+
+    async def _send_backup(text: str):
+        try:
+            return await client.send_message(
+                chat.id, text, parse_mode=ParseMode.MARKDOWN
+            )
+        except RPCError:
+            return await source_message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
     cleanserv = await _should_clean(chat.id, source_message)
     if cleanserv:
         try:
@@ -329,47 +358,19 @@ async def send(source_message: Message, text: str, keyboard, backup_message):
                 reply_markup=keyboard,
             )
         elif "button_url_invalid" in err_str or "url_invalid" in err_str:
-            try:
-                msg = await client.send_message(
-                    chat.id,
-                    backup_message
-                    + "\nThe current message has an invalid URL in a button. Update it.",
-                    parse_mode=ParseMode.MARKDOWN,
-                )
-            except RPCError:
-                msg = await source_message.reply_text(
-                    backup_message
-                    + "\nThe current message has an invalid URL in a button. Update it.",
-                    parse_mode=ParseMode.MARKDOWN,
-                )
+            msg = await _send_backup(
+                backup_message
+                + "\nThe current message has an invalid URL in a button. Update it."
+            )
         elif "unsupported url protocol" in err_str:
-            try:
-                msg = await client.send_message(
-                    chat.id,
-                    backup_message
-                    + "\nThe current message uses URL protocols Telegram does not support. Update it.",
-                    parse_mode=ParseMode.MARKDOWN,
-                )
-            except RPCError:
-                msg = await source_message.reply_text(
-                    backup_message
-                    + "\nThe current message uses URL protocols Telegram does not support. Update it.",
-                    parse_mode=ParseMode.MARKDOWN,
-                )
+            msg = await _send_backup(
+                backup_message
+                + "\nThe current message uses URL protocols Telegram does not support. Update it."
+            )
         elif "wrong url host" in err_str:
-            try:
-                msg = await client.send_message(
-                    chat.id,
-                    backup_message
-                    + "\nThe current message has invalid URLs. Update it.",
-                    parse_mode=ParseMode.MARKDOWN,
-                )
-            except RPCError:
-                msg = await source_message.reply_text(
-                    backup_message
-                    + "\nThe current message has invalid URLs. Update it.",
-                    parse_mode=ParseMode.MARKDOWN,
-                )
+            msg = await _send_backup(
+                backup_message + "\nThe current message has invalid URLs. Update it."
+            )
             LOGGER.exception("Could not parse welcome message with invalid URL host")
         elif (
             "have no rights to send a message" in err_str
@@ -377,19 +378,9 @@ async def send(source_message: Message, text: str, keyboard, backup_message):
         ):
             return
         else:
-            try:
-                msg = await client.send_message(
-                    chat.id,
-                    backup_message
-                    + "\nThe custom message could not be sent. Update it.",
-                    parse_mode=ParseMode.MARKDOWN,
-                )
-            except RPCError:
-                msg = await source_message.reply_text(
-                    backup_message
-                    + "\nThe custom message could not be sent. Update it.",
-                    parse_mode=ParseMode.MARKDOWN,
-                )
+            msg = await _send_backup(
+                backup_message + "\nThe custom message could not be sent. Update it."
+            )
             LOGGER.exception("Failed to send custom welcome message: %s", excp)
     return msg
 
@@ -605,22 +596,7 @@ async def new_member(client, message: Message):
                     await client.restrict_chat_member(
                         chat.id,
                         new_mem.id,
-                        permissions=ChatPermissions(
-                            can_send_messages=True,
-                            can_send_audios=False,
-                            can_send_documents=False,
-                            can_send_photos=False,
-                            can_send_videos=False,
-                            can_send_video_notes=False,
-                            can_send_voice_notes=False,
-                            can_send_other_messages=False,
-                            can_invite_users=False,
-                            can_pin_messages=False,
-                            can_send_polls=False,
-                            can_change_info=False,
-                            can_add_web_page_previews=False,
-                            can_manage_topics=False,
-                        ),
+                        permissions=_mute_permissions(can_send_messages=True),
                         until_date=(int(time.time() + 24 * 60 * 60)),
                     )
                 if welc_mutes == "strong":
@@ -681,22 +657,7 @@ async def new_member(client, message: Message):
                     await client.restrict_chat_member(
                         chat.id,
                         new_mem.id,
-                        permissions=ChatPermissions(
-                            can_send_messages=False,
-                            can_invite_users=False,
-                            can_pin_messages=False,
-                            can_send_polls=False,
-                            can_change_info=False,
-                            can_send_audios=False,
-                            can_send_documents=False,
-                            can_send_photos=False,
-                            can_send_videos=False,
-                            can_send_video_notes=False,
-                            can_send_voice_notes=False,
-                            can_send_other_messages=False,
-                            can_add_web_page_previews=False,
-                            can_manage_topics=False,
-                        ),
+                        permissions=_mute_permissions(),
                         # Telegram releases the mute even if the bot restarts
                         # before the in-memory 120 s verification job runs.
                         until_date=int(time.time()) + 130,
