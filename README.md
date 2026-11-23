@@ -9,7 +9,7 @@
 [![Python](https://img.shields.io/badge/python-3.14-blueviolet?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-blueviolet?style=for-the-badge)](https://github.com/bisug/YaeMiko-V2/blob/main/LICENSE)
 [![Kurigram](https://img.shields.io/badge/Kurigram-2.2.27-2AABEE?style=for-the-badge&logo=python&logoColor=white)](https://pypi.org/project/Kurigram/)
-[![kuricrypt](https://img.shields.io/badge/kuricrypt-0.1.1-2AABEE?style=for-the-badge&logo=rust&logoColor=white)](https://pypi.org/project/kuricrypt/)
+[![kuricrypt](https://img.shields.io/badge/kuricrypt-0.1.2-2AABEE?style=for-the-badge&logo=rust&logoColor=white)](https://pypi.org/project/kuricrypt/)
 [![Docker](https://img.shields.io/badge/docker-multistage-2496ED?style=for-the-badge&logo=docker&logoColor=white)](Dockerfile)
 [![Heroku](https://img.shields.io/badge/deploy-heroku-79589F?style=for-the-badge&logo=heroku&logoColor=white)](https://dashboard.heroku.com/apps/new?template=https://github.com/bisug/YaeMiko-V2)
 [![Render](https://img.shields.io/badge/deploy-render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://dashboard.render.com/blueprint/new)
@@ -159,7 +159,7 @@ execution. Persistence, reply construction and error handling wrap that flow.
 | Component | Version | Link |
 | --- | --- | --- |
 | Kurigram | 2.2.27 | [PyPI](https://pypi.org/project/Kurigram/) |
-| kuricrypt | 0.1.1 | [PyPI](https://pypi.org/project/kuricrypt/) |
+| kuricrypt | 0.1.2 | [PyPI](https://pypi.org/project/kuricrypt/) |
 | DataStore | [`Mikobot/utils/persistence.py`](Mikobot/utils/persistence.py) | Pickle backed store for chat and user context |
 
 ### Data stores
@@ -176,7 +176,7 @@ execution. Persistence, reply construction and error handling wrap that flow.
 | --- | --- | --- | --- |
 | httpx with HTTP/2 | 0.28.1 | Shared async HTTP client | [PyPI](https://pypi.org/project/httpx/) |
 | Pillow | 13.0.0 | Image composition and text rendering | [PyPI](https://pypi.org/project/pillow/) |
-| ONNX Runtime | 1.31.1 | NSFW detection inference | [PyPI](https://pypi.org/project/onnxruntime/) |
+| ONNX Runtime | 1.32.0 | NSFW detection inference | [PyPI](https://pypi.org/project/onnxruntime/) |
 | opennsfw-onnx | 0.1.0 | Pre-trained NSFW classifier | [PyPI](https://pypi.org/project/opennsfw-onnx/) |
 | beautifulsoup4 | 4.15.0 | HTML scraping for search modules | [PyPI](https://pypi.org/project/beautifulsoup4/) |
 | cachetools | 8.0.0 | Short-lived caching in hot paths | [PyPI](https://pypi.org/project/cachetools/) |
@@ -506,22 +506,14 @@ uv run python -m Mikobot
 
 ## Continuous integration
 
-[`ci.yml`](.github/workflows/ci.yml) runs on every push to `main` and every pull request. The
-`validate` job runs against a PostgreSQL 18 service and, before the `docker` job, executes:
+[`ci.yml`](.github/workflows/ci.yml) runs on every push to `main` and every pull request. It has
+three jobs: `lint`, `test` and `docker`.
 
-```bash
-uv sync --frozen                               # sync pinned dependencies and dev tools
-python -m json.tool app.json >/dev/null        # manifest is valid JSON
-python -m json.tool railway.json >/dev/null    # Railway config is valid JSON
-python -m compileall -q .                      # every module compiles
-pytest -v                                      # test suite
-ruff check . && ruff format --check .          # lint and format
-git diff --check                               # no whitespace damage
-```
-
-It also checks that the installed Kurigram, SQLAlchemy and psycopg versions match the pins, and that
-no `.env` file or bot token is committed. The `docker` job then builds the worker image with Buildx,
-loads it into the local image store, and asserts its `CMD` is `python -m Mikobot`.
+The `lint` job syncs the lockfile, checks that installed pins match the manifest, validates JSON
+manifests, compiles sources, runs `ruff format --check .` and `ruff check .`, checks whitespace, and
+scans for committed bot tokens. The `test` job runs `pytest -v` against a PostgreSQL 18 service.
+The `docker` job builds the worker image with Buildx, loads it locally, and asserts its `CMD` is
+`python -m Mikobot`.
 
 The test suite in [`tests/`](tests/) covers deployment manifests, documentation links, core
 utilities, database operations, security policies, and plugin configurations.

@@ -32,6 +32,8 @@ jobs:
         run: |
           uv sync --frozen
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+      - name: Check lockfile is current
+        run: uv lock --check
       - name: Check runtime pins match requirements.txt
         run: |
           python - <<'PY'
@@ -44,11 +46,24 @@ jobs:
                   name, pinned = line.split("==", 1)
                   pins[name.split("[")[0].strip().lower()] = pinned.split(";")[0].strip()
 
-          for name in ("kurigram", "sqlalchemy", "psycopg"):
+          for name in ("kurigram", "sqlalchemy", "psycopg", "onnxruntime", "kuricrypt", "uvloop"):
               pinned, installed = pins[name], version(name)
               print(f"{name}: pinned {pinned}, installed {installed}")
               if installed != pinned:
                   raise SystemExit(f"{name}: pinned {pinned}, installed {installed}")
+          PY
+      - name: Report Kurigram version drift
+        run: |
+          python - <<'PY'
+          import json
+          import urllib.request
+          from importlib.metadata import version
+
+          latest = json.load(
+              urllib.request.urlopen("https://pypi.org/pypi/kurigram/json", timeout=10)
+          )["info"]["version"]
+          pinned = version("kurigram")
+          print(f"kurigram: pinned {pinned}, latest {latest}")
           PY
       - name: Validate JSON manifests
         run: |

@@ -9,9 +9,9 @@ All notable changes to YaeMiko are recorded here. The format follows
 ### Added
 
 - **Kurigram 2.2.27 & kuricrypt integration**: migrated fast cryptography backend from `tgcrypto-c` to
-  `kuricrypt==0.1.1` (Rust/PyO3) and updated Kurigram to `2.2.27`.
+  `kuricrypt==0.1.2` (Rust/PyO3) and updated Kurigram to `2.2.27`.
 - **Python 3.14.10 pin**: `.python-version`, `pyproject.toml` (`requires-python = ">=3.14"`),
-  `Dockerfile` (`python:3.14.10-slim`), and CI workflow (`python-version: "3.14.10"`).
+  `Dockerfile` (`python:3.14.10-slim-trixie`), and CI workflow (`.python-version`).
 - `SESSION = None` guard in `Database/sql/__init__.py` when `unittest` is in `sys.modules`, plus
   early-return guards in all `__load_*` and `_ensure_*` functions across every SQL module so the
   test suite runs without a real database connection.

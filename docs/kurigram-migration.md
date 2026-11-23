@@ -120,9 +120,9 @@ reply, and every other media has its own `reply_*`.
 | `bot.unpin_all_chat_messages(...)` | `client.unpin_all_chat_messages(...)` |
 | `bot.create_forum_topic(...)` | `client.create_forum_topic(...)` |
 | `bot.edit_forum_topic(...)` | `client.edit_forum_topic(...)` |
-| `bot.create_chat_invite_link(...)` | `client.create_invite_link(...)` |
-| `bot.edit_chat_invite_link(...)` | `client.edit_invite_link(...)` |
-| `bot.revoke_chat_invite_link(...)` | `client.revoke_invite_link(...)` |
+| `bot.create_chat_invite_link(...)` | `client.create_chat_invite_link(...)` |
+| `bot.edit_chat_invite_link(...)` | `client.edit_chat_invite_link(...)` |
+| `bot.revoke_chat_invite_link(...)` | `client.revoke_chat_invite_link(...)` |
 | `bot.export_chat_invite_link(...)` | `client.export_chat_invite_link(...)` |
 | `bot.approve_chat_join_request(...)` | `client.approve_chat_join_request(...)` |
 | `bot.decline_chat_join_request(...)` | `client.decline_chat_join_request(...)` |
@@ -157,15 +157,15 @@ reads them.
 
 ## What kurigram cannot do
 
-The Bot API has a few endpoints MTProto does not expose:
+The Bot API has one endpoint MTProto does not expose directly:
+`ban_chat_sender_chat` and `unban_chat_sender_chat`. Plugins use the raw
+MTProto function (`pyrogram.raw.functions.channels.BlockChannel` and friends)
+where they need it.
 
-- `ban_chat_sender_chat` and `unban_chat_sender_chat`
-- `set_chat_sticker_set`
-- `unpin_all_general_forum_topic_messages`
-- `set_chat_administrator_custom_title` (kurigram calls it
-  `set_administrator_title`)
+Kurigram does provide the other endpoints this document previously listed as
+missing, under different names or in newer releases:
 
-Where a plugin needs one of these, the raw MTProto function is used instead
-(`pyrogram.raw.functions.channels.BlockChannel` and friends), and where
-MTProto has no equivalent at all, the command says so instead of pretending
-to work.
+- `set_chat_sticker_set` → `change_sticker_set`
+- `set_chat_administrator_custom_title` → `set_administrator_title`
+- `unpin_all_general_forum_topic_messages` — available since 2.2.25
+- `block_user` and `unblock_user` — available in 2.2.27

@@ -11,6 +11,7 @@ DOCS = [
     "docs/CONFIGURATION.md",
     "docs/DATABASE.md",
     "docs/DEPLOYMENT.md",
+    "docs/kurigram-migration.md",
     "docs/MIGRATION-MONGO-TO-SQL.md",
     "docs/PLUGINS.md",
     "docs/SYSTEM-REQUIREMENTS.md",
