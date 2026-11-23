@@ -1,0 +1,30 @@
+# Heroku buildpack deploy: keep the slug small.
+# The classic Python buildpack rejects two package-manager files, so the
+# lockfile is kept and requirements.txt (used by local and VPS installs) is
+# excluded from the slug.
+requirements.txt
+
+.git
+.github
+.gitignore
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.ty_cache
+
+tests
+docs
+CHANGELOG.md
+Dockerfile
+.dockerignore
+
+.env
+.env.*
+*.session
+*.session-journal
+Logs.txt*
+persistence.pickle*
+ptb_persistence.pickle*

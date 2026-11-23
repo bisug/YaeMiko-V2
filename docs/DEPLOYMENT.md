@@ -70,7 +70,7 @@ A full list with defaults: [CONFIGURATION.md](CONFIGURATION.md).
 | --- | --- | --- | --- | --- |
 | [Render](https://render.com) | Paid worker, about 7 USD per month | Ephemeral disk | [`render.yaml`](../render.yaml) | Easiest |
 | [Railway](https://railway.app) | Trial credit, then usage based | Ephemeral, volumes available | [`railway.json`](../railway.json) | Easy |
-| [Heroku](https://heroku.com) | Free dynos discontinued, about 5 USD per month | Ephemeral | [`app.json`](../app.json) | Easy |
+| [Heroku](https://heroku.com) | Basic dyno, about 7 USD per month | Ephemeral | [`app.json`](../app.json) | Easy |
 | [VPS](https://www.digitalocean.com/pricing/droplets) | From 4 USD per month | Full disk | systemd unit below | Medium |
 | Any Docker host | Host dependent | Host dependent | [`Dockerfile`](../Dockerfile) | Medium |
 
@@ -165,8 +165,8 @@ Railway redeploys automatically. Watch the deploy log for `Mikobot is starting`.
 
 ## Heroku
 
-The repository ships [`app.json`](../app.json), which declares the worker dyno, the PostgreSQL 18
-addon, and every required variable.
+The repository ships [`app.json`](../app.json), which declares the worker dyno, buildpacks, and
+every required variable. Provision PostgreSQL yourself and set `DATABASE_URL`; no addon is declared.
 
 <p align="center">
   <a href="https://dashboard.heroku.com/apps/new?template=https://github.com/bisug/YaeMiko-V2">
@@ -174,8 +174,11 @@ addon, and every required variable.
   </a>
 </p>
 
-[`heroku.yml`](../heroku.yml) pins the Docker build. [`Procfile`](../Procfile) declares
-`worker: python -m Mikobot` for non Docker builds.
+Heroku builds the app from buildpacks declared in [`app.json`](../app.json): the
+[Active Storage Preview buildpack](https://github.com/heroku/heroku-buildpack-activestorage-preview)
+provides `ffmpeg`, and `heroku/python` installs dependencies from `uv.lock`.
+[`Procfile`](../Procfile) declares `worker: python -m Mikobot`. `libgomp1`, needed by ONNX Runtime,
+is already present on the Heroku-26 stack.
 
 1. Create the Telegram application and the bot as described in
    [Before you start](#before-you-start).

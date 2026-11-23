@@ -4,21 +4,17 @@
    "logo": "https://telegra.ph/file/4d370b478d90d98709398.jpg",
    "keywords": ["telegram", "modular", "group", "management", "Miko"],
    "repository": "https://github.com/bisug/YaeMiko-V2",
-   "stack": "heroku-24",
+   "stack": "heroku-26",
+   "buildpacks": [
+      { "url": "https://github.com/heroku/heroku-buildpack-activestorage-preview" },
+      { "url": "heroku/python" }
+   ],
    "formation": {
       "worker": {
          "quantity": 1,
-         "size": "eco"
+         "size": "basic"
       }
    },
-   "addons": [
-      {
-         "plan": "heroku-postgresql",
-         "options": {
-            "version": "18"
-         }
-      }
-   ],
    "env": {
       "API_ID": {
          "description": "Obtain this value from my.telegram.org/apps.",

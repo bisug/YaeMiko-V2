@@ -44,12 +44,26 @@ def test_app_json():
     path = ROOT / "app.json"
     assert path.exists()
     data = json.loads(path.read_text(encoding="utf-8"))
-    addons = data.get("addons", [])
-    postgres = [
-        addon
-        for addon in addons
-        if addon.get("plan", "").startswith("heroku-postgresql")
-    ]
-    assert postgres, "app.json must declare heroku-postgresql addon"
-    version = postgres[0].get("options", {}).get("version")
-    assert version == "18"
+
+    assert data.get("stack") == "heroku-26"
+    assert "addons" not in data
+    assert data["formation"]["worker"]["size"] == "basic"
+
+    buildpacks = [item["url"] for item in data.get("buildpacks", [])]
+    assert buildpacks == [
+        "https://github.com/heroku/heroku-buildpack-activestorage-preview",
+        "heroku/python",
+    ], "ffmpeg buildpack first, Python last"
+
+
+def test_heroku_uses_buildpacks_not_container():
+    assert not (ROOT / "heroku.yml").exists()
+    assert not (ROOT / "Aptfile").exists()
+
+    slugignore = (ROOT / ".slugignore").read_text(encoding="utf-8")
+    assert "requirements.txt" in slugignore
+    assert "tests" in slugignore
+
+    # The Python buildpack installs from uv.lock; keeping requirements.txt in
+    # the slug would make the classic buildpack reject the app.
+    assert (ROOT / "uv.lock").exists()

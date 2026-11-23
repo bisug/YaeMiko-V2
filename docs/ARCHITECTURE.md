@@ -187,6 +187,6 @@ through the redacting formatter, so users get feedback and operators get the sta
 
 | Target | Mechanism |
 | --- | --- |
-| Heroku worker dyno | `app.json` manifest, `heroku.yml` Docker build, `Procfile` fallback |
+| Heroku worker dyno | `app.json` buildpacks (activestorage-preview for ffmpeg, Python for the bot), `Procfile` worker |
 | Docker | Two-stage build, runtime stage `python:3.14-slim` with `ffmpeg`, `libgomp1` |
 | VPS | Virtual environment, `python -m Mikobot`, tmux or a process supervisor |

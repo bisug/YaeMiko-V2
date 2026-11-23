@@ -284,7 +284,7 @@ YaeMiko/
 ├── render.yaml                  Render blueprint, worker plus Postgres
 ├── railway.json                 Railway config, Dockerfile and restart policy
 ├── Dockerfile                   Multi-stage image
-├── heroku.yml                   Heroku Docker build and run
+├── .slugignore                  Files excluded from the Heroku slug
 ├── Procfile                     Heroku worker entry
 ├── pyproject.toml               Project metadata and dependencies
 ├── requirements.txt             Pinned dependencies
@@ -390,7 +390,7 @@ All five targets run the same entry point: `python -m Mikobot`.
 | --- | --- | --- | --- |
 | [Render](#render) | [`render.yaml`](render.yaml) | Paid worker, about 7 USD per month | Easiest |
 | [Railway](#railway) | [`railway.json`](railway.json) | Trial credit, then usage based | Easy |
-| [Heroku](#heroku) | [`app.json`](app.json), [`heroku.yml`](heroku.yml) | About 5 USD per month | Easy |
+| [Heroku](#heroku) | [`app.json`](app.json) buildpacks | Basic dyno, about 7 USD per month | Easy |
 | [VPS](#local-host-or-vps) | systemd unit, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | From 4 USD per month | Medium |
 | Any Docker host | [`Dockerfile`](Dockerfile) | Host dependent | Medium |
 
@@ -446,8 +446,9 @@ Railway volume at `/root/Mikobot` to keep it.
 
 ### Heroku
 
-The repository ships [`app.json`](app.json), which declares the worker dyno, the PostgreSQL 18
-addon, and every required environment variable with an inline description.
+The repository ships [`app.json`](app.json), which declares the worker dyno, buildpacks, and every
+required environment variable with an inline description. Provision PostgreSQL yourself and set
+`DATABASE_URL`; no addon is declared.
 
 <p align="center">
   <a href="https://dashboard.heroku.com/apps/new?template=https://github.com/bisug/YaeMiko-V2">
@@ -455,8 +456,9 @@ addon, and every required environment variable with an inline description.
   </a>
 </p>
 
-[`heroku.yml`](heroku.yml) pins the [Docker](Dockerfile) build so Heroku and local containers behave
-identically. [`Procfile`](Procfile) declares `worker: python -m Mikobot` for non Docker builds.
+Heroku builds from the buildpacks in [`app.json`](app.json): Active Storage Preview supplies
+`ffmpeg`, and `heroku/python` installs dependencies from `uv.lock`. The stack is Heroku-26 and the
+worker runs on a Basic dyno. [`Procfile`](Procfile) declares `worker: python -m Mikobot`.
 
 Steps:
 
@@ -595,7 +597,7 @@ Meaningful changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 ### Services
 
-- [Heroku](https://www.heroku.com/) for worker hosting and the PostgreSQL addon
+- [Heroku](https://www.heroku.com/) for worker hosting; PostgreSQL provisioned separately
 - [Render](https://render.com/) and [Railway](https://railway.app/) for one-click container deploys
 - [GitHub Actions](https://github.com/features/actions),
   [CodeQL](https://github.com/github/codeql) and
