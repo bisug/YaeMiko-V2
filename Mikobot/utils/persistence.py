@@ -5,9 +5,11 @@ The federation and anonymous-admin flows read and write their state here.
 """
 
 import asyncio
-import os
 import pickle
+import shutil
+import tempfile
 import time
+from pathlib import Path
 
 # chat_data holds one entry per pending anonymous-admin confirmation, keyed by a
 # random token. Entries are only removed when the button is clicked, so an admin
@@ -108,14 +110,20 @@ class DataStore:
         for section in ("chat_data", "user_data"):
             if isinstance(self.data.get(section), TokenDict):
                 self.data[section].prune(TOKEN_TTL_SECONDS)
-        tmp = f"{self.filepath}.tmp"
+        target = Path(self.filepath)
+        tmp = None
         try:
-            with open(tmp, "wb") as handle:
+            with tempfile.NamedTemporaryFile(
+                mode="wb", dir=target.parent, delete=False
+            ) as handle:
+                tmp = Path(handle.name)
                 pickle.dump(self.data, handle)
-            os.replace(tmp, self.filepath)
+            if target.exists():
+                shutil.copymode(target, tmp)
+            tmp.replace(target)
         except OSError:
-            if os.path.exists(tmp):
-                os.remove(tmp)
+            if tmp is not None:
+                tmp.unlink(missing_ok=True)
             raise
 
     async def save_async(self) -> None:

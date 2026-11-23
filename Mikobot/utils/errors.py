@@ -57,7 +57,7 @@ def capture_err(func):
 
 def _event(args):
     """The Message or CallbackQuery out of a handler's positional arguments."""
-    return args[1] if len(args) > 1 else (args[0] if args else None)
+    return args[-1] if args else None
 
 
 def _event_chat_id(args):

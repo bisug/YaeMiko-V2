@@ -7,6 +7,7 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from html import escape
+from pathlib import Path
 from random import choice
 
 from pyrogram import Client
@@ -46,18 +47,17 @@ Client.resolve_peer = _safe_resolve_peer
 
 
 def _load_local_env():
-    env_file = os.path.join(os.path.dirname(__file__), "..", ".env")
+    env_file = Path(__file__).resolve().parent.parent / ".env"
     try:
-        with open(env_file, encoding="utf-8") as file:
-            for line in file:
-                line = line.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, value = line.split("=", 1)
-                key = key.strip()
-                value = value.strip().strip("\\\"'")
-                if key and key not in os.environ:
-                    os.environ[key] = value
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip("\\\"'")
+            if key and key not in os.environ:
+                os.environ[key] = value
     except FileNotFoundError:
         pass
 
@@ -98,10 +98,9 @@ _load_local_env()
 
 
 def _load_elevated_users():
-    path = os.path.join(os.path.dirname(__file__), "elevated_users.json")
+    path = Path(__file__).resolve().parent / "elevated_users.json"
     try:
-        with open(path, encoding="utf-8") as file:
-            return json.load(file)
+        return json.loads(path.read_text(encoding="utf-8"))
     except OSError, ValueError:
         LOGGER.exception("Unable to load elevated users from %s", path)
         return {}
@@ -297,13 +296,12 @@ CONFIG_TIGERS = set(TIGERS)
 # bot has no Bot API dependency. Outbound HTTP uses the shared client in
 # Mikobot.state; handlers are registered through Mikobot.events.
 
-_persistence_file = os.path.join(os.path.dirname(__file__), "..", "persistence.pickle")
-_legacy_persistence = os.path.join(
-    os.path.dirname(__file__), "..", "ptb_persistence.pickle"
-)
+_persistence_dir = Path(__file__).resolve().parent.parent
+_persistence_file = _persistence_dir / "persistence.pickle"
+_legacy_persistence = _persistence_dir / "ptb_persistence.pickle"
 store = open_store(
     _legacy_persistence
-    if os.path.exists(_legacy_persistence) and not os.path.exists(_persistence_file)
+    if _legacy_persistence.exists() and not _persistence_file.exists()
     else _persistence_file
 )
 chat_data = store.chat_data

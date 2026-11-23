@@ -256,7 +256,7 @@ async def start(client, message: Message):
             if args[0].lower() == "help":
                 await send_help(message.chat.id, HELP_STRINGS)
             elif args[0].lower().startswith("ghelp_"):
-                mod = args[0].lower().split("_", 1)[1]
+                mod = args[0].lower().removeprefix("ghelp_")
                 if not HELPABLE.get(mod, False):
                     return
                 await send_help(
@@ -310,9 +310,7 @@ async def start(client, message: Message):
         await message.reply_photo(
             photo=str(choice(START_IMG)),
             reply_markup=InlineKeyboardMarkup(inline_keyboard=GROUP_START_BTN),
-            caption="<b>Bot is online</b>\n\n<b>Uptime:</b> <code>{}</code>".format(
-                uptime
-            ),
+            caption=f"<b>Bot is online</b>\n\n<b>Uptime:</b> <code>{uptime}</code>",
             parse_mode=ParseMode.HTML,
         )
 
@@ -541,9 +539,7 @@ async def get_help(client, message: Message):
                         [
                             InlineKeyboardButton(
                                 text="Help",
-                                url="https://t.me/{}?start=ghelp_{}".format(
-                                    BOT_USERNAME, module
-                                ),
+                                url=f"https://t.me/{BOT_USERNAME}?start=ghelp_{module}",
                                 style=ButtonStyle.PRIMARY,
                             )
                         ]
@@ -558,7 +554,7 @@ async def get_help(client, message: Message):
                     [
                         InlineKeyboardButton(
                             text="Open in PM",
-                            url="https://t.me/{}?start=help".format(BOT_USERNAME),
+                            url=f"https://t.me/{BOT_USERNAME}?start=help",
                             style=ButtonStyle.PRIMARY,
                         )
                     ],
@@ -578,7 +574,7 @@ async def get_help(client, message: Message):
     elif len(args) >= 2 and any(args[1].lower() == x for x in HELPABLE):
         module = args[1].lower()
         text = (
-            "Help for the *{}* module:\n".format(HELPABLE[module].__mod_name__)
+            f"Help for the *{HELPABLE[module].__mod_name__}* module:\n"
             + HELPABLE[module].__help__
         )
         await send_help(
@@ -605,7 +601,7 @@ async def send_settings(chat_id, user_id, user=False):
     if user:
         if USER_SETTINGS:
             settings = "\n\n".join(
-                "*{}*:\n{}".format(mod.__mod_name__, mod.__user_settings__(user_id))
+                f"*{mod.__mod_name__}:\n{mod.__user_settings__(user_id)}"
                 for mod in USER_SETTINGS.values()
             )
             await app.send_message(
@@ -626,9 +622,7 @@ async def send_settings(chat_id, user_id, user=False):
             chat_name = chat.title
             await app.send_message(
                 user_id,
-                text="Which module's settings do you want to check for {}?".format(
-                    chat_name
-                ),
+                text=f"Which module's settings do you want to check for {chat_name}?",
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=paginate_modules(
                         0, CHAT_SETTINGS, "stngs", chat=chat_id
@@ -670,9 +664,10 @@ async def settings_button(client, query: CallbackQuery):
         if mod_match:
             chat_id = mod_match.group(1)
             module = mod_match.group(2)
-            text = "*{}* settings for the *{}* module:\n\n".format(
-                escape_markdown(chat.title), CHAT_SETTINGS[module].__mod_name__
-            ) + CHAT_SETTINGS[module].__chat_settings__(chat_id, user.id)
+            text = (
+                f"*{escape_markdown(chat.title)}* settings for the *{CHAT_SETTINGS[module].__mod_name__}* module:\n\n"
+                + CHAT_SETTINGS[module].__chat_settings__(chat_id, user.id)
+            )
             await query.message.reply_text(
                 text=text,
                 parse_mode=ParseMode.MARKDOWN,
@@ -681,7 +676,7 @@ async def settings_button(client, query: CallbackQuery):
                         [
                             InlineKeyboardButton(
                                 text="Back",
-                                callback_data="stngs_back({})".format(chat_id),
+                                callback_data=f"stngs_back({chat_id})",
                                 style=ButtonStyle.DEFAULT,
                             )
                         ]
@@ -693,7 +688,7 @@ async def settings_button(client, query: CallbackQuery):
             chat_id = prev_match.group(1)
             curr_page = int(prev_match.group(2))
             await query.message.reply_text(
-                "Choose a settings category for {}:".format(chat.title),
+                f"Choose a settings category for {chat.title}:",
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=paginate_modules(
                         curr_page - 1, CHAT_SETTINGS, "stngs", chat=chat_id
@@ -705,7 +700,7 @@ async def settings_button(client, query: CallbackQuery):
             chat_id = next_match.group(1)
             next_page = int(next_match.group(2))
             await query.message.reply_text(
-                "Choose a settings category for {}:".format(chat.title),
+                f"Choose a settings category for {chat.title}:",
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=paginate_modules(
                         next_page + 1, CHAT_SETTINGS, "stngs", chat=chat_id
@@ -716,9 +711,7 @@ async def settings_button(client, query: CallbackQuery):
         elif back_match:
             chat_id = back_match.group(1)
             await query.message.reply_text(
-                text="Choose a settings category for {}:".format(
-                    escape_markdown(chat.title)
-                ),
+                text=f"Choose a settings category for {escape_markdown(chat.title)}:",
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=paginate_modules(
                         0, CHAT_SETTINGS, "stngs", chat=chat_id
@@ -753,9 +746,7 @@ async def get_settings(client, message: Message):
                         [
                             InlineKeyboardButton(
                                 text="Settings",
-                                url="t.me/{}?start=stngs_{}".format(
-                                    BOT_USERNAME, chat.id
-                                ),
+                                url=f"t.me/{BOT_USERNAME}?start=stngs_{chat.id}",
                                 style=ButtonStyle.PRIMARY,
                             )
                         ]
@@ -799,7 +790,7 @@ async def help_button(client, query: CallbackQuery):
         if mod_match:
             module = mod_match.group(1)
             text = (
-                "*Help for {}*\n".format(HELPABLE[module].__mod_name__)
+                f"*Help for {HELPABLE[module].__mod_name__}*\n"
                 + HELPABLE[module].__help__
             )
             await query.message.edit_text(

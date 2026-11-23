@@ -15,6 +15,8 @@ Handlers are called the kurigram way, ``handler(client, update)``.
 """
 
 import inspect
+from dataclasses import dataclass
+from typing import Any
 
 from pyrogram import StopPropagation, filters
 from pyrogram.handlers import (
@@ -30,15 +32,13 @@ from Mikobot.logger import LOGGER, correlation_scope
 from Mikobot.utils.gate import end_unit_of_work, enforce
 
 
+@dataclass(slots=True)
 class Registration:
     """One handler, the filters that select it, and whether it chains."""
 
-    __slots__ = ("filters", "handler", "chained")
-
-    def __init__(self, filters, handler, chained: bool):
-        self.filters = filters
-        self.handler = handler
-        self.chained = chained
+    filters: Any
+    handler: Any
+    chained: bool
 
     async def matches(self, client, update) -> bool:
         for one in self.filters:

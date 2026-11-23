@@ -20,7 +20,7 @@ V2_ESCAPED_CHARS = re.compile(r"\\([^a-zA-Z0-9\s])")
 def escape_markdown(text: str) -> str:
     """Escape Markdown special characters in text."""
     escape_chars = r"\*_`\["
-    return sub(r"([%s])" % escape_chars, r"\\\1", text)
+    return sub(rf"([{escape_chars}])", r"\\\1", text)
 
 
 def mention_html(user_id: int, name: str) -> str:

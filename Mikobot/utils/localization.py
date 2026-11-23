@@ -1,8 +1,7 @@
 import inspect
 import json
-import os.path
 from functools import partial, wraps
-from glob import glob
+from pathlib import Path
 
 from pyrogram.enums import ChatType
 from pyrogram.types import CallbackQuery, InlineQuery, Message
@@ -41,22 +40,22 @@ enabled_locales: list[str] = [
 default_language: str = "en-US"
 
 
-def cache_localizations(files: list[str]) -> dict[str, dict[str, dict[str, str]]]:
+def cache_localizations(files: list[Path]) -> dict[str, dict[str, dict[str, str]]]:
     ldict = {lang: {} for lang in enabled_locales}
     for file in files:
-        _, lname, pname = file.split(os.path.sep)
-        pname = pname.split(".")[0]
-        with open(file, encoding="utf-8") as source:
+        lname = file.parent.name
+        pname = file.stem
+        with file.open(encoding="utf-8") as source:
             dic = json.load(source)
         dic.update(ldict[lname].get(pname, {}))
         ldict[lname][pname] = dic
     return ldict
 
 
-jsons: list[str] = []
+jsons: list[Path] = []
 
 for locale in enabled_locales:
-    jsons += glob(os.path.join("locales", locale, "*.json"))
+    jsons += list(Path("locales", locale).glob("*.json"))
 
 langdict = cache_localizations(jsons)
 
@@ -104,14 +103,14 @@ async def get_lang(message) -> str:
 
 def use_chat_lang(context: str = None):
     if not context:
-        cwd = os.getcwd()
+        cwd = Path.cwd()
         frame = inspect.stack()[1]
 
-        fname = frame.filename
+        fname = Path(frame.filename)
 
-        if fname.startswith(cwd):
-            fname = fname[len(cwd) + 1 :]
-        context = fname.split(os.path.sep)[2].split(".")[0]
+        if fname.is_relative_to(cwd):
+            fname = fname.relative_to(cwd)
+        context = Path(fname.parts[2]).stem
 
     def decorator(func):
         @wraps(func)
