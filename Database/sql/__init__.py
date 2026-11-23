@@ -103,7 +103,7 @@ def _count_statement(conn, cursor, statement, parameters, context, executemany):
     number worth watching: each one is a round trip plus its rollback.
     """
     global STATEMENT_TOTAL
-    head = " ".join(statement.split()[:4])
+    head = " ".join(statement.split(None, 4)[:4])
     if head in STATEMENT_COUNTS:
         STATEMENT_COUNTS[head] += 1
     elif len(STATEMENT_COUNTS) < STATEMENT_SHAPE_LIMIT:

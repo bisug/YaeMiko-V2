@@ -182,13 +182,9 @@ def __load_CHAT_STICKERS():
     if SESSION is None:
         return
     try:
-        chats = (
-            SESSION.execute(select(StickersFilters.chat_id).distinct()).scalars().all()
-        )
-        for chat_id in chats:
-            CHAT_STICKERS[chat_id] = []
-
         all_filters = SESSION.scalars(select(StickersFilters)).all()
+        for chat_id in {x.chat_id for x in all_filters}:
+            CHAT_STICKERS[chat_id] = []
         for x in all_filters:
             CHAT_STICKERS[x.chat_id] += [x.trigger]
 

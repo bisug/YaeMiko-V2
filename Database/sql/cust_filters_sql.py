@@ -312,13 +312,9 @@ def __load_chat_filters():
     if SESSION is None:
         return
     try:
-        chats = (
-            SESSION.execute(select(CustomFilters.chat_id).distinct()).scalars().all()
-        )
-        for chat_id in chats:
-            CHAT_FILTERS[chat_id] = []
-
         all_filters = SESSION.scalars(select(CustomFilters)).all()
+        for chat_id in {x.chat_id for x in all_filters}:
+            CHAT_FILTERS[chat_id] = []
         for x in all_filters:
             CHAT_FILTERS[x.chat_id] += [x.keyword]
 

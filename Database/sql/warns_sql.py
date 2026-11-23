@@ -307,11 +307,9 @@ def __load_chat_warn_filters():
     if SESSION is None:
         return
     try:
-        chats = SESSION.execute(select(WarnFilters.chat_id).distinct()).scalars().all()
-        for chat_id in chats:
-            WARN_FILTERS[chat_id] = []
-
         all_filters = SESSION.scalars(select(WarnFilters)).all()
+        for chat_id in {x.chat_id for x in all_filters}:
+            WARN_FILTERS[chat_id] = []
         for x in all_filters:
             WARN_FILTERS[x.chat_id] += [x.keyword]
 

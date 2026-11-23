@@ -77,14 +77,15 @@ def _ensure_column_types() -> None:
 run_migration(_ensure_column_types)
 
 
+ALPHABET = "abcdefghij"
+
+
 def int_to_alpha(user_id: int) -> str:
-    alphabet = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
-    return "".join(alphabet[int(digit)] for digit in str(user_id))
+    return "".join(ALPHABET[int(digit)] for digit in str(user_id))
 
 
 def alpha_to_int(user_id_alphabet: str) -> int:
-    alphabet = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
-    return int("".join(str(alphabet.index(c)) for c in user_id_alphabet))
+    return int("".join(str(ALPHABET.index(c)) for c in user_id_alphabet))
 
 
 @unit_of_work_guard

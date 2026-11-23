@@ -311,13 +311,9 @@ def __load_chat_blacklists():
     if SESSION is None:
         return
     try:
-        chats = (
-            SESSION.execute(select(BlackListFilters.chat_id).distinct()).scalars().all()
-        )
-        for chat_id in chats:
-            CHAT_BLACKLISTS[chat_id] = []
-
         all_filters = SESSION.scalars(select(BlackListFilters)).all()
+        for chat_id in {x.chat_id for x in all_filters}:
+            CHAT_BLACKLISTS[chat_id] = []
         for x in all_filters:
             CHAT_BLACKLISTS[x.chat_id] += [x.trigger]
 

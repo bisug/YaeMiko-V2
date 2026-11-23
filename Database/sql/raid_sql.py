@@ -121,9 +121,9 @@ def _settings(chat_id):
 def set_raid(chat_id, duration: int = None) -> None:
     """Enable the raid for `duration` seconds, or the chat's configured window."""
     with INSERTION_LOCK:
-        _, raid_time, *_ = _settings(chat_id)
-        seconds = int(duration) if duration else raid_time
         row = _row(chat_id)
+        raid_time = int(row.raid_time or DEF_RAID_TIME) if row else DEF_RAID_TIME
+        seconds = int(duration) if duration else raid_time
         if not row:
             row = RaidChats(str(chat_id))
         row.raid_until = int(time.time()) + seconds

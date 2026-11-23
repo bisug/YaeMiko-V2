@@ -213,40 +213,8 @@ def update_lock(chat_id, lock_type, locked):
             # write is built here and cached from the end of this function.
             curr_perm = Permissions(str(chat_id))
 
-        if lock_type == "audio":
-            curr_perm.audio = locked
-        elif lock_type == "voice":
-            curr_perm.voice = locked
-        elif lock_type == "contact":
-            curr_perm.contact = locked
-        elif lock_type == "video":
-            curr_perm.video = locked
-        elif lock_type == "document":
-            curr_perm.document = locked
-        elif lock_type == "photo":
-            curr_perm.photo = locked
-        elif lock_type == "sticker":
-            curr_perm.sticker = locked
-        elif lock_type == "gif":
-            curr_perm.gif = locked
-        elif lock_type == "url":
-            curr_perm.url = locked
-        elif lock_type == "bots":
-            curr_perm.bots = locked
-        elif lock_type == "forward":
-            curr_perm.forward = locked
-        elif lock_type == "game":
-            curr_perm.game = locked
-        elif lock_type == "location":
-            curr_perm.location = locked
-        elif lock_type == "rtl":
-            curr_perm.rtl = locked
-        elif lock_type == "button":
-            curr_perm.button = locked
-        elif lock_type == "egame":
-            curr_perm.egame = locked
-        elif lock_type == "inline":
-            curr_perm.inline = locked
+        if lock_type in LOCK_COLUMNS:
+            setattr(curr_perm, lock_type, locked)
 
         SESSION.add(curr_perm)
         SESSION.flush()

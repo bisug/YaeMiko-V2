@@ -65,17 +65,16 @@ def _remember_approved(key, approved: bool = True) -> None:
         APPROVED[key] = approved
 
 
+APPROVE_INSERT = pg_insert(Approvals.__table__).on_conflict_do_nothing()
+
+
 @unit_of_work_guard
 def approve(chat_id, user_id):
     key = _approval_key(chat_id, user_id)
     with APPROVE_INSERTION_LOCK:
         # One statement, and a second approve is a no-op instead of an
         # IntegrityError on the composite primary key.
-        SESSION.execute(
-            pg_insert(Approvals.__table__)
-            .values(chat_id=key[0], user_id=key[1])
-            .on_conflict_do_nothing()
-        )
+        SESSION.execute(APPROVE_INSERT.values(chat_id=key[0], user_id=key[1]))
         SESSION.commit()
     _remember_approved(key, True)
 
