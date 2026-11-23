@@ -116,26 +116,27 @@ async def _repeat_action(client, chat_id, action):
             await task
 
 
-def _chat_id(event):
+def _chat(event):
     chat = getattr(event, "chat", None)
     if chat is not None:
-        return chat.id
-    message = getattr(event, "message", None)
-    chat = getattr(message, "chat", None)
+        return chat
+    return getattr(getattr(event, "message", None), "chat", None)
+
+
+def _chat_id(event):
+    chat = _chat(event)
     return chat.id if chat is not None else None
 
 
 def _is_private(event):
-    chat = getattr(event, "chat", None) or getattr(
-        getattr(event, "message", None), "chat", None
-    )
+    chat = _chat(event)
     # A private chat with a bot is its own type in kurigram.
     return getattr(chat, "type", None) in (ChatType.PRIVATE, ChatType.BOT)
 
 
 def _event_parts(event):
     message = getattr(event, "message", None)
-    chat = getattr(event, "chat", None) or getattr(message, "chat", None)
+    chat = _chat(event)
     user = getattr(event, "from_user", None) or getattr(message, "from_user", None)
     return chat, user
 
@@ -296,9 +297,7 @@ async def _sender_is_not_admin(event) -> bool:
 async def _connected_chat(client, event):
     from Mikobot.plugins import connection
 
-    chat = getattr(event, "chat", None) or getattr(
-        getattr(event, "message", None), "chat", None
-    )
+    chat = _chat(event)
     user = getattr(event, "from_user", None)
     if chat is None or user is None:
         return None
@@ -309,9 +308,7 @@ async def _connected_chat(client, event):
 async def _denial(client, event, spec, status):
     """None to allow, otherwise (text, drop_silently) to deny with."""
     kind = spec["kind"]
-    chat = getattr(event, "chat", None) or getattr(
-        getattr(event, "message", None), "chat", None
-    )
+    chat = _chat(event)
     user = getattr(event, "from_user", None)
     user_id = getattr(user, "id", None)
 

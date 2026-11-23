@@ -94,6 +94,13 @@ def env_int(name, default=None, message=None):
         ) from None
 
 
+def _env_int_or_raw(name):
+    raw = os.environ.get(name, None)
+    if raw and str(raw).strip().lstrip("-").isdigit():
+        return int(str(raw).strip())
+    return raw
+
+
 _load_local_env()
 
 
@@ -151,19 +158,9 @@ if ENV:
     DB_URI = os.environ.get("DATABASE_URL")
     DEL_CMDS = env_bool("DEL_CMDS")
     BAN_STICKER = os.environ.get("BAN_STICKER", "")
-    _raw_event_logs = os.environ.get("EVENT_LOGS", None)
-    EVENT_LOGS = (
-        int(str(_raw_event_logs).strip())
-        if _raw_event_logs and str(_raw_event_logs).strip().lstrip("-").isdigit()
-        else _raw_event_logs
-    )
+    EVENT_LOGS = _env_int_or_raw("EVENT_LOGS")
     INFOPIC = env_bool("INFOPIC", True)
-    _raw_msg_dump = os.environ.get("MESSAGE_DUMP", None)
-    MESSAGE_DUMP = (
-        int(str(_raw_msg_dump).strip())
-        if _raw_msg_dump and str(_raw_msg_dump).strip().lstrip("-").isdigit()
-        else _raw_msg_dump
-    )
+    MESSAGE_DUMP = _env_int_or_raw("MESSAGE_DUMP")
     LOAD = os.environ.get("LOAD", "").split()
     NO_LOAD = os.environ.get("NO_LOAD", "").split()
     STRICT_GBAN = env_bool("STRICT_GBAN", True)

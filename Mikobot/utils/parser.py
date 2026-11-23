@@ -151,49 +151,34 @@ def smart_format_to_html(text: str) -> str:
     return text
 
 
+async def _smart_parse(
+    self: Parser, text: str, mode: enums.ParseMode | None = None
+) -> dict:
+    text = str(text or "").strip()
+    if not text:
+        return {"message": "", "entities": None}
+
+    if mode is None:
+        if self.client:
+            mode = getattr(self.client, "parse_mode", enums.ParseMode.DEFAULT)
+        else:
+            mode = enums.ParseMode.DEFAULT
+
+    if mode == enums.ParseMode.DISABLED:
+        return {"message": text, "entities": None}
+
+    formatted = smart_format_to_html(text)
+    return await self.html.parse(formatted)
+
+
 class SmartParser(Parser):
     """Kurigram Parser extension supporting Markdown V1, V2, and HTML simultaneously."""
 
-    async def parse(self, text: str, mode: enums.ParseMode | None = None) -> dict:
-        text = str(text or "").strip()
-        if not text:
-            return {"message": "", "entities": None}
-
-        if mode is None:
-            if self.client:
-                mode = getattr(self.client, "parse_mode", enums.ParseMode.DEFAULT)
-            else:
-                mode = enums.ParseMode.DEFAULT
-
-        if mode == enums.ParseMode.DISABLED:
-            return {"message": text, "entities": None}
-
-        formatted = smart_format_to_html(text)
-        return await self.html.parse(formatted)
+    parse = _smart_parse
 
 
 def install_smart_parser(client=None) -> None:
     """Globally install SmartParser in Kurigram."""
-
-    async def _smart_parse(
-        self: Parser, text: str, mode: enums.ParseMode | None = None
-    ) -> dict:
-        text = str(text or "").strip()
-        if not text:
-            return {"message": "", "entities": None}
-
-        if mode is None:
-            if self.client:
-                mode = getattr(self.client, "parse_mode", enums.ParseMode.DEFAULT)
-            else:
-                mode = enums.ParseMode.DEFAULT
-
-        if mode == enums.ParseMode.DISABLED:
-            return {"message": text, "entities": None}
-
-        formatted = smart_format_to_html(text)
-        return await self.html.parse(formatted)
-
     Parser.parse = _smart_parse
 
     if client is not None:

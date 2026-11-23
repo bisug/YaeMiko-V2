@@ -233,6 +233,12 @@ def load_plugins():
             USER_SETTINGS[imported_module.__mod_name__.lower()] = imported_module
 
 
+def _back_button(callback_data: str) -> InlineKeyboardButton:
+    return InlineKeyboardButton(
+        text="Back", callback_data=callback_data, style=ButtonStyle.DEFAULT
+    )
+
+
 # do not async
 async def send_help(chat_id, text, keyboard=None):
     if not keyboard:
@@ -262,17 +268,7 @@ async def start(client, message: Message):
                 await send_help(
                     message.chat.id,
                     HELPABLE[mod].__help__,
-                    InlineKeyboardMarkup(
-                        inline_keyboard=[
-                            [
-                                InlineKeyboardButton(
-                                    text="Back",
-                                    callback_data="help_back",
-                                    style=ButtonStyle.DEFAULT,
-                                )
-                            ]
-                        ]
-                    ),
+                    InlineKeyboardMarkup(inline_keyboard=[[_back_button("help_back")]]),
                 )
 
             elif args[0].lower().startswith("stngs_"):
@@ -389,11 +385,7 @@ async def anime_command_callback(client, query: CallbackQuery):
                         ),
                     ],
                     [
-                        InlineKeyboardButton(
-                            text="Back",
-                            callback_data="extra_command_handler",
-                            style=ButtonStyle.DEFAULT,
-                        ),
+                        _back_button("extra_command_handler"),
                     ],
                 ]
             ),
@@ -427,11 +419,7 @@ async def genshin_command_callback(client, query: CallbackQuery):
                         ),
                     ],
                     [
-                        InlineKeyboardButton(
-                            text="Back",
-                            callback_data="extra_command_handler",
-                            style=ButtonStyle.DEFAULT,
-                        ),
+                        _back_button("extra_command_handler"),
                     ],
                 ]
             ),
@@ -474,11 +462,7 @@ async def Miko_about_callback(client, query: CallbackQuery):
                         ),
                     ],
                     [
-                        InlineKeyboardButton(
-                            text="Back",
-                            callback_data="Miko_back",
-                            style=ButtonStyle.DEFAULT,
-                        ),
+                        _back_button("Miko_back"),
                     ],
                 ]
             ),
@@ -507,11 +491,7 @@ async def Miko_about_callback(client, query: CallbackQuery):
                         ),
                     ],
                     [
-                        InlineKeyboardButton(
-                            text="Back",
-                            callback_data="Miko_",
-                            style=ButtonStyle.DEFAULT,
-                        ),
+                        _back_button("Miko_"),
                     ],
                 ]
             ),
@@ -580,17 +560,7 @@ async def get_help(client, message: Message):
         await send_help(
             chat.id,
             text,
-            InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [
-                        InlineKeyboardButton(
-                            text="Back",
-                            callback_data="help_back",
-                            style=ButtonStyle.DEFAULT,
-                        )
-                    ]
-                ]
-            ),
+            InlineKeyboardMarkup(inline_keyboard=[[_back_button("help_back")]]),
         )
 
     else:
@@ -672,15 +642,7 @@ async def settings_button(client, query: CallbackQuery):
                 text=text,
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=InlineKeyboardMarkup(
-                    inline_keyboard=[
-                        [
-                            InlineKeyboardButton(
-                                text="Back",
-                                callback_data=f"stngs_back({chat_id})",
-                                style=ButtonStyle.DEFAULT,
-                            )
-                        ]
-                    ]
+                    inline_keyboard=[[_back_button(f"stngs_back({chat_id})")]]
                 ),
             )
 
@@ -798,15 +760,7 @@ async def help_button(client, query: CallbackQuery):
                 parse_mode=ParseMode.MARKDOWN,
                 link_preview_options=LinkPreviewOptions(is_disabled=True),
                 reply_markup=InlineKeyboardMarkup(
-                    inline_keyboard=[
-                        [
-                            InlineKeyboardButton(
-                                text="Back",
-                                callback_data="help_back",
-                                style=ButtonStyle.DEFAULT,
-                            )
-                        ]
-                    ]
+                    inline_keyboard=[[_back_button("help_back")]]
                 ),
             )
 
@@ -877,13 +831,7 @@ async def gitsource_callback(client, query: CallbackQuery):
         source_link = "https://github.com/bisug/YaeMiko-V2"
         message_text = f"*Source code*:\n\n{source_link}"
 
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    text="Back", callback_data="Miko_back", style=ButtonStyle.DEFAULT
-                )
-            ]
-        ]
+        keyboard = [[_back_button("Miko_back")]]
         reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
         await query.message.edit_text(
