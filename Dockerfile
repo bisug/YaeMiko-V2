@@ -1,6 +1,6 @@
-FROM python:3.14.10-slim-trixie AS builder
+FROM python:3.14-slim AS builder
 
-COPY --from=ghcr.io/astral-sh/uv:0.13.8 /uv /bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.9 /uv /usr/local/bin/uv
 
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
@@ -11,7 +11,7 @@ WORKDIR /root/Mikobot
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
-FROM python:3.14.10-slim-trixie
+FROM python:3.14-slim
 
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1
