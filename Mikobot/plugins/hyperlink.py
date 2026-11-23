@@ -37,8 +37,7 @@ async def hyperlink_command(client, message: Message):
             link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     else:
-        match = re.search(r"/hyperlink ([^\s]+) (.+)", message.text)
-        if match:
+        if match := re.search(r"/hyperlink ([^\s]+) (.+)", message.text):
             text = match.group(1)
             link = match.group(2)
             hyperlink = f"[{text}]({link})"

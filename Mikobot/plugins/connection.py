@@ -382,12 +382,11 @@ async def connect_button(client, query: CallbackQuery):
     chat = query.message.chat
     user = query.from_user
 
-    connect_match = re.match(r"connect\((.+?)\)", query.data)
     disconnect_match = query.data == "connect_disconnect"
     clear_match = query.data == "connect_clear"
     connect_close = query.data == "connect_close"
 
-    if connect_match:
+    if connect_match := re.match(r"connect\((.+?)\)", query.data):
         target_chat = int(connect_match.group(1))
         getstatusadmin = await client.get_chat_member(target_chat, query.from_user.id)
         isadmin = getstatusadmin.status in (

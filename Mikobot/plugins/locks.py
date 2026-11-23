@@ -141,16 +141,16 @@ def _domain_of(value: str) -> str:
     if not value:
         return ""
     if value.startswith("http://"):
-        value = value[7:]
+        value = value.removeprefix("http://")
     elif value.startswith("https://"):
-        value = value[8:]
+        value = value.removeprefix("https://")
     if value.startswith("//"):
-        value = value[2:]
+        value = value.removeprefix("//")
     host = value.split("/")[0].split("?")[0]
     if "@" in host:
         host = host.rsplit("@", 1)[1]
     if host.startswith("www."):
-        host = host[4:]
+        host = host.removeprefix("www.")
     return host
 
 
@@ -794,32 +794,37 @@ async def build_lock_message(chat_id):
     if locks:
         res += "*" + "Current locks in this chat:" + "*"
         if locks:
-            locklist.append("sticker = `{}`".format(locks.sticker))
-            locklist.append("audio = `{}`".format(locks.audio))
-            locklist.append("voice = `{}`".format(locks.voice))
-            locklist.append("document = `{}`".format(locks.document))
-            locklist.append("video = `{}`".format(locks.video))
-            locklist.append("contact = `{}`".format(locks.contact))
-            locklist.append("photo = `{}`".format(locks.photo))
-            locklist.append("gif = `{}`".format(locks.gif))
-            locklist.append("url = `{}`".format(locks.url))
-            locklist.append("bots = `{}`".format(locks.bots))
-            locklist.append("forward = `{}`".format(locks.forward))
-            locklist.append("game = `{}`".format(locks.game))
-            locklist.append("location = `{}`".format(locks.location))
-            locklist.append("rtl = `{}`".format(locks.rtl))
-            locklist.append("button = `{}`".format(locks.button))
-            locklist.append("egame = `{}`".format(locks.egame))
-            locklist.append("phone = `{}`".format(locks.phone))
-            locklist.append("command = `{}`".format(locks.command))
-            locklist.append("email = `{}`".format(locks.email))
-            locklist.append("anonchannel = `{}`".format(locks.anonchannel))
-            locklist.append("forwardchannel = `{}`".format(locks.forwardchannel))
-            locklist.append("forwardbot = `{}`".format(locks.forwardbot))
-            locklist.append("videonote = `{}`".format(locks.videonote))
-            locklist.append("emojicustom = `{}`".format(locks.emojicustom))
-            locklist.append("stickerpremium = `{}`".format(locks.stickerpremium))
-            locklist.append("stickeranimated = `{}`".format(locks.stickeranimated))
+            locklist = [
+                f"{key} = `{getattr(locks, key)}`"
+                for key in (
+                    "sticker",
+                    "audio",
+                    "voice",
+                    "document",
+                    "video",
+                    "contact",
+                    "photo",
+                    "gif",
+                    "url",
+                    "bots",
+                    "forward",
+                    "game",
+                    "location",
+                    "rtl",
+                    "button",
+                    "egame",
+                    "phone",
+                    "command",
+                    "email",
+                    "anonchannel",
+                    "forwardchannel",
+                    "forwardbot",
+                    "videonote",
+                    "emojicustom",
+                    "stickerpremium",
+                    "stickeranimated",
+                )
+            ]
 
     permissions = await client.get_chat(chat_id)
     permissions = getattr(permissions, "permissions", None)

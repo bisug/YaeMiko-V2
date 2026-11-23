@@ -202,7 +202,7 @@ def _file_match(pattern: str, filename: str) -> bool:
             prefix.lower()
         ) and filename.lower().endswith(suffix.lower())
     if pattern.startswith("*"):
-        return filename.lower().endswith(pattern[1:].lower())
+        return filename.lower().endswith(pattern.removeprefix("*").lower())
     return filename.lower() == pattern.lower()
 
 

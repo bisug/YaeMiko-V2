@@ -6,7 +6,7 @@ import re
 import shlex
 import tempfile
 from datetime import datetime
-from os.path import basename
+from pathlib import Path
 from time import time
 from traceback import format_exc as err
 from urllib.parse import quote
@@ -592,14 +592,14 @@ async def take_screen_shot(
 ) -> str | None:
     """take a screenshot"""
     log.debug("Extracting a frame from %s at %s seconds", video_file, duration)
-    thumb_image_path = path or os.path.join(DOWN_PATH, f"{basename(video_file)}.jpg")
+    thumb_image_path = path or str(Path(DOWN_PATH) / f"{Path(video_file).name}.jpg")
     command = (
         f"ffmpeg -ss {duration} " + f'-i "{video_file}" -vframes 1 "{thumb_image_path}"'
     )
     err = (await runcmd(command))[1]
     if err:
         log.warning("ffmpeg returned an error while extracting a frame: %s", err)
-    return thumb_image_path if os.path.exists(thumb_image_path) else None
+    return thumb_image_path if Path(thumb_image_path).exists() else None
 
 
 async def get_user_from_channel(cid):
@@ -653,14 +653,18 @@ def make_it_rw(time_stamp):
     minutes, seconds = divmod(seconds, 60)
     hours, minutes = divmod(minutes, 60)
     days, hours = divmod(hours, 24)
-    tmp = (
-        ((str(days) + " Days, ") if days else "")
-        + ((str(hours) + " Hours, ") if hours else "")
-        + ((str(minutes) + " Minutes, ") if minutes else "")
-        + ((str(seconds) + " Seconds, ") if seconds else "")
-        + ((str(milliseconds) + " ms, ") if milliseconds else "")
-    )
-    return tmp[:-2]
+    parts = []
+    if days:
+        parts.append(f"{days} Days")
+    if hours:
+        parts.append(f"{hours} Hours")
+    if minutes:
+        parts.append(f"{minutes} Minutes")
+    if seconds:
+        parts.append(f"{seconds} Seconds")
+    if milliseconds:
+        parts.append(f"{milliseconds} ms")
+    return ", ".join(parts)
 
 
 async def clog(
@@ -1010,7 +1014,7 @@ class google_new_transError(Exception):
         if rsp is None:
             premise = "Failed to connect"
 
-            return "{}. Probable cause: {}".format(premise, "timeout")
+            return f"{premise}. Probable cause: timeout"
             #     host = _translate_url(tld=tts.tld)
             #     cause = "Host '{}' is not reachable".format(host)
 
@@ -1018,19 +1022,16 @@ class google_new_transError(Exception):
             status = rsp.status_code
             reason = rsp.reason
 
-            premise = "{:d} ({}) from TTS API".format(status, reason)
+            premise = f"{status:d} ({reason}) from TTS API"
 
             if status == 403:
                 cause = "Bad token or upstream API changes"
             elif status == 200 and not tts.lang_check:
-                cause = (
-                    "No audio stream in response. Unsupported language '%s'"
-                    % self.tts.lang
-                )
+                cause = f"No audio stream in response. Unsupported language '{self.tts.lang}'"
             elif status >= 500:
                 cause = "Uptream API error. Try again later."
 
-        return "{}. Probable cause: {}".format(premise, cause)
+        return f"{premise}. Probable cause: {cause}"
 
 
 class google_translator:

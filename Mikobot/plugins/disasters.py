@@ -3,6 +3,7 @@ import html
 import json
 import os
 import tempfile
+from pathlib import Path
 
 from pyrogram import filters
 from pyrogram.enums import ChatType
@@ -17,10 +18,8 @@ from Mikobot.utils.parser import mention_html
 
 # Resolve relative to this file, not the process working directory, so the bot
 # finds the same file regardless of where it was launched from.
-ELEVATED_USERS_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "Mikobot",
-    "elevated_users.json",
+ELEVATED_USERS_FILE = (
+    Path(__file__).resolve().parent.parent / "Mikobot" / "elevated_users.json"
 )
 
 DISASTER_LEVELS = {
@@ -54,8 +53,7 @@ def update_elevated_users(data):
     try:
         os.replace(temporary, ELEVATED_USERS_FILE)
     finally:
-        if os.path.exists(temporary):
-            os.unlink(temporary)
+        Path(temporary).unlink(missing_ok=True)
 
 
 def apply_elevated_users(data):
@@ -104,8 +102,7 @@ async def add_disaster_level(client, message: Message, level: str) -> str:
     rt = ""
 
     async with ELEVATED_USERS_LOCK:
-        with open(ELEVATED_USERS_FILE) as infile:
-            data = json.load(infile)
+        data = json.loads(Path(ELEVATED_USERS_FILE).read_text())
 
         target_key = DISASTER_LEVELS[level]
         if user_id in data[target_key]:

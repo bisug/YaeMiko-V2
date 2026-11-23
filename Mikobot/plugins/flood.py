@@ -135,8 +135,7 @@ async def check_flood(client, message: Message):
 async def flood_button(client, query: CallbackQuery):
     message = query.message
     user = query.from_user
-    match = re.fullmatch(r"unmute_flooder\((-?\d+)\)", query.data)
-    if not match:
+    if not (match := re.fullmatch(r"unmute_flooder\((-?\d+)\)", query.data)):
         await query.answer("Invalid callback data.", show_alert=True)
         return
     user_id = int(match.group(1))
