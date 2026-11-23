@@ -4,7 +4,7 @@ import re
 
 from pyrogram import filters
 from pyrogram.enums import ButtonStyle, ChatMemberStatus, ParseMode
-from pyrogram.errors import RPCError
+from pyrogram.errors import ReplyMessageIdInvalid, RPCError
 from pyrogram.types import (
     CallbackQuery,
     Chat,
@@ -121,7 +121,7 @@ async def warn(
             reply, reply_markup=keyboard, parse_mode=ParseMode.HTML
         )
     except RPCError as excp:
-        if "reply message not found" in str(excp.message or excp).lower():
+        if isinstance(excp, ReplyMessageIdInvalid):
             # Reply without quoting, since the original message is gone.
             await message.reply_text(
                 reply,

@@ -926,7 +926,10 @@ async def main():
     app.add_handler(ErrorHandler(error_callback))
 
     if ACTIVITY_LOG:
-        app.add_handler(RawUpdateHandler(log_kurigram_activity))
+        # Group -1 runs before the typed dispatch handlers. In group 0 the
+        # first matching handler ends the group, so a raw logger appended
+        # after them never sees the updates the bot actually handles.
+        app.add_handler(RawUpdateHandler(log_kurigram_activity), group=-1)
 
     try:
         from Database.sql.users_sql import ensure_bot_in_db
@@ -961,6 +964,12 @@ if __name__ == "__main__":
             loop.run_until_complete(state.aclose())
         except Exception:
             LOGGER.exception("Failed to close HTTP client")
+        try:
+            from Mikobot.utils.jobs import job_queue
+
+            job_queue.shutdown()
+        except Exception:
+            LOGGER.exception("Failed to cancel pending jobs")
         try:
             executor.shutdown(wait=False, cancel_futures=True)
         except Exception:

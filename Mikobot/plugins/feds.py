@@ -47,31 +47,24 @@ from Mikobot.utils.consts import ChatID
 from Mikobot.utils.parser import mention_html, mention_markdown
 
 _FED_ERRORS = {
-    "user is an administrator of the chat",
-    "user_admin_invalid",
-    "chat not found",
-    "chat_not_found",
-    "not enough rights to restrict/unrestrict chat member",
-    "chat_admin_required",
-    "right_forbidden",
-    "user_not_participant",
-    "channel_private",
-    "not in the chat",
-    "have no rights to send a message",
-    "chat_write_forbidden",
+    "USER_ADMIN_INVALID",
+    "CHAT_INVALID",
+    "RIGHT_FORBIDDEN",
+    "CHAT_ADMIN_REQUIRED",
+    "USER_NOT_PARTICIPANT",
+    "CHANNEL_PRIVATE",
+    "CHAT_WRITE_FORBIDDEN",
 }
 
 FBAN_ERRORS = _FED_ERRORS | {
-    "peer_id_invalid",
-    "group chat was deactivated",
-    "group_deactivated",
-    "need to be inviter of a user to kick it from a basic group",
-    "only the creator of a basic group can kick group administrators",
+    "PEER_ID_INVALID",
+    "USER_CREATOR",
+    "ADMIN_RANK_INVALID",
 }
 
 UNFBAN_ERRORS = _FED_ERRORS | {
-    "method is available for supergroup and channel chats only",
-    "channel_invalid",
+    "CHANNEL_INVALID",
+    "USER_INVALID",
 }
 
 
@@ -82,17 +75,18 @@ def _fed_error_text(excp: Exception) -> str:
 
 
 def _matches_fed_error(excp: Exception, error_set: set[str]) -> bool:
+    ident = getattr(excp, "ID", None)
+    if ident in error_set:
+        return True
     err_str = _fed_error_text(excp)
-    return any(err in err_str for err in error_set)
+    return any(name.lower() in err_str for name in error_set)
 
 
 def _is_user_id_invalid(excp: Exception) -> bool:
+    if getattr(excp, "ID", None) == "USER_INVALID":
+        return True
     err_str = _fed_error_text(excp)
-    return (
-        "user_id_invalid" in err_str
-        or "invalid user_id" in err_str
-        or "user not found" in err_str
-    )
+    return "user_invalid" in err_str or "invalid user" in err_str
 
 
 def _fed_notice(
@@ -1767,7 +1761,7 @@ async def del_fed_button(client, query: CallbackQuery):
         return
 
     if (
-        query.message.chat.type not in (ChatType.PRIVATE, "private")
+        query.message.chat.type not in (ChatType.PRIVATE, ChatType.BOT)
         or query.from_user.id != requested_by
     ):
         await query.answer(

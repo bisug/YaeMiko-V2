@@ -3,7 +3,12 @@ from itertools import batched
 
 from pyrogram import filters
 from pyrogram.enums import ChatType
-from pyrogram.errors import MessageDeleteForbidden, RPCError
+from pyrogram.errors import (
+    MessageDeleteForbidden,
+    MessageIdsEmpty,
+    MessageIdsMismatch,
+    RPCError,
+)
 from pyrogram.types import Message
 
 from Mikobot import SUPPORT_CHAT, app
@@ -19,6 +24,9 @@ async def purge(c: app, m: Message):
 
     if m.reply_to_message:
         message_ids = list(range(m.reply_to_message.id, m.id))
+        if not message_ids:
+            await m.reply_text(text="There are no messages to delete.")
+            return
 
         m_list = list(map(list, batched(message_ids, 100, strict=False)))
 
@@ -33,6 +41,11 @@ async def purge(c: app, m: Message):
         except MessageDeleteForbidden:
             await m.reply_text(
                 text="Could not delete all messages. The messages may be too old, I may lack delete rights, or this may not be a supergroup."
+            )
+            return
+        except MessageIdsEmpty, MessageIdsMismatch:
+            await m.reply_text(
+                text="Nothing was deleted. Those messages are no longer available."
             )
             return
         except RPCError as ef:
@@ -61,6 +74,9 @@ async def spurge(c: app, m: Message):
 
     if m.reply_to_message:
         message_ids = list(range(m.reply_to_message.id, m.id))
+        if not message_ids:
+            await m.reply_text(text="There are no messages to delete.")
+            return
 
         m_list = list(map(list, batched(message_ids, 100, strict=False)))
 
@@ -75,6 +91,11 @@ async def spurge(c: app, m: Message):
         except MessageDeleteForbidden:
             await m.reply_text(
                 text="Could not delete all messages. The messages may be too old, I may lack delete rights, or this may not be a supergroup."
+            )
+            return
+        except MessageIdsEmpty, MessageIdsMismatch:
+            await m.reply_text(
+                text="Nothing was deleted. Those messages are no longer available."
             )
             return
         except RPCError as ef:

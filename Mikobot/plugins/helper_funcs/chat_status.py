@@ -155,7 +155,7 @@ async def is_user_admin(chat, user_id: int, member=None) -> bool:
 
 
 async def is_bot_admin(chat, bot_id: int, bot_member=None) -> bool:
-    if getattr(chat, "type", None) == ChatType.PRIVATE:
+    if getattr(chat, "type", None) in (ChatType.PRIVATE, ChatType.BOT):
         return True
 
     if not bot_member:

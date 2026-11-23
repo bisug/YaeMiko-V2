@@ -13,19 +13,16 @@ from random import choice
 from pyrogram import Client
 from pyrogram.enums import ParseMode
 from pyrogram.errors import RPCError
+from pyrogram.utils import loops
 
 from Mikobot.utils.parser import install_smart_parser
 from Mikobot.utils.persistence import open_store
 
 if not hasattr(RPCError, "message"):
-    RPCError.message = property(
-        lambda self: (
-            getattr(self, "value", None)
-            or getattr(self, "MESSAGE", None)
-            or getattr(self, "ID", None)
-            or str(self)
-        )
-    )
+    # Kurigram 2.2.27 split ``value`` into the error's parameter: FloodWait(42)
+    # carries 42 there, so reading it first turned an error message into "42".
+    # str(self) keeps the error id and the human-readable text together.
+    RPCError.message = property(lambda self: str(self))
 
 _orig_resolve_peer = Client.resolve_peer
 
@@ -124,22 +121,12 @@ StartTime = time.time()
 
 
 def _create_event_loop():
-    """uvloop where it exists, the stock selector loop where it does not.
+    """Let Kurigram pick uvloop when present, otherwise the stock loop.
 
-    The loop is built here and driven by __main__, so uvloop has to be selected
-    at construction rather than inside a framework's polling helper.
-
-    uvloop ships no Windows wheel, so it is marked out of requirements.txt on
-    win32, and the import is guarded twice: once for the platform and once for
-    the case where a Linux install skipped it. The fallback is the stock loop,
-    so nothing changes for anyone without it.
+    The loop is built here and driven by __main__, so the policy has to be
+    applied at construction. Kurigram owns the import guard for uvloop.
     """
-    try:
-        import uvloop
-
-        loop = uvloop.new_event_loop()
-    except ImportError:
-        loop = asyncio.new_event_loop()
+    loop = loops.new_event_loop()
     asyncio.set_event_loop(loop)
     return loop
 

@@ -3,7 +3,7 @@ from functools import wraps
 
 from pyrogram import filters
 from pyrogram.enums import ChatType, ParseMode
-from pyrogram.errors import RPCError
+from pyrogram.errors import ChannelPrivate, ChatInvalid, RPCError
 from pyrogram.types import LinkPreviewOptions, Message
 
 from Mikobot.events import on_message
@@ -116,7 +116,7 @@ if is_module_loaded(FILENAME):
                 link_preview_options=LinkPreviewOptions(is_disabled=True),
             )
         except RPCError as excp:
-            if "chat not found" in str(excp.message or excp).lower():
+            if isinstance(excp, (ChatInvalid, ChannelPrivate)):
                 if not is_chat_log:
                     LOGGER.warning(
                         "Global log channel %s is unavailable; per-chat logging is unchanged",

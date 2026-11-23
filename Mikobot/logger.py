@@ -219,8 +219,9 @@ def configure_logging() -> logging.Logger:
     root.setLevel(_level_from_env())
 
     # These libraries emit full Telegram API URLs (with the token) at INFO.
-    for name in ("pyrogram", "pyrate_limiter"):
-        logging.getLogger(name).setLevel(logging.ERROR)
+    logging.getLogger("pyrate_limiter").setLevel(logging.ERROR)
+    # Kurigram's reconnect and invoke-retry warnings are operator signal.
+    logging.getLogger("pyrogram").setLevel(logging.WARNING)
     for name in ("httpx", "httpcore"):
         logging.getLogger(name).setLevel(logging.WARNING)
     return root

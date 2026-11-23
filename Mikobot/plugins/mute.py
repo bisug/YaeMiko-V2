@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus, ParseMode
-from pyrogram.errors import RPCError
+from pyrogram.errors import ReplyMessageIdInvalid, RPCError
 from pyrogram.types import Chat, ChatPermissions, Message
 
 from Mikobot.events import on_message
@@ -248,7 +248,7 @@ async def temp_mute(client, message: Message) -> str:
             await message.reply_text("This user is already muted.")
 
     except RPCError as excp:
-        if "reply message not found" in str(excp.message or excp).lower():
+        if isinstance(excp, ReplyMessageIdInvalid):
             await message.reply_text(f"Muted for {time_val}.")
             return log
         else:

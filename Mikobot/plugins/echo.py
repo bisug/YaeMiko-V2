@@ -24,6 +24,7 @@ import Database.sql.users_sql as users_sql
 from Mikobot import DEV_USERS, OWNER_ID
 from Mikobot.events import on_message
 from Mikobot.logger import LOGGER
+from Mikobot.utils.errors import flood_wait_seconds
 
 # Flood protection: Telegram rejects bursts, and a broadcast to many chats
 # is exactly that. Sending must never outrun the account's rate limit.
@@ -100,7 +101,7 @@ async def _broadcast(client, message: Message) -> None:
                 if attempt == 2:
                     deferred += 1
                     break
-                await asyncio.sleep(exc.retry_after)
+                await asyncio.sleep(flood_wait_seconds(exc))
             except RPCError:
                 # A chat the bot was removed from, or one with posting disabled.
                 failed += 1

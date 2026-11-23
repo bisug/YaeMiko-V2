@@ -40,6 +40,7 @@ from Mikobot.plugins.helper_funcs.string_handling import (
     split_quotes,
 )
 from Mikobot.utils.consts import ChatID
+from Mikobot.utils.errors import is_reply_message_invalid
 from Mikobot.utils.filters import GROUPS
 from Mikobot.utils.parser import escape_markdown, mention_html
 
@@ -637,9 +638,10 @@ async def rmall_callback(client, query: CallbackQuery):
 
 
 def get_exception(excp, filt, chat):
-    if "unsupported url protocol" in str(excp.message or excp).lower():
+    err_str = str(excp).lower()
+    if "button_url_invalid" in err_str or "url_invalid" in err_str:
         return "You seem to be trying to use an unsupported URL protocol. Telegram does not support buttons for some protocols, such as tg://. Please try again!"
-    elif "reply message not found" in str(excp.message or excp).lower():
+    elif is_reply_message_invalid(excp):
         return "noreply"
     else:
         LOGGER.warning("Message %s could not be parsed", str(filt.reply))

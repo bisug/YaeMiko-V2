@@ -35,49 +35,41 @@ from Mikobot.utils.consts import ChatID
 from Mikobot.utils.filters import GROUPS
 from Mikobot.utils.parser import mention_html
 
+# Kurigram names errors by ID. The old aiogram-style phrases never appear in
+# a 2.2.27 RPCError, so every expected failure was logged as unexpected.
 GBAN_ERRORS = {
-    "user is an administrator of the chat",
-    "user_admin_invalid",
-    "chat not found",
-    "chat_not_found",
-    "not enough rights to restrict/unrestrict chat member",
-    "chat_admin_required",
-    "right_forbidden",
-    "user_not_participant",
-    "peer_id_invalid",
-    "group chat was deactivated",
-    "group_deactivated",
-    "need to be inviter of a user to kick it from a basic group",
-    "only the creator of a basic group can kick group administrators",
-    "channel_private",
-    "not in the chat",
-    "can't remove chat owner",
+    "USER_ADMIN_INVALID",
+    "CHAT_INVALID",
+    "CHAT_ADMIN_REQUIRED",
+    "RIGHT_FORBIDDEN",
+    "USER_NOT_PARTICIPANT",
+    "PEER_ID_INVALID",
+    "CHANNEL_PRIVATE",
+    "USER_CREATOR",
+    "ADMIN_RANK_INVALID",
 }
 
 UNGBAN_ERRORS = {
-    "user is an administrator of the chat",
-    "user_admin_invalid",
-    "chat not found",
-    "chat_not_found",
-    "not enough rights to restrict/unrestrict chat member",
-    "chat_admin_required",
-    "right_forbidden",
-    "user_not_participant",
-    "method is available for supergroup and channel chats only",
-    "channel_invalid",
-    "not in the chat",
-    "channel_private",
-    "peer_id_invalid",
-    "user not found",
-    "user_id_invalid",
+    "USER_ADMIN_INVALID",
+    "CHAT_INVALID",
+    "CHAT_ADMIN_REQUIRED",
+    "RIGHT_FORBIDDEN",
+    "USER_NOT_PARTICIPANT",
+    "CHANNEL_INVALID",
+    "CHANNEL_PRIVATE",
+    "PEER_ID_INVALID",
+    "USER_INVALID",
+    "USER_CREATOR",
 }
 
 
 def _matches_gban_error(excp: Exception, error_set: set[str]) -> bool:
-    err_str = str(
-        getattr(excp, "message", None) or getattr(excp, "value", None) or excp
-    ).lower()
-    return any(err in err_str for err in error_set)
+    ident = getattr(excp, "ID", None)
+    if ident in error_set:
+        return True
+    # Unknown errors carry no ID but still print their error name in str().
+    err_str = str(excp).lower()
+    return any(name.lower() in err_str for name in error_set)
 
 
 async def check_and_ban(client, message: Message, user_id, should_message=True):

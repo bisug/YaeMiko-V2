@@ -1,6 +1,12 @@
 from functools import wraps
 
-from pyrogram.errors import FloodSkipFailedWait, FloodWait
+from pyrogram.errors import (
+    FloodPremiumWait,
+    FloodSkipFailedWait,
+    FloodWait,
+    ReplyMessageIdInvalid,
+    UserInvalid,
+)
 from pyrogram.errors.exceptions.forbidden_403 import ChatWriteForbidden
 
 from Mikobot.logger import LOGGER
@@ -10,7 +16,21 @@ from Mikobot.logger import LOGGER
 # FloodSkipFailedWait (new in kurigram 2.2.27) says only that a short wait is
 # required. Callers that sleep on the error therefore need one place that
 # knows which of the two shapes arrived.
-FLOOD_WAIT_ERRORS = (FloodWait, FloodSkipFailedWait)
+FLOOD_WAIT_ERRORS = (FloodWait, FloodPremiumWait, FloodSkipFailedWait)
+
+
+def is_user_invalid(error) -> bool:
+    """Whether Telegram rejected the user id itself, not a lookup miss."""
+    return isinstance(error, UserInvalid) or getattr(error, "ID", None) == (
+        "USER_INVALID"
+    )
+
+
+def is_reply_message_invalid(error) -> bool:
+    """Whether the quoted message is gone, so a plain reply is needed."""
+    return isinstance(error, ReplyMessageIdInvalid) or getattr(error, "ID", None) == (
+        "REPLY_MESSAGE_ID_INVALID"
+    )
 
 
 def flood_wait_seconds(error, default: int = 5) -> int:

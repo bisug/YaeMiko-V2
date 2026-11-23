@@ -38,6 +38,7 @@ from Mikobot.plugins.helper_funcs.misc import mention_username
 from Mikobot.plugins.helper_funcs.string_handling import extract_time
 from Mikobot.plugins.log_channel import gloggable, loggable
 from Mikobot.utils.consts import ChatID
+from Mikobot.utils.errors import is_reply_message_invalid, is_user_invalid
 from Mikobot.utils.filters import GROUPS
 from Mikobot.utils.parser import mention_html
 
@@ -123,9 +124,9 @@ async def ban(client, message: Message) -> str:
         try:
             member = await client.get_chat_member(chat.id, user_id)
         except RPCError as excp:
-            if "user not found" in str(excp.message or excp).lower():
+            if is_user_invalid(excp):
                 raise
-            elif "invalid user_id" in str(excp.message or excp).lower():
+            elif is_user_invalid(excp):
                 await message.reply_text("That is not a user.")
                 return log_message
             await message.reply_text("I cannot find that user here.")
@@ -205,7 +206,7 @@ async def ban(client, message: Message) -> str:
         return log
 
     except RPCError as excp:
-        if "reply message not found" in str(excp.message or excp).lower():
+        if is_reply_message_invalid(excp):
             # Do not reply
             if silent:
                 return log
@@ -244,7 +245,7 @@ async def temp_ban(client, message: Message) -> str:
     try:
         member = await client.get_chat_member(chat.id, user_id)
     except RPCError as excp:
-        if "user not found" not in str(excp.message or excp).lower():
+        if not is_user_invalid(excp):
             raise
         await message.reply_text("I cannot find that user.")
         return log_message
@@ -297,7 +298,7 @@ async def temp_ban(client, message: Message) -> str:
         return log
 
     except RPCError as excp:
-        if "reply message not found" in str(excp.message or excp).lower():
+        if is_reply_message_invalid(excp):
             # Do not reply
             await message.reply_text(
                 f"User banned. User will be banned for {time_val}.",
@@ -340,7 +341,7 @@ async def kick(client, message: Message) -> str:
     try:
         member = await client.get_chat_member(chat.id, user_id)
     except RPCError as excp:
-        if "user not found" not in str(excp.message or excp).lower():
+        if not is_user_invalid(excp):
             raise
 
         await message.reply_text("I cannot find that user.")
@@ -480,7 +481,7 @@ async def unban(client, message: Message) -> str:
                 return log_message
 
         except RPCError as excp:
-            if "user not found" not in str(excp.message or excp).lower():
+            if not is_user_invalid(excp):
                 raise
             await message.reply_text("I cannot find that user.")
             return log_message
@@ -534,7 +535,7 @@ async def selfunban(client, message: Message) -> str:
     try:
         member = await client.get_chat_member(chat.id, user.id)
     except RPCError as excp:
-        if "user not found" in str(excp.message or excp).lower():
+        if is_user_invalid(excp):
             await message.reply_text("I cannot find that user.")
             return
         else:
@@ -618,11 +619,9 @@ async def bans_callback(client, query: CallbackQuery):
             try:
                 member = await client.get_chat_member(chat.id, user_id)
             except RPCError as excp:
-                err_msg = str(getattr(excp, "message", None) or excp).lower()
-                if "user not found" in err_msg:
+                if not is_user_invalid(excp):
                     raise
-                elif "invalid user_id" in err_msg or "user_id_invalid" in err_msg:
-                    await message.edit_text("That is not a user.")
+                await message.edit_text("That is not a user.")
                 await message.edit_text("I cannot find that user here.")
 
                 return log_message
@@ -687,7 +686,7 @@ async def bans_callback(client, query: CallbackQuery):
             return log
 
         except RPCError as excp:
-            if "reply message not found" in str(excp.message or excp).lower():
+            if is_reply_message_invalid(excp):
                 # Do not reply
                 await message.edit_text("User banned.")
                 return log
@@ -727,7 +726,7 @@ async def bans_callback(client, query: CallbackQuery):
             try:
                 member = await client.get_chat_member(chat.id, user_id)
             except RPCError as excp:
-                if "user not found" not in str(excp.message or excp).lower():
+                if not is_user_invalid(excp):
                     raise
                 await message.edit_text("I cannot find that user.")
                 return log_message

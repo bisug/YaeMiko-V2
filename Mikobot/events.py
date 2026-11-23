@@ -93,12 +93,26 @@ class Registry:
                     await registration.handler(client, update)
                 except StopPropagation:
                     return
-                except Exception:
+                except Exception as exc:
                     LOGGER.exception(
                         "Handler %s failed on update %s",
                         getattr(registration.handler, "__name__", "unknown"),
                         update,
                     )
+                    # The registry swallows exceptions so a chained check can
+                    # fail without stopping the command. Hand the error to
+                    # kurigram's own ErrorHandler as well; otherwise the
+                    # callback alert in __main__.error_callback is unreachable.
+                    try:
+                        await app.dispatcher.handle_update_handler_exception(
+                            exc,
+                            MessageHandler(registration.handler),
+                            update,
+                            {},
+                            {},
+                        )
+                    except Exception:
+                        LOGGER.exception("Error handler failed for %s", update)
                     if not is_chained:
                         return
                 finally:

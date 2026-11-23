@@ -12,6 +12,7 @@ from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    LinkPreviewOptions,
     Message,
 )
 
@@ -899,7 +900,7 @@ async def _send_card(
             reply_markup=reply_markup,
             message_thread_id=thread_id,
             parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True,
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     except RPCError:
         LOGGER.debug("Could not deliver genshin message", exc_info=True)
@@ -968,7 +969,7 @@ async def _run_lookup(message: Message, query: str, kind: str | None):
             reply_markup=markup,
             parse_mode=ParseMode.HTML,
             message_thread_id=thread_id,
-            disable_web_page_preview=True,
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
         try:
             await status.delete()
@@ -1149,7 +1150,7 @@ async def genshin_character_tab(client, query: CallbackQuery):
                 text=text,
                 reply_markup=markup,
                 parse_mode=ParseMode.HTML,
-                disable_web_page_preview=True,
+                link_preview_options=LinkPreviewOptions(is_disabled=True),
             )
     except RPCError as err:
         LOGGER.debug("Character tab in-place edit failed: %s", err)
@@ -1191,7 +1192,7 @@ async def genshin_page(client, query: CallbackQuery):
             text=text,
             reply_markup=markup,
             parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True,
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     except RPCError:
         pass

@@ -11,6 +11,8 @@ from Mikobot.utils.consts import MessageLimit
 
 class EqInlineKeyboardButton(InlineKeyboardButton):
     def __eq__(self, other):
+        if not isinstance(other, InlineKeyboardButton):
+            return NotImplemented
         return self.text == other.text
 
     def __lt__(self, other):
