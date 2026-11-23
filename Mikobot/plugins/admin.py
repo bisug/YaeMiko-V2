@@ -42,6 +42,16 @@ def _forget_admins(chat_id) -> None:
         ADMIN_CACHE.pop(chat_id, None)
 
 
+async def _can_moderate(client, chat, admin_user, permission: str) -> bool:
+    """True when the acting admin may perform a privileged callback action."""
+    member = await client.get_chat_member(chat.id, admin_user.id)
+    return (
+        granted(member, permission)
+        or member.status == ChatMemberStatus.OWNER
+        or admin_user.id in DRAGONS
+    )
+
+
 @connection_status
 @loggable
 @check_admin(permission="can_promote_members", is_both=True)
@@ -773,15 +783,7 @@ async def admin_callback(client, query: CallbackQuery):
         pending_title = None
 
     if action == "promote":
-        promoter = await client.get_chat_member(chat.id, admin_user.id)
-
-        if (
-            not (
-                granted(promoter, "can_promote_members")
-                or promoter.status == ChatMemberStatus.OWNER
-            )
-            and admin_user.id not in DRAGONS
-        ):
+        if not await _can_moderate(client, chat, admin_user, "can_promote_members"):
             await query.answer(
                 "You do not have the rights to do that.", show_alert=True
             )
@@ -859,15 +861,7 @@ async def admin_callback(client, query: CallbackQuery):
         return log_message
 
     elif action == "demote":
-        demoter = await client.get_chat_member(chat.id, admin_user.id)
-
-        if (
-            not (
-                granted(demoter, "can_promote_members")
-                or demoter.status == ChatMemberStatus.OWNER
-            )
-            and admin_user.id not in DRAGONS
-        ):
+        if not await _can_moderate(client, chat, admin_user, "can_promote_members"):
             await query.answer(
                 "You do not have the rights to do that.", show_alert=True
             )
@@ -942,15 +936,7 @@ async def admin_callback(client, query: CallbackQuery):
         chat_data.pop(f"anon_admin_{pending_token}", None)
         title = pending_title
 
-        admin_member = await client.get_chat_member(chat.id, admin_user.id)
-
-        if (
-            not (
-                granted(admin_member, "can_promote_members")
-                or admin_member.status == ChatMemberStatus.OWNER
-            )
-            and admin_user.id not in DRAGONS
-        ):
+        if not await _can_moderate(client, chat, admin_user, "can_promote_members"):
             await query.answer("You do not have the rights to do that.")
             return
 
@@ -1011,15 +997,7 @@ async def admin_callback(client, query: CallbackQuery):
         await query.answer("Done")
 
     elif action == "pin":
-        admin_member = await client.get_chat_member(chat.id, admin_user.id)
-
-        if (
-            not (
-                granted(admin_member, "can_pin_messages")
-                or admin_member.status == ChatMemberStatus.OWNER
-            )
-            and admin_user.id not in DRAGONS
-        ):
+        if not await _can_moderate(client, chat, admin_user, "can_pin_messages"):
             await query.answer(
                 "You do not have the rights to do that.", show_alert=True
             )
@@ -1062,15 +1040,7 @@ async def admin_callback(client, query: CallbackQuery):
             return log_message
 
     elif action == "unpin":
-        admin_member = await client.get_chat_member(chat.id, admin_user.id)
-
-        if (
-            not (
-                granted(admin_member, "can_pin_messages")
-                or admin_member.status == ChatMemberStatus.OWNER
-            )
-            and admin_user.id not in DRAGONS
-        ):
+        if not await _can_moderate(client, chat, admin_user, "can_pin_messages"):
             await query.answer(
                 "You do not have the rights to do that.",
                 show_alert=True,
@@ -1165,6 +1135,4 @@ __command_list__ = [
     "demote",
     "admincache",
     "fullpromote",
-    "setgpic",
-    "delgpic",
 ]
