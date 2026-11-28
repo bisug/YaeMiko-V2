@@ -1234,7 +1234,7 @@ def _normalise_item(lockable: str, value: str) -> str:
 @check_admin(permission="can_delete_messages", is_both=True)
 @typing_action
 async def allowlist(client, message: Message) -> str:
-    """Exempt specific items from a lock, eg /allowlist missrose.xyz."""
+    """Exempt specific items from a lock, eg /allowlist example.org."""
     chat_id, chat = await _allowlist_target(message)
     if chat_id is None:
         return ""

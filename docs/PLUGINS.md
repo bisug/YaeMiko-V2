@@ -25,29 +25,30 @@ Back to [README](../README.md).
 `LOAD` and `NO_LOAD`, and exports the result as `ALL_MODULES`. `Mikobot/__main__.py` imports every
 name in that list, so dropping a new file into the directory is enough to register it.
 
-62 modules are shipped. Names below are file names without the `.py` suffix, which is what `LOAD` and
+64 modules are shipped. Names below are file names without the `.py` suffix, which is what `LOAD` and
 `NO_LOAD` expect. The display name in `/help` comes from each module's `__mod_name__`.
 
 ## Moderation
 
 | Module | Display name | Commands |
 | --- | --- | --- |
-| `admin` | Admin | `admincache`, `adminlist`, `promote`, `demote`, `fullpromote`, `title`, `invitelink`, `pin`, `unpin`, `unpinall` |
+| `admin` | Admin | `admincache`, `adminlist`, `promote`, `demote`, `fullpromote`, `title`, `invitelink`, `pin`, `unpin`, `unpinall`, `adminerror`, `anonadmin`, `permapin`, `antichannelpin`, `cleanlinked` |
 | `antinsfw` | Anti-NSFW | `antinsfw` |
-| `ban` | Ban | `kick`, `dban`, `dkick`, `kickme`, `roar`, `unban` |
+| `ban` | Ban | `kick`, `skick`, `dban`, `dkick`, `kickme`, `roar`, `unban` |
 | `gban` | Anti-Spam | `antispam`, `gban`, `gbanlist`, `ungban` |
 | `flood` | Anti-Flood | `flood`, `setflood`, `setfloodmode`, `setfloodtimer`, `clearflood` |
-| `locks` | Locks | `lock`, `unlock`, `locks`, `locktypes`, `allowlist`, `rmallowlist`, `rmallowlistall` |
+| `locks` | Locks | `lock`, `unlock`, `locks`, `locktypes`, `lockwarns`, `allowlist`, `rmallowlist`, `rmallowlistall`, per-lock reason/action modes |
 | `antiraid` | Antiraid | `antiraid`, `raidtime`, `raidactiontime`, `autoantiraid` |
-| `mute` | Mute | `mute`, `dmute`, `tmute`, `dtmute`, `unmute` |
-| `warns` | Warns | `warns`, `addwarn`, `strongwarn`, `warnlimit` |
-| `purge` | Purge | Bulk message deletion |
+| `mute` | Mute | `mute`, `dmute`, `smute`, `tmute`, `dtmute`, `unmute` |
+| `warns` | Warns | `warn`, `dwarn`, `swarn`, `warns`, `warnings`, `rmwarn`, `resetwarn`, `addwarn`, `nowarn`, `warnlist`, `warnlimit`, `setwarnlimit`, `setwarnmode`, `setwarntime`, `warntime`, `strongwarn` |
+| `purge` | Purge | `purge`, `spurge`, `del`, `purgefrom`, `purgeto` |
 | `zombies` | Zombies | Removes accounts that left |
 | `unbanall` | Unbanall | Lifts every ban in a chat |
-| `blacklist` | Blacklist | `addblacklist`, `unblacklist`, `blacklist`, `blacklistmode`, `blocklistdelete`, `silentactions` |
+| `blacklist` | Blacklist | `addblacklist`, `unblacklist`, `blacklist`, `blacklistmode`, `blocklistmode`, `blocklistdelete`, `silentactions`, `addblocklist`, `blocklist`, `rmblocklist`, `rmblocklistall`, `setblocklistreason`, `resetblocklistreason` |
 | `blacklist_stickers` | Stickers Blacklist | `blsticker`, `addblsticker`, `blstickermode` |
-| `feds` | Feds | Federation owner, admin and user help, plus `newfed`, `joinfed`, `leavefed`, `subfed`, `fban`, `fbanlist`, `unfban`, `importfbans`, `fbroadcast`, `fedinfo`, `frules`, `setfrules`, `fedchats`, `renamefed`, `delfed`, `setfedlog`, `unsetfedlog` |
+| `feds` | Feds | `newfed`, `joinfed`, `leavefed`, `subfed`, `unsubfed`, `fban`, `fbanlist` (CSV/JSON), `unfban`, `importfbans`, `fbroadcast`, `fedinfo`, `frules`, `setfrules`, `clearfrules`, `fedchats`, `renamefed`, `delfed`, `setfedlog`, `unsetfedlog`, `fedpromote`, `feddemote`, `feddemoteme`, `fedreason`, `quietfed`, `fedstat`, `fbanstat` |
 | `approve` | Approvals | `approve`, `approved`, `unapprove`, `unapproveall`, `approval` |
+| `reports` | Reports | `report`, `@admin`, `reports` |
 
 ## Chat configuration
 
@@ -55,15 +56,16 @@ name in that list, so dropping a new file into the directory is enough to regist
 | --- | --- | --- |
 | `chatadmin` | Chat Admin | Anonymous admin actions, silent by default |
 | `botadmins` | Bot Admin | `botadmins` |
-| `connection` | Connect | `connect`, `connection`, `disconnect`, `allowconnect`, `helpconnect` |
-| `cust_filters` | Filters | `filter`, `filters`, `stop`, `removeallfilters` |
-| `disable` | DISABLE | `disable`, `enable`, `disablemodule`, `enablemodule`, `listcmds` |
+| `connection` | Connect | `connect`, `reconnect`, `connection`, `disconnect`, `allowconnect`, `helpconnect` |
+| `cust_filters` | Filters | `filter`, `filters`, `stop`, `stopall`, `removeallfilters` |
+| `disable` | DISABLE | `disable`, `enable`, `disablemodule`, `enablemodule`, `listcmds`, `disableable`, `disabledel`, `disableadmin` |
 | `fsub` | F-SUB | Forced subscription enforcement |
 | `nekomode` | Nekomode | Anime themed reply markup |
-| `rules` | Rules | `rules`, `setrules`, `clearrules` |
+| `rules` | Rules | `rules`, `setrules`, `clearrules`, `resetrules`, `privaterules`, `setrulesbutton`, `resetrulesbutton` |
 | `settings_export` | Settings | `export`, `import`, `reset` |
-| `log_channel` | LOG-SET | `logchannel`, `setlog`, `unsetlog` |
+| `log_channel` | LOG-SET | `logchannel`, `setlog`, `unsetlog`, `logcategories`, `log`, `nolog` |
 | `extra` | Extra | `logs` and the extra command handler keyboards |
+| `parity_misc` | Privacy and cleaning | `privacy`, `setlang`, `cleancommand`, `keepcommand`, `cleancommandtypes`, `cleanmsg`, `keepmsg`, `cleanmsgtypes` |
 
 ## Members and onboarding
 
@@ -72,10 +74,10 @@ name in that list, so dropping a new file into the directory is enough to regist
 | `welcome` | Welcome | `setwelcome`, `resetwelcome`, `setgoodbye`, `resetgoodbye`, `cleanservice`, `nocleanservice`, `cleanservicetypes`, `cleanwelcome`, `welcome`, `goodbye`, `welcomemute`, plus help variants |
 | `newuserinfo` | none | `/userinfo` for a member profile card |
 | `afk` | AFK | `afk` |
-| `notes` | Notes | `save`, `get`, `clear`, `removeallnotes` |
+| `notes` | Notes | `save`, `get`, `clear`, `notes`, `removeallnotes`, `privatenotes` |
 | `users` | Users | `groups` |
 | `echo` | Echo | `echo`, `say`, `broadcast` (owner and dev users only) |
-| `captcha` | Captcha | `captcha`, `captchamode`, `captchabuttons`, `resetcaptchatext`, `captchakick`, `captchakicktime`, `captchamutetime`, `captcharules`, `resetcaptcha` |
+| `captcha` | Captcha | `captcha`, `captchamode`, `captchabuttons`, `setcaptchatext`, `resetcaptchatext`, `captchakick`, `captchakicktime`, `captchamutetime`, `captcharules`, `resetcaptcha` |
 | `bot2bot` | Bot2Bot | `bot2bot`, `bot2botskipreview` |
 | `topics` | Topics | `newtopic`, `renametopic`, `closetopic`, `reopentopic`, `deletetopic`, `actiontopic`, `setactiontopic` (forums only) |
 | `whispers` | Whispers | Private whisper delivery over an inline query |
