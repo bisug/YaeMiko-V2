@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import re
 
@@ -27,7 +28,7 @@ if is_module_loaded(FILENAME):
     from Database.sql import disable_sql as sql
 
     class NotDisabled:
-        """Swallow a command the chat turned off. Admins still get through.
+        """Swallow a command the chat turned off. Admins get through by default.
 
         Replaces DisableAbleCommandHandler. kurigram has no handler classes to
         subclass, so this reads the parsed command off the message and answers
@@ -44,9 +45,20 @@ if is_module_loaded(FILENAME):
             name = command[0].lower()
             if not sql.is_command_disabled(message.chat.id, name):
                 return True
-            if self.admin_ok and message.from_user:
-                if message.from_user.id in ADMIN_CACHE.get(message.chat.id, ()):
+            chat_id = message.chat.id
+            admin_exempt = not await asyncio.to_thread(
+                toggle_sql.is_toggle_on, chat_id, toggle_sql.DISABLE_ADMIN
+            )
+            if admin_exempt and self.admin_ok and message.from_user:
+                if message.from_user.id in ADMIN_CACHE.get(chat_id, ()):
                     return True
+            if await asyncio.to_thread(
+                toggle_sql.is_toggle_on, chat_id, toggle_sql.DISABLE_DELETE
+            ):
+                try:
+                    await message.delete()
+                except Exception:
+                    pass
             return False
 
     class NotDisabledFriendly:
@@ -222,6 +234,32 @@ if is_module_loaded(FILENAME):
         else:
             await message.reply_text("What should I enable?")
 
+    @connection_status
+    @check_admin(is_user=True)
+    @on_message(filters.command("disabledel"))
+    async def disable_delete(client, message: Message):
+        from Mikobot.plugins.parity_misc import handle_toggle
+
+        await handle_toggle(
+            client,
+            message,
+            toggle_sql.DISABLE_DELETE,
+            "Deleting disabled commands",
+        )
+
+    @connection_status
+    @check_admin(is_user=True)
+    @on_message(filters.command("disableadmin"))
+    async def disable_admin(client, message: Message):
+        from Mikobot.plugins.parity_misc import handle_toggle
+
+        await handle_toggle(
+            client,
+            message,
+            toggle_sql.DISABLE_ADMIN,
+            "Applying disabled commands to admins",
+        )
+
     def build_curr_disabled(chat_id: str | int) -> str:
         disabled = sql.get_all_disabled(chat_id)
         if not disabled:
@@ -242,7 +280,7 @@ if is_module_loaded(FILENAME):
 
     @connection_status
     @check_admin(is_user=True)
-    @on_message(*disableable("listcmds"))
+    @on_message(*disableable(["listcmds", "disableable"]))
     async def list_cmds(client, message: Message):
         if DISABLE_CMDS + DISABLE_OTHER:
             result = ""
@@ -275,7 +313,9 @@ if is_module_loaded(FILENAME):
     /disable <cmd name>: Disable a command.
     /enablemodule <module name>: Enable all commands in a module.
     /disablemodule <module name>: Disable all commands in a module.
-    /listcmds: List all commands that can be disabled.
+    /listcmds, /disableable: List all commands that can be disabled.
+    /disabledel <on|off|status>: Delete attempts to use disabled commands.
+    /disableadmin <on|off|status>: Apply disabled commands to admins too.
     """
 
     __mod_name__ = "Disable"

@@ -1,4 +1,5 @@
 import ast
+import asyncio
 import random
 import re
 from io import BytesIO
@@ -16,6 +17,7 @@ from pyrogram.types import (
 )
 
 import Database.sql.notes_sql as sql
+import Database.sql.toggle_sql as toggle_sql
 from Mikobot import DRAGONS, SUPPORT_CHAT
 from Mikobot import app as client
 from Mikobot.events import on_callback, on_message
@@ -54,6 +56,12 @@ MYVIDEO_MATCHER = re.compile(r"^###video(!photo)?###:")
 MYVIDEONOTE_MATCHER = re.compile(r"^###video_note(!photo)?###:")
 
 
+async def _cleanup_note(sent):
+    from Mikobot.plugins.parity_misc import schedule_cleanup
+
+    await schedule_cleanup(sent, "note")
+
+
 async def get(
     client,
     message: Message,
@@ -61,8 +69,10 @@ async def get(
     show_none=True,
     no_format=False,
     connected_chat=None,
+    private=False,
 ):
-    chat_id = message.chat.id
+    # Notes stay grouped by their source chat even when delivered in PM.
+    chat_id = message.from_user.id if private and message.from_user else message.chat.id
     chat = connected_chat or message.chat
     note_chat_id = message.chat.id
     note = sql.get_note(note_chat_id, notename)
@@ -152,22 +162,30 @@ async def get(
         keyboard = InlineKeyboardMarkup(inline_keyboard=keyb)
 
         try:
-            reply_params = ReplyParameters(message_id=reply_id) if reply_id else None
+            in_pm = private and bool(message.from_user)
+            reply_params = (
+                None
+                if in_pm
+                else (ReplyParameters(message_id=reply_id) if reply_id else None)
+            )
+            thread_id = (
+                None
+                if in_pm
+                else (message.message_thread_id if chat.is_forum else None)
+            )
             formatted_text = text if no_format else markdown_to_html(text)
             if note.msgtype in (sql.Types.BUTTON_TEXT, sql.Types.TEXT):
-                await client.send_message(
+                sent = await client.send_message(
                     chat_id,
                     formatted_text,
                     reply_parameters=reply_params,
                     parse_mode=parseMode,
                     link_preview_options=LinkPreviewOptions(is_disabled=True),
                     reply_markup=keyboard,
-                    message_thread_id=(
-                        message.message_thread_id if chat.is_forum else None
-                    ),
+                    message_thread_id=thread_id,
                 )
             else:
-                await ENUM_FUNC_MAP[note.msgtype](
+                sent = await ENUM_FUNC_MAP[note.msgtype](
                     chat_id,
                     note.file,
                     caption=formatted_text,
@@ -175,10 +193,9 @@ async def get(
                     parse_mode=parseMode,
                     link_preview_options=LinkPreviewOptions(is_disabled=True),
                     reply_markup=keyboard,
-                    message_thread_id=(
-                        message.message_thread_id if chat.is_forum else None
-                    ),
+                    message_thread_id=thread_id,
                 )
+            await _cleanup_note(sent)
 
         except RPCError as excp:
             if (
@@ -211,11 +228,25 @@ async def get(
         await message.reply_text("That note does not exist.")
 
 
+async def _private_notes(message: Message) -> bool:
+    if not message.from_user or message.chat.type not in (
+        ChatType.GROUP,
+        ChatType.SUPERGROUP,
+    ):
+        return False
+    return await asyncio.to_thread(
+        toggle_sql.is_toggle_on,
+        message.chat.id,
+        toggle_sql.PRIVATE_NOTES,
+    )
+
+
 @on_message(filters.command("get"), chained=True)
 @connection_status
 async def cmd_get(client, message: Message):
     connected_chat = getattr(message, "connected_chat", None)
     args = message.command[1:] if len(message.command) > 1 else []
+    private = await _private_notes(message)
     if len(args) >= 2 and args[1].lower() == "noformat":
         await get(
             client,
@@ -224,6 +255,7 @@ async def cmd_get(client, message: Message):
             show_none=True,
             no_format=True,
             connected_chat=connected_chat,
+            private=private,
         )
     elif len(args) >= 1:
         await get(
@@ -232,9 +264,23 @@ async def cmd_get(client, message: Message):
             args[0].lower(),
             show_none=True,
             connected_chat=connected_chat,
+            private=private,
         )
     else:
         await message.reply_text("Provide a note name.")
+
+
+@on_message(filters.command("privatenotes"), chained=True)
+@check_admin(is_user=True)
+async def private_notes(client, message: Message):
+    from Mikobot.plugins.parity_misc import handle_toggle
+
+    await handle_toggle(
+        client,
+        message,
+        toggle_sql.PRIVATE_NOTES,
+        "Private notes",
+    )
 
 
 @on_message(filters.regex(r"^#[^\s]+"), chained=True)
@@ -243,7 +289,14 @@ async def hash_get(client, msg: Message):
     connected_chat = getattr(msg, "connected_chat", None)
     fst_word = (msg.text or "").split()[0]
     no_hash = fst_word[1:].lower()
-    await get(client, msg, no_hash, show_none=False, connected_chat=connected_chat)
+    await get(
+        client,
+        msg,
+        no_hash,
+        show_none=False,
+        connected_chat=connected_chat,
+        private=await _private_notes(msg),
+    )
 
 
 @on_message(filters.regex(r"^/\d+$"), chained=True)
@@ -258,7 +311,12 @@ async def slash_get(client, msg: Message):
         noteid = note_list[int(no_slash) - 1]
         note_name = str(noteid).strip(">").split()[1]
         await get(
-            client, msg, note_name, show_none=False, connected_chat=connected_chat
+            client,
+            msg,
+            note_name,
+            show_none=False,
+            connected_chat=connected_chat,
+            private=await _private_notes(msg),
         )
     except IndexError:
         await msg.reply_text("Wrong note ID.")
@@ -594,6 +652,7 @@ Reply 2
 Reply 3
 /clear <notename>: Delete a note.
 /removeallnotes: Delete all notes in the group.
+/privatenotes <on|off|status>: Deliver notes in private instead of the group.
 Note names are case-insensitive and are saved in lowercase.
 """
 
