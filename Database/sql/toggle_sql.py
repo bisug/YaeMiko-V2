@@ -20,14 +20,37 @@ NSFW = "nsfw"
 NEKOMODE = "nekomode"
 KARMA = "karma"
 SANGMATA = "sangmata"
+ADMIN_ERROR = "adminerror"
+ANON_ADMIN = "anonadmin"
+ANTI_CHANNEL_PIN = "antichannelpin"
+CLEAN_LINKED = "cleanlinked"
+LOCK_WARNS = "lockwarns"
+PRIVATE_RULES = "privaterules"
+PRIVATE_NOTES = "privatenotes"
+REPORTS = "reports"
+DISABLE_DELETE = "disabledel"
+DISABLE_ADMIN = "disableadmin"
+QUIET_FED = "quietfed"
 
-# Absent row means ON for welcome, nekomode, karma and sangmata; OFF for nsfw.
+# Absent row means ON for welcome, nekomode, karma, sangmata, adminerror,
+# privaterules and reports; OFF for the rest.
 DEFAULTS = {
     WELCOME: True,
     NSFW: False,
     NEKOMODE: True,
     KARMA: True,
     SANGMATA: False,
+    ADMIN_ERROR: True,
+    ANON_ADMIN: False,
+    ANTI_CHANNEL_PIN: False,
+    CLEAN_LINKED: False,
+    LOCK_WARNS: False,
+    PRIVATE_RULES: True,
+    PRIVATE_NOTES: False,
+    REPORTS: True,
+    DISABLE_DELETE: False,
+    DISABLE_ADMIN: False,
+    QUIET_FED: False,
 }
 
 

@@ -128,6 +128,37 @@ def _chat_id(event):
     return chat.id if chat is not None else None
 
 
+async def _feature_toggle(chat_id, feature, fallback=False) -> bool:
+    """Read a shared chat toggle off the event loop."""
+    if chat_id is None:
+        return fallback
+    from Database.sql import toggle_sql
+
+    try:
+        return await asyncio.to_thread(toggle_sql.is_toggle_on, chat_id, feature)
+    except Exception:
+        LOGGER.exception("Could not read toggle %s for chat %s", feature, chat_id)
+        return fallback
+
+
+async def _admin_error_replies_enabled(event, spec) -> bool:
+    """Whether an admin-required refusal should be shown in this chat."""
+    if spec["kind"] != "admin":
+        return True
+    from Database.sql import toggle_sql
+
+    return await _feature_toggle(_chat_id(event), toggle_sql.ADMIN_ERROR, fallback=True)
+
+
+async def _anon_admin_trusted(event, user_id) -> bool:
+    """Whether an anonymous admin holds every right except owner in this chat."""
+    if user_id not in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN):
+        return False
+    from Database.sql import toggle_sql
+
+    return await _feature_toggle(_chat_id(event), toggle_sql.ANON_ADMIN)
+
+
 def _is_private(event):
     chat = _chat(event)
     # A private chat with a bot is its own type in kurigram.
@@ -196,7 +227,8 @@ async def enforce(client, event, handler) -> bool:
                 text, drop = denial
                 if drop and await _silently_drop(event):
                     return False
-                await _action_reply(event, text)
+                if await _admin_error_replies_enabled(event, spec):
+                    await _action_reply(event, text)
                 return False
 
     return True
@@ -293,6 +325,8 @@ async def _denial(client, event, spec, status):
     chat = _chat(event)
     user = getattr(event, "from_user", None)
     user_id = getattr(user, "id", None)
+    is_anon_admin = user_id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN)
+    anon_trusted = await _anon_admin_trusted(event, user_id)
 
     if kind == "dev_plus":
         if user_id in status.DEV_USERS:
@@ -333,7 +367,9 @@ async def _denial(client, event, spec, status):
         user_member = await _member(client, chat, user_id)
 
     if spec["only_owner"]:
-        if status.is_owner(user_member) or user_id in status.DEV_USERS:
+        if not (is_anon_admin or anon_trusted) and (
+            status.is_owner(user_member) or user_id in status.DEV_USERS
+        ):
             return None
         return ("Only the chat owner can perform this action.", False)
     if spec["only_dev"]:
@@ -348,11 +384,11 @@ async def _denial(client, event, spec, status):
             return None
         return ("Who dis non-admin telling me what to do? You want a punch?", False)
 
-    is_anon_admin = user_id in (ChatID.SERVICE_CHAT, ChatID.ANONYMOUS_ADMIN)
     permission = spec["permission"]
     if permission and (spec["is_user"] or spec["is_both"]):
         if not (
             is_anon_admin
+            or anon_trusted
             or status.granted(user_member, permission)
             or user_id in status.DRAGONS
         ):
@@ -368,7 +404,10 @@ async def _denial(client, event, spec, status):
     if spec["is_bot"] and not status.is_admin(bot_member):
         return ("I'm not an admin here.", False)
     if spec["is_user"] and not (
-        is_anon_admin or status.is_admin(user_member) or user_id in status.DRAGONS
+        is_anon_admin
+        or anon_trusted
+        or status.is_admin(user_member)
+        or user_id in status.DRAGONS
     ):
         return ("You are not an admin here.", False)
     return None

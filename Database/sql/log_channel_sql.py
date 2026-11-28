@@ -26,7 +26,14 @@ import threading
 
 from sqlalchemy import Boolean, Column, String, distinct, func, inspect, select, text
 
-from Database.sql import BASE, ENGINE, SESSION, run_migration, unit_of_work_guard
+from Database.sql import (
+    BASE,
+    ENGINE,
+    SESSION,
+    ensure_columns,
+    run_migration,
+    unit_of_work_guard,
+)
 
 
 class GroupLogs(BASE):
@@ -48,6 +55,9 @@ class LogChannelSettings(BASE):
     log_action = Column(Boolean, default=True)
     # log_media = Column(Boolean)
     log_report = Column(Boolean, default=True)
+    log_settings = Column(Boolean, default=True)
+    log_automated = Column(Boolean, default=True)
+    log_other = Column(Boolean, default=True)
 
     def __init__(
         self,
@@ -57,6 +67,9 @@ class LogChannelSettings(BASE):
         log_warn: bool,
         log_action: bool,
         log_report: bool,
+        log_settings: bool = True,
+        log_automated: bool = True,
+        log_other: bool = True,
     ):
         self.chat_id = str(chat_id)
         self.log_warn = log_warn
@@ -64,6 +77,9 @@ class LogChannelSettings(BASE):
         self.log_leave = log_leave
         self.log_report = log_report
         self.log_action = log_action
+        self.log_settings = log_settings
+        self.log_automated = log_automated
+        self.log_other = log_other
 
     def toggle_warn(self) -> bool:
         self.log_warn = not self.log_warn
@@ -123,9 +139,62 @@ def _ensure_chat_id_type() -> None:
 
 run_migration(_ensure_chat_id_type)
 
+
+def _ensure_log_categories() -> None:
+    """Add the newer log-category columns to an older table."""
+    ensure_columns("log_channel_setting", LogChannelSettings)
+
+
+run_migration(_ensure_log_categories)
+
 LOGS_INSERTION_LOCK = threading.RLock()
 LOG_SETTING_LOCK = threading.RLock()
 CHANNELS = {}
+
+# Several user-facing categories share a column group; "user" covers both join
+# and leave events, for example.
+LOG_CATEGORIES = {
+    "settings": ("log_settings",),
+    "admin": ("log_action",),
+    "user": ("log_joins", "log_leave"),
+    "automated": ("log_automated",),
+    "reports": ("log_report",),
+    "other": ("log_other",),
+}
+
+
+def _category_enabled(row, column) -> bool:
+    if row is None:
+        return True
+    value = getattr(row, column, None)
+    return True if value is None else bool(value)
+
+
+@unit_of_work_guard
+def get_log_categories(chat_id) -> dict:
+    """Return every log category, defaulting to on for an unconfigured chat."""
+    row = SESSION.get(LogChannelSettings, str(chat_id))
+    try:
+        return {
+            category: all(_category_enabled(row, column) for column in columns)
+            for category, columns in LOG_CATEGORIES.items()
+        }
+    finally:
+        SESSION.close()
+
+
+@unit_of_work_guard
+def set_log_category(chat_id, category, enabled) -> None:
+    """Set one log category, creating the chat's settings row when needed."""
+    columns = LOG_CATEGORIES[category]
+    with LOG_SETTING_LOCK:
+        row = SESSION.get(LogChannelSettings, str(chat_id))
+        if row is None:
+            row = LogChannelSettings(chat_id, True, True, True, True, True)
+            SESSION.add(row)
+        for column in columns:
+            setattr(row, column, bool(enabled))
+        SESSION.commit()
 
 
 @unit_of_work_guard

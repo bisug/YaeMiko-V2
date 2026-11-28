@@ -1,3 +1,4 @@
+import asyncio
 import html
 from uuid import uuid4
 
@@ -7,6 +8,7 @@ from pyrogram.enums import (
     ChatMembersFilter,
     ChatMemberStatus,
     ChatType,
+    MessageOriginType,
     ParseMode,
 )
 from pyrogram.errors import RPCError
@@ -18,6 +20,7 @@ from pyrogram.types import (
     Message,
 )
 
+from Database.sql import toggle_sql
 from Mikobot import DRAGONS, chat_data
 from Mikobot.events import on_callback, on_message
 from Mikobot.logger import LOGGER
@@ -52,6 +55,43 @@ async def _can_moderate(client, chat, admin_user, permission: str) -> bool:
     )
 
 
+async def _anon_must_verify(chat_id) -> bool:
+    """Anonymous admins still prove identity unless the chat trusts them."""
+    trusted = await asyncio.to_thread(
+        toggle_sql.is_toggle_on, chat_id, toggle_sql.ANON_ADMIN
+    )
+    return not trusted
+
+
+def _is_linked_channel_post(message) -> bool:
+    """Whether a message was auto-forwarded from the chat's linked channel."""
+    origin = getattr(message, "forward_origin", None)
+    sender_chat = getattr(message, "sender_chat", None)
+    return bool(
+        origin is not None
+        and getattr(origin, "type", None) == MessageOriginType.CHANNEL
+        and sender_chat is not None
+        and getattr(origin, "chat", None) == sender_chat
+    )
+
+
+async def _handle_toggle(message, feature, label) -> None:
+    """Handle an on/off/status toggle command and report the resulting state."""
+    args = message.command[1:] if message.command and len(message.command) > 1 else []
+    action = args[0].lower() if args else "status"
+    if action not in ("on", "off", "status"):
+        await message.reply_text(f"Usage: /{message.command[0]} on|off|status.")
+        return
+
+    chat_id = message.chat.id
+    if action == "status":
+        enabled = await asyncio.to_thread(toggle_sql.is_toggle_on, chat_id, feature)
+    else:
+        enabled = action == "on"
+        await asyncio.to_thread(toggle_sql.set_toggle, chat_id, feature, enabled)
+    await message.reply_text(f"{label}: {'on' if enabled else 'off'}.")
+
+
 @connection_status
 @loggable
 @check_admin(permission="can_promote_members", is_both=True)
@@ -64,7 +104,11 @@ async def promote(client, message: Message):
 
     user_id = await extract_user(message, args)
 
-    if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+    if (
+        message.from_user
+        and message.from_user.id == ChatID.ANONYMOUS_ADMIN
+        and await _anon_must_verify(chat.id)
+    ):
         await message.reply_text(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
@@ -170,7 +214,11 @@ async def fullpromote(client, message: Message):
 
     user_id = await extract_user(message, args)
 
-    if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+    if (
+        message.from_user
+        and message.from_user.id == ChatID.ANONYMOUS_ADMIN
+        and await _anon_must_verify(chat.id)
+    ):
         await message.reply_text(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
@@ -277,7 +325,11 @@ async def demote(client, message: Message):
 
     user_id = await extract_user(message, args)
 
-    if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+    if (
+        message.from_user
+        and message.from_user.id == ChatID.ANONYMOUS_ADMIN
+        and await _anon_must_verify(chat.id)
+    ):
         await message.reply_text(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
@@ -383,7 +435,11 @@ async def set_title(client, message: Message):
 
     user_id, title = await extract_user_and_text(message, args)
 
-    if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+    if (
+        message.from_user
+        and message.from_user.id == ChatID.ANONYMOUS_ADMIN
+        and await _anon_must_verify(chat.id)
+    ):
         action_token = uuid4().hex[:8]
         chat_data[f"anon_admin_{action_token}"] = {
             "user_id": user_id,
@@ -490,7 +546,11 @@ async def pin(client, message: Message) -> None:
         await message.reply_text("Reply to the message you want to pin.")
         return
 
-    if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+    if (
+        message.from_user
+        and message.from_user.id == ChatID.ANONYMOUS_ADMIN
+        and await _anon_must_verify(chat.id)
+    ):
         await message.reply_text(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
@@ -537,7 +597,11 @@ async def unpin(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+    if (
+        message.from_user
+        and message.from_user.id == ChatID.ANONYMOUS_ADMIN
+        and await _anon_must_verify(chat.id)
+    ):
         await message.reply_text(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
@@ -581,7 +645,11 @@ async def unpinall(client, message: Message):
     chat = message.chat
     user = message.from_user
 
-    if message.from_user and message.from_user.id == ChatID.ANONYMOUS_ADMIN:
+    if (
+        message.from_user
+        and message.from_user.id == ChatID.ANONYMOUS_ADMIN
+        and await _anon_must_verify(chat.id)
+    ):
         await message.reply_text(
             text="You are an anonymous admin.",
             reply_markup=InlineKeyboardMarkup(
@@ -1107,12 +1175,95 @@ async def admin_callback(client, query: CallbackQuery):
         return log_message
 
 
+@check_admin(is_user=True)
+@on_message(filters.command("adminerror"), chained=True)
+async def admin_error_toggle(client, message: Message):
+    await _handle_toggle(message, toggle_sql.ADMIN_ERROR, "Admin error replies")
+
+
+@check_admin(only_owner=True)
+@on_message(filters.command("anonadmin"), chained=True)
+async def anon_admin_toggle(client, message: Message):
+    await _handle_toggle(message, toggle_sql.ANON_ADMIN, "Anonymous admin trust")
+
+
+@check_admin(only_owner=True)
+@on_message(filters.command("antichannelpin"), chained=True)
+async def anti_channel_pin_toggle(client, message: Message):
+    await _handle_toggle(message, toggle_sql.ANTI_CHANNEL_PIN, "Anti-channel-pin")
+
+
+@check_admin(only_owner=True)
+@on_message(filters.command("cleanlinked"), chained=True)
+async def clean_linked_toggle(client, message: Message):
+    await _handle_toggle(message, toggle_sql.CLEAN_LINKED, "Clean linked posts")
+
+
+@loggable
+@check_admin(permission="can_pin_messages", is_both=True)
+@on_message(filters.command("permapin"), filters.group, chained=True)
+async def permapin(client, message: Message):
+    text = (
+        " ".join(message.command[1:])
+        if message.command and len(message.command) > 1
+        else ""
+    )
+    if not text:
+        await message.reply_text("Give me the text to pin.")
+        return
+
+    chat = message.chat
+    pinned = await client.send_message(
+        chat.id,
+        text,
+        parse_mode=ParseMode.HTML,
+        message_thread_id=message.message_thread_id if chat.is_forum else None,
+    )
+    await client.pin_chat_message(chat.id, pinned.id, disable_notification=False)
+
+    user = message.from_user
+    return (
+        f"{chat.title}:\n#PERMAPINNED\nAdmin: {mention_html(user.id, user.first_name)}"
+    )
+
+
+@on_message(filters.linked_channel, filters.group, chained=True)
+async def anti_channel_pin(client, message: Message):
+    """Unpin an automatically forwarded linked-channel post when enabled."""
+    chat = message.chat
+    enabled = await asyncio.to_thread(
+        toggle_sql.is_toggle_on, chat.id, toggle_sql.ANTI_CHANNEL_PIN
+    )
+    if not enabled or not _is_linked_channel_post(message):
+        return
+    try:
+        await client.unpin_chat_message(chat.id, message.id)
+    except RPCError as exc:
+        LOGGER.warning("Could not unpin linked post in %s: %s", chat.id, exc)
+
+
+@on_message(filters.linked_channel, filters.group, chained=True)
+async def clean_linked(client, message: Message):
+    """Delete an automatically forwarded linked-channel post when enabled."""
+    chat = message.chat
+    enabled = await asyncio.to_thread(
+        toggle_sql.is_toggle_on, chat.id, toggle_sql.CLEAN_LINKED
+    )
+    if not enabled or not _is_linked_channel_post(message):
+        return
+    try:
+        await client.delete_messages(chat.id, message.id)
+    except RPCError as exc:
+        LOGGER.warning("Could not delete linked post in %s: %s", chat.id, exc)
+
+
 __help__ = """
 Commands:
 /adminlist: List the chat's admins.
 
 Admin only:
 /pin: Silently pin the replied-to message. Add "loud" or "notify" to notify users.
+/permapin <text>: Send formatted text as the bot and pin it loudly.
 /unpin: Unpin the current pinned message.
 /unpinall: Unpin all pinned messages, including in topics. Owner only.
 /invitelink: Get an invite link.
@@ -1121,6 +1272,12 @@ Admin only:
 /demote: Demote the replied-to user.
 /title <Title here>: Set a custom title for an admin the bot promoted.
 /admincache: Refresh the admin list.
+/adminerror on|off|status: Hide admin-only refusal messages.
+
+Owner only:
+/anonadmin on|off|status: Let anonymous admins act without proving identity.
+/antichannelpin on|off|status: Unpin linked-channel posts automatically.
+/cleanlinked on|off|status: Delete linked-channel posts automatically.
 """
 
 

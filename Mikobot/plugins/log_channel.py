@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timezone
 from functools import wraps
 
@@ -28,6 +29,32 @@ if is_module_loaded(FILENAME):
             message = next((a for a in args if isinstance(a, Message)), None)
         return message
 
+    def _log_category(func) -> str:
+        """Pick a log category from the handler name for category filtering."""
+        name = getattr(func, "__name__", "").lower()
+        if "report" in name:
+            return "reports"
+        if "warn" in name:
+            return "admin"
+        if any(word in name for word in ("join", "leave", "welcome", "goodbye")):
+            return "user"
+        if any(
+            word in name
+            for word in ("flood", "raid", "blocklist", "blacklist", "lock", "nsfw")
+        ):
+            return "automated"
+        if any(
+            word in name
+            for word in ("ban", "mute", "kick", "promote", "demote", "pin", "approve")
+        ):
+            return "admin"
+        if any(
+            word in name
+            for word in ("settings", "reason", "filter", "note", "fed", "log")
+        ):
+            return "settings"
+        return "other"
+
     def loggable(func):
         """Post the handler's return value to the chat's log channel."""
 
@@ -52,6 +79,11 @@ if is_module_loaded(FILENAME):
                 log_chat = sql.get_chat_log_channel(chat.id)
                 if log_chat:
                     try:
+                        categories = await asyncio.to_thread(
+                            sql.get_log_categories, chat.id
+                        )
+                        if not categories.get(_log_category(func), True):
+                            return result
                         await send_log(log_chat, chat.id, result)
                     except Exception:
                         LOGGER.exception(
@@ -228,6 +260,57 @@ if is_module_loaded(FILENAME):
         else:
             await message.reply_text("No log channel is set yet.")
 
+    def _format_categories(categories) -> str:
+        return "\n".join(
+            f"{name}: {'on' if enabled else 'off'}"
+            for name, enabled in categories.items()
+        )
+
+    async def _set_log_categories(message, enabled: bool) -> None:
+        args = [
+            arg.lower()
+            for arg in (
+                message.command[1:]
+                if message.command and len(message.command) > 1
+                else []
+            )
+        ]
+        chat_id = message.chat.id
+        if not args:
+            categories = await asyncio.to_thread(sql.get_log_categories, chat_id)
+            action = "log" if enabled else "nolog"
+            await message.reply_text(
+                f"Usage: /{action} <types...>\n" + _format_categories(categories)
+            )
+            return
+        unknown = [arg for arg in args if arg not in sql.LOG_CATEGORIES]
+        if unknown:
+            await message.reply_text(
+                f"Unknown log types: {', '.join(unknown)}. "
+                f"Valid types: {', '.join(sql.LOG_CATEGORIES)}."
+            )
+            return
+        for category in dict.fromkeys(args):
+            await asyncio.to_thread(sql.set_log_category, chat_id, category, enabled)
+        categories = await asyncio.to_thread(sql.get_log_categories, chat_id)
+        await message.reply_text(_format_categories(categories))
+
+    @on_message(filters.command("logcategories"), chained=True)
+    @check_admin(is_user=True)
+    async def log_categories(client, message: Message):
+        categories = await asyncio.to_thread(sql.get_log_categories, message.chat.id)
+        await message.reply_text(_format_categories(categories))
+
+    @on_message(filters.command("log"), chained=True)
+    @check_admin(is_user=True)
+    async def enable_logs(client, message: Message):
+        await _set_log_categories(message, True)
+
+    @on_message(filters.command("nolog"), chained=True)
+    @check_admin(is_user=True)
+    async def disable_logs(client, message: Message):
+        await _set_log_categories(message, False)
+
     def __stats__():
         return f"• {sql.num_logchannels()} log channels set."
 
@@ -249,6 +332,12 @@ if is_module_loaded(FILENAME):
 » /setlog: Set the log channel.
 
 » /unsetlog: Unset the log channel.
+
+» /logcategories: Show which log categories are on.
+» /log <types...>: Turn log categories on.
+» /nolog <types...>: Turn log categories off.
+
+Types: settings, admin, user, automated, reports, other.
 
 ➠ *To set the log channel:*
 ➠ *Add the bot to the desired channel as an admin*
