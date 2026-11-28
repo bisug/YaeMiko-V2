@@ -12,6 +12,7 @@ import json
 
 from pyrogram import filters
 from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
+from pyrogram.errors import RPCError
 from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -130,7 +131,7 @@ async def _resolve(message: Message, need_owner: bool):
     if need_owner:
         try:
             member = await client.get_chat_member(message.chat.id, user.id)
-        except Exception:
+        except RPCError:
             return None, None, "I can't check your permissions here."
         if member.status != ChatMemberStatus.OWNER:
             return None, None, "Only the group owner can do that."
@@ -275,7 +276,7 @@ async def reset(client, message: Message) -> str:
 
 @on_callback(filters.regex(r"^settings_reset(?:_cancel)?_-?\d+$"), chained=True)
 async def reset_button(client, query: CallbackQuery) -> str:
-    chat_id = int(query.data.split("_")[2])
+    chat_id = int(query.data.rsplit("_", 1)[1])
     if query.data.startswith("settings_reset_cancel"):
         await query.message.edit_text("Reset cancelled.")
         await query.answer()

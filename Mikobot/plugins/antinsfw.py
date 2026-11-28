@@ -194,7 +194,8 @@ async def prepare_scan_file(client, message, temp_dir=None):
 
     with_temp = temp_dir or tempfile.gettempdir()
     msg_id = getattr(message, "id", None) or "scan"
-    source = Path(with_temp) / f"source_{msg_id}.media"
+    chat_id = getattr(getattr(message, "chat", None), "id", "na")
+    source = Path(with_temp) / f"source_{chat_id}_{msg_id}.media"
     try:
         downloaded = await client.download_media(file_id, file_name=str(source))
     except Exception as exc:

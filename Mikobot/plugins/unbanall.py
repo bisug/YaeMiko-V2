@@ -3,7 +3,7 @@ from pathlib import Path
 
 from pyrogram import filters
 from pyrogram.enums import ChatMembersFilter, ChatMemberStatus, ChatType
-from pyrogram.errors import UserNotParticipant
+from pyrogram.errors import RPCError, UserNotParticipant
 from pyrogram.types import ChatPermissions, Message
 
 from Mikobot import app as client
@@ -45,20 +45,26 @@ async def bulk_moderation(client, message: Message):
     status = await message.reply_text("Searching participant list.")
     count = 0
     async for member in client.get_chat_members(message.chat.id, filter=member_filter):
-        try:
-            if command in {"/unbanall", "unbanall"}:
-                await client.unban_chat_member(message.chat.id, member.user.id)
-            else:
-                await client.restrict_chat_member(
-                    message.chat.id,
-                    member.user.id,
-                    ChatPermissions(can_send_messages=True),
-                )
-            count += 1
-        except FLOOD_WAIT_ERRORS as error:
-            await sleep(flood_wait_seconds(error))
-        except Exception:
-            LOGGER.exception("Bulk moderation failed for chat %s", message.chat.id)
+        for attempt in (1, 2):
+            try:
+                if command in {"/unbanall", "unbanall"}:
+                    await client.unban_chat_member(message.chat.id, member.user.id)
+                else:
+                    await client.restrict_chat_member(
+                        message.chat.id,
+                        member.user.id,
+                        ChatPermissions(can_send_messages=True),
+                    )
+                count += 1
+                break
+            except FLOOD_WAIT_ERRORS as error:
+                if attempt == 2:
+                    LOGGER.warning("Gave up on member %s after FloodWait", member.user.id)
+                    break
+                await sleep(flood_wait_seconds(error))
+            except RPCError:
+                LOGGER.exception("Bulk moderation failed for chat %s", message.chat.id)
+                break
     await status.edit(f"Successfully updated {count} users.")
 
 

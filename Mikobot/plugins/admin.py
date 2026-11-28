@@ -676,7 +676,6 @@ async def adminlist(client, message: Message):
             )
         if user.is_bot:
             bot_admin_list.append(name)
-            administrators_list.remove(admin)
             continue
         if status == ChatMemberStatus.OWNER:
             text += "\n\n<b>Creator:</b>"
@@ -688,6 +687,8 @@ async def adminlist(client, message: Message):
     normal_admin_list = []
     for admin in administrators_list:
         user = admin.user
+        if user.is_bot:
+            continue
         status = admin.status
         custom_title = admin.custom_title
         if user.first_name == "":

@@ -126,9 +126,6 @@ async def ban(client, message: Message) -> str:
         except RPCError as excp:
             if is_user_invalid(excp):
                 raise
-            elif is_user_invalid(excp):
-                await message.reply_text("That is not a user.")
-                return log_message
             await message.reply_text("I cannot find that user here.")
             return log_message
 

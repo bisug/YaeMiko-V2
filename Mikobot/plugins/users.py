@@ -125,7 +125,7 @@ async def broadcast_cmd(client: Client, message: Message):
 
 async def get_user_id(username: str) -> int | None:
     # Telegram usernames are at least five characters.
-    if len(username) <= 5:
+    if len(username) < 5:
         return None
 
     username = username.removeprefix("@")

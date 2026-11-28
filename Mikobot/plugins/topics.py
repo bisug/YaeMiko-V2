@@ -34,7 +34,7 @@ async def _has_forum_sidebar(chat_id: int) -> bool:
     """
     try:
         mtproto_chat = await app.get_chat(chat_id)
-    except Exception:
+    except RPCError:
         return False
     return bool(getattr(mtproto_chat, "has_forum_sidebar", False))
 

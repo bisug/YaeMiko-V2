@@ -1192,7 +1192,7 @@ async def fed_broadcast(client, message: Message):
                     chat,
                     title + text,
                     parse_mode=ParseMode.MARKDOWN,
-                    message_thread_id=msg.message_thread_id if chat.is_forum else None,
+                    message_thread_id=msg.message_thread_id,
                 )
             except RPCError:
                 try:

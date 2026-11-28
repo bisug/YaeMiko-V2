@@ -142,7 +142,7 @@ async def karma(_, message):
                 "Cannot check karma for anonymous senders or channels."
             )
         user_id = message.reply_to_message.from_user.id
-        karma = get_karma(message.chat.id, int_to_alpha(user_id))
+        karma = await asyncio.to_thread(get_karma, message.chat.id, int_to_alpha(user_id))
         karma = karma["karma"] if karma else 0
         await message.reply_text(f"**Total points:** {karma}")
 

@@ -460,7 +460,7 @@ def control_user(func):
         try:
             await func(_, message, msg)
         except FLOOD_WAIT_ERRORS as e:
-            await asyncio.sleep(flood_wait_seconds(e) + 5)
+            log.warning("FloodWait %ss; command stopped", flood_wait_seconds(e))
         except MessageNotModified:
             pass
         except Exception:
@@ -5197,14 +5197,6 @@ async def filler_btn(client: app, cq: CallbackQuery, cdata: dict):
 
 @app.on_message(filters.command("animequotes"))
 async def animequotes(client, message):
-    if (
-        message.reply_to_message
-        and message.reply_to_message.from_user
-        or message.from_user
-    ):
-        pass
-    else:
-        pass
     keyboard = [
         [
             InlineKeyboardButton(

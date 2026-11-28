@@ -32,6 +32,7 @@ from Mikobot.plugins.helper_funcs.chat_status import (
 from Mikobot.plugins.helper_funcs.extraction import extract_user, extract_user_and_text
 from Mikobot.plugins.helper_funcs.misc import send_to_list
 from Mikobot.utils.consts import ChatID
+from Mikobot.utils.errors import FLOOD_WAIT_ERRORS, flood_wait_seconds
 from Mikobot.utils.filters import GROUPS
 from Mikobot.utils.parser import mention_html
 
@@ -243,25 +244,30 @@ async def gban(client, message: Message):
     else:
         await send_to_list(client, DRAGONS, log_message, html=True)
 
-    sql.gban_user(user_id, user_username or user_name, reason)
+    await asyncio.to_thread(sql.gban_user, user_id, user_username or user_name, reason)
 
-    chats = get_user_com_chats(user_id)
+    chats = await asyncio.to_thread(get_user_com_chats, user_id)
     gbanned_chats = 0
 
     for chat in chats:
         chat_id = int(chat)
 
-        if not sql.does_chat_gban(chat_id):
+        if not await asyncio.to_thread(sql.does_chat_gban, chat_id):
             continue
 
-        try:
-            await client.ban_chat_member(chat_id, user_id)
-            gbanned_chats += 1
-
-        except RPCError as excp:
-            if _matches_gban_error(excp, GBAN_ERRORS):
-                pass
-            else:
+        for attempt in (1, 2):
+            try:
+                await client.ban_chat_member(chat_id, user_id)
+                gbanned_chats += 1
+                break
+            except FLOOD_WAIT_ERRORS as excp:
+                if attempt == 2:
+                    LOGGER.warning("Gave up banning in %s after FloodWait", chat_id)
+                    break
+                await asyncio.sleep(flood_wait_seconds(excp))
+            except RPCError as excp:
+                if _matches_gban_error(excp, GBAN_ERRORS):
+                    break
                 await message.reply_text(f"Could not globally ban: {excp.message}")
                 if EVENT_LOGS:
                     await client.send_message(
@@ -275,7 +281,7 @@ async def gban(client, message: Message):
                         DRAGONS,
                         f"Could not globally ban: {excp.message}",
                     )
-                sql.ungban_user(user_id)
+                await asyncio.to_thread(sql.ungban_user, user_id)
                 return
 
     if EVENT_LOGS:

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from pyrogram import filters
 from pyrogram.enums import ButtonStyle, ChatMemberStatus, ChatType, ParseMode
+from pyrogram.errors import RPCError
 from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -300,7 +301,7 @@ async def _raid_join(client, message: Message) -> str:
 
         try:
             status = await client.get_chat_member(chat.id, new_user.id)
-        except Exception:
+        except RPCError:
             LOGGER.warning(
                 "AntiRaid could not read membership of %s in %s", new_user.id, chat.id
             )

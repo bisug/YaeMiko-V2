@@ -1,3 +1,4 @@
+import asyncio
 import random
 
 from pyrogram.enums import ParseMode
@@ -38,7 +39,7 @@ async def dare(client, message: Message):
 async def joke(client, message: Message):
     from pyjokes import get_joke
 
-    await message.reply_text(get_joke())
+    await message.reply_text(await asyncio.to_thread(get_joke))
 
 
 async def roll(client, message: Message):
