@@ -21,7 +21,7 @@ import Database.sql.topics_sql as sql
 from Mikobot import app
 from Mikobot.events import on_callback, on_message
 from Mikobot.plugins.helper_funcs.alternate import typing_action
-from Mikobot.plugins.helper_funcs.chat_status import check_admin
+from Mikobot.plugins.helper_funcs.chat_status import check_admin, granted
 from Mikobot.utils.filters import GROUPS
 from Mikobot.utils.parser import mention_html
 
@@ -220,8 +220,8 @@ async def delete_topic_button(client, query: CallbackQuery) -> str:
 
     try:
         member = await client.get_chat_member(int(chat_id), query.from_user.id)
-        if member.status != ChatMemberStatus.OWNER and not getattr(
-            member, "can_manage_topics", False
+        if member.status != ChatMemberStatus.OWNER and not granted(
+            member, "can_manage_topics"
         ):
             await query.answer("You cannot manage topics here.", show_alert=True)
             return ""

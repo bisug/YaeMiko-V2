@@ -60,15 +60,7 @@ async def reverse_image_search(client, message: Message):
         with tempfile.TemporaryDirectory(prefix="yae-reverse-") as temp_dir:
             file_path = os.path.join(temp_dir, uuid.uuid4().hex)
             try:
-                photo = reply.photo
-                file_id = (
-                    (photo[-1].file_id if isinstance(photo, list) else photo.file_id)
-                    if photo
-                    else reply.sticker.file_id
-                    if reply.sticker
-                    else reply.document.file_id
-                )
-                await client.download_media(file_id, file_name=file_path)
+                await client.download_media(reply, file_name=file_path)
                 await status_msg.edit_text(STRINGS.UPLOADING_TO_API_SERVER)
                 with open(file_path, "rb") as image_file:
                     response = await state.post(

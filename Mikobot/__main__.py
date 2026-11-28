@@ -508,11 +508,11 @@ async def Miko_about_callback(client, query: CallbackQuery):
 
 async def get_help(client, message: Message):
     chat = message.chat
-    args = (message.text or "").split(None, 1)
+    args = message.command[1:] if message.command else []
 
     if chat.type != ChatType.PRIVATE:
-        if len(args) >= 2 and any(args[1].lower() == x for x in HELPABLE):
-            module = args[1].lower()
+        if len(args) >= 1 and any(args[0].lower() == x for x in HELPABLE):
+            module = args[0].lower()
             await message.reply_text(
                 f"Message me privately for help with {module.capitalize()}",
                 reply_markup=InlineKeyboardMarkup(
@@ -552,8 +552,8 @@ async def get_help(client, message: Message):
         )
         return
 
-    elif len(args) >= 2 and any(args[1].lower() == x for x in HELPABLE):
-        module = args[1].lower()
+    elif len(args) >= 1 and any(args[0].lower() == x for x in HELPABLE):
+        module = args[0].lower()
         text = (
             f"Help for the *{HELPABLE[module].__mod_name__}* module:\n"
             + HELPABLE[module].__help__

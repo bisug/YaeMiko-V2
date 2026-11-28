@@ -656,10 +656,7 @@ async def adminlist(client, message: Message):
         await send_message(message, "This command works only in groups.")
         return
     chat_id = message.chat.id
-    try:
-        msg = await message.reply_text("Fetching admins...", parse_mode=ParseMode.HTML)
-    except RPCError:
-        msg = await message.reply_text("Fetching admins...", parse_mode=ParseMode.HTML)
+    msg = await message.reply_text("Fetching admins...", parse_mode=ParseMode.HTML)
     administrators_list = []
     async for member in client.get_chat_members(
         chat_id, filter=ChatMembersFilter.ADMINISTRATORS

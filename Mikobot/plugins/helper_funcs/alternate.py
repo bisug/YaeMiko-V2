@@ -1,14 +1,9 @@
-from pyrogram.errors import RPCError
-
 from Mikobot.utils.gate import requirement
 
 
 async def send_message(message, text, *args, **kwargs):
-    """reply_text(), retried once when Telegram errors."""
-    try:
-        return await message.reply_text(text, *args, **kwargs)
-    except RPCError:
-        return await message.reply_text(text, *args, **kwargs)
+    """reply_text(); the session already retries transient failures."""
+    return await message.reply_text(text, *args, **kwargs)
 
 
 def typing_action(func):

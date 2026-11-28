@@ -16,6 +16,7 @@ from Mikobot import BOT_ID, DEV_USERS, OWNER_ID
 from Mikobot.events import on_message
 from Mikobot.logger import LOGGER
 from Mikobot.plugins.helper_funcs.chat_status import check_admin
+from Mikobot.utils.cmdprefix import CMD_STARTERS
 from Mikobot.utils.consts import ChatID
 from Mikobot.utils.errors import FLOOD_WAIT_ERRORS, flood_wait_seconds
 from Mikobot.utils.filters import GROUPS
@@ -45,7 +46,7 @@ def parse_broadcast_request(text: str, has_reply: bool = False):
     return targets, content or None
 
 
-@on_message(fil.command("gcast"), chained=True)
+@on_message(fil.command("gcast", prefixes=list(CMD_STARTERS)), chained=True)
 async def broadcast_cmd(client: Client, message: Message):
     if not message.from_user:
         return

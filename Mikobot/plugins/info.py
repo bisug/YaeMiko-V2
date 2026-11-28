@@ -187,13 +187,9 @@ async def info(client, message: Message):
             if chat_obj.photo:
                 with tempfile.TemporaryDirectory(prefix="yae-info-") as tempdir:
                     photo_path = os.path.join(tempdir, f"{chat_obj.id}.png")
-                    photo = chat_obj.photo
-                    file_id = getattr(photo, "big_file_id", None) or (
-                        photo[-1].file_id
-                        if isinstance(photo, list)
-                        else getattr(photo, "file_id", None)
+                    await client.download_media(
+                        chat_obj.photo, file_name=photo_path
                     )
-                    await client.download_media(file_id, file_name=photo_path)
                     await message.reply_photo(
                         photo=photo_path,
                         caption=head,
