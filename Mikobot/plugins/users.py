@@ -27,7 +27,7 @@ BROADCAST_TARGETS = {"-all", "-group", "-user"}
 def parse_broadcast_request(text: str, has_reply: bool = False):
     parts = text.split()
     command = parts[0].split("@", 1)[0].lower() if parts else ""
-    if command not in {"/gcast", "!gcast", "$gcast"}:
+    if command[:1] not in CMD_STARTERS or command[1:] != "gcast":
         return set(), None
 
     args = parts[1:]
