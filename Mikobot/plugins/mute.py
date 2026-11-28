@@ -65,7 +65,7 @@ class _StopCommand(Exception):
     """Raised to abandon a command once its precondition fails."""
 
 
-@on_message(filters.command(["mute", "dmute"]), chained=True)
+@on_message(filters.command(["mute", "dmute", "smute"]), chained=True)
 @connection_status
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
@@ -79,6 +79,14 @@ async def mute(client, message: Message) -> str:
         return ""
 
     args = message.command[1:] if len(message.command) > 1 else []
+    silent = (
+        message.command[0].lower().lstrip("/!.$*+-") if message.command else ""
+    ) == "smute"
+    if silent:
+        try:
+            await message.delete()
+        except RPCError:
+            pass
     user_id, reason = await extract_user_and_text(message, args)
     reply = await check_user(user_id, client, chat)
 
@@ -101,12 +109,13 @@ async def mute(client, message: Message) -> str:
     if member.status in RESTRICTED_OR_MEMBER:
         chat_permissions = ChatPermissions(can_send_messages=False)
         await client.restrict_chat_member(chat.id, user_id, chat_permissions)
-        await client.send_message(
-            chat.id,
-            f"Muted <b>{html.escape(member.user.first_name)}</b> with no expiration date.",
-            parse_mode=ParseMode.HTML,
-            message_thread_id=message.message_thread_id if chat.is_forum else None,
-        )
+        if not silent:
+            await client.send_message(
+                chat.id,
+                f"Muted <b>{html.escape(member.user.first_name)}</b> with no expiration date.",
+                parse_mode=ParseMode.HTML,
+                message_thread_id=message.message_thread_id if chat.is_forum else None,
+            )
         return log
 
     else:
@@ -270,6 +279,7 @@ __help__ = """
 » /mute <userhandle>: Silence a user. Also works as a reply to mute the replied-to user.
 
 » /tmute <userhandle> x(m/h/d): Mute a user for a set time, by handle or reply. `m` = `minutes`, `h` = `hours`, `d` = `days`.
+» /smute <userhandle>: Silently mute a user. Deletes the command and sends no chat reply.
 » /dmute <userhandle>: Delete the replied message and mute the user. Must be a reply.
 » /dtmute <userhandle> x(m/h/d): Delete the replied message and mute the user temporarily.
 

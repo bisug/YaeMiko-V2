@@ -57,7 +57,9 @@ async def ban(client, message: Message) -> str:
     if user_id is None:
         return await message.reply_text("That is not a valid user ID.")
 
-    SILENT = bool(message.text.startswith("/s"))
+    SILENT = (
+        message.command[0].lower().lstrip("/!.$*+-") if message.command else ""
+    ) == "sban"
     # /dban is the delete-then-act shortcut: the offending message goes too.
     DELETE_MESSAGE = bool(message.text.startswith("/d"))
     if DELETE_MESSAGE and not message.reply_to_message:
@@ -314,7 +316,7 @@ async def temp_ban(client, message: Message) -> str:
     return log_message
 
 
-@on_message(*disableable(["kick", "dkick"]))
+@on_message(*disableable(["kick", "dkick", "skick"]))
 @connection_status
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
@@ -323,7 +325,14 @@ async def kick(client, message: Message) -> str:
     user = message.from_user
     log_message = ""
     args = message.command[1:] if len(message.command) > 1 else []
-    DELETE_MESSAGE = bool(message.text.startswith("/d"))
+    cmd = message.command[0].lower().lstrip("/!.$*+-") if message.command else ""
+    DELETE_MESSAGE = cmd.startswith("d")
+    SILENT = cmd == "skick"
+    if SILENT:
+        try:
+            await message.delete()
+        except RPCError:
+            pass
     if DELETE_MESSAGE and not message.reply_to_message:
         await message.reply_text("Reply to the message you want deleted.")
         return ""
@@ -365,17 +374,18 @@ async def kick(client, message: Message) -> str:
             pass
 
     if res:
-        await client.send_sticker(
-            chat.id,
-            BAN_STICKER,
-            message_thread_id=message.message_thread_id if chat.is_forum else None,
-        )
-        await client.send_message(
-            chat.id,
-            f"Kicked {mention_html(member.user.id, member.user.first_name)}.",
-            parse_mode=ParseMode.HTML,
-            message_thread_id=message.message_thread_id if chat.is_forum else None,
-        )
+        if not SILENT:
+            await client.send_sticker(
+                chat.id,
+                BAN_STICKER,
+                message_thread_id=message.message_thread_id if chat.is_forum else None,
+            )
+            await client.send_message(
+                chat.id,
+                f"Kicked {mention_html(member.user.id, member.user.first_name)}.",
+                parse_mode=ParseMode.HTML,
+                message_thread_id=message.message_thread_id if chat.is_forum else None,
+            )
         log = (
             f"<b>{html.escape(chat.title)}:</b>\n"
             f"#KICKED\n"
@@ -768,6 +778,7 @@ Admin only:
 /tban <userhandle> x(m/h/d): Ban a user for x time. Units: m minutes, h hours, d days. Accepts a handle or a reply.
 /unban <userhandle>: Unban a user or channel. Accepts a handle or a reply.
 /kick <userhandle>: Kick a user from the group. Accepts a handle or a reply.
+/skick <userhandle>: Silently kick a user. Deletes the command and sends no chat reply.
 
 Channels can be banned or unbanned only by replying to their message, not by username.
 """

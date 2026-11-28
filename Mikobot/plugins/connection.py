@@ -93,6 +93,39 @@ async def connection_chat(client, message: Message):
     await send_message(message, text, parse_mode=ParseMode.MARKDOWN)
 
 
+@on_message(filters.command("reconnect"), chained=True)
+@typing_action
+async def reconnect_chat(client, message: Message):
+    if message.chat.type != ChatType.PRIVATE:
+        await send_message(message, "Use this command in my private chat.")
+        return
+    history = await asyncio.to_thread(sql.get_history_conn, message.from_user.id)
+    if not history:
+        await send_message(message, "You have no recent connections.")
+        return
+    chat_id = int(max(history.values(), key=lambda item: item["conn_time"])["chat_id"])
+    try:
+        member = await client.get_chat_member(chat_id, message.from_user.id)
+        chat = await client.get_chat(chat_id)
+    except RPCError:
+        await send_message(message, "That chat is no longer available.")
+        return
+    if member.status not in (
+        ChatMemberStatus.ADMINISTRATOR,
+        ChatMemberStatus.OWNER,
+    ):
+        await send_message(message, "Connections to this chat are not allowed.")
+        return
+    if not await asyncio.to_thread(sql.connect, message.from_user.id, chat_id):
+        await send_message(message, "Connection failed.")
+        return
+    await send_message(
+        message,
+        f"Reconnected to *{chat.title}*.",
+        parse_mode=ParseMode.MARKDOWN,
+    )
+
+
 @on_message(filters.command("connect"), chained=True)
 @typing_action
 async def connect_chat(client, message: Message):
@@ -456,6 +489,7 @@ __help__ = """
 Commands:
 /connect: Connect to a chat. In a group, use /connect; in PM, use /connect <chat id>.
 /connection: List connected chats.
+/reconnect: Reconnect to the most recently used chat.
 /disconnect: Disconnect from a chat.
 /helpconnect: List commands available through a connection.
 
