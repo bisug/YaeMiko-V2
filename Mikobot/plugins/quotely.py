@@ -286,7 +286,9 @@ class Quotly:
             request = await async_searcher(url, post=True, json=content, re_json=True)
         except (ValueError, httpx.HTTPError) as er:
             if url != self._API:
-                return await self.create_quotly(self._API)
+                return await self.create_quotly(
+                    event, url=self._API, reply=reply, sender=sender, bg=bg
+                )
             raise er
 
         if isinstance(request, dict) and request.get("ok"):

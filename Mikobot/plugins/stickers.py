@@ -11,12 +11,10 @@ from PIL import Image, ImageDraw, ImageFont
 from pyrogram import Client, enums, filters
 from pyrogram.enums import ButtonStyle
 from pyrogram.errors import BadRequest, PeerIdInvalid, StickersetInvalid
-from pyrogram.file_id import FileId
 from pyrogram.raw.functions.messages import GetStickerSet, SendMedia
 from pyrogram.raw.functions.stickers import (
     AddStickerToSet,
     CreateStickerSet,
-    RemoveStickerFromSet,
 )
 from pyrogram.raw.types import (
     DocumentAttributeFilename,
@@ -132,13 +130,7 @@ async def unkangs(self: Client, ctx: Message, strings):
             return await ctx.reply("This sticker is not from your pack.")
         pp = await ctx.reply(strings("unkang_msg"))
         try:
-            decoded = FileId.decode(sticker.file_id)
-            sticker = InputDocument(
-                id=decoded.media_id,
-                access_hash=decoded.access_hash,
-                file_reference=decoded.file_reference,
-            )
-            await app.invoke(RemoveStickerFromSet(sticker=sticker))
+            await app.delete_sticker_from_set(sticker.file_id)
             await pp.edit(strings("unkang_success"))
         except Exception as e:
             await pp.edit(strings("unkang_error").format(e=e))
@@ -173,29 +165,27 @@ async def kang_sticker(self: Client, ctx: Message, strings):
                 convert = True
                 videos = True
             elif reply.document:
-                if "image" in reply.document.mime_type:
+                mime = reply.document.mime_type or ""
+                if "image" in mime:
                     # mime_type: image/webp
                     resize = True
-                elif reply.document.mime_type in (
+                elif mime.startswith("video/") or mime in (
                     enums.MessageMediaType.VIDEO,
                     enums.MessageMediaType.ANIMATION,
                 ):
-                    # mime_type: application/video
                     videos = True
                     convert = True
-                elif "tgsticker" in reply.document.mime_type:
-                    # mime_type: application/x-tgsticker
+                elif "tgsticker" in mime:
                     animated = True
             elif reply.sticker:
-                if not reply.sticker.file_name:
-                    return await prog_msg.edit(strings("stick_no_name"))
                 if reply.sticker.emoji:
                     sticker_emoji = reply.sticker.emoji
+                name = reply.sticker.file_name or ""
                 animated = reply.sticker.is_animated
                 videos = reply.sticker.is_video
                 if videos:
                     convert = False
-                elif not reply.sticker.file_name.endswith(".tgs"):
+                elif not animated and not name.endswith(".tgs"):
                     resize = True
             else:
                 return await prog_msg.edit("I cannot kang this type.")

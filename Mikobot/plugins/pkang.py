@@ -1,9 +1,12 @@
 from uuid import uuid4
 
-import pyrogram
 from pyrogram import filters
-from pyrogram.enums import ButtonStyle
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.enums import ButtonStyle, StickerFormat
+from pyrogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    InputSticker,
+)
 
 from Mikobot import app
 
@@ -36,45 +39,23 @@ async def _packkang(app, message):
     else:
         pack_name = message.text.split(maxsplit=1)[1]
     short_name = message.reply_to_message.sticker.set_name
-    stickers = await app.invoke(
-        pyrogram.raw.functions.messages.GetStickerSet(
-            stickerset=pyrogram.raw.types.InputStickerSetShortName(
-                short_name=short_name
-            ),
-            hash=0,
+    sticker_set = await app.get_sticker_set(short_name)
+    sticks = [
+        InputSticker(
+            sticker=sticker.file_id,
+            format=StickerFormat.STATIC,
+            emoji_list=[sticker.emoji],
         )
-    )
-    shits = stickers.documents
-    sticks = []
-
-    for i in shits:
-        sex = pyrogram.raw.types.InputDocument(
-            id=i.id, access_hash=i.access_hash, file_reference=i.file_reference
-        )
-
-        # The emoji lives on the sticker attribute, whose position among the
-        # document attributes is not fixed, so it has to be looked up.
-        emoji = next(
-            (
-                attribute.alt
-                for attribute in i.attributes
-                if isinstance(attribute, pyrogram.raw.types.DocumentAttributeSticker)
-            ),
-            "",
-        )
-
-        sticks.append(pyrogram.raw.types.InputStickerSetItem(document=sex, emoji=emoji))
+        for sticker in sticker_set.stickers
+    ]
 
     try:
         short_name = f"stikcer_pack_{uuid4().hex}_by_{bot_username}"
-        user_id = await app.resolve_peer(message.from_user.id)
-        await app.invoke(
-            pyrogram.raw.functions.stickers.CreateStickerSet(
-                user_id=user_id,
-                title=pack_name,
-                short_name=short_name,
-                stickers=sticks,
-            )
+        await app.create_new_sticker_set(
+            user_id=message.from_user.id,
+            title=pack_name,
+            name=short_name,
+            stickers=sticks,
         )
         await txt.edit(
             f"""Sticker added. Remove and re-add your pack to see it sooner.

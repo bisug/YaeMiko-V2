@@ -92,7 +92,7 @@ async def telegraph_upload(client: Client, message: Message):
         await message.reply_text("Reply to a photo, video, animation, or document.")
         return
 
-    if getattr(replied.media, "file_size", 0) > MAX_UPLOAD_BYTES:
+    if (getattr(replied.media, "file_size", None) or 0) > MAX_UPLOAD_BYTES:
         size = MAX_UPLOAD_BYTES // (1024 * 1024)
         await message.reply_text(
             f"That media is too large to upload ({size} MB maximum)."

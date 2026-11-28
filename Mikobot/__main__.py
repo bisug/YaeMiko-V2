@@ -898,9 +898,8 @@ def register_core_handlers():
 
 
 async def _idle() -> None:
-    """Block until the process is stopped."""
-    while True:
-        await asyncio.sleep(3600)
+    """Block until a stop signal arrives."""
+    await pyrogram.idle()
 
 
 async def main():
