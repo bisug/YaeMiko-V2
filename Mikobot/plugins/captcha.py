@@ -714,7 +714,7 @@ async def captcha_mode(client, message: Message):
     )
 
 
-@on_message(GROUPS, filters.command("captchabuttons"), chained=True)
+@on_message(GROUPS, filters.command(["captchabuttons", "setcaptchatext"]), chained=True)
 @check_admin(permission="can_restrict_members", is_both=True)
 @typing_action
 async def captcha_buttons(client, message: Message):
@@ -908,7 +908,7 @@ Welcome messages must be enabled to show the prompt. Each user is asked once per
 Commands:
 /captcha <on/off>: Turn the CAPTCHA on or off.
 /captchamode <button/text/math/text2>: Set the challenge type. `button` needs one press. `text` and `math` are answered in private. `text2` uses close decoys and is case-sensitive.
-/captchabuttons <text>: Set the button label. Plain text only.
+/captchabuttons, /setcaptchatext <text>: Set the button label. Plain text only.
 /resetcaptchatext: Restore the default button label.
 /captchakick <on/off>: Kick members who never solve the CAPTCHA. They are asked again when they rejoin.
 /captchakicktime <time>: Set the delay before that kick, between 5m and 1d.

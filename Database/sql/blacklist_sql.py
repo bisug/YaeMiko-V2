@@ -48,10 +48,18 @@ class BlackListFilters(BASE):
     __tablename__ = "blacklist"
     chat_id = Column(String, primary_key=True)
     trigger = Column(UnicodeText, primary_key=True, nullable=False)
+    # Reason and optional inline action are stored with the trigger, so one
+    # trigger can ban while another only warns without touching chat settings.
+    reason = Column(UnicodeText, default="")
+    action = Column(String(32), default="")
+    action_value = Column(UnicodeText, default="")
 
-    def __init__(self, chat_id, trigger):
+    def __init__(self, chat_id, trigger, reason="", action="", action_value=""):
         self.chat_id = str(chat_id)
         self.trigger = trigger
+        self.reason = reason or ""
+        self.action = action or ""
+        self.action_value = action_value or ""
 
     def __repr__(self):
         return f"<ʙʟᴀᴄᴋʟɪsᴛ ғɪʟᴛᴇʀ '{self.trigger}' ғᴏʀ {self.chat_id}>"
@@ -76,6 +84,8 @@ class BlacklistSettings(BASE):
     silent_enabled = Column(Boolean, default=False)
     # Comma separated list of blacklist_type numbers that should act quietly.
     silent_types = Column(UnicodeText, default="")
+    # Used when a trigger is added without a reason of its own.
+    default_reason = Column(UnicodeText, default="")
 
     def __init__(self, chat_id, blacklist_type=1, value="0"):
         self.chat_id = str(chat_id)
@@ -84,14 +94,16 @@ class BlacklistSettings(BASE):
         self.delete_message = True
         self.silent_enabled = False
         self.silent_types = ""
+        self.default_reason = ""
 
     def __repr__(self):
         return f"<{self.chat_id} ᴡɪʟʟ ᴇxᴇᴄᴜᴛɪɴɢ {self.blacklist_type} ғᴏʀ ʙʟᴀᴄᴋʟɪsᴛ ᴛʀɪɢɢᴇʀ.>"
 
 
 def _ensure_columns() -> None:
-    """Add the delete/silent columns to a table made by an older build."""
+    """Add newer columns to tables made by an older build."""
     ensure_columns("blacklist_settings", BlacklistSettings)
+    ensure_columns("blacklist", BlackListFilters)
 
 
 run_migration(_ensure_columns)
@@ -104,9 +116,11 @@ CHAT_SETTINGS_BLACKLISTS = {}
 
 
 @unit_of_work_guard
-def add_to_blacklist(chat_id, trigger):
+def add_to_blacklist(chat_id, trigger, reason="", action="", action_value=""):
     with BLACKLIST_FILTER_INSERTION_LOCK:
-        blacklist_filt = BlackListFilters(str(chat_id), trigger)
+        blacklist_filt = BlackListFilters(
+            str(chat_id), trigger, reason, action, action_value
+        )
 
         SESSION.merge(blacklist_filt)  # merge to avoid duplicate key issues
         SESSION.commit()
@@ -131,6 +145,32 @@ def rm_from_blacklist(chat_id, trigger):
 
         SESSION.close()
         return False
+
+
+@unit_of_work_guard
+def rm_all_blacklist(chat_id):
+    """Clear every trigger in one chat. Returns how many were removed."""
+    with BLACKLIST_FILTER_INSERTION_LOCK:
+        rows = SESSION.scalars(
+            select(BlackListFilters).where(BlackListFilters.chat_id == str(chat_id))
+        ).all()
+        for row in rows:
+            SESSION.delete(row)
+        SESSION.commit()
+        CHAT_BLACKLISTS.pop(str(chat_id), None)
+        return len(rows)
+
+
+@unit_of_work_guard
+def get_trigger_action(chat_id, trigger):
+    """(reason, action, action_value) stored alongside one trigger."""
+    try:
+        row = SESSION.get(BlackListFilters, (str(chat_id), trigger))
+        if row:
+            return (row.reason or "", row.action or "", row.action_value or "")
+    finally:
+        SESSION.close()
+    return ("", "", "")
 
 
 def get_chat_blacklist(chat_id):
@@ -194,6 +234,7 @@ def set_blacklist_strength(chat_id, blacklist_type, value):
             "delete_message": bool(curr_setting.delete_message),
             "silent_enabled": bool(curr_setting.silent_enabled),
             "silent_types": curr_setting.silent_types or "",
+            "default_reason": curr_setting.default_reason or "",
         }
 
         SESSION.add(curr_setting)
@@ -230,6 +271,7 @@ def _mutate_setting(chat_id, **fields) -> None:
             "delete_message": bool(curr.delete_message),
             "silent_enabled": bool(curr.silent_enabled),
             "silent_types": curr.silent_types or "",
+            "default_reason": curr.default_reason or "",
         }
 
 
@@ -286,6 +328,23 @@ def is_silent_type(chat_id, blacklist_type: int) -> bool:
     return str(int(blacklist_type)) in str(setting.get("silent_types", "")).split(",")
 
 
+def set_default_reason(chat_id, reason: str) -> None:
+    """Set the reason used for triggers added without one."""
+    _mutate_setting(chat_id, default_reason=str(reason or ""))
+
+
+@unit_of_work_guard
+def get_default_reason(chat_id) -> str:
+    setting = CHAT_SETTINGS_BLACKLISTS.get(str(chat_id))
+    if setting:
+        return setting.get("default_reason", "") or ""
+    try:
+        curr = SESSION.get(BlacklistSettings, str(chat_id))
+        return (curr.default_reason or "") if curr else ""
+    finally:
+        SESSION.close()
+
+
 def __load_chat_blacklists():
     global CHAT_BLACKLISTS
     if SESSION is None:
@@ -320,6 +379,7 @@ def __load_chat_settings_blacklists():
                 "delete_message": bool(x.delete_message),
                 "silent_enabled": bool(x.silent_enabled),
                 "silent_types": x.silent_types or "",
+                "default_reason": x.default_reason or "",
             }
 
     except Exception:

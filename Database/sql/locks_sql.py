@@ -22,12 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+import json
 import threading
 from dataclasses import dataclass
 
-from sqlalchemy import Boolean, Column, String, select
+from sqlalchemy import Boolean, Column, String, UnicodeText, select
 
-from Database.sql import BASE, SESSION, unit_of_work_guard
+from Database.sql import (
+    BASE,
+    SESSION,
+    ensure_columns,
+    run_migration,
+    unit_of_work_guard,
+)
 
 
 class Permissions(BASE):
@@ -51,6 +58,22 @@ class Permissions(BASE):
     button = Column(Boolean, default=False)
     egame = Column(Boolean, default=False)
     inline = Column(Boolean, default=False)
+    videonote = Column(Boolean, default=False)
+    stickerpremium = Column(Boolean, default=False)
+    stickeranimated = Column(Boolean, default=False)
+    cashtag = Column(Boolean, default=False)
+    checklist = Column(Boolean, default=False)
+    comment = Column(Boolean, default=False)
+    cjk = Column(Boolean, default=False)
+    cyrillic = Column(Boolean, default=False)
+    emojionly = Column(Boolean, default=False)
+    externalreply = Column(Boolean, default=False)
+    forwardstory = Column(Boolean, default=False)
+    guestbot = Column(Boolean, default=False)
+    zalgo = Column(Boolean, default=False)
+    botlink = Column(Boolean, default=False)
+    # JSON map of locktype to the reason (and inline action) set with /lock.
+    lock_actions = Column(UnicodeText, default="")
 
     def __init__(self, chat_id):
         self.chat_id = str(chat_id)
@@ -71,6 +94,21 @@ class Permissions(BASE):
         self.button = False
         self.egame = False
         self.inline = False
+        self.videonote = False
+        self.stickerpremium = False
+        self.stickeranimated = False
+        self.cashtag = False
+        self.checklist = False
+        self.comment = False
+        self.cjk = False
+        self.cyrillic = False
+        self.emojionly = False
+        self.externalreply = False
+        self.forwardstory = False
+        self.guestbot = False
+        self.zalgo = False
+        self.botlink = False
+        self.lock_actions = ""
 
     def __repr__(self):
         return f"<ᴘᴇʀᴍɪssɪᴏɴs ғᴏʀ {self.chat_id}>"
@@ -126,6 +164,14 @@ LOCK_COLUMNS = [
 ]
 
 
+def _ensure_columns() -> None:
+    """Add locktype columns introduced after the table was first created."""
+    ensure_columns("permissions", Permissions)
+
+
+run_migration(_ensure_columns)
+
+
 @dataclass
 class ChatLocks:
     """A detached copy of one chat's lock row.
@@ -153,12 +199,34 @@ class ChatLocks:
     button: bool = False
     egame: bool = False
     inline: bool = False
+    videonote: bool = False
+    stickerpremium: bool = False
+    stickeranimated: bool = False
+    cashtag: bool = False
+    checklist: bool = False
+    comment: bool = False
+    cjk: bool = False
+    cyrillic: bool = False
+    emojionly: bool = False
+    externalreply: bool = False
+    forwardstory: bool = False
+    guestbot: bool = False
+    zalgo: bool = False
+    botlink: bool = False
+    lock_actions: str = ""
 
     @classmethod
     def from_row(cls, row, chat_id=None):
+        values = {
+            name: (
+                str(getattr(row, name) or "")
+                if name == "lock_actions"
+                else bool(getattr(row, name))
+            )
+            for name in LOCK_COLUMNS
+        }
         return cls(
-            chat_id=str(chat_id if chat_id is not None else row.chat_id),
-            **{name: bool(getattr(row, name)) for name in LOCK_COLUMNS},
+            chat_id=str(chat_id if chat_id is not None else row.chat_id), **values
         )
 
 
@@ -360,5 +428,49 @@ def allowed_for(chat_id, lockable):
                 )
             ).all()
         }
+    finally:
+        SESSION.close()
+
+
+@unit_of_work_guard
+def set_lock_action(chat_id, lock_type, reason):
+    """Store the reason (with its inline action) for one locked type."""
+    with PERM_LOCK:
+        curr = SESSION.get(Permissions, str(chat_id))
+        if not curr:
+            curr = Permissions(str(chat_id))
+        try:
+            actions = json.loads(curr.lock_actions or "{}")
+        except TypeError, ValueError:
+            actions = {}
+        if reason:
+            actions[lock_type] = str(reason)
+        else:
+            actions.pop(lock_type, None)
+        curr.lock_actions = json.dumps(actions)
+        SESSION.add(curr)
+        SESSION.flush()
+        _cache_permissions(chat_id, ChatLocks.from_row(curr))
+        SESSION.commit()
+
+
+@unit_of_work_guard
+def get_lock_action(chat_id, lock_type):
+    """The stored reason for one locked type, or an empty string."""
+    key = str(chat_id)
+    cached = PERM_CACHE.get(key)
+    if cached is not None and cached.lock_actions:
+        try:
+            return json.loads(cached.lock_actions).get(lock_type, "")
+        except TypeError, ValueError:
+            pass
+    try:
+        row = SESSION.get(Permissions, key)
+        if not row:
+            return ""
+        try:
+            return json.loads(row.lock_actions or "{}").get(lock_type, "")
+        except TypeError, ValueError:
+            return ""
     finally:
         SESSION.close()

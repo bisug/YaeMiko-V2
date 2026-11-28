@@ -2,6 +2,7 @@ import asyncio
 import html
 import re
 import unicodedata
+from datetime import datetime, timezone
 
 from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus, ChatType, ParseMode
@@ -9,7 +10,9 @@ from pyrogram.errors import RPCError
 from pyrogram.types import ChatPermissions, Message
 
 import Database.sql.locks_sql as sql
+from Database.sql import toggle_sql
 from Database.sql.approve_sql import is_approved
+from Database.sql.toggle_sql import LOCK_WARNS
 from Mikobot import app as client
 from Mikobot.events import on_message
 from Mikobot.logger import LOGGER
@@ -22,7 +25,9 @@ from Mikobot.plugins.helper_funcs.chat_status import (
     is_bot_admin,
     is_user_admin,
 )
+from Mikobot.plugins.helper_funcs.string_handling import extract_time
 from Mikobot.plugins.log_channel import loggable
+from Mikobot.plugins.warns import warn
 from Mikobot.utils.consts import ChatID
 from Mikobot.utils.filters import GROUPS
 from Mikobot.utils.parser import mention_html
@@ -53,6 +58,114 @@ def _has_entity(message, kind: str) -> bool:
 def _is_command(message) -> bool:
     text = message.text or message.caption or ""
     return text.startswith("/")
+
+
+def _has_script(text: str, prefixes: tuple[str, ...]) -> bool:
+    """True when a letter in text belongs to one of the named scripts."""
+    return any(
+        char.isalpha() and unicodedata.name(char, "").startswith(prefixes)
+        for char in text
+    )
+
+
+def _has_zalgo(text: str) -> bool:
+    """Zalgo is a run of combining marks, not a single accented letter."""
+    marks = 0
+    for char in text:
+        if unicodedata.category(char) not in ("Mn", "Me"):
+            continue
+        if 0xFE00 <= ord(char) <= 0xFE0F:  # variation selectors are not zalgo
+            continue
+        marks += 1
+        if marks >= 3:
+            return True
+    return False
+
+
+def _is_emoji_char(char: str) -> bool:
+    code = ord(char)
+    return (
+        0x1F000 <= code <= 0x1FAFF
+        or 0x2600 <= code <= 0x27BF
+        or unicodedata.category(char) == "So"
+    )
+
+
+def _is_emojionly(message) -> bool:
+    text = message.text or message.caption or ""
+    body = "".join(
+        char
+        for char in text
+        if not char.isspace() and unicodedata.category(char) not in ("Mn", "Me")
+    )
+    if not body:
+        entities = getattr(message, "entities", None) or ()
+        return bool(entities) and all(
+            entity.type == "custom_emoji" for entity in entities
+        )
+    return all(_is_emoji_char(char) for char in body)
+
+
+_BOT_LINK_RE = re.compile(
+    r"(?:https?://)?(?:t|telegram)\.me/[A-Za-z0-9_]+bot\b"
+    r"|tg://resolve\?domain=[A-Za-z0-9_]+bot\b",
+    re.IGNORECASE,
+)
+
+
+def _has_bot_link(message) -> bool:
+    return bool(_BOT_LINK_RE.search(message.text or message.caption or ""))
+
+
+def _is_comment(message) -> bool:
+    """A reply to a channel post is a comment in that post's discussion."""
+    replied = getattr(message, "reply_to_message", None)
+    if replied is None:
+        return False
+    sender_chat = getattr(replied, "sender_chat", None)
+    return bool(sender_chat and getattr(sender_chat, "type", None) == ChatType.CHANNEL)
+
+
+def _is_forward_story(message) -> bool:
+    return bool(
+        getattr(message, "story", None) and getattr(message, "forward_origin", None)
+    )
+
+
+def _is_guest_bot(message) -> bool:
+    return bool(
+        getattr(message, "guest_bot_caller_user", None)
+        or getattr(message, "guest_bot_caller_chat", None)
+    )
+
+
+ACTION_MODIFIERS = frozenset(
+    {
+        "ban",
+        "kick",
+        "mute",
+        "warn",
+        "tban",
+        "tmute",
+        "sban",
+        "skick",
+        "smute",
+        "swarn",
+    }
+)
+
+
+def parse_lock_action(text: str) -> tuple[str, str, str]:
+    """Split a stored lock reason into (reason, action, action value)."""
+    text = text or ""
+    match = re.search(r"\s*\{([^{}]+)\}\s*$", text)
+    if not match:
+        return text.strip(), "", ""
+    parts = match.group(1).split()
+    action = parts[0].lower() if parts else ""
+    if action not in ACTION_MODIFIERS:
+        return text.strip(), "", ""
+    return text[: match.start()].strip(), action, " ".join(parts[1:])
 
 
 # Plain predicates, not filters: del_lockables() deletes messages, so matches
@@ -93,6 +206,19 @@ LOCK_TYPES = {
     # text is inspected for the forms it actually accepts: t.me/joinchat/<id>,
     # t.me/+<invite>, and t.me/username?start=<group> for private links.
     "invitelink": lambda m: _has_invite_link(m),
+    "cashtag": lambda m: _has_entity(m, "cashtag"),
+    "checklist": lambda m: bool(getattr(m, "checklist", None)),
+    "comment": _is_comment,
+    "cjk": lambda m: _has_script(
+        m.text or m.caption or "", ("CJK", "HIRAGANA", "KATAKANA", "HANGUL")
+    ),
+    "cyrillic": lambda m: _has_script(m.text or m.caption or "", ("CYRILLIC",)),
+    "emojionly": _is_emojionly,
+    "externalreply": lambda m: bool(getattr(m, "external_reply", None)),
+    "forwardstory": _is_forward_story,
+    "guestbot": _is_guest_bot,
+    "zalgo": lambda m: _has_zalgo(m.text or m.caption or ""),
+    "botlink": _has_bot_link,
 }
 
 
@@ -300,6 +426,55 @@ async def locktypes(client, message: Message):
     )
 
 
+@on_message(filters.command("lock") & filters.regex(r"###"))
+@check_admin(permission="can_delete_messages", is_both=True)
+@loggable
+@typing_action
+async def lock_with_reason(client, message: Message) -> str:
+    """/lock <types> ### <reason> {ban|kick|...}: act instead of only deleting."""
+    args = message.command[1:]
+    chat = message.chat
+    user = message.from_user
+    if "###" not in args:
+        return ""
+    split = args.index("###")
+    types = [item.lower() for item in args[:split] if item.lower() in LOCK_TYPES]
+    reason = " ".join(args[split + 1 :]).strip()
+    _parsed, action, _value = parse_lock_action(reason)
+    if not types or not action:
+        await send_message(
+            message,
+            "Use `/lock <types> ### <reason> {ban|kick|mute|warn|tban 2w|tmute 1h|sban|skick|smute}`.",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        return ""
+
+    conn = await connected(client, message, chat, user.id, need_admin=True)
+    if conn:
+        chat = await client.get_chat(conn)
+        chat_id = conn
+        text = f"Locked {', '.join(types)} for non-admins in {chat.title}."
+    else:
+        if chat.type == ChatType.PRIVATE:
+            await send_message(message, "This command only works in a group.")
+            return ""
+        chat_id = chat.id
+        text = f"Locked {', '.join(types)} for non-admins."
+
+    for lock_type in types:
+        sql.update_lock(chat_id, lock_type, locked=True)
+        await asyncio.to_thread(sql.set_lock_action, chat_id, lock_type, reason)
+    await send_message(message, text)
+    return (
+        "<b>{}:</b>\n#LOCK\n<b>Admin:</b> {}\nLocked <code>{}</code> with {}."
+    ).format(
+        html.escape(chat.title),
+        mention_html(user.id, user.first_name),
+        ", ".join(types),
+        html.escape(reason),
+    )
+
+
 @on_message(filters.command("lock"), chained=True)
 @check_admin(permission="can_delete_messages", is_both=True)
 @loggable
@@ -472,6 +647,7 @@ async def unlock(client, message: Message) -> str:
                 chat_name = message.chat.title
                 text = "Unlocked {} for everyone.".format(ltype)
             sql.update_lock(chat.id, ltype, locked=False)
+            await asyncio.to_thread(sql.set_lock_action, chat.id, ltype, "")
             await send_message(message, text, parse_mode=ParseMode.MARKDOWN)
             return (
                 "<b>{}:</b>"
@@ -598,6 +774,50 @@ def _message_matches_lock(lockable, filter, locks, message) -> bool:
     return False
 
 
+async def _apply_custom_lock_action(client, chat, user, message, stored, lockable):
+    """Apply the action stored with a lock instead of just deleting."""
+    reason, action, value = parse_lock_action(stored)
+    text = reason or f"Locked content: {lockable}"
+    try:
+        await message.delete()
+    except RPCError:
+        pass
+    if action in ("", "warn", "swarn"):
+        await warn(user, chat, text, message, None, silent=action == "swarn")
+        return
+
+    silent = action.startswith("s")
+    base = action[1:] if silent else action
+    until = None
+    if base in ("tban", "tmute"):
+        seconds = await extract_time(message, value)
+        if not seconds:
+            return
+        until = datetime.fromtimestamp(seconds, timezone.utc)
+    try:
+        if base == "mute":
+            await client.restrict_chat_member(
+                chat.id,
+                user.id,
+                permissions=ChatPermissions(can_send_messages=False),
+                until_date=until,
+            )
+        elif base == "kick":
+            await client.unban_chat_member(chat.id, user.id)
+        elif base == "ban":
+            await client.ban_chat_member(chat.id, user.id, until_date=until)
+    except RPCError:
+        LOGGER.exception("Custom lock action failed in %s", chat.id)
+        return
+    if not silent:
+        verb = {"ban": "Banned", "kick": "Kicked", "mute": "Muted"}[base]
+        await client.send_message(
+            chat.id,
+            f"{verb} {html.escape(user.first_name)} for {html.escape(text)}",
+            message_thread_id=(message.message_thread_id if chat.is_forum else None),
+        )
+
+
 @on_message(GROUPS, chained=True)
 async def del_lockables(client, message: Message):
     chat = message.chat
@@ -627,6 +847,25 @@ async def del_lockables(client, message: Message):
             return
         if await asyncio.to_thread(is_approved, chat.id, user.id):
             return
+    matched = next(
+        (
+            name
+            for name, predicate in LOCK_TYPES.items()
+            if _message_matches_lock(name, predicate, locks, message)
+        ),
+        None,
+    )
+    if matched is None:
+        return
+    stored = await asyncio.to_thread(sql.get_lock_action, chat.id, matched)
+    if stored and user:
+        await _apply_custom_lock_action(client, chat, user, message, stored, matched)
+        return
+    warn_on = bool(
+        user
+        and matched != "bots"
+        and await asyncio.to_thread(toggle_sql.is_toggle_on, chat.id, LOCK_WARNS)
+    )
     for lockable, filter in LOCK_TYPES.items():
         if lockable == "rtl":
             if getattr(locks, lockable, False):
@@ -789,6 +1028,9 @@ async def del_lockables(client, message: Message):
 
                 break
 
+    if warn_on:
+        await warn(user, chat, f"Locked content: {matched}", message, client.me)
+
 
 async def build_lock_message(chat_id):
     locks = sql.get_locks(chat_id)
@@ -865,12 +1107,30 @@ async def build_lock_message(chat_id):
     return res
 
 
+async def build_locktype_list(chat_id):
+    """Every locktype with its current state, including permission locks."""
+    locks = await asyncio.to_thread(sql.get_locks, chat_id)
+    chat_obj = await client.get_chat(chat_id)
+    permissions = getattr(chat_obj, "permissions", None)
+    lines = []
+    for name in sorted(LOCK_TYPES):
+        state = bool(getattr(locks, name, False)) if locks else False
+        lines.append(f" • {name} = `{state}`")
+    for name in sorted(LOCK_CHAT_RESTRICTION):
+        state = bool(permissions) and all(
+            not getattr(permissions, key, False) for key in LOCK_CHAT_RESTRICTION[name]
+        )
+        lines.append(f" • {name} = `{state}`")
+    return "*All lock types:*\n" + "\n".join(lines)
+
+
 @on_message(filters.command("locks"), chained=True)
 @typing_action
 @check_admin(is_user=True)
 async def list_locks(client, message: Message):
     chat = message.chat
     user = message.from_user
+    args = message.command[1:] if message.command else []
 
     conn = await connected(client, message, chat, user.id, need_admin=True)
     if conn:
@@ -886,11 +1146,52 @@ async def list_locks(client, message: Message):
         chat = message.chat
         chat_name = message.chat.title
 
+    if args and args[0].lower() == "list":
+        await send_message(
+            message,
+            await build_locktype_list(chat.id),
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        return ""
+
     res = await build_lock_message(chat.id)
     if conn:
         res = res.replace("Locks in", "*{}*".format(chat_name))
 
     await send_message(message, res, parse_mode=ParseMode.MARKDOWN)
+
+
+@on_message(filters.command("lockwarns"), chained=True)
+@loggable
+@check_admin(is_user=True)
+@typing_action
+async def lockwarns(client, message: Message):
+    """Warn the sender of a locked message as well as deleting it."""
+    chat = message.chat
+    args = message.command[1:] if message.command else []
+    if chat.type == ChatType.PRIVATE:
+        await message.reply_text("This command only works in a group.")
+        return ""
+
+    if not args or args[0].lower() == "status":
+        enabled = await asyncio.to_thread(toggle_sql.is_toggle_on, chat.id, LOCK_WARNS)
+        await message.reply_text(f"Lock warnings are {'on' if enabled else 'off'}.")
+        return ""
+
+    value = args[0].lower()
+    if value not in ("on", "off"):
+        await message.reply_text("Use `on`, `off` or `status`.")
+        return ""
+
+    enabled = value == "on"
+    await asyncio.to_thread(toggle_sql.set_toggle, chat.id, LOCK_WARNS, enabled)
+    await message.reply_text(f"Lock warnings are now {'on' if enabled else 'off'}.")
+    return (
+        f"<b>{html.escape(chat.title or 'chat')}:</b>\n"
+        f"#LOCKWARNS\n"
+        f"<b>Admin:</b> {mention_html(message.from_user.id, message.from_user.first_name)}\n"
+        f"Turned lock warnings <b>{'on' if enabled else 'off'}</b>."
+    )
 
 
 # Which locktypes each allowlistable command applies to, and what its
@@ -1123,8 +1424,11 @@ __help__ = """
 
 ➠ *Admins only:*
 » /lock <type>: Lock a message type for non-admins. Not available in private chats.
+» /lock <types> ### <reason> {ban|kick|mute|warn|tban 2w|tmute 1h|sban|skick|smute}: Lock several types and apply an action to offenders instead of only deleting. The s-prefixed actions are silent.
 » /unlock <type>: Unlock a message type for non-admins. Not available in private chats.
 » /locks: Show the current locks in this chat.
+» /locks list: Show every lock type with its current state.
+» /lockwarns on|off|status: Also warn the sender of a locked message.
 
 ➠ *Allowlisting:* relax a lock for specific items instead of turning it off.
 » /allowlist: Show the current allowlist.

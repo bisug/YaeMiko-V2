@@ -99,6 +99,103 @@ def parse_trigger(trigger: str):
     return None, trigger
 
 
+ACTION_MODIFIERS = frozenset(
+    {
+        "ban",
+        "kick",
+        "mute",
+        "warn",
+        "tban",
+        "tmute",
+        "sban",
+        "skick",
+        "smute",
+        "swarn",
+    }
+)
+
+
+def parse_action_modifier(text: str) -> tuple[str, str, str]:
+    """Strip a trailing ``{ban}`` / ``{tban 2w}`` from a reason.
+
+    Returns (reason, action, value). An unrecognised modifier is kept in the
+    reason, so a typo cannot silently remove text from a stored trigger.
+    """
+    text = text or ""
+    match = re.search(r"\s*\{([^{}]+)\}\s*$", text)
+    if not match:
+        return text.strip(), "", ""
+    parts = match.group(1).split()
+    action = parts[0].lower() if parts else ""
+    if action not in ACTION_MODIFIERS:
+        return text.strip(), "", ""
+    return text[: match.start()].strip(), action, " ".join(parts[1:])
+
+
+def _split_on_commas(text: str) -> list[str]:
+    """Split comma-separated items, keeping quoted phrases as one item."""
+    items = []
+    buffer = []
+    quote = None
+    for char in text:
+        if quote:
+            if char == quote:
+                quote = None
+            else:
+                buffer.append(char)
+        elif char in ('"', "'"):
+            quote = char
+        elif char == ",":
+            items.append("".join(buffer).strip())
+            buffer = []
+        else:
+            buffer.append(char)
+    items.append("".join(buffer).strip())
+    return [item for item in items if item]
+
+
+def parse_trigger_list(text: str) -> tuple[list[str], str]:
+    """Parse ``(a, b, "c d") reason`` into items and the trailing reason.
+
+    Without parentheses the old single-line form is kept: the whole line is
+    one item unless commas were used, and no reason is read from it.
+    """
+    text = (text or "").strip()
+    if text.startswith("("):
+        quote = None
+        end = -1
+        for index, char in enumerate(text):
+            if quote:
+                if char == quote:
+                    quote = None
+            elif char in ('"', "'"):
+                quote = char
+            elif char == ")":
+                end = index
+                break
+        if end > 0:
+            return _split_on_commas(text[1:end]), text[end + 1 :].strip()
+    if "," in text:
+        return _split_on_commas(text), ""
+    return ([text], "") if text else ([], "")
+
+
+def parse_add_arguments(text: str) -> tuple[list[str], str, str, str]:
+    """Parse one add line into items, reason, action and action value."""
+    items, reason = parse_trigger_list(text)
+    if reason:
+        reason, action, value = parse_action_modifier(reason)
+    elif len(items) == 1:
+        # Single-trigger form: a trailing modifier applies to that trigger,
+        # everything before it stays the trigger itself.
+        cleaned, action, value = parse_action_modifier(items[0])
+        if action:
+            items = [cleaned]
+    else:
+        action, value = "", ""
+    return items, reason, action, value
+
+
 def matches_text(trigger: str, text: str) -> bool:
     """Whether a stored trigger fires against a message body."""
     kind, payload = parse_trigger(trigger)
@@ -227,7 +324,7 @@ def _pack_match(message: Message, payload: str, kind: str) -> bool:
     )
 
 
-@on_message(*disableable("blacklist", admin_ok=True), chained=True)
+@on_message(*disableable(["blacklist", "blocklist"], admin_ok=True), chained=True)
 @check_admin(is_user=True)
 @typing_action
 async def blacklist(client, message: Message):
@@ -271,7 +368,7 @@ async def blacklist(client, message: Message):
         await send_message(message, text, parse_mode=ParseMode.HTML)
 
 
-@on_message(filters.command("addblacklist"), chained=True)
+@on_message(filters.command(["addblacklist", "addblocklist"]), chained=True)
 @check_admin(is_user=True)
 @typing_action
 async def add_blacklist(client, message: Message):
@@ -294,11 +391,17 @@ async def add_blacklist(client, message: Message):
 
     if len(words) > 1:
         text = words[1]
-        to_blacklist = list(
-            {trigger.strip() for trigger in text.split("\n") if trigger.strip()},
-        )
-        for trigger in to_blacklist:
-            sql.add_to_blacklist(chat_id, trigger.lower())
+        to_blacklist = []
+        seen = set()
+        for line in text.split("\n"):
+            items, reason, action, value = parse_add_arguments(line)
+            for item in items:
+                trigger = item.strip().lower()
+                if not trigger or trigger in seen:
+                    continue
+                seen.add(trigger)
+                sql.add_to_blacklist(chat_id, trigger, reason, action, value)
+                to_blacklist.append(trigger)
 
         if len(to_blacklist) == 1:
             await send_message(
@@ -327,7 +430,7 @@ async def add_blacklist(client, message: Message):
         )
 
 
-@on_message(filters.command("unblacklist"), chained=True)
+@on_message(filters.command(["unblacklist", "rmblocklist"]), chained=True)
 @check_admin(is_user=True)
 @typing_action
 async def unblacklist(client, message: Message):
@@ -350,9 +453,16 @@ async def unblacklist(client, message: Message):
 
     if len(words) > 1:
         text = words[1]
-        to_unblacklist = list(
-            {trigger.strip() for trigger in text.split("\n") if trigger.strip()},
-        )
+        to_unblacklist = []
+        seen = set()
+        for line in text.split("\n"):
+            items, _reason = parse_trigger_list(line)
+            for item in items:
+                trigger = item.strip().lower()
+                if not trigger or trigger in seen:
+                    continue
+                seen.add(trigger)
+                to_unblacklist.append(trigger)
         successful = 0
         for trigger in to_unblacklist:
             success = sql.rm_from_blacklist(chat_id, trigger.lower())
@@ -409,7 +519,96 @@ async def unblacklist(client, message: Message):
         )
 
 
-@on_message(filters.command("blacklistmode"), chained=True)
+@on_message(filters.command("rmblocklistall"), chained=True)
+@loggable
+@check_admin(only_owner=True)
+@typing_action
+async def rm_blacklist_all(client, message: Message):
+    """Clear every trigger in the chat. Owner only: it is all-or-nothing."""
+    chat = message.chat
+    user = message.from_user
+
+    conn = await connected(client, message, chat, user.id, need_admin=True)
+    if conn:
+        chat_id = conn
+        chat_name = (await client.get_chat(conn)).title
+    else:
+        if chat.type == ChatType.PRIVATE:
+            await send_message(message, "Use this command in a group, not in PM.")
+            return
+        chat_id = chat.id
+        chat_name = chat.title
+
+    count = await asyncio.to_thread(sql.rm_all_blacklist, chat_id)
+    await send_message(
+        message,
+        "Removed {} blacklist triggers from <b>{}</b>!".format(
+            count,
+            html.escape(chat_name),
+        ),
+        parse_mode=ParseMode.HTML,
+    )
+    return (
+        f"<b>{html.escape(chat.title or 'chat')}:</b>\n"
+        f"#BLOCKLIST\n"
+        f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
+        f"Removed {count} blacklist triggers."
+    )
+
+
+@on_message(
+    filters.command(["setblocklistreason", "resetblocklistreason"]), chained=True
+)
+@loggable
+@check_admin(is_user=True)
+@typing_action
+async def set_blocklist_reason(client, message: Message):
+    """Set the reason used by triggers added without their own reason."""
+    chat = message.chat
+    user = message.from_user
+    words = message.text.split(None, 1)
+
+    conn = await connected(client, message, chat, user.id, need_admin=True)
+    if conn:
+        chat_id = conn
+    else:
+        if chat.type == ChatType.PRIVATE:
+            await send_message(message, "Use this command in a group, not in PM.")
+            return
+        chat_id = chat.id
+
+    if message.command[0].lower().startswith("reset"):
+        reason = ""
+    elif len(words) > 1:
+        reason = words[1].strip()
+    else:
+        await send_message(
+            message,
+            "Provide a reason with `/setblocklistreason <reason>`.",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        return
+
+    await asyncio.to_thread(sql.set_default_reason, chat_id, reason)
+    if reason:
+        await send_message(
+            message,
+            "Default blocklist reason set to <code>{}</code>.".format(
+                html.escape(reason),
+            ),
+            parse_mode=ParseMode.HTML,
+        )
+    else:
+        await send_message(message, "Default blocklist reason reset.")
+    return (
+        f"<b>{html.escape(chat.title or 'chat')}:</b>\n"
+        f"#BLOCKLISTREASON\n"
+        f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
+        f"Changed the default blocklist reason."
+    )
+
+
+@on_message(filters.command(["blacklistmode", "blocklistmode"]), chained=True)
 @loggable
 @check_admin(is_user=True)
 @typing_action
@@ -745,6 +944,17 @@ async def _silent_action(client, chat, user, getmode, value, trigger) -> None:
         LOGGER.exception("Silent blacklist action failed in %s", chat.id)
 
 
+def _trigger_action_info(chat_id, trigger):
+    """Read a trigger's stored reason/action, tolerating a missing helper."""
+    try:
+        info = sql.get_trigger_action(chat_id, trigger)
+    except Exception:
+        info = None
+    if not isinstance(info, (tuple, list)) or len(info) != 3:
+        return ("", "", "")
+    return tuple(info)
+
+
 @on_message(
     GROUPS & (filters.text | filters.caption | filters.sticker | filters.photo),
     chained=True,
@@ -780,6 +990,32 @@ async def del_blacklist(client, message: Message):
             if await asyncio.to_thread(is_approved, chat.id, user.id):
                 return
             getmode, value = sql.get_blacklist_setting(chat.id)
+            stored_reason, trigger_action, trigger_value = _trigger_action_info(
+                chat.id, trigger
+            )
+            reason = stored_reason or await asyncio.to_thread(
+                sql.get_default_reason, chat.id
+            )
+            reason_text = f" Reason: {html.escape(reason)}" if reason else ""
+            per_trigger_silent = False
+            if trigger_action:
+                action_modes = {
+                    "warn": 2,
+                    "mute": 3,
+                    "kick": 4,
+                    "ban": 5,
+                    "tban": 6,
+                    "tmute": 7,
+                }
+                base_action = (
+                    trigger_action[1:]
+                    if trigger_action.startswith("s")
+                    else trigger_action
+                )
+                if base_action in action_modes:
+                    getmode = action_modes[base_action]
+                    value = trigger_value or value
+                    per_trigger_silent = trigger_action.startswith("s")
             try:
                 # /blocklistdelete controls the message separately from the
                 # action, so an admin can ban without the text being removed.
@@ -794,10 +1030,19 @@ async def del_blacklist(client, message: Message):
 
                 if getmode == 0:
                     return
-                elif sql.is_silent_type(chat.id, getmode):
+                elif sql.is_silent_type(chat.id, getmode) or per_trigger_silent:
                     # Silent mode still logs to the channel, so the group
                     # stays quiet without admins losing the audit trail.
-                    if getmode in (3, 4, 5, 6, 7):
+                    if getmode == 2:
+                        await warn(
+                            user,
+                            chat,
+                            reason or f"Using blacklisted trigger: {trigger}",
+                            message,
+                            None,
+                            silent=True,
+                        )
+                    elif getmode in (3, 4, 5, 6, 7):
                         await _silent_action(
                             client, chat, user, getmode, value, trigger
                         )
@@ -815,7 +1060,7 @@ async def del_blacklist(client, message: Message):
                     await warn(
                         user,
                         chat,
-                        ("Using blacklisted trigger: {}".format(trigger)),
+                        reason or ("Using blacklisted trigger: {}".format(trigger)),
                         message,
                         user,
                     )
@@ -829,7 +1074,8 @@ async def del_blacklist(client, message: Message):
                     )
                     await client.send_message(
                         chat.id,
-                        f"Muted {html.escape(user.first_name)} for using a blacklisted word: {html.escape(trigger)}!",
+                        f"Muted {html.escape(user.first_name)} for using a blacklisted word: {html.escape(trigger)}!"
+                        + reason_text,
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -840,7 +1086,8 @@ async def del_blacklist(client, message: Message):
                     await client.unban_chat_member(chat.id, user.id)
                     await client.send_message(
                         chat.id,
-                        f"Kicked {html.escape(user.first_name)} for using a blacklisted word: {html.escape(trigger)}!",
+                        f"Kicked {html.escape(user.first_name)} for using a blacklisted word: {html.escape(trigger)}!"
+                        + reason_text,
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -851,7 +1098,8 @@ async def del_blacklist(client, message: Message):
                     await client.ban_chat_member(chat.id, user.id)
                     await client.send_message(
                         chat.id,
-                        f"Banned {html.escape(user.first_name)} for using a blacklisted word: {html.escape(trigger)}",
+                        f"Banned {html.escape(user.first_name)} for using a blacklisted word: {html.escape(trigger)}"
+                        + reason_text,
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -866,7 +1114,8 @@ async def del_blacklist(client, message: Message):
                     await client.ban_chat_member(chat.id, user.id, until_date=ban_until)
                     await client.send_message(
                         chat.id,
-                        f"Banned {html.escape(user.first_name)} until '{html.escape(value)}' for using a blacklisted word: {html.escape(trigger)}!",
+                        f"Banned {html.escape(user.first_name)} until '{html.escape(value)}' for using a blacklisted word: {html.escape(trigger)}!"
+                        + reason_text,
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -886,7 +1135,8 @@ async def del_blacklist(client, message: Message):
                     )
                     await client.send_message(
                         chat.id,
-                        f"Muted {html.escape(user.first_name)} until '{html.escape(value)}' for using a blacklisted word: {html.escape(trigger)}!",
+                        f"Muted {html.escape(user.first_name)} until '{html.escape(value)}' for using a blacklisted word: {html.escape(trigger)}!"
+                        + reason_text,
                         message_thread_id=(
                             message.message_thread_id if chat.is_forum else None
                         ),
@@ -924,19 +1174,23 @@ __mod_name__ = "Blacklist"
 
 __help__ = """
 Commands:
-/blacklist: Show the current blacklisted words.
+/blacklist, /blocklist: Show the current blacklisted words.
 
 Admin only:
-/addblacklist <triggers>: Add triggers to the blacklist. Each line is one trigger, so use separate lines to add several.
-/unblacklist <triggers>: Remove triggers from the blacklist. Each line is one trigger, so use separate lines to remove several.
+/addblacklist, /addblocklist <triggers>: Add triggers to the blacklist. Each line is one trigger. A parenthesised list adds several at once: /addblocklist (hi, hey, "hey there") reason
+/unblacklist, /rmblocklist <triggers>: Remove triggers. The same parenthesised list form works here.
+/setblocklistreason <reason>: Set the reason used when a trigger is added without one.
+/resetblocklistreason: Go back to no default reason.
 /blacklistmode <off/del/warn/ban/kick/mute/tban/tmute>: Set the action for messages that contain blacklisted words.
 /blocklistdelete <on/off>: Set whether a matched message is deleted. This is separate from the action above.
 
 Owner only:
+/rmblocklistall: Clear every trigger in this chat.
 /silentactions <on/off>: Master switch for applying actions without announcing them. A log channel must be set first.
 /silentactions sban/skick/smute: Mark a single action as silent.
 
 Trigger modifiers:
+A reason may end in {ban}, {kick}, {mute}, {warn}, {tban 2w}, {tmute 1h}, {sban}, {skick}, {smute} or {swarn}. The action applies to that trigger only; the s-prefixed ones act without a chat message.
 `?` matches one character; `*` matches any run of characters.
 `prefix:<trigger>` matches only at the start of a message; `exact:<trigger>` matches the whole message.
 `lookalike:<trigger>` also matches visually similar words, such as `b0t` or Cyrillic spellings.

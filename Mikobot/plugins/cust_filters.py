@@ -565,7 +565,7 @@ async def reply_filter(client, message: Message):
                 break
 
 
-@on_message(GROUPS & filters.command("removeallfilters"), chained=True)
+@on_message(GROUPS & filters.command(["removeallfilters", "stopall"]), chained=True)
 async def rmall_filters(client, message: Message):
     chat = message.chat
     user = message.from_user
@@ -705,7 +705,7 @@ Separate replies with %%% to get random replies. Example:
 /stop <filter keyword>: Stop a filter.
 
 Chat creator only:
-/removeallfilters: Remove all filters in this chat at once.
+/removeallfilters, /stopall: Remove all filters in this chat at once.
 
 Filters support formatters such as {first} and {last}, and buttons. Media spoilers and media captions are supported.
 """
