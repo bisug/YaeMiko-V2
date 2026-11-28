@@ -1,6 +1,8 @@
 import asyncio
 import html
 import re
+import time
+from datetime import timedelta
 
 from pyrogram import filters
 from pyrogram.enums import ButtonStyle, ChatMemberStatus, ParseMode
@@ -8,6 +10,7 @@ from pyrogram.errors import ReplyMessageIdInvalid, RPCError
 from pyrogram.types import (
     CallbackQuery,
     Chat,
+    ChatPermissions,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
@@ -27,7 +30,7 @@ from Mikobot.plugins.helper_funcs.extraction import (
     extract_user_and_text,
 )
 from Mikobot.plugins.helper_funcs.misc import split_message
-from Mikobot.plugins.helper_funcs.string_handling import split_quotes
+from Mikobot.plugins.helper_funcs.string_handling import extract_time, split_quotes
 from Mikobot.plugins.log_channel import loggable
 from Mikobot.utils.consts import ChatID, MessageLimit
 from Mikobot.utils.filters import GROUPS
@@ -42,6 +45,7 @@ async def warn(
     reason: str,
     message: Message,
     warner: User = None,
+    silent: bool = False,
 ) -> str:
     if await is_user_admin(chat, user.id):
         await message.reply_text("Admins cannot be warned.")
@@ -53,33 +57,45 @@ async def warn(
         warner_tag = "Automated warn filter."
 
     limit, soft_warn = sql.get_warn_setting(chat.id)
+    mode, mode_value = sql.get_warn_mode(chat.id)
+    mode = mode or ("kick" if soft_warn else "ban")
     num_warns, reasons = sql.warn_user(user.id, chat.id, reason)
     if num_warns >= limit:
         sql.reset_warns(user.id, chat.id)
-        if soft_warn:  # kick
+        if mode == "kick":
             await client.unban_chat_member(chat.id, user.id)
-            reply = (
-                f"<b>Kick event</b>\n"
-                f"<code> </code><b>•  User:</b> {mention_html(user.id, user.first_name)}\n"
-                f"<code> </code><b>•  Count:</b> {limit}"
+        elif mode == "mute":
+            await client.restrict_chat_member(
+                chat.id, user.id, ChatPermissions(can_send_messages=False)
             )
-
-        else:  # ban
+        elif mode == "tmute":
+            await client.restrict_chat_member(
+                chat.id,
+                user.id,
+                ChatPermissions(can_send_messages=False),
+                until_date=timedelta(seconds=mode_value),
+            )
+        elif mode == "tban":
+            await client.ban_chat_member(
+                chat.id, user.id, until_date=timedelta(seconds=mode_value)
+            )
+        else:
             await client.ban_chat_member(chat.id, user.id)
-            reply = (
-                f"<b>Ban event</b>\n"
-                f"<code> </code><b>•  User:</b> {mention_html(user.id, user.first_name)}\n"
-                f"<code> </code><b>•  Count:</b> {limit}"
-            )
+        reply = (
+            f"<b>{mode.title()} event</b>\n"
+            f"<code> </code><b>•  User:</b> {mention_html(user.id, user.first_name)}\n"
+            f"<code> </code><b>•  Count:</b> {limit}"
+        )
 
         for warn_reason in reasons:
             reply += f"\n - {html.escape(warn_reason)}"
 
-        await message.reply_sticker(BAN_STICKER)  # Saitama's sticker
+        if not silent:
+            await message.reply_sticker(BAN_STICKER)  # Ban sticker
         keyboard = None
         log_reason = (
             f"<b>{html.escape(chat.title)}:</b>\n"
-            f"#WARN_BAN\n"
+            f"#WARN_{mode.upper()}\n"
             f"<b>Admin:</b> {warner_tag}\n"
             f"<b>User:</b> {mention_html(user.id, user.first_name)}\n"
             f"<b>Reason:</b> {html.escape(reason)}\n"
@@ -116,21 +132,45 @@ async def warn(
             f"<b>Counts:</b> <code>{num_warns}/{limit}</code>"
         )
 
-    try:
-        await message.reply_text(
-            reply, reply_markup=keyboard, parse_mode=ParseMode.HTML
-        )
-    except RPCError as excp:
-        if isinstance(excp, ReplyMessageIdInvalid):
-            # Reply without quoting, since the original message is gone.
+    if not silent:
+        try:
             await message.reply_text(
-                reply,
-                reply_markup=keyboard,
-                parse_mode=ParseMode.HTML,
+                reply, reply_markup=keyboard, parse_mode=ParseMode.HTML
             )
-        else:
-            raise
+        except RPCError as excp:
+            if isinstance(excp, ReplyMessageIdInvalid):
+                # Reply without quoting, since the original message is gone.
+                await message.reply_text(
+                    reply,
+                    reply_markup=keyboard,
+                    parse_mode=ParseMode.HTML,
+                )
+            else:
+                raise
     return log_reason
+
+
+async def _remove_warn(client, chat, user_id, reply, admin, answer=None) -> str:
+    """Remove one warn and report it through a reply or an edited callback text."""
+    if not sql.remove_warn(user_id, chat.id):
+        await reply("User already has no warns.", parse_mode=ParseMode.HTML)
+        if answer:
+            await answer()
+        return ""
+
+    await reply(
+        f"Warn removed by {mention_html(admin.id, admin.first_name)}.",
+        parse_mode=ParseMode.HTML,
+    )
+    if answer:
+        await answer("Warn removed.")
+    user_member = await client.get_chat_member(chat.id, user_id)
+    return (
+        f"<b>{html.escape(chat.title)}:</b>\n"
+        f"#UNWARN\n"
+        f"<b>Admin:</b> {mention_html(admin.id, admin.first_name)}\n"
+        f"<b>User:</b> {mention_html(user_member.user.id, user_member.user.first_name)}"
+    )
 
 
 @on_callback(filters.regex(r"^rm_warn\(-?\d+\)$"), chained=True)
@@ -153,37 +193,19 @@ async def button(client, query: CallbackQuery) -> str:
     else:
         await query.answer("You need to be an admin to do this.")
         return
-    res = sql.remove_warn(user_id, chat.id)
-    if res:
-        await query.message.edit_text(
-            "Warn removed by {}.".format(mention_html(user.id, user.first_name)),
-            parse_mode=ParseMode.HTML,
-        )
-        user_member = await client.get_chat_member(chat.id, user_id)
-        await query.answer("Warn removed.")
-        return (
-            f"<b>{html.escape(chat.title)}:</b>\n"
-            f"#UNWARN\n"
-            f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
-            f"<b>User:</b> {mention_html(user_member.user.id, user_member.user.first_name)}"
-        )
-    else:
-        await query.message.edit_text(
-            "User already has no warns.",
-            parse_mode=ParseMode.HTML,
-        )
-        await query.answer()
-
-    return ""
+    return await _remove_warn(
+        client, chat, user_id, query.message.edit_text, user, answer=query.answer
+    )
 
 
-@on_message(GROUPS, filters.command(["warn", "dwarn"]), chained=True)
+@on_message(GROUPS, filters.command(["warn", "dwarn", "swarn"]), chained=True)
 @loggable
 @check_admin(permission="can_restrict_members", is_both=True)
 async def warn_user(client, message: Message) -> str:
     args = message.command[1:] if len(message.command) > 1 else []
     chat: Chat | None = message.chat
     warner: User | None = message.from_user
+    silent = message.command[0].lower() == "swarn"
 
     user_id, reason = await extract_user_and_text(message, args)
     if (
@@ -204,10 +226,11 @@ async def warn_user(client, message: Message) -> str:
                 reason,
                 message.reply_to_message,
                 warner,
+                silent=silent,
             )
         else:
             member = await client.get_chat_member(chat.id, user_id)
-            return await warn(member.user, chat, reason, message, warner)
+            return await warn(member.user, chat, reason, message, warner, silent=silent)
     else:
         await message.reply_text("That is not a valid user ID.")
     return ""
@@ -274,6 +297,41 @@ async def warns(client, message: Message):
             )
     else:
         await message.reply_text("This user has no warns.")
+
+
+@on_message(GROUPS, filters.command("warnings"), chained=True)
+async def warn_config(client, message: Message):
+    chat: Chat | None = message.chat
+    limit, soft_warn = sql.get_warn_setting(chat.id)
+    mode, mode_value = sql.get_warn_mode(chat.id)
+    mode = mode or ("kick" if soft_warn else "ban")
+    if mode in ("tban", "tmute"):
+        mode = f"{mode} ({mode_value}s)"
+    expiry = sql.get_warn_time(chat.id)
+
+    await message.reply_text(
+        f"Warn configuration for this chat:\n"
+        f"Limit: {limit}\n"
+        f"Mode: {mode}\n"
+        f"Expiry: {f'{expiry} seconds' if expiry else 'off'}",
+    )
+
+
+@on_message(GROUPS, filters.command("rmwarn"), chained=True)
+@loggable
+@check_admin(is_both=True)
+async def remove_warn_user(client, message: Message) -> str:
+    args = message.command[1:] if len(message.command) > 1 else []
+    chat: Chat | None = message.chat
+    admin: User | None = message.from_user
+
+    user_id = await extract_user(message, args)
+    if not user_id:
+        await message.reply_text("That is not a valid user ID.")
+        return ""
+
+    # Keep the same admin check, wording and log entry as the remove button.
+    return await _remove_warn(client, chat, user_id, message.reply_text, admin)
 
 
 @on_message(GROUPS, filters.command("addwarn"), chained=True)
@@ -405,7 +463,7 @@ async def reply_filter(client, message: Message) -> str:
     return await warn(user, chat, warn_filter.reply, message)
 
 
-@on_message(GROUPS, filters.command("warnlimit"), chained=True)
+@on_message(GROUPS, filters.command(["warnlimit", "setwarnlimit"]), chained=True)
 @check_admin(is_user=True)
 @loggable
 async def set_warn_limit(client, message: Message) -> str:
@@ -482,6 +540,88 @@ async def set_warn_strength(client, message: Message):
     return ""
 
 
+@on_message(GROUPS, filters.command("setwarnmode"), chained=True)
+@check_admin(is_user=True)
+@loggable
+async def set_warn_mode(client, message: Message) -> str:
+    args = message.command[1:] if len(message.command) > 1 else []
+    chat: Chat | None = message.chat
+    user: User | None = message.from_user
+    msg: Message | None = message
+
+    if not args:
+        await msg.reply_text("Usage: /setwarnmode <ban|tban|kick|mute|tmute> [time]")
+        return ""
+    action = args[0].lower()
+    if action not in ("ban", "tban", "kick", "mute", "tmute"):
+        await msg.reply_text("Use ban, tban, kick, mute, or tmute.")
+        return ""
+
+    value = 0
+    time_val = None
+    if action in ("tban", "tmute"):
+        if len(args) < 2:
+            await msg.reply_text("Specify a duration, for example 1h.")
+            return ""
+        time_val = args[1]
+        expiry = await extract_time(message, time_val)
+        if not expiry:
+            return ""
+        value = max(1, int(expiry - time.time()))
+
+    sql.set_warn_mode(chat.id, action, value)
+    text = f"Warn mode set to {action}"
+    if time_val:
+        text += f" for {time_val}"
+    await msg.reply_text(text)
+    return (
+        f"<b>{html.escape(chat.title)}:</b>\n"
+        f"#SET_WARN_MODE\n"
+        f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
+        f"Set the warn mode to <code>{action}</code>"
+    )
+
+
+@on_message(GROUPS, filters.command(["setwarntime", "warntime"]), chained=True)
+@check_admin(is_user=True)
+@loggable
+async def set_warn_time(client, message: Message) -> str:
+    args = message.command[1:] if len(message.command) > 1 else []
+    chat: Chat | None = message.chat
+    user: User | None = message.from_user
+    msg: Message | None = message
+
+    if not args:
+        current = sql.get_warn_time(chat.id)
+        state = f"{current} seconds" if current else "off"
+        await msg.reply_text(f"Warning expiry is currently {state}.")
+        return ""
+
+    arg = args[0].lower()
+    if arg in ("off", "no", "never", "0"):
+        sql.set_warn_time(chat.id, 0)
+        await msg.reply_text("Warning expiry disabled.")
+        return (
+            f"<b>{html.escape(chat.title)}:</b>\n"
+            f"#SET_WARN_TIME\n"
+            f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
+            f"Disabled warning expiry"
+        )
+
+    expiry = await extract_time(message, args[0])
+    if not expiry:
+        return ""
+    duration = max(1, int(expiry - time.time()))
+    sql.set_warn_time(chat.id, duration)
+    await msg.reply_text(f"Warnings will expire after {args[0]}.")
+    return (
+        f"<b>{html.escape(chat.title)}:</b>\n"
+        f"#SET_WARN_TIME\n"
+        f"<b>Admin:</b> {mention_html(user.id, user.first_name)}\n"
+        f"Set warning expiry to <code>{args[0]}</code>"
+    )
+
+
 def __stats__():
     return (
         f"• {sql.num_warns()} overall warns, across {sql.num_warn_chats()} chats.\n"
@@ -510,16 +650,21 @@ def __chat_settings__(chat_id, user_id):
 
 __help__ = """
 /warns <userhandle>: Show a user's warn count and reasons.
+/warnings: Show the warn limit, action at the limit and warning expiry.
 /warnlist: List all active warning filters.
 
 Admin only:
 /warn <userhandle>: Warn a user. Users are banned when they reach the warn limit. Can be used as a reply.
 /dwarn <userhandle>: Warn a user and delete the message. Users are banned when they reach the warn limit. Can be used as a reply.
+/swarn <userhandle>: Warn a user without a public confirmation.
 /resetwarn <userhandle>: Reset a user's warns. Can be used as a reply.
+/rmwarn <userhandle>: Remove one warn from a user.
 /addwarn <keyword> <reply message>: Set a warning filter for a keyword. Quote multi-word keywords, for example /addwarn "very angry" This is an angry user.
 /nowarn <keyword>: Remove a warning filter.
-/warnlimit <num>: Set the warn limit.
+/warnlimit <num>, /setwarnlimit <num>: Set the warn limit.
+/setwarnmode <ban|tban|kick|mute|tmute> [time]: Choose the action at the warn limit. Timed actions need a duration such as 1h.
 /strongwarn <on/yes/off/no>: Ban users who exceed the limit when on. Otherwise, kick them.
+/setwarntime <time|off>, /warntime <time|off>: Set when warnings expire, or turn expiry off.
 """
 
 __mod_name__ = "Warns"

@@ -24,6 +24,7 @@ from Database.sql import (
     BASE,
     ENGINE,
     SESSION,
+    ensure_columns,
     ensure_index,
     run_migration,
     unit_of_work_guard,
@@ -41,14 +42,25 @@ class Federations(BASE):
     fed_rules = Column(UnicodeText)
     fed_log = Column(UnicodeText)
     fed_users = Column(UnicodeText)
+    fed_reason = Column(Boolean, default=False)
 
-    def __init__(self, owner_id, fed_name, fed_id, fed_rules, fed_log, fed_users):
+    def __init__(
+        self,
+        owner_id,
+        fed_name,
+        fed_id,
+        fed_rules,
+        fed_log,
+        fed_users,
+        fed_reason=False,
+    ):
         self.owner_id = owner_id
         self.fed_name = fed_name
         self.fed_id = fed_id
         self.fed_rules = fed_rules
         self.fed_log = fed_log
         self.fed_users = fed_users
+        self.fed_reason = fed_reason
 
 
 class ChatF(BASE):
@@ -133,6 +145,14 @@ ensure_index("feds_subs_sub_idx", "feds_subs", "fed_subs")
 
 # bans_feds filters and deletes by user_id across federations.
 ensure_index("bans_feds_user_idx", "bans_feds", "user_id")
+
+
+def _ensure_columns() -> None:
+    """Add the reason requirement column to a federation table made earlier."""
+    ensure_columns("feds", Federations)
+
+
+run_migration(_ensure_columns)
 
 
 def _widen_user_id_column(table: str, column: str) -> None:
@@ -399,6 +419,7 @@ def new_fed(owner_id, fed_name, fed_id):
             "Rules is not set in this federation.",
             None,
             fed_users,
+            False,
         )
         SESSION.add(fed)
         SESSION.commit()
@@ -409,6 +430,7 @@ def new_fed(owner_id, fed_name, fed_id):
             "flog": None,
             "fusers": fed_users,
             "members_set": set(),
+            "fed_reason": False,
         }
         FEDERATION_BYFEDID[str(fed_id)] = {
             "owner": str(owner_id),
@@ -417,6 +439,7 @@ def new_fed(owner_id, fed_name, fed_id):
             "flog": None,
             "fusers": fed_users,
             "members_set": set(),
+            "fed_reason": False,
         }
         FEDERATION_BYNAME[fed_name] = {
             "fid": str(fed_id),
@@ -425,6 +448,7 @@ def new_fed(owner_id, fed_name, fed_id):
             "flog": None,
             "fusers": fed_users,
             "members_set": set(),
+            "fed_reason": False,
         }
         return fed
 
@@ -590,6 +614,7 @@ def user_demote_fed(fed_id, user_id):
             fed_rules,
             fed_log,
             fed_users,
+            getfed.get("fed_reason", False),
         )
         SESSION.merge(fed)
         SESSION.commit()
@@ -631,6 +656,7 @@ def user_join_fed(fed_id, user_id):
             fed_rules,
             fed_log,
             fed_users,
+            getfed.get("fed_reason", False),
         )
         SESSION.merge(fed)
         SESSION.commit()
@@ -714,6 +740,7 @@ def set_frules(fed_id, rules):
             fed_rules,
             fed_log,
             str(fed_members),
+            getfed.get("fed_reason", False),
         )
         SESSION.merge(fed)
         SESSION.commit()
@@ -927,6 +954,31 @@ def search_fed_by_id(fed_id):
     return FEDERATION_BYFEDID.get(fed_id) or False
 
 
+def get_fed_reason(fed_id):
+    getfed = FEDERATION_BYFEDID.get(str(fed_id))
+    return bool(getfed.get("fed_reason")) if getfed else False
+
+
+@unit_of_work_guard
+def set_fed_reason(fed_id, enabled):
+    with FEDS_LOCK:
+        fed = SESSION.get(Federations, str(fed_id))
+        if fed is None:
+            return False
+        fed.fed_reason = bool(enabled)
+        SESSION.commit()
+
+        enable = bool(enabled)
+        getfed = FEDERATION_BYFEDID.get(str(fed_id))
+        if getfed is not None:
+            getfed["fed_reason"] = enable
+        for cache in (FEDERATION_BYOWNER, FEDERATION_BYNAME):
+            for entry in cache.values():
+                if str(entry.get("fid")) == str(fed_id):
+                    entry["fed_reason"] = enable
+        return True
+
+
 def user_feds_report(user_id: int) -> bool:
     user_setting = FEDERATION_NOTIFICATION.get(str(user_id))
     if user_setting is None:
@@ -983,6 +1035,7 @@ def set_fed_log(fed_id, chat_id):
             fed_rules,
             fed_log,
             str(fed_members),
+            getfed.get("fed_reason", False),
         )
         SESSION.merge(fed)
         SESSION.commit()
@@ -1057,6 +1110,7 @@ def __load_all_feds():
                 "flog": x.fed_log,
                 "fusers": str(x.fed_users),
                 "members_set": members_set,
+                "fed_reason": bool(x.fed_reason),
             }
             FEDERATION_BYFEDID[str(x.fed_id)] = {
                 "owner": str(x.owner_id),
@@ -1065,6 +1119,7 @@ def __load_all_feds():
                 "flog": x.fed_log,
                 "fusers": str(x.fed_users),
                 "members_set": members_set,
+                "fed_reason": bool(x.fed_reason),
             }
             FEDERATION_BYNAME[x.fed_name] = {
                 "fid": str(x.fed_id),
@@ -1073,6 +1128,7 @@ def __load_all_feds():
                 "flog": x.fed_log,
                 "fusers": str(x.fed_users),
                 "members_set": members_set,
+                "fed_reason": bool(x.fed_reason),
             }
     except Exception:
         pass

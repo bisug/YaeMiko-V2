@@ -23,6 +23,7 @@ SOFTWARE.
 """
 
 import threading
+import time
 
 from sqlalchemy import (
     BigInteger,
@@ -36,7 +37,14 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects import postgresql
 
-from Database.sql import BASE, SESSION, ensure_index, unit_of_work_guard
+from Database.sql import (
+    BASE,
+    SESSION,
+    ensure_columns,
+    ensure_index,
+    run_migration,
+    unit_of_work_guard,
+)
 
 
 class Warns(BASE):
@@ -46,12 +54,15 @@ class Warns(BASE):
     chat_id = Column(String, primary_key=True)
     num_warns = Column(BigInteger, default=0)
     reasons = Column(postgresql.ARRAY(UnicodeText))
+    # Start of the current warn batch, so the configured expiry can drop it.
+    first_warn_at = Column(BigInteger, default=0)
 
     def __init__(self, user_id, chat_id):
         self.user_id = user_id
         self.chat_id = str(chat_id)
         self.num_warns = 0
         self.reasons = []
+        self.first_warn_at = 0
 
     def __repr__(self):
         return f"<{self.num_warns} ᴡᴀʀɴs ғᴏʀ {self.user_id} ɪɴ {self.chat_id} ғᴏʀ ʀᴇᴀsᴏɴs {self.reasons}>"
@@ -84,11 +95,27 @@ class WarnSettings(BASE):
     chat_id = Column(String, primary_key=True)
     warn_limit = Column(BigInteger, default=3)
     soft_warn = Column(Boolean, default=False)
+    # Action at the limit: ban, tban, kick, mute or tmute.
+    warn_mode = Column(UnicodeText, default="ban")
+    warn_mode_value = Column(BigInteger, default=0)
+    # Seconds before a warn batch expires. Zero keeps warns forever.
+    warn_time = Column(BigInteger, default=0)
 
-    def __init__(self, chat_id, warn_limit=3, soft_warn=False):
+    def __init__(
+        self,
+        chat_id,
+        warn_limit=3,
+        soft_warn=False,
+        warn_mode="ban",
+        warn_mode_value=0,
+        warn_time=0,
+    ):
         self.chat_id = str(chat_id)
         self.warn_limit = warn_limit
         self.soft_warn = soft_warn
+        self.warn_mode = warn_mode
+        self.warn_mode_value = warn_mode_value
+        self.warn_time = warn_time
 
     def __repr__(self):
         return f"<{self.chat_id} ʜᴀs {self.warn_limit} ᴘᴏssɪʙʟᴇ ᴡᴀʀɴs.>"
@@ -102,7 +129,35 @@ WARN_SETTINGS_LOCK = threading.RLock()
 # with the user id, so the lookup scanned the whole table.
 ensure_index("warns_chat_id_idx", "warns", "chat_id")
 
+
+def _ensure_columns() -> None:
+    """Add the mode and expiry columns to tables made by an older build."""
+    ensure_columns("warns", Warns)
+    ensure_columns("warn_settings", WarnSettings)
+
+
+run_migration(_ensure_columns)
+
 WARN_FILTERS = {}
+
+
+@unit_of_work_guard
+def _warn_time_setting(chat_id):
+    setting = SESSION.get(WarnSettings, str(chat_id))
+    return int(getattr(setting, "warn_time", 0) or 0) if setting else 0
+
+
+def _expire_warns(warned_user, chat_id) -> bool:
+    """Clear a batch whose first warn is older than the chat's expiry."""
+    duration = _warn_time_setting(chat_id)
+    if not duration or not getattr(warned_user, "first_warn_at", 0):
+        return False
+    if time.time() - warned_user.first_warn_at < duration:
+        return False
+    warned_user.num_warns = 0
+    warned_user.reasons = []
+    warned_user.first_warn_at = 0
+    return True
 
 
 @unit_of_work_guard
@@ -112,6 +167,9 @@ def warn_user(user_id, chat_id, reason=None):
         if not warned_user:
             warned_user = Warns(user_id, str(chat_id))
 
+        _expire_warns(warned_user, chat_id)
+        if not warned_user.first_warn_at:
+            warned_user.first_warn_at = int(time.time())
         warned_user.num_warns += 1
         if reason:
             warned_user.reasons = (warned_user.reasons or []) + [reason]
@@ -149,6 +207,7 @@ def reset_warns(user_id, chat_id):
         if warned_user:
             warned_user.num_warns = 0
             warned_user.reasons = []
+            warned_user.first_warn_at = 0
 
             SESSION.add(warned_user)
             SESSION.commit()
@@ -161,6 +220,9 @@ def get_warns(user_id, chat_id):
         user = SESSION.get(Warns, (user_id, str(chat_id)))
         if not user:
             return None
+        if _expire_warns(user, chat_id):
+            SESSION.add(user)
+            SESSION.commit()
         reasons = user.reasons
         num = user.num_warns
         return num, reasons
@@ -231,9 +293,60 @@ def set_warn_strength(chat_id, soft_warn):
             curr_setting = WarnSettings(chat_id, soft_warn=soft_warn)
 
         curr_setting.soft_warn = soft_warn
+        # Keep the new mode API coherent with the legacy on/off command.
+        curr_setting.warn_mode = "kick" if soft_warn else "ban"
+        curr_setting.warn_mode_value = 0
 
         SESSION.add(curr_setting)
         SESSION.commit()
+
+
+@unit_of_work_guard
+def set_warn_mode(chat_id, mode, value=0):
+    with WARN_SETTINGS_LOCK:
+        curr_setting = SESSION.get(WarnSettings, str(chat_id))
+        if not curr_setting:
+            curr_setting = WarnSettings(chat_id)
+
+        curr_setting.warn_mode = mode
+        curr_setting.warn_mode_value = int(value)
+        curr_setting.soft_warn = mode == "kick"
+
+        SESSION.add(curr_setting)
+        SESSION.commit()
+
+
+@unit_of_work_guard
+def get_warn_mode(chat_id):
+    try:
+        setting = SESSION.get(WarnSettings, str(chat_id))
+        if not setting:
+            return "ban", 0
+        mode = setting.warn_mode or ("kick" if setting.soft_warn else "ban")
+        return mode, int(setting.warn_mode_value or 0)
+    finally:
+        SESSION.close()
+
+
+@unit_of_work_guard
+def set_warn_time(chat_id, duration):
+    with WARN_SETTINGS_LOCK:
+        curr_setting = SESSION.get(WarnSettings, str(chat_id))
+        if not curr_setting:
+            curr_setting = WarnSettings(chat_id)
+
+        curr_setting.warn_time = int(duration)
+
+        SESSION.add(curr_setting)
+        SESSION.commit()
+
+
+@unit_of_work_guard
+def get_warn_time(chat_id):
+    try:
+        return _warn_time_setting(chat_id)
+    finally:
+        SESSION.close()
 
 
 @unit_of_work_guard

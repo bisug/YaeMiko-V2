@@ -1,4 +1,5 @@
 import ast
+import asyncio
 import csv
 import json
 import re
@@ -24,6 +25,7 @@ from pyrogram.types import (
 from sqlalchemy.exc import SQLAlchemyError
 
 import Database.sql.feds_sql as sql
+from Database.sql import toggle_sql
 from Database.sql.userinfo_sql import get_user_info
 from Mikobot import (
     DRAGONS,
@@ -36,7 +38,7 @@ from Mikobot.events import on_callback, on_message
 from Mikobot.logger import LOGGER
 from Mikobot.plugins.disable import disableable
 from Mikobot.plugins.helper_funcs.alternate import send_message
-from Mikobot.plugins.helper_funcs.chat_status import is_user_admin
+from Mikobot.plugins.helper_funcs.chat_status import check_admin, is_user_admin
 from Mikobot.plugins.helper_funcs.extraction import (
     extract_unt_fedban,
     extract_user,
@@ -284,6 +286,9 @@ async def join_fed(client, message: Message):
         return
 
     fed_id = sql.get_fed_id(chat.id)
+    quiet = await asyncio.to_thread(
+        toggle_sql.is_toggle_on, chat.id, toggle_sql.QUIET_FED
+    )
 
     if user.id not in DRAGONS:
         try:
@@ -314,7 +319,7 @@ async def join_fed(client, message: Message):
             return
 
         get_fedlog = await sql.get_fed_log(args[0])
-        if get_fedlog:
+        if not quiet and get_fedlog:
             if ast.literal_eval(get_fedlog):
                 await _notify(
                     client,
@@ -329,9 +334,10 @@ async def join_fed(client, message: Message):
                     ),
                 )
 
-        await message.reply_text(
-            "This group has joined the federation: {}!".format(getfed["fname"]),
-        )
+        if not quiet:
+            await message.reply_text(
+                "This group has joined the federation: {}!".format(getfed["fname"]),
+            )
 
 
 @on_message(filters.command("leavefed"), chained=True)
@@ -348,6 +354,9 @@ async def leave_fed(client, message: Message):
 
     fed_id = sql.get_fed_id(chat.id)
     fed_info = sql.get_fed_info(fed_id)
+    quiet = await asyncio.to_thread(
+        toggle_sql.is_toggle_on, chat.id, toggle_sql.QUIET_FED
+    )
 
     try:
         member = await client.get_chat_member(chat.id, user.id)
@@ -357,7 +366,7 @@ async def leave_fed(client, message: Message):
     if getuser == ChatMemberStatus.OWNER or user.id in DRAGONS:
         if sql.chat_leave_fed(chat.id) is True:
             get_fedlog = await sql.get_fed_log(fed_id)
-            if get_fedlog:
+            if not quiet and get_fedlog:
                 if ast.literal_eval(get_fedlog):
                     await _notify(
                         client,
@@ -371,10 +380,11 @@ async def leave_fed(client, message: Message):
                             message.message_thread_id if chat.is_forum else None
                         ),
                     )
-            await send_message(
-                message,
-                "This group has left the federation {}!".format(fed_info["fname"]),
-            )
+            if not quiet:
+                await send_message(
+                    message,
+                    "This group has left the federation {}!".format(fed_info["fname"]),
+                )
         else:
             await message.reply_text(
                 "How can you leave a federation that you never joined?!",
@@ -383,7 +393,7 @@ async def leave_fed(client, message: Message):
         await message.reply_text("Only group creators can use this command!")
 
 
-@on_message(filters.command("fpromote"), chained=True)
+@on_message(filters.command(["fpromote", "fedpromote"]), chained=True)
 async def user_join_fed(client, message: Message):
     args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
@@ -446,7 +456,7 @@ async def user_join_fed(client, message: Message):
         await message.reply_text("Only federation owners can do this!")
 
 
-@on_message(filters.command("fdemote"), chained=True)
+@on_message(filters.command(["fdemote", "feddemote"]), chained=True)
 async def user_demote_fed(client, message: Message):
     args = message.command[1:] if len(message.command) > 1 else []
     chat = message.chat
@@ -501,6 +511,106 @@ async def user_demote_fed(client, message: Message):
     else:
         await message.reply_text("Only federation owners can do this!")
         return
+
+
+@on_message(filters.command("feddemoteme"), chained=True)
+async def fed_demote_me(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
+    user = message.from_user
+
+    if not args:
+        await message.reply_text("Usage: /feddemoteme <fedID>")
+        return
+
+    fed_id = args[0]
+    info = sql.get_fed_info(fed_id)
+    if not info:
+        await message.reply_text("This federation does not exist.")
+        return
+    if is_user_fed_owner(fed_id, user.id):
+        await message.reply_text("The federation owner cannot be demoted.")
+        return
+    if not is_user_fed_admin(fed_id, user.id) or not sql.search_user_in_fed(
+        fed_id, user.id
+    ):
+        await message.reply_text("You are not a federation admin in that federation.")
+        return
+
+    if sql.user_demote_fed(fed_id, user.id):
+        await message.reply_text("You have been demoted from the federation.")
+    else:
+        await message.reply_text("Could not demote.")
+
+
+@on_message(filters.command("fedreason"), chained=True)
+async def fed_reason(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
+    chat = message.chat
+    user = message.from_user
+
+    if chat.type == ChatType.PRIVATE:
+        if len(args) < 2:
+            await message.reply_text("Usage: /fedreason <on|off> <fedID> in PM.")
+            return
+        setting, fed_id = args[0].lower(), args[1]
+    else:
+        fed_id = sql.get_fed_id(chat.id)
+        if not fed_id:
+            await message.reply_text("This group is not in any federation!")
+            return
+        if not args:
+            await message.reply_text("Usage: /fedreason <on|off>")
+            return
+        setting = args[0].lower()
+
+    info = sql.get_fed_info(fed_id)
+    if not info:
+        await message.reply_text("This federation does not exist.")
+        return
+    if not is_user_fed_owner(fed_id, user.id):
+        await message.reply_text("Only federation owners can do this!")
+        return
+
+    if setting in ("on", "yes"):
+        sql.set_fed_reason(fed_id, True)
+        await message.reply_text("Fed bans now require a reason.")
+    elif setting in ("off", "no"):
+        sql.set_fed_reason(fed_id, False)
+        await message.reply_text("Fed bans no longer require a reason.")
+    else:
+        await message.reply_text("Enter on or off.")
+
+
+@on_message(filters.group & filters.command("quietfed"), chained=True)
+@check_admin(is_user=True)
+async def quiet_fed(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
+    chat = message.chat
+
+    if args:
+        arg = args[0].lower()
+        if arg in ("on", "yes"):
+            enabled = True
+        elif arg in ("off", "no"):
+            enabled = False
+        else:
+            await message.reply_text("Enter on or off.")
+            return
+        await asyncio.to_thread(
+            toggle_sql.set_toggle, chat.id, toggle_sql.QUIET_FED, enabled
+        )
+        state = "hidden" if enabled else "shown"
+        await message.reply_text(
+            f"Federation join and leave notices are now {state} in this chat."
+        )
+    else:
+        current = await asyncio.to_thread(
+            toggle_sql.is_toggle_on, chat.id, toggle_sql.QUIET_FED
+        )
+        state = "hidden" if current else "shown"
+        await message.reply_text(
+            f"Federation join and leave notices are currently {state} in this chat."
+        )
 
 
 @on_message(filters.command("fedinfo"), chained=True)
@@ -637,6 +747,10 @@ async def fed_ban(client, message: Message):
 
     if not user_id:
         await message.reply_text("You don't seem to be referring to a user")
+        return
+
+    if not reason and sql.get_fed_reason(fed_id):
+        await message.reply_text("A reason is required for fedbans in this federation.")
         return
 
     fban, fbanreason, fbantime = sql.get_fban_user(fed_id, user_id)
@@ -1153,6 +1267,27 @@ async def get_frules(client, message: Message):
     await message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
 
+@on_message(filters.command("clearfrules"), chained=True)
+async def clear_frules(client, message: Message):
+    chat = message.chat
+    user = message.from_user
+
+    if chat.type == ChatType.PRIVATE:
+        await message.reply_text("This command works only in groups, not in PM.")
+        return
+
+    fed_id = sql.get_fed_id(chat.id)
+    if not fed_id:
+        await message.reply_text("This group is not in any federation!")
+        return
+    if not is_user_fed_admin(fed_id, user.id):
+        await message.reply_text("Only fed admins can do this!")
+        return
+
+    sql.set_frules(fed_id, "Rules is not set in this federation.")
+    await message.reply_text("Federation rules cleared.")
+
+
 @on_message(filters.command("fbroadcast"), chained=True)
 async def fed_broadcast(client, message: Message):
     args = message.command[1:] if len(message.command) > 1 else []
@@ -1300,7 +1435,8 @@ async def fed_ban_list(client, message: Message):
                     ),
                 )
             return
-        elif args[0] == "csv":
+        elif args[0] in ("csv", "minicsv"):
+            mini = args[0] == "minicsv"
             jam = time.time()
             new_jam = jam + 1800
             cek = get_chat(chat.id, chat_data)
@@ -1323,24 +1459,32 @@ async def fed_ban_list(client, message: Message):
             else:
                 if user.id not in DRAGONS:
                     put_chat(chat.id, new_jam, chat_data)
-            backups = "id,firstname,lastname,username,reason\n"
+            backups = (
+                "id,reason\n" if mini else "id,firstname,lastname,username,reason\n"
+            )
             for users in getfban:
                 getuserinfo = sql.get_all_fban_users_target(fed_id, users)
-                backups += (
-                    "{user_id},{first_name},{last_name},{user_name},{reason}".format(
+                if mini:
+                    backups += f"{users},{getuserinfo['reason']}\n"
+                else:
+                    backups += "{user_id},{first_name},{last_name},{user_name},{reason}".format(
                         user_id=users,
                         first_name=getuserinfo["first_name"],
                         last_name=getuserinfo["last_name"],
                         user_name=getuserinfo["user_name"],
                         reason=getuserinfo["reason"],
                     )
-                )
-                backups += "\n"
+                    backups += "\n"
+            file_name = (
+                "mikobot_fbanned_users_mini.csv"
+                if mini
+                else "mikobot_fbanned_users.csv"
+            )
             with BytesIO(str.encode(backups)) as output:
-                output.name = "mikobot_fbanned_users.csv"
+                output.name = file_name
                 await message.reply_document(
                     document=output,
-                    file_name="mikobot_fbanned_users.csv",
+                    file_name=file_name,
                     caption="Total {} User are blocked by Federation {}.".format(
                         len(getfban),
                         info["fname"],
@@ -1792,7 +1936,7 @@ async def del_fed_button(client, query: CallbackQuery):
         )
 
 
-@on_message(*disableable(["fedstat", "fbanstat"]), chained=True)
+@on_message(*disableable("fedstat"), chained=True)
 async def fed_stat_user(client, message: Message):
     args = message.command[1:] if len(message.command) > 1 else []
     msg = message
@@ -1844,6 +1988,45 @@ async def fed_stat_user(client, message: Message):
         text += f"- `{banned_user}`: {reason[:20]}\n"
     text += "\nIf you want to find out more about the reasons for Fedban specifically, use /fbanstat <FedID>"
     await send_message(msg, text, parse_mode=ParseMode.MARKDOWN)
+
+
+@on_message(*disableable("fbanstat"), chained=True)
+async def fed_ban_stat(client, message: Message):
+    args = message.command[1:] if len(message.command) > 1 else []
+    if not args:
+        await message.reply_text("Usage: /fbanstat <FedID> or /fbanstat <user> <FedID>")
+        return
+
+    if len(args) >= 2:
+        user_id = await extract_user(message, [args[0]])
+        if user_id is None:
+            await message.reply_text("That is not a valid user.")
+            return
+        fed_id = args[1]
+    else:
+        user_id = message.from_user.id
+        fed_id = args[0]
+    info = sql.get_fed_info(fed_id)
+    if not info:
+        await message.reply_text(f"Fed {fed_id} not found!")
+        return
+
+    _name, reason, banned_at = sql.get_user_fban(fed_id, user_id)
+    subject = "This user" if user_id != message.from_user.id else "You"
+    if not reason:
+        await message.reply_text(f"{subject} are not banned in this federation!")
+        return
+
+    banned_at = (
+        time.strftime("%d/%m/%Y", time.localtime(banned_at))
+        if banned_at
+        else "Unavailable"
+    )
+    await message.reply_text(
+        f"{subject} are banned in this federation because:\n`{reason}`\n"
+        f"*Banned at:* `{banned_at}`",
+        parse_mode=ParseMode.MARKDOWN,
+    )
 
 
 @on_message(filters.command("setfedlog"), chained=True)
@@ -2212,8 +2395,10 @@ async def fed_owner_help(client, message: Message):
 /newfed <fed\\_name>: Create a federation. One per user.
 /renamefed <fed\\_id> <new\\_fed\\_name>: Rename a federation.
 /delfed <fed\\_id>: Delete a federation and its data. Banned users stay banned.
-/fpromote <user>: Make a user a federation admin.
-/fdemote <user>: Demote a federation admin.
+/fpromote <user>, /fedpromote <user>: Make a user a federation admin.
+/fdemote <user>, /feddemote <user>: Demote a federation admin.
+/feddemoteme <fed\\_id>: Give up your own federation admin rank.
+/fedreason <on/off>: Require a reason on every fedban. In PM, add the fed ID.
 /subfed <fed\\_id>: Subscribe to a federation. Bans there also apply in your federation.
 /unsubfed <fed\\_id>: Unsubscribe from a federation.
 /setfedlog <fed\\_id>: Set this group as the federation log.
@@ -2234,8 +2419,10 @@ async def fed_admin_help(client, message: Message):
 /joinfed <fed\\_id>: Join a federation. Chat owners only. A chat can be in one federation.
 /leavefed <fed\\_id>: Leave a federation. Chat owners only.
 /setfrules <rules>: Set federation rules.
+/clearfrules, /clearrules: Clear federation rules.
 /fedadmins: Show federation admins.
-/fbanlist: Show all users banned in the federation.
+/fbanlist <csv|minicsv|json>: Show all users banned in the federation, optionally as a file.
+/quietfed <on/off>: Hide federation join and leave notices in this chat.
 /fedchats: Show all chats in the federation.
 /chatfed: Show the federation this chat belongs to.\n""",
         parse_mode=ParseMode.MARKDOWN,
@@ -2246,7 +2433,8 @@ async def fed_admin_help(client, message: Message):
 async def fed_user_help(client, message: Message):
     await message.reply_text(
         """Any user:
-/fbanstat: Check whether you, a replied-to user, or a username is fed-banned anywhere.
+/fedstat <user>: Check whether a user is fed-banned anywhere.
+/fbanstat <fed\\_id>: Show the reason and date for your fedban in that federation.
 /fednotif <on/off>: Turn federation ban and unban notifications in PM on or off.
 /frules: Show the federation rules.\n""",
         parse_mode=ParseMode.MARKDOWN,
@@ -2260,6 +2448,19 @@ Commands:
 /fedownerhelp: Show help for creating and owning federations.
 /fedadminhelp: Show help for federation administration.
 /feduserhelp: Show help for commands anyone can use.
+/fedstat <user>: Check a user's federation bans.
+/fbanstat <FedID>: Show the reason and date for your fedban in a federation.
+
+Federation admin only:
+/fpromote <user>, /fedpromote <user>: Promote a federation admin.
+/fdemote <user>, /feddemote <user>: Demote a federation admin.
+/fbanlist <csv|minicsv|json>: Export the federation ban list.
+/quietfed <on|off>: Hide federation join and leave notices in this chat.
+/clearfrules, /clearrules: Clear federation rules.
+
+Federation owner only:
+/feddemoteme <FedID>: Give up your own federation admin rank.
+/fedreason <on|off>: Require a reason on every fedban.
 
 A federation shares bans across all your groups. You can also assign federation admins to ban spammers in the groups you protect.
 """
