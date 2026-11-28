@@ -292,15 +292,15 @@ wheels = [
 
 [[package]]
 name = "kurigram"
-version = "2.2.27"
+version = "2.2.28"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyaes" },
     { name = "python-socks" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7d/b9/59d958f6383fc7bf79e9af051a861446bfcc887bcee62722fd059028cd32/kurigram-2.2.27.tar.gz", hash = "sha256:f7338a8cce4885b2108a9b20daaf7bf75bea17d6da2fd13f1018fd4adb85b19c", size = 851387, upload-time = "2026-11-09T12:22:50.484Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8b/93/966e1ab14e9fbf6917aa8fac96a1d445b39bd1b4f844c7ff5935d22e9308/kurigram-2.2.28.tar.gz", hash = "sha256:d54c839d8d1c944f0df6683cfd1a5d02342eb080c4de96b10ca5cb3e67c1d77a", size = 874976, upload-time = "2026-11-27T21:12:05.468Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5c/2e/02e8196b334c61fb7098240a6ca0a8451eebdecf4337de582a77a0bd9045/kurigram-2.2.27-py3-none-any.whl", hash = "sha256:75aee16496f104c553e3d742c825ea860943ddad180343da95b0273a60a0a90c", size = 6501151, upload-time = "2026-11-09T12:22:48.74Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/19/925034af4dc301795e36f8a9d0a72a65330111b86294bbd729e96c234dd8/kurigram-2.2.28-py3-none-any.whl", hash = "sha256:edc7fbc8ac10a99d48c92bbf3d7f3902504511c94d013933e7c49e5134844719", size = 6601163, upload-time = "2026-11-27T21:12:03.435Z" },
 ]
 
 [[package]]
@@ -853,7 +853,7 @@ requires-dist = [
     { name = "httpx", extras = ["http2"], specifier = "==0.28.1" },
     { name = "humanize", specifier = "==4.17.0" },
     { name = "kuricrypt", specifier = "==0.1.2" },
-    { name = "kurigram", specifier = "==2.2.27" },
+    { name = "kurigram", specifier = "==2.2.28" },
     { name = "nekos-py", specifier = "==1.1.0" },
     { name = "onnxruntime", marker = "python_full_version < '3.15'", specifier = "==1.32.0" },
     { name = "opennsfw-onnx", marker = "python_full_version < '3.15'", specifier = "==0.1.0" },

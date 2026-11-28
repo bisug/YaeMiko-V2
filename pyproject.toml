@@ -10,7 +10,7 @@ dependencies = [
     "emoji==2.16.0",
     "httpx[http2]==0.28.1",
     "humanize==4.17.0",
-    "kurigram==2.2.27",
+    "kurigram==2.2.28",
     "nekos.py==1.1.0",
     'onnxruntime==1.32.0; python_version < "3.15"',
     'opennsfw-onnx==0.1.0; python_version < "3.15"',

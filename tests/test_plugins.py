@@ -52,7 +52,7 @@ def test_quotely_entity_types():
 
     entities = Quotly._entities
     assert MessageEntityType.TON_ADDRESS in entities
-    assert MessageEntityType.BANK_CARD in entities
+    assert MessageEntityType.BANK_CARD_NUMBER in entities
     assert MessageEntityType.DATE_TIME in entities
 
 

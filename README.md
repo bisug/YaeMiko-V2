@@ -8,7 +8,7 @@
 
 [![Python](https://img.shields.io/badge/python-3.14-blueviolet?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-blueviolet?style=for-the-badge)](https://github.com/bisug/YaeMiko-V2/blob/main/LICENSE)
-[![Kurigram](https://img.shields.io/badge/Kurigram-2.2.27-2AABEE?style=for-the-badge&logo=python&logoColor=white)](https://pypi.org/project/Kurigram/)
+[![Kurigram](https://img.shields.io/badge/Kurigram-2.2.28-2AABEE?style=for-the-badge&logo=python&logoColor=white)](https://pypi.org/project/Kurigram/)
 [![kuricrypt](https://img.shields.io/badge/kuricrypt-0.1.2-2AABEE?style=for-the-badge&logo=rust&logoColor=white)](https://pypi.org/project/kuricrypt/)
 [![Docker](https://img.shields.io/badge/docker-multistage-2496ED?style=for-the-badge&logo=docker&logoColor=white)](Dockerfile)
 [![Heroku](https://img.shields.io/badge/deploy-heroku-79589F?style=for-the-badge&logo=heroku&logoColor=white)](https://dashboard.heroku.com/apps/new?template=https://github.com/bisug/YaeMiko-V2)
@@ -49,7 +49,7 @@ state in PostgreSQL, and ships 62 plugin modules.
 | | |
 | --- | --- |
 | **Runtime** | Python 3.14.10, single `asyncio` event loop |
-| **Telegram** | Kurigram 2.2.27 on MTProto with `Mikobot.events` registry |
+| **Telegram** | Kurigram 2.2.28 on MTProto with `Mikobot.events` registry |
 | **Storage** | PostgreSQL 18 through SQLAlchemy 2.1 |
 | **Modules** | 62 auto-discovered plugins under `Mikobot/plugins` |
 | **Requirements** | 512 MB RAM minimum, 1 GB recommended, Python 3.14.10 |
@@ -158,7 +158,7 @@ execution. Persistence, reply construction and error handling wrap that flow.
 
 | Component | Version | Link |
 | --- | --- | --- |
-| Kurigram | 2.2.27 | [PyPI](https://pypi.org/project/Kurigram/) |
+| Kurigram | 2.2.28 | [PyPI](https://pypi.org/project/Kurigram/) |
 | kuricrypt | 0.1.2 | [PyPI](https://pypi.org/project/kuricrypt/) |
 | DataStore | [`Mikobot/utils/persistence.py`](Mikobot/utils/persistence.py) | Pickle backed store for chat and user context |
 

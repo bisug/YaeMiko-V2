@@ -81,7 +81,7 @@ class Quotly:
         MessageEntityType.SPOILER: "spoiler",
         MessageEntityType.CUSTOM_EMOJI: "custom_emoji",
         MessageEntityType.BLOCKQUOTE: "blockquote",
-        MessageEntityType.BANK_CARD: "bank_card",
+        MessageEntityType.BANK_CARD_NUMBER: "bank_card",
         MessageEntityType.DATE_TIME: "date_time",
         MessageEntityType.TON_ADDRESS: "ton_address",
     }
